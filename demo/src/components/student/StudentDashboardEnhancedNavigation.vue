@@ -15,7 +15,7 @@
             <h2 class="text-xl font-bold leading-tight tracking-tight">ExamPortal</h2>
           </div>
           <div class="flex flex-1 justify-end gap-4 items-center">
-            <button class="flex items-center justify-center rounded-full size-10 bg-primary/10 text-primary hover:bg-primary/20 transition-colors" type="button">
+            <button class="flex items-center justify-center rounded-full size-10 bg-primary/10 text-primary hover:bg-primary/20 hover:-translate-y-0.5 transition-all duration-200" type="button">
               <span class="material-symbols-outlined">notifications</span>
             </button>
             <button
@@ -38,13 +38,16 @@
           </div>
         </header>
 
-        <main class="flex-1 max-w-6xl mx-auto w-full p-6 md:p-10 space-y-10">
-          <section class="flex flex-col gap-2">
+        <main class="relative flex-1 max-w-6xl mx-auto w-full p-6 md:p-10 space-y-10 overflow-hidden">
+          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+
+          <section class="relative flex flex-col gap-2 animate-fade-up">
             <h1 class="text-3xl md:text-4xl font-black tracking-tight text-primary dark:text-slate-100">Welcome back, Alex</h1>
             <p class="text-slate-600 dark:text-slate-400 text-lg">Your dashboard for exams and self-paced learning.</p>
           </section>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
             <div class="lg:col-span-2 space-y-8">
               <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-primary/10 shadow-sm">
                 <div class="flex items-center gap-3 mb-6">
@@ -61,7 +64,7 @@
                       type="text"
                     />
                   </div>
-                  <button @click="goToWaitingRoom" class="w-full md:w-auto px-8 py-3 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity" type="button">
+                  <button @click="goToWaitingRoom" class="w-full md:w-auto px-8 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200" type="button">
                     Enter Room
                   </button>
                 </div>
@@ -89,14 +92,14 @@
                   <input id="file-upload" class="hidden" type="file" @change="goToGeneratePractice" />
                 </label>
                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3">
+                  <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                     <span class="material-symbols-outlined text-primary">auto_awesome</span>
                     <div class="text-sm">
                       <p class="font-bold">AI Generation</p>
                       <p class="text-slate-500">Questions created from your notes</p>
                     </div>
                   </div>
-                  <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3">
+                  <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                     <span class="material-symbols-outlined text-primary">timer</span>
                     <div class="text-sm">
                       <p class="font-bold">Timed Sessions</p>
@@ -133,7 +136,7 @@
                   </div>
                 </div>
                 <div class="p-4 mt-auto">
-                  <button @click="goToStudyHistory" class="w-full py-3 text-sm font-bold text-white bg-primary rounded-lg hover:opacity-90 transition-opacity shadow-md shadow-primary/20" type="button">
+                  <button @click="goToStudyHistory" class="w-full py-3 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-md shadow-primary/20" type="button">
                     View Full Transcript
                   </button>
                 </div>
@@ -204,5 +207,52 @@ const goToLogin = () => {
 <style scoped>
 .font-display {
   font-family: 'Inter', sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes floatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: floatDelay 8s ease-in-out infinite;
 }
 </style>

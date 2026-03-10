@@ -10,7 +10,7 @@
     </div>
     <div class="flex flex-1 justify-end gap-4 items-center">
       <slot name="rightActions" />
-      <button class="flex items-center justify-center rounded-full size-10 bg-primary/10 text-primary hover:bg-primary/20 transition-colors" type="button">
+      <button v-if="showNotifications" class="flex items-center justify-center rounded-full size-10 bg-primary/10 text-primary hover:bg-primary/20 transition-colors" type="button">
         <span class="material-symbols-outlined">notifications</span>
       </button>
       <button
@@ -21,16 +21,18 @@
       >
         Sign Out
       </button>
-      <div v-if="showProfile" class="flex items-center gap-3 pl-2 border-l border-primary/10">
+      <button v-if="showProfile" type="button" @click="goToProfile" class="flex items-center gap-3 pl-2 border-l border-primary/10 hover:-translate-y-0.5 transition-all duration-200">
         <div class="hidden md:block text-right">
           <p class="text-sm font-bold">Alex Johnson</p>
           <p class="text-xs text-slate-500">ID: 4421-STU</p>
         </div>
         <div
           class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20"
+          @click="goToProfile" 
+          type="button"
           style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1e4bA4nxwNhHI-Fn4dFl5ffPsV2Qcq-aTU38W1KpDGwJVtSs8Uu50HUjL-6AQ1rsj8FzgZ85caSzJLBV2kIzkBDQx4LboDGfHJTBM4ekHERyEJBMrHARjYfGyK-OOed1VR2AVLI8Set2ttmV6DKD-1ADupmLpYFhEoCRyviMIao-qfOPN6LDLGiDaSyvu15GGz3wp3epYInY9djSMLy1DHqOjBrCWEn_nXjmRki5_ystPT2x5YTemNdGgEHmK39v616MkRN2Pcg")'
         ></div>
-      </div>
+      </button>
     </div>
   </header>
 </template>
@@ -46,6 +48,10 @@ defineProps({
   showProfile: {
     type: Boolean,
     default: true
+  },
+  showNotifications: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -53,5 +59,9 @@ const router = useRouter()
 
 const goToLogin = () => {
   router.push('/login')
+}
+
+const goToProfile = () => {
+  router.push('/student/profile')
 }
 </script>

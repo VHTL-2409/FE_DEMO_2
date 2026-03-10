@@ -1,6 +1,6 @@
 <template>
   <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
-    <StudentTopHeader :show-profile="false">
+    <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false">
       <template #rightActions>
         <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <span class="material-symbols-outlined text-sm leading-none">videocam</span>
@@ -31,9 +31,12 @@
       </template>
     </StudentTopHeader>
 
-    <main class="flex-1 flex max-w-[1440px] mx-auto w-full p-6 gap-6 overflow-hidden">
-      <div class="flex-1 flex flex-col gap-6">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1">
+    <main class="relative flex-1 flex max-w-[1440px] mx-auto w-full p-6 gap-6 overflow-hidden">
+      <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+      <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+
+      <div class="relative flex-1 flex flex-col gap-6">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
           <div class="flex justify-between items-center mb-8">
             <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Question 12 of 30</span>
             <button class="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors" type="button">
@@ -68,13 +71,13 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between py-2">
-          <button class="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" type="button">
+        <div class="flex items-center justify-between py-2 animate-fade-up-delay">
+          <button class="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
             <span class="material-symbols-outlined">arrow_back</span>
             Previous Question
           </button>
           <div class="flex gap-4">
-            <button class="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold hover:opacity-90 transition-opacity" type="button">
+            <button class="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold hover:opacity-90 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
               Next Question
               <span class="material-symbols-outlined">arrow_forward</span>
             </button>
@@ -82,7 +85,7 @@
         </div>
       </div>
 
-      <aside class="w-80 flex flex-col gap-6">
+      <aside class="relative w-80 flex flex-col gap-6 animate-fade-up-delay">
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
           <div class="flex justify-between items-end mb-3">
             <h3 class="font-bold text-sm">Exam Progress</h3>
@@ -238,5 +241,52 @@ const questions = [
 <style scoped>
 .font-display {
   font-family: 'Public Sans', sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes floatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: floatDelay 8s ease-in-out infinite;
 }
 </style>

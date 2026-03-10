@@ -4,8 +4,11 @@
       <div class="layout-container flex h-full grow flex-col">
         <StudentTopHeader />
 
-        <main class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-40">
-          <div class="max-w-[640px] w-full flex flex-col items-center">
+        <main class="relative flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-40 overflow-hidden">
+          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+
+          <div class="relative max-w-[640px] w-full flex flex-col items-center">
             <div class="mb-8 relative">
               <div class="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150"></div>
               <div class="relative h-24 w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30">
@@ -13,10 +16,10 @@
               </div>
             </div>
 
-            <h1 class="text-3xl lg:text-4xl font-bold text-center mb-3">Exam Submitted Successfully</h1>
+            <h1 class="text-3xl lg:text-4xl font-bold text-center mb-3 animate-fade-up">Exam Submitted Successfully</h1>
             <p class="text-slate-600 dark:text-slate-400 text-lg text-center mb-10">Your responses have been recorded and sent to your instructor for evaluation.</p>
 
-            <div class="w-full bg-white dark:bg-slate-800/50 rounded-xl border border-primary/10 p-6 mb-8 shadow-sm">
+            <div class="w-full bg-white dark:bg-slate-800/50 rounded-xl border border-primary/10 p-6 mb-8 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fade-up-delay">
               <h3 class="text-sm font-bold uppercase tracking-wider text-primary mb-6">Submission Summary</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="flex items-start gap-4">
@@ -59,11 +62,11 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
-              <button @click="goToDashboard" class="flex items-center justify-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all" type="button">
+              <button @click="goToDashboard" class="flex items-center justify-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200" type="button">
                 <span class="material-symbols-outlined">dashboard</span>
                 Return to Dashboard
               </button>
-              <button class="flex items-center justify-center gap-2 bg-primary/10 text-primary border border-primary/20 px-8 py-3.5 rounded-xl font-bold hover:bg-primary/20 transition-all" type="button">
+              <button class="flex items-center justify-center gap-2 bg-primary/10 text-primary border border-primary/20 px-8 py-3.5 rounded-xl font-bold hover:bg-primary/20 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
                 <span class="material-symbols-outlined">download</span>
                 View Submission Receipt
               </button>
@@ -76,8 +79,6 @@
           </div>
         </main>
 
-        <div class="fixed bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl pointer-events-none"></div>
-        <div class="fixed top-20 right-0 w-96 h-96 bg-primary/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl pointer-events-none"></div>
       </div>
     </div>
   </div>
@@ -99,5 +100,52 @@ const goToDashboard = () => {
 <style scoped>
 .font-display {
   font-family: 'Public Sans', sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes floatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: floatDelay 8s ease-in-out infinite;
 }
 </style>

@@ -17,6 +17,8 @@ import StudentSubmissionConfirmation from './components/student/StudentSubmissio
 import StudentStudyHistory from './components/student/StudentStudyHistory.vue'
 import StudentExamResultDetail from './components/student/StudentExamResultDetail.vue'
 import StudentGeneratePracticeTest from './components/student/StudentGeneratePracticeTest.vue'
+import StudentProfile from './components/student/StudentProfile.vue'
+import TeacherProfile from './components/teacher/TeacherProfile.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,13 +35,15 @@ const router = createRouter({
     { path: '/teacher/live-monitoring', component: TeacherSelectExamUpdatedMenu },
     { path: '/teacher/live-monitoring/session', component: TeacherLiveMonitoringUpdatedMenu },
     { path: '/teacher/live-monitoring/student-detail', component: StudentViolationDetailMonitoring },
+    { path: '/teacher/profile', component: TeacherProfile },
     { path: '/student/dashboard', component: StudentDashboardEnhancedNavigation },
     { path: '/student/exam-waiting-room', component: StudentExamWaitingRoom },
     { path: '/student/exam-interface', component: StudentExamInterface },
     { path: '/student/submission-confirmation', component: StudentSubmissionConfirmation },
     { path: '/student/study-history', component: StudentStudyHistory },
     { path: '/student/exam-result', component: StudentExamResultDetail },
-    { path: '/student/generate-practice-test', component: StudentGeneratePracticeTest }
+    { path: '/student/generate-practice-test', component: StudentGeneratePracticeTest },
+    { path: '/student/profile', component: StudentProfile }
   ]
 })
 

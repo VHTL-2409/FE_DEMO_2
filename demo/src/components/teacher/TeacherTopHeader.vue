@@ -19,6 +19,9 @@
             <RouterLink :class="navClass('monitoring')" to="/teacher/live-monitoring">
               Live Monitoring
             </RouterLink>
+            <RouterLink :class="navClass('profile')" to="/teacher/profile">
+              Profile
+            </RouterLink>
           </nav>
         </div>
         <div class="flex items-center gap-4">

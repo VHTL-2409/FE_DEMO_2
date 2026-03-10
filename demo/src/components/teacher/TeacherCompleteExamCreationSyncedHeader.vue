@@ -2,13 +2,16 @@
   <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 transition-colors duration-200 min-h-screen">
     <TeacherTopHeader active-section="exam" />
 
-    <main class="max-w-4xl mx-auto px-4 py-10">
-      <div class="mb-10">
+    <main class="relative max-w-4xl mx-auto px-4 py-10 overflow-hidden">
+      <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+      <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+
+      <div class="relative mb-10 animate-fade-up">
         <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Create New Exam (Import)</h2>
         <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Step 1: Add title and import file. Step 2: Configure schedule.</p>
       </div>
 
-      <div class="space-y-8">
+      <div class="relative space-y-8 animate-fade-up-delay">
         <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div class="flex items-center gap-2 mb-6">
             <span class="material-symbols-outlined text-primary">info</span>
@@ -40,8 +43,8 @@
         </section>
 
         <div class="flex items-center justify-end gap-4 pt-6">
-          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" type="button" @click="goBack">Discard Draft</button>
-          <button class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all flex items-center gap-2" type="button" @click="goNext">Next<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
+          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Discard Draft</button>
+          <button class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2" type="button" @click="goNext">Next<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
         </div>
       </div>
     </main>
@@ -74,5 +77,52 @@ const goNext = () => {
 <style scoped>
 .font-display {
   font-family: 'Inter', sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes floatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: floatDelay 8s ease-in-out infinite;
 }
 </style>
