@@ -18,6 +18,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     List<ExamAttempt> findByExam(Exam exam);
 
+    void deleteByExam(Exam exam);
+
     Optional<ExamAttempt> findByIdAndStudent(Long id, User student);
 
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);

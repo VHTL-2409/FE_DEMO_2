@@ -31,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -78,6 +79,10 @@ public class SubmissionService {
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.AUTO_SUBMITTED) {
             return toSubmitResponse(attempt);
+        }
+
+        if (attempt.getStatus() == AttemptStatus.STOPPED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt has been suspended by proctor");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -286,6 +291,38 @@ public class SubmissionService {
                 .deadlineAt(submissionHelper.deadlineAt(attempt))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .build();
+    }
+
+    public byte[] exportExamAttemptsCsv(Exam exam) {
+        List<ExamAttempt> attempts = listByExam(exam);
+        StringBuilder csv = new StringBuilder();
+        csv.append("attemptId,examId,student,status,score,riskScore,suspicious,startedAt,submittedAt,deadlineAt,remainingSeconds\n");
+
+        for (ExamAttempt attempt : attempts) {
+            AttemptSummaryResponse summary = toSummary(attempt);
+            csv.append(summary.getId()).append(',')
+                    .append(summary.getExamId()).append(',')
+                    .append(escapeCsv(summary.getStudent())).append(',')
+                    .append(summary.getStatus()).append(',')
+                    .append(summary.getScore() == null ? "" : summary.getScore()).append(',')
+                    .append(summary.getRiskScore() == null ? "" : summary.getRiskScore()).append(',')
+                    .append(summary.getSuspicious() == null ? "" : summary.getSuspicious()).append(',')
+                    .append(summary.getStartedAt() == null ? "" : summary.getStartedAt()).append(',')
+                    .append(summary.getSubmittedAt() == null ? "" : summary.getSubmittedAt()).append(',')
+                    .append(summary.getDeadlineAt() == null ? "" : summary.getDeadlineAt()).append(',')
+                    .append(summary.getRemainingSeconds() == null ? "" : summary.getRemainingSeconds())
+                    .append('\n');
+        }
+
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
     }
 
     private StartAttemptResponse toStartResponse(ExamAttempt attempt) {

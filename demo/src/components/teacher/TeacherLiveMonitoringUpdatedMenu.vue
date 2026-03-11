@@ -27,19 +27,28 @@
           </div>
           <div class="flex gap-3">
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center min-w-[100px] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-              <span class="text-2xl font-bold text-slate-900 dark:text-white">42</span>
+              <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ attempts.length }}</span>
               <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Đang có mặt</span>
             </div>
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center min-w-[100px] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-              <span class="text-2xl font-bold text-red-600">03</span>
+              <span class="text-2xl font-bold text-red-600">{{ flaggedCount }}</span>
               <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Bị gắn cờ</span>
             </div>
             <div class="bg-primary text-white rounded-xl p-3 flex flex-col items-center min-w-[100px]">
-              <span class="text-2xl font-bold">1h 14m</span>
-              <span class="text-[10px] uppercase font-bold text-white/70 tracking-wider">Còn lại</span>
+              <span class="text-2xl font-bold">{{ examDurationLabel }}</span>
+              <span class="text-[10px] uppercase font-bold text-white/70 tracking-wider">Thời lượng</span>
             </div>
           </div>
         </div>
+
+        <div class="mb-4 flex flex-wrap items-center gap-3 text-xs animate-fade-up-delay">
+          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
+            <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+            {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
+          </span>
+          <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
+        </div>
+        <p v-if="loadError" class="mb-4 text-sm text-rose-600 animate-fade-up-delay">{{ loadError }}</p>
 
         <section class="relative mb-10 animate-fade-up-delay">
           <h3 class="text-red-600 dark:text-red-400 text-sm font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -47,7 +56,7 @@
             Cần chú ý ngay
           </h3>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div v-for="alert in alerts" :key="alert.student" :class="alert.cardClass" class="rounded-xl p-5 shadow-lg relative overflow-hidden group hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+            <div v-for="alert in alerts" :key="alert.key" :class="alert.cardClass" class="rounded-xl p-5 shadow-lg relative overflow-hidden group hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
               <div v-if="alert.isCritical" class="absolute top-0 right-0 p-2">
                 <span class="flex h-3 w-3 rounded-full bg-red-500 animate-ping"></span>
               </div>
@@ -63,7 +72,7 @@
                 </div>
               </div>
               <div class="mt-4 flex gap-2">
-                <button :class="alert.primaryActionClass" class="flex-1 py-2 text-white rounded-lg text-sm font-bold transition-all" type="button" @click="openStudentDetail(alert)">{{ alert.primaryAction }}</button>
+                <button :class="alert.primaryActionClass" class="flex-1 py-2 text-white rounded-lg text-sm font-bold transition-all" type="button" @click="handlePrimaryAction(alert)">{{ alert.primaryAction }}</button>
                 <button class="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center justify-center" type="button" @click="openStudentDetail(alert)">
                   <span class="material-symbols-outlined text-lg">videocam</span>
                 </button>
@@ -129,7 +138,7 @@
                     </div>
                   </td>
                   <td class="px-6 py-4 text-right">
-                    <button class="p-2 text-slate-400 hover:text-primary transition-colors" type="button">
+                    <button class="p-2 text-slate-400 hover:text-primary transition-colors" type="button" @click="openStudentDetail(student)">
                       <span class="material-symbols-outlined">more_vert</span>
                     </button>
                   </td>
@@ -138,10 +147,10 @@
             </table>
           </div>
           <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <p class="text-sm text-slate-500 dark:text-slate-400">Hiển thị 4 trên 42 sinh viên đang hoạt động</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ students.length }} sinh viên đang hoạt động</p>
             <div class="flex gap-2">
               <button class="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50" disabled type="button">Trước</button>
-              <button class="px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg" type="button">Tiếp</button>
+              <button class="px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-50" disabled type="button">Tiếp</button>
             </div>
           </div>
         </section>
@@ -151,140 +160,178 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { getAttemptDetail, listExamAttempts } from '../../services/attemptService'
+import { sendTeacherWarning } from '../../services/monitoringService'
 import { useRoute, useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
+const attempts = ref([])
+const detailsByAttemptId = ref({})
+const loadError = ref('')
+const isSyncing = ref(false)
+const lastUpdatedAt = ref(null)
+let refreshTimer = null
 
-const openStudentDetail = (alert) => {
+const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
+const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
+const selectedExamMeta = computed(() => route.query.meta || 'Phiên giám sát trực tiếp')
+const lastUpdatedLabel = computed(() => {
+  if (!lastUpdatedAt.value) return 'chưa có dữ liệu'
+  return new Date(lastUpdatedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
+const examDurationLabel = computed(() => {
+  const match = selectedExamMeta.value.match(/Thời lượng:\s*(\d+)\s*phút/i)
+  if (!match) return '-'
+  return `${match[1]}m`
+})
+
+const flaggedCount = computed(() => attempts.value.filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious).length)
+
+const alerts = computed(() => attempts.value
+  .filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious)
+  .sort((a, b) => {
+    const aAt = new Date(a.startedAt || 0).getTime()
+    const bAt = new Date(b.startedAt || 0).getTime()
+    return bAt - aAt
+  })
+  .slice(0, 5)
+  .map((attempt, index) => {
+    const riskScore = Number(attempt.riskScore || 0)
+    const critical = riskScore >= 10 || Boolean(attempt.suspicious)
+    const sortAt = new Date(attempt.startedAt || 0).getTime() || 0
+    return {
+      key: `${attempt.id}-${sortAt}-${index}`,
+      student: attempt.student || 'Sinh viên không rõ',
+      studentId: `AT-${attempt.id}`,
+      meta: `Risk: ${riskScore} • Trạng thái: ${String(attempt.status || '').toUpperCase()}`,
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAIJ4SxrDKzIOAxYgwMxfCl9VECA94Lz5URlQAHT8wlNhUW4MNw9D1HLca97xsa6unSv5ggAypK-LlUtn8ncy9v-bzAFa3_8M1DavSb0bTFXN0n5cGflRifrcKtMGsdiwoybTbp9NCUsP7loGo43vS15PYo7KCItvkic1tbE7vNg_JatXHLLpScEs05NVeQLNXTuq294VTZO_Ynq_xP5jG7khjmSKYRitHROXp4_84cfjODRxtCxXX59LP1gTMP-0pkrK6iKTNdhA',
+      cardClass: critical ? 'bg-red-50 dark:bg-red-900/10 border-2 border-red-500' : 'bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-500',
+      avatarClass: critical ? 'border-red-200' : 'border-amber-200',
+      feedClass: critical ? 'bg-red-600' : 'bg-amber-600',
+      title: critical ? 'Mức độ rủi ro cao' : 'Có dấu hiệu bất thường',
+      titleClass: critical ? 'text-red-600' : 'text-amber-600',
+      primaryAction: critical ? 'Can thiệp ngay' : 'Gửi cảnh báo',
+      primaryActionClass: critical ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700',
+      isCritical: critical,
+      attemptId: attempt.id,
+      examId: attempt.examId
+    }
+  }))
+
+const toProgressPercent = (attempt) => {
+  const detail = detailsByAttemptId.value[attempt.id]
+  const answered = Number(detail?.answeredCount || 0)
+  const total = Number(detail?.totalQuestions || 0)
+  if (!total) return 0
+  return Math.max(0, Math.min(100, Math.round((answered / total) * 100)))
+}
+
+const students = computed(() => attempts.value.map((attempt) => {
+  const progress = toProgressPercent(attempt)
+  const riskScore = Number(attempt.riskScore || 0)
+  const suspicious = Boolean(attempt.suspicious) || riskScore > 0
+  const statusRaw = String(attempt.status || '').toUpperCase()
+
+  return {
+    name: attempt.student || 'Sinh viên không rõ',
+    id: `AT-${attempt.id}`,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJGLtVqDWiqr09yUYr_EKVfQ-r70N3UjRMOqeWxaAprZiU6nZJws9kNPNFFMbWG7ZDXumDSi6Hwc8iSgpka-HkHG6-1322BcZsj7rwrYoGIObyDUwZyOPmezxi1A3CpRdGtoJ0XgFtcTcOsQC6CRy6biwHpDD6ilY1MrxbvsGzNQJDoyihPA6hliXu7tW2LoEHLgyAKrOFRpsV1hASERYghA7RP_UJXATXVNYnPO9qX-jkyA0ZHMxQdOZJoD60dT9lhxX518nKBg',
+    progress,
+    questions: `${detailsByAttemptId.value[attempt.id]?.answeredCount || 0}/${detailsByAttemptId.value[attempt.id]?.totalQuestions || 0} câu`,
+    status: suspicious ? 'Hoạt động đáng ngờ' : statusRaw || 'Không rõ',
+    statusClass: suspicious
+      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800'
+      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+    progressTextClass: suspicious ? 'text-red-600' : '',
+    progressBarClass: suspicious ? 'bg-red-500' : 'bg-primary',
+    cameraIcon: suspicious ? 'videocam_off' : 'videocam',
+    micIcon: suspicious ? 'mic_off' : 'mic',
+    cameraClass: suspicious ? 'text-red-500' : 'text-green-500',
+    micClass: suspicious ? 'text-red-500' : 'text-green-500',
+    rowClass: suspicious ? 'bg-red-50/30 dark:bg-red-900/5' : '',
+    attemptId: attempt.id,
+    examId: attempt.examId
+  }
+}))
+
+const openStudentDetail = (item) => {
   router.push({
     path: '/teacher/live-monitoring/student-detail',
     query: {
-      student: alert.student,
-      studentId: alert.studentId,
+      attemptId: item.attemptId,
+      examId: item.examId,
+      student: item.student || item.name,
+      studentId: item.studentId || item.id,
       exam: selectedExamTitle.value,
-      avatar: alert.image
+      avatar: item.image
     }
   })
 }
 
-const selectedExamTitle = computed(() => route.query.title || 'Thi cuối kỳ: Tâm lý học nâng cao')
-const selectedExamMeta = computed(() => route.query.meta || 'Phòng 302 • Bắt đầu: 09:00 • Thời lượng 120 phút')
-
-const alerts = [
-  {
-    student: 'Robert Fox',
-    title: 'Phát hiện chuyển tab nhiều lần',
-    studentId: 'STU-88293',
-    meta: 'Xảy ra 2 phút trước • Cờ 4/3',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAIJ4SxrDKzIOAxYgwMxfCl9VECA94Lz5URlQAHT8wlNhUW4MNw9D1HLca97xsa6unSv5ggAypK-LlUtn8ncy9v-bzAFa3_8M1DavSb0bTFXN0n5cGflRifrcKtMGsdiwoybTbp9NCUsP7loGo43vS15PYo7KCItvkic1tbE7vNg_JatXHLLpScEs05NVeQLNXTuq294VTZO_Ynq_xP5jG7khjmSKYRitHROXp4_84cfjODRxtCxXX59LP1gTMP-0pkrK6iKTNdhA',
-    cardClass: 'bg-red-50 dark:bg-red-900/10 border-2 border-red-500',
-    avatarClass: 'border-red-200',
-    feedClass: 'bg-red-600',
-    titleClass: 'text-red-600',
-    primaryAction: 'Can thiệp ngay',
-    primaryActionClass: 'bg-red-600 hover:bg-red-700',
-    isCritical: true
-  },
-  {
-    student: 'Bessie Cooper',
-    title: 'Phát hiện thiết bị phụ',
-    studentId: 'STU-88294',
-    meta: 'Phát hiện AI • Độ tin cậy cao',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCyI0vEAOjG_D5V9g5E1wLhdDkGHMJ8GVF_GV-9onQ_6jhLivWqXRJZy6Jt9qOJncK-v08UIaC-mP6wFLfjMNK-2hPQeFZxy-gmCW42dG2K7mGLADSKyIdvZVQ8YXiXbpeiRwl4Wg0hETNenLVJcxayfOxqMAWZJ5wlHSrUbzvDIlIel_ItlkwbmpUhZD9UMoE5fwDuk7x6iySOdkzXIlhDZXR5NfKpKGqmgVtgd6aqimE7ShOyJ-S6xbljlGFcogapiGpgspSEjg',
-    cardClass: 'bg-red-50 dark:bg-red-900/10 border-2 border-red-500',
-    avatarClass: 'border-red-200',
-    feedClass: 'bg-red-600',
-    titleClass: 'text-red-600',
-    primaryAction: 'Can thiệp ngay',
-    primaryActionClass: 'bg-red-600 hover:bg-red-700',
-    isCritical: false
-  },
-  {
-    student: 'Cameron Williamson',
-    title: 'Khuôn mặt ra khỏi khung hình',
-    studentId: 'STU-88295',
-    meta: 'Thời lượng: 15 giây',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtMjF5mj_ClCW9EmyXg00BZV0rxWtVROfIwWA_31knvMxtMb_hH2lQ8TLf9rJyzD4FmPtqyem5oFpeaPmHw5ouM3R99aY5Pu3hq2Xko-tuuAxzgS9nj6NlEFpSPEzM3Kg58Sj4L4SbKTAa4jOkdtdibCyWYQOyMJkbY2pAFrELirAHczDVLdy4a68rsypmWOwgfKjViF6Y2Xvq66P-1m1IQn2VQyLsbEMvXwOqPkHB0XwKLBX9BQ-obz5Afm55qqj4EJoGuAyINA',
-    cardClass: 'bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-500',
-    avatarClass: 'border-amber-200',
-    feedClass: 'bg-amber-600',
-    titleClass: 'text-amber-600',
-    primaryAction: 'Gửi cảnh báo',
-    primaryActionClass: 'bg-amber-600 hover:bg-amber-700',
-    isCritical: false
+const sendQuickWarning = async (item) => {
+  try {
+    await sendTeacherWarning(item.attemptId)
+  } catch {
+    // keep UX simple on live dashboard; detailed errors shown in detail page actions
   }
-]
+}
 
-const students = [
-  {
-    name: 'Jerome Bell',
-    id: '#45920',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBbu_v9mGtU7dAJuLh_cqxHsNWPFe9CW2ZCoGNHs_czGAfLkheNxFN_NijT54zea-4uc_GPTOfqtxXhT0iw8vW4AWFqinfW-RiBuCirB6aLZJXs-Fhv2_TxNZTVr5l3GK71DopGZnRXsUfA4ZKzKhfGm5ocZj5AU2M5hEYp7wAjzFv9LlfdEscMmjU4eLaT8IkVnFGV-K5F8-qbDLTLIx83l2s-Cg5nF6AF4dTiokaj9GqW-iBbt8gWcr_hzt16YizH5D4drenrJQ',
-    progress: 75,
-    questions: '45/60 câu',
-    status: 'Bình thường',
-    statusClass: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
-    progressTextClass: '',
-    progressBarClass: 'bg-primary',
-    cameraIcon: 'videocam',
-    micIcon: 'mic',
-    cameraClass: 'text-green-500',
-    micClass: 'text-green-500',
-    rowClass: ''
-  },
-  {
-    name: 'Arlene McCoy',
-    id: '#45921',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDumshticGOziPlke8Nf8YPuFfp3KHAVPNgtyy4HFet1fjuR-zpM-suYsDQWPCrjl-YvZfJMh4IbEbqACGYz5sBZ9HJxjOZImL13JHfESnUQMudMt95juyQFBqEx7i7bc3x-gBYyubI53ElNcytUMw61X4stoGJOIipFqVC12UZUTSF8kntNfDuTJ7LL2f6VAmhliK-bwvGWEXBhrSazEhRy6or5d9HSgDRAEOVl9nt4Kub8FAPUJ7-jRsG5ms19fCAR6LyU71PuA',
-    progress: 42,
-    questions: '25/60 câu',
-    status: 'Đang xem lại',
-    statusClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-    progressTextClass: '',
-    progressBarClass: 'bg-primary',
-    cameraIcon: 'videocam',
-    micIcon: 'mic_off',
-    cameraClass: 'text-green-500',
-    micClass: 'text-slate-300 dark:text-slate-600',
-    rowClass: ''
-  },
-  {
-    name: 'Devon Lane',
-    id: '#45922',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAuFFwh3iRxpN-9mYHlBN7AxkIVhtzlvg-zbI3AMhEviuAkYY2YNuwz-NUSCQiH6iFO1o_5X2tpGpGRlJ_DR5fLfA0vrObO3zC3SYxkdPsITPrWqTXvdKZg-1BOYLvjxS51kf2T5CUZ1qDMUrIht79v-kDiZK8aJLRbXnjlQR4rAdUPn3Tgj2QIAnZ0z-Ya2KPjm9NS1AQilHKtdd6cc3b6wHtBHtwktskWNw4fV-nGCFkLWyOTncE0xDDOb9xTHvtZINPLRIw6_Q',
-    progress: 92,
-    questions: '55/60 câu',
-    status: 'Không hoạt động (1p)',
-    statusClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-    progressTextClass: '',
-    progressBarClass: 'bg-primary',
-    cameraIcon: 'videocam',
-    micIcon: 'mic',
-    cameraClass: 'text-green-500',
-    micClass: 'text-green-500',
-    rowClass: ''
-  },
-  {
-    name: 'Esther Howard',
-    id: '#45923',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJGLtVqDWiqr09yUYr_EKVfQ-r70N3UjRMOqeWxaAprZiU6nZJws9kNPNFFMbWG7ZDXumDSi6Hwc8iSgpka-HkHG6-1322BcZsj7rwrYoGIObyDUwZyOPmezxi1A3CpRdGtoJ0XgFtcTcOsQC6CRy6biwHpDD6ilY1MrxbvsGzNQJDoyihPA6hliXu7tW2LoEHLgyAKrOFRpsV1hASERYghA7RP_UJXATXVNYnPO9qX-jkyA0ZHMxQdOZJoD60dT9lhxX518nKBg',
-    progress: 60,
-    questions: '36/60 câu',
-    status: 'Hoạt động đáng ngờ',
-    statusClass: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
-    progressTextClass: 'text-red-600',
-    progressBarClass: 'bg-red-500',
-    cameraIcon: 'videocam_off',
-    micIcon: 'mic',
-    cameraClass: 'text-red-500',
-    micClass: 'text-green-500',
-    rowClass: 'bg-red-50/30 dark:bg-red-900/5'
+const handlePrimaryAction = (item) => {
+  if (item.primaryAction === 'Gửi cảnh báo') {
+    sendQuickWarning(item)
+    return
   }
-]
+  openStudentDetail(item)
+}
+
+const loadAttempts = async () => {
+  if (!examId.value) {
+    loadError.value = 'Thiếu mã đề thi. Vui lòng mở phiên giám sát từ danh sách đề thi.'
+    return
+  }
+
+  isSyncing.value = true
+  try {
+    const fetchedAttempts = await listExamAttempts(examId.value)
+    const detailPairs = await Promise.all(
+      fetchedAttempts.map(async (attempt) => {
+        try {
+          const detail = await getAttemptDetail(attempt.id)
+          return [attempt.id, detail]
+        } catch {
+          return [attempt.id, null]
+        }
+      })
+    )
+    attempts.value = fetchedAttempts
+    detailsByAttemptId.value = Object.fromEntries(detailPairs)
+    loadError.value = ''
+    lastUpdatedAt.value = Date.now()
+  } catch (error) {
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát trực tiếp.'
+  } finally {
+    isSyncing.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadAttempts()
+  refreshTimer = window.setInterval(() => {
+    loadAttempts()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <style scoped>

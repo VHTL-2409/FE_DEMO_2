@@ -4,6 +4,7 @@ import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
 import com.example.demo.common.ApiException;
+import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.MonitoringEvent;
 import com.example.demo.domain.entity.MonitoringEventType;
@@ -46,8 +47,6 @@ public class MonitoringService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported event type");
         }
 
-        // Calculate dynamic compounded score before saving the current event to avoid
-        // off-by-one
         int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType);
 
         MonitoringEvent event = MonitoringEvent.builder()
@@ -80,6 +79,60 @@ public class MonitoringService {
                 .attemptId(attempt.getId())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
+                .status(attempt.getStatus().name())
+                .build();
+    }
+
+    @Transactional
+    public MonitoringEventResponse sendWarning(Long attemptId, String message, User actor) {
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+
+        ensureCanManageAttempt(attempt, actor);
+
+        String warningMessage = (message == null || message.isBlank())
+                ? "Bạn đang bị cảnh báo bởi giám thị. Vui lòng tuân thủ quy định phòng thi."
+                : message.trim();
+
+        realtimeNotificationService.notifyTeacherWarning(attempt, warningMessage);
+
+        return MonitoringEventResponse.builder()
+                .attemptId(attempt.getId())
+                .riskScore(attempt.getRiskScore())
+                .suspicious(attempt.getSuspicious())
+                .status(attempt.getStatus().name())
+                .message(warningMessage)
+                .build();
+    }
+
+    @Transactional
+    public MonitoringEventResponse invalidateAttempt(Long attemptId, String reason, User actor) {
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+
+        ensureCanManageAttempt(attempt, actor);
+
+        if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.AUTO_SUBMITTED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Cannot stop an already submitted attempt");
+        }
+
+        if (attempt.getStatus() != AttemptStatus.STOPPED) {
+            attempt.setStatus(AttemptStatus.STOPPED);
+            examAttemptRepository.save(attempt);
+        }
+
+        String invalidateMessage = (reason == null || reason.isBlank())
+                ? "Bài thi đã bị đình chỉ bởi giám thị."
+                : reason.trim();
+
+        realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
+
+        return MonitoringEventResponse.builder()
+                .attemptId(attempt.getId())
+                .riskScore(attempt.getRiskScore())
+                .suspicious(attempt.getSuspicious())
+                .status(attempt.getStatus().name())
+                .message(invalidateMessage)
                 .build();
     }
 
@@ -122,6 +175,16 @@ public class MonitoringService {
 
         if (!(isAdmin || isOwnerStudent || (isTeacher && isExamTeacher))) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this attempt");
+        }
+    }
+
+    private void ensureCanManageAttempt(ExamAttempt attempt, User actor) {
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        boolean isExamTeacher = attempt.getExam().getCreatedBy().getId().equals(actor.getId());
+
+        if (!(isAdmin || (isTeacher && isExamTeacher))) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this attempt");
         }
     }
 }

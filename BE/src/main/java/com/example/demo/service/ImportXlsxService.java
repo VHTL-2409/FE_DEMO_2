@@ -4,7 +4,15 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
 import com.example.demo.repository.QuestionRepository;
-import org.apache.poi.ss.usermodel.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,30 +20,44 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class ImportXlsxService {
 
     private final QuestionRepository questionRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ImportXlsxService(QuestionRepository questionRepository) {
         this.questionRepository = questionRepository;
     }
 
     public int importQuestions(Exam exam, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "File is empty");
+        String extension = getFileExtension(file);
+        if ("xlsx".equals(extension)) {
+            return importQuestionsFromXlsx(exam, file);
         }
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".xlsx")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Only .xlsx files are supported");
+        if ("csv".equals(extension)) {
+            return importQuestionsFromCsv(exam, file);
         }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Only .csv and .xlsx files are supported");
+    }
+
+    public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
+        validateFile(file, "xlsx");
 
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             Sheet sheet = workbook.getSheetAt(0);
             List<Question> questions = new ArrayList<>();
+            Map<String, Integer> headerIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
 
             for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
@@ -43,48 +65,198 @@ public class ImportXlsxService {
                     continue;
                 }
 
-                String content = cellAsString(row.getCell(0));
-                String optionA = cellAsString(row.getCell(1));
-                String optionB = cellAsString(row.getCell(2));
-                String optionC = cellAsString(row.getCell(3));
-                String optionD = cellAsString(row.getCell(4));
-                String correctAnswer = cellAsString(row.getCell(5));
-                String scoreCell = cellAsString(row.getCell(6));
+                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question");
+                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona");
+                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb");
+                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc");
+                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond");
+                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer");
+                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points");
 
-                if (content.isBlank()) {
-                    continue;
-                }
-                if (correctAnswer.isBlank()) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "Missing correct answer at row " + (rowIndex + 1));
-                }
-
-                double scoreWeight;
-                try {
-                    scoreWeight = Double.parseDouble(scoreCell);
-                } catch (NumberFormatException ex) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid score at row " + (rowIndex + 1));
-                }
-
-                String optionsJson = String.format(
-                    "[{\"id\":\"A\",\"text\":\"%s\"},{\"id\":\"B\",\"text\":\"%s\"},{\"id\":\"C\",\"text\":\"%s\"},{\"id\":\"D\",\"text\":\"%s\"}]",
-                    escapeJson(optionA), escapeJson(optionB), escapeJson(optionC), escapeJson(optionD)
-                );
-
-                Question question = Question.builder()
-                    .exam(exam)
-                    .content(content)
-                    .scoreWeight(scoreWeight)
-                    .options(optionsJson)
-                    .correctAnswer(correctAnswer.trim().toUpperCase())
-                    .build();
-                questions.add(question);
+                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
+                        rowIndex + 1);
             }
 
-            questionRepository.saveAll(questions);
+            saveImportedQuestions(questions);
             return questions.size();
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read xlsx file");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Invalid xlsx template format");
         }
+    }
+
+    public int importQuestionsFromCsv(Exam exam, MultipartFile file) {
+        validateFile(file, "csv");
+
+        try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+             CSVParser parser = CSVFormat.DEFAULT.builder().setTrim(true).setIgnoreEmptyLines(false).get().parse(reader)) {
+            List<CSVRecord> records = parser.getRecords();
+            List<Question> questions = new ArrayList<>();
+
+            Map<String, Integer> headerIndexes = records.isEmpty()
+                    ? new HashMap<>()
+                    : extractCsvHeaderIndexes(records.get(0));
+
+            for (int index = 1; index < records.size(); index++) {
+                CSVRecord record = records.get(index);
+                int rowNumber = index + 1;
+
+                String content = csvCellByHeader(record, headerIndexes, 0, "content", "question");
+                String optionA = csvCellByHeader(record, headerIndexes, 1, "optiona");
+                String optionB = csvCellByHeader(record, headerIndexes, 2, "optionb");
+                String optionC = csvCellByHeader(record, headerIndexes, 3, "optionc");
+                String optionD = csvCellByHeader(record, headerIndexes, 4, "optiond");
+                String correctAnswer = csvCellByHeader(record, headerIndexes, 5, "correctanswer");
+                String scoreCell = csvCellByHeader(record, headerIndexes, 6, "scoreweight", "points");
+
+                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
+                        rowNumber);
+            }
+
+            saveImportedQuestions(questions);
+            return questions.size();
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read csv file");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Invalid csv template format");
+        }
+    }
+
+    private void addQuestionRow(List<Question> questions,
+                                Exam exam,
+                                String content,
+                                String optionA,
+                                String optionB,
+                                String optionC,
+                                String optionD,
+                                String correctAnswer,
+                                String scoreCell,
+                                int rowNumber) {
+        if (content.isBlank()) {
+            return;
+        }
+
+        if (correctAnswer.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing correct answer at row " + rowNumber);
+        }
+
+        double scoreWeight;
+        try {
+            scoreWeight = Double.parseDouble(scoreCell);
+        } catch (NumberFormatException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid score at row " + rowNumber);
+        }
+
+        String normalizedCorrectAnswer = normalizeCorrectAnswer(correctAnswer);
+        if (!List.of("A", "B", "C", "D").contains(normalizedCorrectAnswer)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Correct answer must be one of A, B, C, D at row " + rowNumber);
+        }
+
+        String optionsJson = buildOptionsJson(optionA, optionB, optionC, optionD, rowNumber);
+
+        Question question = Question.builder()
+                .exam(exam)
+                .content(content)
+                .scoreWeight(scoreWeight)
+                .options(optionsJson)
+                .correctAnswer(normalizedCorrectAnswer)
+                .build();
+        questions.add(question);
+    }
+
+    private Map<String, Integer> extractXlsxHeaderIndexes(Row headerRow) {
+        Map<String, Integer> indexes = new HashMap<>();
+        if (headerRow == null) {
+            return indexes;
+        }
+        for (Cell cell : headerRow) {
+            String normalized = normalizeHeader(cellAsString(cell));
+            if (!normalized.isBlank()) {
+                indexes.put(normalized, cell.getColumnIndex());
+            }
+        }
+        return indexes;
+    }
+
+    private Map<String, Integer> extractCsvHeaderIndexes(CSVRecord headerRecord) {
+        Map<String, Integer> indexes = new HashMap<>();
+        for (int index = 0; index < headerRecord.size(); index++) {
+            String normalized = normalizeHeader(headerRecord.get(index));
+            if (!normalized.isBlank()) {
+                indexes.put(normalized, index);
+            }
+        }
+        return indexes;
+    }
+
+    private String xlsxCellByHeader(Row row, Map<String, Integer> headerIndexes, int fallbackIndex,
+                                    String... headerKeys) {
+        Integer index = null;
+        for (String headerKey : headerKeys) {
+            if (headerKey == null) {
+                continue;
+            }
+            Integer found = headerIndexes.get(headerKey);
+            if (found != null) {
+                index = found;
+                break;
+            }
+        }
+        return cellAsString(row.getCell(index != null ? index : fallbackIndex));
+    }
+
+    private String csvCellByHeader(CSVRecord record, Map<String, Integer> headerIndexes, int fallbackIndex,
+                                   String... headerKeys) {
+        Integer index = null;
+        for (String headerKey : headerKeys) {
+            if (headerKey == null) {
+                continue;
+            }
+            Integer found = headerIndexes.get(headerKey);
+            if (found != null) {
+                index = found;
+                break;
+            }
+        }
+        return csvCell(record, index != null ? index : fallbackIndex);
+    }
+
+    private String csvCell(CSVRecord record, int index) {
+        if (record.size() <= index) {
+            return "";
+        }
+        String value = record.get(index);
+        return value == null ? "" : value.trim();
+    }
+
+    private void validateFile(MultipartFile file, String expectedExtension) {
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File is empty");
+        }
+        String extension = getFileExtension(file);
+        if (!expectedExtension.equals(extension)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only ." + expectedExtension + " files are supported");
+        }
+    }
+
+    private String getFileExtension(MultipartFile file) {
+        if (file == null) {
+            return "";
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            return "";
+        }
+        String normalized = originalFilename.toLowerCase(Locale.ROOT).trim();
+        if (normalized.endsWith(".xlsx")) {
+            return "xlsx";
+        }
+        if (normalized.endsWith(".csv")) {
+            return "csv";
+        }
+        return "";
     }
 
     private String cellAsString(Cell cell) {
@@ -100,10 +272,86 @@ public class ImportXlsxService {
         };
     }
 
-    private String escapeJson(String text) {
-        if (text == null) {
+    private void saveImportedQuestions(List<Question> questions) {
+        try {
+            questionRepository.saveAllAndFlush(questions);
+        } catch (RuntimeException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Invalid imported data format. Please check file template and try again.");
+        }
+    }
+
+    private String buildOptionsJson(String optionA, String optionB, String optionC, String optionD, int rowNumber) {
+        Map<String, Object> optionAData = new LinkedHashMap<>();
+        optionAData.put("id", "A");
+        optionAData.put("text", optionA == null ? "" : optionA);
+
+        Map<String, Object> optionBData = new LinkedHashMap<>();
+        optionBData.put("id", "B");
+        optionBData.put("text", optionB == null ? "" : optionB);
+
+        Map<String, Object> optionCData = new LinkedHashMap<>();
+        optionCData.put("id", "C");
+        optionCData.put("text", optionC == null ? "" : optionC);
+
+        Map<String, Object> optionDData = new LinkedHashMap<>();
+        optionDData.put("id", "D");
+        optionDData.put("text", optionD == null ? "" : optionD);
+
+        List<Map<String, Object>> options = List.of(optionAData, optionBData, optionCData, optionDData);
+        try {
+            return objectMapper.writeValueAsString(options);
+        } catch (JsonProcessingException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid options data at row " + rowNumber);
+        }
+    }
+
+    private String normalizeHeader(String header) {
+        if (header == null) {
             return "";
         }
-        return text.replace("\\", "\\\\").replace("\"", "\\\"");
+        return header.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private String normalizeCorrectAnswer(String correctAnswer) {
+        if (correctAnswer == null) {
+            return "";
+        }
+        String normalized = correctAnswer.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        if (List.of("A", "B", "C", "D").contains(normalized)) {
+            return normalized;
+        }
+
+        if (normalized.matches("[0-3]")) {
+            return switch (normalized) {
+                case "0" -> "A";
+                case "1" -> "B";
+                case "2" -> "C";
+                case "3" -> "D";
+                default -> "";
+            };
+        }
+
+        String stripped = normalized.replaceAll("[^A-Z]", "");
+        if (stripped.length() == 1 && List.of("A", "B", "C", "D").contains(stripped)) {
+            return stripped;
+        }
+
+        if (stripped.endsWith("A")) return "A";
+        if (stripped.endsWith("B")) return "B";
+        if (stripped.endsWith("C")) return "C";
+        if (stripped.endsWith("D")) return "D";
+
+        return "";
+    }
+
+    private ApiException mapImportRuntimeException(RuntimeException ex, String fallbackMessage) {
+        if (ex instanceof ApiException apiException) {
+            return apiException;
+        }
+        return new ApiException(HttpStatus.BAD_REQUEST, fallbackMessage);
     }
 }

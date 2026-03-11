@@ -35,14 +35,18 @@ export const createQuestion = async (examId, { content, scoreWeight = 1, options
   return unwrapApiData(payload)
 }
 
-export const importQuestionsFromXlsx = async (examId, file) => {
+export const importQuestionsFromFile = async (examId, file) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  const payload = await apiRequest(`/api/exams/${examId}/questions/import-xlsx`, {
+  const payload = await apiRequest(`/api/exams/${examId}/questions/import`, {
     method: 'POST',
     body: formData
   })
 
   return unwrapApiData(payload)
+}
+
+export const importQuestionsFromXlsx = async (examId, file) => {
+  return importQuestionsFromFile(examId, file)
 }

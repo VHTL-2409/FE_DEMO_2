@@ -11,4 +11,6 @@ public class MonitoringEventResponse {
     private Long attemptId;
     private Integer riskScore;
     private Boolean suspicious;
+    private String status;
+    private String message;
 }

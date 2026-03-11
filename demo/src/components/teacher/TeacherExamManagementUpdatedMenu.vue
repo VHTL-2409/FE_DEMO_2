@@ -68,6 +68,7 @@
 
         <section class="animate-fade-up-delay">
           <p v-if="errorMessage" class="mb-4 text-sm text-rose-600">{{ errorMessage }}</p>
+          <p v-if="successMessage" class="mb-4 text-sm text-emerald-700 dark:text-emerald-400">{{ successMessage }}</p>
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">list_alt</span>
@@ -84,7 +85,9 @@
           </div>
 
           <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <table class="w-full text-left border-collapse">
+            <div v-if="isLoading" class="p-8 text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách đề thi...</div>
+            <div v-else-if="formattedExams.length === 0" class="p-8 text-sm text-slate-500 dark:text-slate-400">Chưa có đề thi nào. Hãy tạo đề thi đầu tiên.</div>
+            <table v-else class="w-full text-left border-collapse">
               <thead>
                 <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                   <th class="px-6 py-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Tiêu đề đề thi</th>
@@ -107,17 +110,17 @@
                   <td class="px-6 py-4">
                     <div class="flex gap-2">
                       <button @click="goToReview(exam)" class="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 rounded transition-colors" type="button">Xem</button>
-                      <button @click="handleDeleteExam(exam)" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 rounded transition-colors" type="button">Xóa</button>
+                      <button @click="openDeleteModal(exam)" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 rounded transition-colors" type="button">Xóa</button>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <p class="text-xs text-slate-500">Hiển thị 3 trên 12 đề thi</p>
+            <div v-if="formattedExams.length > 0" class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <p class="text-xs text-slate-500">Hiển thị {{ formattedExams.length }} đề thi</p>
               <div class="flex gap-2">
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50" type="button">Trước</button>
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600" type="button">Tiếp</button>
+                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50" disabled type="button">Trước</button>
+                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50" disabled type="button">Tiếp</button>
               </div>
             </div>
           </div>
@@ -127,6 +130,44 @@
       <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-8 px-10 text-center">
         <p class="text-slate-500 text-sm">© 2023 Exam Manager Pro. Đã đăng ký bản quyền.</p>
       </footer>
+
+      <div
+        v-if="showDeleteModal && examPendingDelete"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4"
+      >
+        <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-6">
+          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">Xác nhận xóa đề thi</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Bạn có chắc chắn muốn xóa đề thi này không? Hành động này không thể hoàn tác.</p>
+
+          <div class="rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 p-3 text-sm mb-5">
+            <p><span class="font-semibold">Tiêu đề:</span> {{ examPendingDelete.title }}</p>
+            <p><span class="font-semibold">Môn học:</span> {{ examPendingDelete.subject }}</p>
+            <p><span class="font-semibold">Số câu:</span> {{ examPendingDelete.questions }}</p>
+            <p><span class="font-semibold">Trạng thái:</span> {{ examPendingDelete.status }}</p>
+            <p><span class="font-semibold">Cập nhật:</span> {{ examPendingDelete.modified }}</p>
+            <p><span class="font-semibold">ID:</span> {{ examPendingDelete.id }}</p>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button
+              class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              type="button"
+              :disabled="isDeleting"
+              @click="closeDeleteModal"
+            >
+              Hủy
+            </button>
+            <button
+              class="px-4 py-2 rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700 disabled:opacity-60"
+              type="button"
+              :disabled="isDeleting"
+              @click="confirmDeleteExam"
+            >
+              {{ isDeleting ? 'Đang xóa...' : 'Xác nhận xóa' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -143,6 +184,10 @@ const isDark = ref(false)
 const exams = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
+const showDeleteModal = ref(false)
+const examPendingDelete = ref(null)
+const isDeleting = ref(false)
 
 const getExamSortTime = (exam) => {
   const candidates = [exam.startTime, exam.endTime, exam.createdAt, exam.updatedAt]
@@ -184,19 +229,42 @@ const goToReview = (exam) => {
   })
 }
 
-const handleDeleteExam = async (exam) => {
+const openDeleteModal = (exam) => {
+  successMessage.value = ''
+  examPendingDelete.value = exam
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  if (isDeleting.value) return
+  showDeleteModal.value = false
+  examPendingDelete.value = null
+}
+
+const confirmDeleteExam = async () => {
+  if (!examPendingDelete.value) return
+
+  const deletingExamTitle = examPendingDelete.value.title
   errorMessage.value = ''
+  successMessage.value = ''
+  isDeleting.value = true
   try {
-    await deleteExam(exam.id)
-    exams.value = exams.value.filter((item) => item.id !== exam.id)
+    await deleteExam(examPendingDelete.value.id)
+    exams.value = exams.value.filter((item) => item.id !== examPendingDelete.value.id)
+    showDeleteModal.value = false
+    examPendingDelete.value = null
+    successMessage.value = `Đã xóa đề thi "${deletingExamTitle}" thành công.`
   } catch (error) {
     errorMessage.value = error instanceof ApiError ? error.message : 'Không thể xóa đề thi.'
+  } finally {
+    isDeleting.value = false
   }
 }
 
 const loadExams = async () => {
   isLoading.value = true
   errorMessage.value = ''
+  successMessage.value = ''
   try {
     exams.value = await listExams()
   } catch (error) {

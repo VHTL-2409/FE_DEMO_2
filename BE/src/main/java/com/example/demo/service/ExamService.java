@@ -7,9 +7,16 @@ import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
+import com.example.demo.repository.AnswerRepository;
+import com.example.demo.repository.AssignmentRepository;
+import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.ExamRepository;
+import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.QuestionRepository;
+import com.example.demo.repository.RiskSnapshotRepository;
+import jakarta.persistence.PersistenceException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +36,11 @@ public class ExamService {
 
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final ExamAttemptRepository examAttemptRepository;
+    private final AnswerRepository answerRepository;
+    private final MonitoringEventRepository monitoringEventRepository;
+    private final RiskSnapshotRepository riskSnapshotRepository;
 
     @Transactional
     public ExamResponse createExam(ExamRequest request, User teacher) {
@@ -117,7 +129,20 @@ public class ExamService {
     @Transactional
     public void deleteExam(Long examId, User actor) {
         Exam exam = requireManageableExam(examId, actor);
-        examRepository.delete(exam);
+
+        try {
+            riskSnapshotRepository.deleteByExam(exam);
+            monitoringEventRepository.deleteByExam(exam);
+            answerRepository.deleteByExam(exam);
+            examAttemptRepository.deleteByExam(exam);
+
+            assignmentRepository.deleteByExam(exam);
+            questionRepository.deleteByExam(exam);
+            examRepository.delete(exam);
+        } catch (DataAccessException | PersistenceException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Không thể xóa đề thi vì còn dữ liệu liên quan. Vui lòng thử lại hoặc liên hệ quản trị viên.");
+        }
     }
 
     public Exam requireExam(Long examId) {

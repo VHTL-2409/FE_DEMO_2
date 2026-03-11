@@ -56,7 +56,7 @@
 import { ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { createExam } from '../../services/examService'
-import { importQuestionsFromXlsx } from '../../services/questionService'
+import { importQuestionsFromFile } from '../../services/questionService'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -87,7 +87,7 @@ const goNext = async () => {
   }
 
   if (!selectedFile.value) {
-    errorMessage.value = 'Vui lòng chọn tệp XLSX trước khi tiếp tục.'
+    errorMessage.value = 'Vui lòng chọn tệp CSV hoặc XLSX trước khi tiếp tục.'
     return
   }
 
@@ -100,7 +100,7 @@ const goNext = async () => {
       isActive: false
     })
 
-    await importQuestionsFromXlsx(createdExam.id, selectedFile.value)
+    await importQuestionsFromFile(createdExam.id, selectedFile.value)
 
     router.push({
       path: '/teacher/exams/schedule',

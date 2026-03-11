@@ -27,8 +27,8 @@
               <div>
                 <div class="flex items-center gap-3 mb-1">
                   <h1 class="text-slate-900 dark:text-slate-100 text-2xl font-bold">{{ studentName }}</h1>
-                  <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold uppercase rounded-full tracking-wider animate-pulse border border-red-200 dark:border-red-800">
-                    Hoạt động đáng ngờ
+                  <span :class="riskBadgeClass" class="px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wider border">
+                    {{ riskBadgeText }}
                   </span>
                 </div>
                 <p class="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-4">
@@ -36,6 +36,14 @@
                   <span class="h-4 w-px bg-slate-300 dark:bg-slate-700"></span>
                   <span>Đề thi: <span class="font-medium text-slate-700 dark:text-slate-300">{{ examName }}</span></span>
                 </p>
+                <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
+                    <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+                    {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
+                  </span>
+                  <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
+                </div>
+                <p v-if="loadError" class="mt-2 text-xs text-rose-600">{{ loadError }}</p>
               </div>
             </div>
             <div class="flex gap-3 w-full md:w-auto">
@@ -75,25 +83,25 @@
                 <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Tiến độ làm bài</p>
                   <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">12 <span class="text-slate-400 font-normal">/ 40</span></p>
-                    <span class="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-xs font-bold px-2 py-1 rounded">Hoàn thành 30%</span>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ answeredCount }} <span class="text-slate-400 font-normal">/ {{ totalQuestions }}</span></p>
+                    <span class="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-xs font-bold px-2 py-1 rounded">Hoàn thành {{ progressPercent }}%</span>
                   </div>
                   <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-4">
-                    <div class="bg-primary h-1.5 rounded-full" style="width: 30%"></div>
+                    <div class="bg-primary h-1.5 rounded-full" :style="{ width: `${progressPercent}%` }"></div>
                   </div>
                 </div>
                 <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Sự kiện bị gắn cờ</p>
                   <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-red-600 tracking-tight">6 <span class="text-slate-400 font-normal text-lg">Tổng</span></p>
-                    <span class="text-red-600 bg-red-50 dark:bg-red-900/20 text-xs font-bold px-2 py-1 rounded">+200% xu hướng</span>
+                    <p class="text-2xl font-bold text-red-600 tracking-tight">{{ flaggedEvents.length }} <span class="text-slate-400 font-normal text-lg">Tổng</span></p>
+                    <span class="text-red-600 bg-red-50 dark:bg-red-900/20 text-xs font-bold px-2 py-1 rounded">Risk {{ riskScore }}</span>
                   </div>
                 </div>
                 <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Thời gian còn lại</p>
                   <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">42:15</p>
-                    <span class="text-slate-500 bg-slate-100 dark:bg-slate-800 text-xs font-bold px-2 py-1 rounded">01:30:00 Tổng</span>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ remainingTimeLabel }}</p>
+                    <span class="text-slate-500 bg-slate-100 dark:bg-slate-800 text-xs font-bold px-2 py-1 rounded">{{ statusLabel }}</span>
                   </div>
                 </div>
               </div>
@@ -109,24 +117,22 @@
                   <button class="text-xs text-primary font-bold hover:underline" type="button">Xóa tất cả</button>
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-800">
-                  <div class="p-4 bg-red-50 dark:bg-red-900/10 flex gap-4">
-                    <div class="shrink-0 text-red-600"><span class="material-symbols-outlined">tab_unselected</span></div>
-                    <div>
-                      <div class="flex justify-between items-start mb-1">
-                        <p class="text-sm font-bold text-slate-900 dark:text-slate-100">Phát hiện chuyển tab</p>
-                        <span class="text-[10px] text-slate-500 font-medium">10:42 AM</span>
-                      </div>
-                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Sinh viên chuyển tab sang tài nguyên không được phép. <span class="font-bold text-red-600">(Xảy ra 4 lần)</span></p>
-                    </div>
+                  <div v-if="timelineItems.length === 0" class="p-4 text-sm text-slate-500 dark:text-slate-400">
+                    Chưa có sự kiện vi phạm nào cho lần làm bài này.
                   </div>
-                  <div class="p-4 flex gap-4">
-                    <div class="shrink-0 text-amber-500"><span class="material-symbols-outlined">content_paste</span></div>
-                    <div>
+                  <div
+                    v-for="item in timelineItems"
+                    :key="item.key"
+                    :class="item.highlightClass"
+                    class="p-4 flex gap-4"
+                  >
+                    <div class="shrink-0" :class="item.iconClass"><span class="material-symbols-outlined">{{ item.icon }}</span></div>
+                    <div class="flex-1">
                       <div class="flex justify-between items-start mb-1">
-                        <p class="text-sm font-bold text-slate-900 dark:text-slate-100">Sử dụng clipboard</p>
-                        <span class="text-[10px] text-slate-500 font-medium">10:38 AM</span>
+                        <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ item.title }}</p>
+                        <span class="text-[10px] text-slate-500 font-medium">{{ item.timeLabel }}</span>
                       </div>
-                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Sinh viên đã cố dán nội dung vào ô trả lời ngắn từ nguồn bên ngoài.</p>
+                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{{ item.description }}</p>
                     </div>
                   </div>
                 </div>
@@ -138,13 +144,15 @@
                   Điều khiển giám thị
                 </h3>
                 <div class="flex flex-col gap-3">
-                  <button class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition-colors" type="button">
-                    <span class="material-symbols-outlined">warning</span> Gửi cảnh báo
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition-colors disabled:opacity-60" type="button" @click="handleSendWarning">
+                    <span class="material-symbols-outlined">warning</span> {{ isWarningSending ? 'Đang gửi cảnh báo...' : 'Gửi cảnh báo' }}
                   </button>
-                  <button class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors" type="button">
-                    <span class="material-symbols-outlined">block</span> Hủy hiệu lực bài thi
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors disabled:opacity-60" type="button" @click="handleInvalidateAttempt">
+                    <span class="material-symbols-outlined">block</span> {{ isInvalidating ? 'Đang đình chỉ...' : 'Hủy hiệu lực bài thi' }}
                   </button>
                 </div>
+                <p v-if="actionMessage" class="mt-3 text-xs text-emerald-600">{{ actionMessage }}</p>
+                <p v-if="actionError" class="mt-2 text-xs text-rose-600">{{ actionError }}</p>
               </div>
             </div>
           </div>
@@ -155,21 +163,186 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
+import { invalidateAttempt, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
 import { useRoute } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
 const isDark = ref(false)
+const loadError = ref('')
+const isSyncing = ref(false)
+const attemptDetail = ref(null)
+const attemptReport = ref(null)
+const timeline = ref([])
+const lastUpdatedAt = ref(null)
+const actionMessage = ref('')
+const actionError = ref('')
+const isWarningSending = ref(false)
+const isInvalidating = ref(false)
+let refreshTimer = null
 
-const studentName = computed(() => route.query.student || 'Marcus Wright')
-const studentId = computed(() => route.query.studentId || 'STU-88293')
-const examName = computed(() => route.query.exam || 'Sinh học nâng cao 101 - Giữa kỳ')
+const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
+const studentName = computed(() => attemptDetail.value?.student || route.query.student || 'Sinh viên không rõ')
+const studentId = computed(() => route.query.studentId || (attemptId.value ? `AT-${attemptId.value}` : 'AT-?'))
+const examName = computed(() => attemptDetail.value?.examTitle || route.query.exam || 'Đề thi đã chọn')
 const studentAvatar = computed(
   () =>
     route.query.avatar ||
     'https://lh3.googleusercontent.com/aida-public/AB6AXuCS2RhYd0VS4fVVYoA2GgJuZzt6TTNNleFcdImbGSB3IZsBGlQY3W3_8DnpvWiAQ08yeiCuKP9ul1X8fZKIsAa2kb6Fz6jRM8rrBUK30-_8x487epcjiAGOetJYM1jwVrdUReYJacR8oMZG3jkyeYdbaMIJksyOphO4c7DzJeO8jaczGPgMZ5nrqWAw003cc3HOtSP0jxqftO4wuJCLWj7meS0yE7HT-vnt3XHDdKYANhCOuN2bCqpr_GQhbNfL4asVsRK5JTBzwQ'
 )
+
+const answeredCount = computed(() => Number(attemptDetail.value?.answeredCount ?? attemptReport.value?.answeredCount ?? 0))
+const totalQuestions = computed(() => Number(attemptDetail.value?.totalQuestions || 0))
+const progressPercent = computed(() => {
+  if (!totalQuestions.value) return 0
+  return Math.max(0, Math.min(100, Math.round((answeredCount.value / totalQuestions.value) * 100)))
+})
+const riskScore = computed(() => Number(attemptDetail.value?.riskScore ?? attemptReport.value?.riskScore ?? 0))
+const suspicious = computed(() => Boolean(attemptDetail.value?.suspicious ?? attemptReport.value?.suspicious))
+const statusLabel = computed(() => String(attemptDetail.value?.status || attemptReport.value?.status || 'IN_PROGRESS').toUpperCase())
+
+const riskBadgeText = computed(() => (suspicious.value ? 'Hoạt động đáng ngờ' : 'Đang theo dõi'))
+const riskBadgeClass = computed(() => (suspicious.value
+  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 animate-pulse border-red-200 dark:border-red-800'
+  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'))
+
+const formatDuration = (totalSeconds) => {
+  const safe = Math.max(0, Number(totalSeconds || 0))
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const remainingTimeLabel = computed(() => formatDuration(attemptDetail.value?.remainingSeconds ?? attemptReport.value?.remainingSeconds ?? 0))
+
+const formatEventType = (eventType) => {
+  const normalized = String(eventType || '').toUpperCase()
+  switch (normalized) {
+    case 'TAB_SWITCH':
+      return 'Phát hiện chuyển tab'
+    case 'BLUR':
+      return 'Mất tiêu điểm cửa sổ'
+    case 'EXIT_FULLSCREEN':
+      return 'Thoát chế độ toàn màn hình'
+    case 'FAST_SUBMIT':
+      return 'Nộp bài quá nhanh'
+    case 'DUPLICATE_IP':
+      return 'Trùng địa chỉ IP'
+    default:
+      return normalized || 'Sự kiện giám sát'
+  }
+}
+
+const formatTimelineTime = (raw) => {
+  if (!raw) return '-'
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const timelineItems = computed(() => timeline.value.map((entry, index) => {
+  const isEvent = entry.type === 'MONITORING_EVENT'
+  const isSnapshot = entry.type === 'RISK_SNAPSHOT'
+  return {
+    key: `${entry.type || 'entry'}-${entry.at || index}-${index}`,
+    icon: isSnapshot ? 'monitor_heart' : 'warning',
+    iconClass: isSnapshot ? 'text-amber-500' : 'text-red-600',
+    highlightClass: isEvent ? 'bg-red-50 dark:bg-red-900/10' : '',
+    title: isEvent ? formatEventType(entry.eventType) : `Cập nhật risk score: ${entry.riskScore ?? 0}`,
+    description: isEvent
+      ? (entry.details || 'Không có mô tả chi tiết.')
+      : `Suspicious: ${entry.suspicious ? 'Có' : 'Không'}`,
+    timeLabel: formatTimelineTime(entry.at)
+  }
+}))
+
+const flaggedEvents = computed(() => timeline.value.filter((entry) => entry.type === 'MONITORING_EVENT'))
+
+const lastUpdatedLabel = computed(() => {
+  if (!lastUpdatedAt.value) return 'chưa có dữ liệu'
+  return new Date(lastUpdatedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
+const loadMonitoringDetail = async () => {
+  if (!attemptId.value) {
+    loadError.value = 'Thiếu attemptId. Vui lòng mở chi tiết từ trang giám sát trực tiếp.'
+    return
+  }
+
+  isSyncing.value = true
+  try {
+    const [detail, report, timelineData] = await Promise.all([
+      getAttemptDetail(attemptId.value),
+      getAttemptReport(attemptId.value),
+      listMonitoringTimeline(attemptId.value)
+    ])
+    attemptDetail.value = detail
+    attemptReport.value = report
+    timeline.value = Array.isArray(timelineData) ? timelineData : []
+    loadError.value = ''
+    lastUpdatedAt.value = Date.now()
+  } catch (error) {
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát chi tiết.'
+  } finally {
+    isSyncing.value = false
+  }
+}
+
+const handleSendWarning = async () => {
+  if (!attemptId.value) return
+
+  actionError.value = ''
+  actionMessage.value = ''
+  isWarningSending.value = true
+  try {
+    const res = await sendTeacherWarning(attemptId.value)
+    actionMessage.value = res?.message || 'Đã gửi cảnh báo realtime đến thí sinh.'
+  } catch (error) {
+    actionError.value = error instanceof ApiError ? error.message : 'Không thể gửi cảnh báo lúc này.'
+  } finally {
+    isWarningSending.value = false
+  }
+}
+
+const handleInvalidateAttempt = async () => {
+  if (!attemptId.value) return
+
+  const confirmed = window.confirm('Bạn chắc chắn muốn hủy hiệu lực bài thi này?')
+  if (!confirmed) return
+
+  actionError.value = ''
+  actionMessage.value = ''
+  isInvalidating.value = true
+  try {
+    const res = await invalidateAttempt(attemptId.value)
+    actionMessage.value = res?.message || 'Đã đình chỉ bài thi thành công.'
+    await loadMonitoringDetail()
+  } catch (error) {
+    actionError.value = error instanceof ApiError ? error.message : 'Không thể hủy hiệu lực bài thi.'
+  } finally {
+    isInvalidating.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadMonitoringDetail()
+  refreshTimer = window.setInterval(() => {
+    loadMonitoringDetail()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <style scoped>

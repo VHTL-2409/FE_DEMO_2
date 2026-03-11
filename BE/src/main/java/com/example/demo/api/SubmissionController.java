@@ -21,7 +21,11 @@ import com.example.demo.service.SubmissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -132,5 +136,27 @@ public class SubmissionController {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt does not belong to this exam");
         }
         return ApiResponse.success(submissionService.getAttemptDetail(attemptId, actor));
+    }
+
+    @GetMapping("/exams/{examId}/attempts/report/export")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<byte[]> exportExamAttemptReport(@PathVariable Long examId,
+            @RequestParam(defaultValue = "csv") String format) {
+        if (!"csv".equalsIgnoreCase(format)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only csv format is supported");
+        }
+
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireManageableExam(examId, actor);
+        byte[] csvBytes = submissionService.exportExamAttemptsCsv(exam);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv"));
+        headers.setContentDisposition(
+                ContentDisposition.attachment().filename("exam-" + examId + "-attempts.csv").build());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(csvBytes);
     }
 }

@@ -19,6 +19,13 @@
               </div>
               <h1 class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Đang chờ bài thi bắt đầu</h1>
               <p class="text-slate-600 dark:text-slate-400 text-lg font-normal leading-normal">Giám thị sẽ mở phiên thi trong giây lát. Vui lòng ở lại màn hình này và đảm bảo thiết bị đã sẵn sàng.</p>
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
+                  <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+                  {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
+                </span>
+                <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastSyncedLabel }}</span>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-up-delay">
@@ -149,9 +156,11 @@ const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
 const isStarting = ref(false)
+const isSyncing = ref(false)
 const startError = ref('')
 const nowMs = ref(Date.now())
 const examDetail = ref(null)
+const lastSyncedAt = ref(null)
 let timerId = null
 let examRefreshTimerId = null
 
@@ -189,12 +198,21 @@ const countdownLabel = computed(() => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
+const lastSyncedLabel = computed(() => {
+  if (!lastSyncedAt.value) return 'chưa có dữ liệu'
+  return new Date(lastSyncedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
 const refreshExamDetail = async () => {
   if (!examId.value) return
+  isSyncing.value = true
   try {
     examDetail.value = await getExamDetail(examId.value)
+    lastSyncedAt.value = Date.now()
   } catch {
     // keep fallback query data if refresh fails
+  } finally {
+    isSyncing.value = false
   }
 }
 

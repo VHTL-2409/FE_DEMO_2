@@ -31,8 +31,18 @@
           </div>
         </div>
 
+        <p v-if="loadError" class="mb-4 text-sm text-rose-600 animate-fade-up-delay">{{ loadError }}</p>
+
         <div class="relative grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-up-delay">
-          <div v-for="exam in exams" :key="exam.id" :class="exam.cardBorder" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-primary/5 flex flex-col group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-l-4">
+          <div v-if="isLoading" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
+            Đang tải danh sách đề thi...
+          </div>
+
+          <div v-else-if="!filteredExams.length" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
+            Không tìm thấy đề thi phù hợp.
+          </div>
+
+          <div v-for="exam in filteredExams" :key="exam.id" :class="exam.cardBorder" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-primary/5 flex flex-col group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-l-4">
             <div class="p-6 flex-1">
               <div class="flex justify-between items-start mb-4">
                 <span :class="exam.statusClass" class="px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">{{ exam.status }}</span>
@@ -103,80 +113,83 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
 const search = ref('')
+const exams = ref([])
+const isLoading = ref(false)
+const loadError = ref('')
+
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString()
+}
+
+const monitoringCards = computed(() => exams.value.map((exam) => {
+  const isActive = Boolean(exam.isActive)
+  return {
+    id: exam.id,
+    examId: exam.id,
+    examCode: exam.code || '',
+    title: exam.title,
+    location: exam.description || 'Đề thi trực tuyến',
+    sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Thời lượng: ${exam.durationMinutes || '-'} phút`,
+    status: isActive ? 'Đang hoạt động' : 'Bản nháp',
+    statusClass: isActive
+      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    students: `${exam.questionCount || 0} câu`,
+    leftLabel: 'Ngân hàng câu hỏi',
+    timeLabel: 'Bắt đầu',
+    timeIcon: isActive ? 'timer' : 'schedule',
+    timeIconClass: isActive ? 'text-orange-500' : 'text-blue-500',
+    timeValue: formatDateTime(exam.startTime),
+    actionLabel: 'Theo dõi trực tiếp',
+    actionIcon: 'visibility',
+    actionClass: 'bg-primary hover:bg-primary/90 text-white',
+    cardBorder: isActive ? 'border-l-green-500' : 'border-l-amber-500'
+  }
+}))
+
+const filteredExams = computed(() => {
+  const keyword = search.value.trim().toLowerCase()
+  if (!keyword) return monitoringCards.value
+  return monitoringCards.value.filter((exam) =>
+    exam.title.toLowerCase().includes(keyword) || String(exam.examCode || '').toLowerCase().includes(keyword)
+  )
+})
 
 const openLiveSession = (exam) => {
   router.push({
     path: '/teacher/live-monitoring/session',
     query: {
+      examId: exam.examId,
       title: exam.title,
       meta: exam.sessionMeta
     }
   })
 }
 
-const exams = [
-  {
-    id: 'PSY-2024-08',
-    title: 'Thi cuối kỳ Tâm lý học nâng cao',
-    location: 'Phòng 402 • Hội trường chính',
-    sessionMeta: 'Phòng 402 • Bắt đầu: 09:00 • Thời lượng 120 phút',
-    status: 'Đang diễn ra',
-    statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    students: '42 / 45',
-    leftLabel: 'Sinh viên',
-    timeLabel: 'Thời gian còn lại',
-    timeIcon: 'timer',
-    timeIconClass: 'text-orange-500',
-    timeValue: '01:14:22',
-    actionLabel: 'Theo dõi trực tiếp',
-    actionIcon: 'visibility',
-    actionClass: 'bg-primary hover:bg-primary/90 text-white',
-    cardBorder: 'border-l-green-500'
-  },
-  {
-    id: 'CS-101-MID',
-    title: 'Thi giữa kỳ Nhập môn Khoa học máy tính',
-    location: 'Phòng thi trực tuyến B',
-    sessionMeta: 'Phòng trực tuyến B • Bắt đầu: 09:30 • Thời lượng 90 phút',
-    status: 'Đang diễn ra',
-    statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    students: '128 / 130',
-    leftLabel: 'Sinh viên',
-    timeLabel: 'Thời gian còn lại',
-    timeIcon: 'timer',
-    timeIconClass: 'text-orange-500',
-    timeValue: '00:42:05',
-    actionLabel: 'Theo dõi trực tiếp',
-    actionIcon: 'visibility',
-    actionClass: 'bg-primary hover:bg-primary/90 text-white',
-    cardBorder: 'border-l-green-500'
-  },
-  {
-    id: 'MATH-450',
-    title: 'Giải tích III: Đánh giá nhiều biến',
-    location: 'Phòng 101 • Khu Khoa học',
-    sessionMeta: 'Phòng 101 • Bắt đầu sau: 00:08:45 • Thời lượng 100 phút',
-    status: 'Sắp bắt đầu',
-    statusClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    students: '12 / 28',
-    leftLabel: 'Đã vào',
-    timeLabel: 'Bắt đầu sau',
-    timeIcon: 'schedule',
-    timeIconClass: 'text-blue-500',
-    timeValue: '00:08:45',
-    actionLabel: 'Mở phòng điều khiển',
-    actionIcon: 'play_circle',
-    actionClass: 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-not-allowed',
-    cardBorder: 'border-l-blue-500'
+const loadExams = async () => {
+  isLoading.value = true
+  loadError.value = ''
+  try {
+    exams.value = await listExams()
+  } catch (error) {
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải danh sách đề thi.'
+  } finally {
+    isLoading.value = false
   }
-]
+}
+
+onMounted(loadExams)
 </script>
 
 <style scoped>

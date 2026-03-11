@@ -45,4 +45,33 @@ public class AssignmentController {
         Exam exam = examService.requireManageableExam(examId, actor);
         return assignmentService.create(exam, actor, request);
     }
+
+    @PutMapping("/{assignmentId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public AssignmentResponse update(@PathVariable Long examId,
+                                     @PathVariable Long assignmentId,
+                                     @Valid @RequestBody AssignmentRequest request) {
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireManageableExam(examId, actor);
+        return assignmentService.update(exam, assignmentId, request);
+    }
+
+    @PatchMapping("/{assignmentId}/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public AssignmentResponse publish(@PathVariable Long examId,
+                                      @PathVariable Long assignmentId,
+                                      @RequestParam Boolean isPublished) {
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireManageableExam(examId, actor);
+        return assignmentService.updatePublished(exam, assignmentId, isPublished);
+    }
+
+    @DeleteMapping("/{assignmentId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public void delete(@PathVariable Long examId,
+                       @PathVariable Long assignmentId) {
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireManageableExam(examId, actor);
+        assignmentService.delete(exam, assignmentId);
+    }
 }

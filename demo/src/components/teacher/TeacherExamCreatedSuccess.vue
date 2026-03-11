@@ -62,7 +62,13 @@
             <div class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div class="px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 class="font-bold">Sinh viên trong phòng chờ</h3>
-                <span class="text-sm text-slate-500">{{ joinedStudents.length }} sinh viên</span>
+                <div class="flex items-center gap-3 text-xs">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
+                    <span :class="isRefreshing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+                    {{ isRefreshing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
+                  </span>
+                  <span class="text-slate-500">{{ joinedStudents.length }} sinh viên</span>
+                </div>
               </div>
 
               <div class="overflow-x-auto">
@@ -95,7 +101,8 @@
               </div>
             </div>
 
-            <p v-if="errorMessage" class="text-sm text-rose-600 mt-4">{{ errorMessage }}</p>
+            <p class="text-xs text-slate-500 mt-4">Cập nhật gần nhất: {{ lastUpdatedLabel }}</p>
+            <p v-if="errorMessage" class="text-sm text-rose-600 mt-2">{{ errorMessage }}</p>
           </div>
 
           <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -125,10 +132,13 @@ const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
 const isLoading = ref(false)
+const isRefreshing = ref(false)
 const errorMessage = ref('')
 const attempts = ref([])
 const nowMs = ref(Date.now())
+const lastUpdatedAt = ref(null)
 let countdownTimer = null
+let refreshTimer = null
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const examTitle = computed(() => route.query.title || `Đề thi #${examId.value || ''}`)
@@ -164,6 +174,11 @@ const countdownLabel = computed(() => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
+const lastUpdatedLabel = computed(() => {
+  if (!lastUpdatedAt.value) return 'chưa có dữ liệu'
+  return new Date(lastUpdatedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
 const joinedStudents = computed(() => attempts.value.map((attempt) => ({
   id: attempt.id,
   name: attempt.student || 'Không rõ',
@@ -175,17 +190,25 @@ const joinedStudents = computed(() => attempts.value.map((attempt) => ({
   score: attempt.score == null ? '-' : Math.round(Number(attempt.score))
 })))
 
-const loadStudents = async () => {
+const loadStudents = async ({ silent = false } = {}) => {
   if (!examId.value) return
 
-  isLoading.value = true
-  errorMessage.value = ''
+  if (silent) {
+    isRefreshing.value = true
+  } else {
+    isLoading.value = true
+  }
+
   try {
-    attempts.value = await listExamAttempts(examId.value)
+    const fetched = await listExamAttempts(examId.value)
+    attempts.value = fetched
+    errorMessage.value = ''
+    lastUpdatedAt.value = Date.now()
   } catch (error) {
     errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tải danh sách sinh viên đã vào.'
   } finally {
     isLoading.value = false
+    isRefreshing.value = false
   }
 }
 
@@ -211,16 +234,22 @@ const goCreateAnother = () => {
   router.push('/teacher/exams/create')
 }
 
-onMounted(() => {
-  loadStudents()
+onMounted(async () => {
+  await loadStudents()
   countdownTimer = window.setInterval(() => {
     nowMs.value = Date.now()
   }, 1000)
+  refreshTimer = window.setInterval(() => {
+    loadStudents({ silent: true })
+  }, 5000)
 })
 
 onUnmounted(() => {
   if (countdownTimer) {
     window.clearInterval(countdownTimer)
+  }
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
   }
 })
 </script>

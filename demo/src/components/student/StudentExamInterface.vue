@@ -25,19 +25,28 @@
             <span class="text-[9px] uppercase tracking-wider opacity-60">Giây</span>
           </div>
         </div>
-        <button @click="openSubmitModal" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-bold text-xs transition-colors shadow-lg shadow-primary/20" type="button">
+        <button :disabled="isSuspended" @click="openSubmitModal" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-bold text-xs transition-colors shadow-lg shadow-primary/20 disabled:opacity-60" type="button">
           Nộp bài
         </button>
       </template>
     </StudentTopHeader>
 
     <main class="relative flex-1 flex max-w-[1440px] mx-auto w-full p-6 gap-6 overflow-hidden">
+      <div v-if="isSuspended" class="absolute inset-0 z-20 bg-black/60 backdrop-blur-[1px] flex items-center justify-center px-4">
+        <div class="max-w-lg w-full rounded-2xl border border-rose-300 bg-white p-6 text-center shadow-2xl">
+          <h2 class="text-2xl font-bold text-rose-700 mb-2">Bài thi đã bị đình chỉ</h2>
+          <p class="text-sm text-slate-600">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
+        </div>
+      </div>
       <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
       <div class="relative flex-1 flex flex-col gap-6">
         <div v-if="loadError" class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
           {{ loadError }}
+        </div>
+        <div v-if="realtimeWarningMessage" class="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
+          {{ realtimeWarningMessage }}
         </div>
 
         <div v-if="currentQuestion" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
@@ -59,6 +68,7 @@
             >
               <input
                 :checked="answers[currentQuestion.id] === option.id"
+                :disabled="isSuspended"
                 class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
                 :name="`exam-option-${currentQuestion.id}`"
                 type="radio"
@@ -162,10 +172,13 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
-import { getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
+import { Client } from '@stomp/stompjs'
+import { API_BASE_URL, ApiError } from '../../services/apiClient'
+import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
+import { sendMonitoringEvent } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute, useRouter } from 'vue-router'
+import SockJS from 'sockjs-client/dist/sockjs'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
@@ -182,7 +195,19 @@ const questions = ref([])
 const answers = ref({})
 const currentIndex = ref(0)
 const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds || ''), 10) || 0)
+const attemptStatus = ref('IN_PROGRESS')
+const isSuspended = ref(false)
+const suspensionMessage = ref('')
+const realtimeWarningMessage = ref('')
+const lastViolationAtByType = ref({})
+const pendingViolationByType = ref({})
 let timerId = null
+let blurGraceTimer = null
+let attemptStatusTimer = null
+let stompClient = null
+
+const VIOLATION_COOLDOWN_MS = 7000
+const BLUR_GRACE_MS = 1200
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const answeredCount = computed(() => Object.values(answers.value).filter(Boolean).length)
@@ -195,20 +220,157 @@ const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 360
 const timerMinutes = computed(() => String(Math.floor((remainingSeconds.value % 3600) / 60)).padStart(2, '0'))
 const timerSeconds = computed(() => String(remainingSeconds.value % 60).padStart(2, '0'))
 
+const clearBlurGraceTimer = () => {
+  if (blurGraceTimer) {
+    window.clearTimeout(blurGraceTimer)
+    blurGraceTimer = null
+  }
+}
+
+const reportViolation = async (eventType, details) => {
+  if (!attemptId.value || isSuspended.value) return
+
+  const now = Date.now()
+  const lastAt = lastViolationAtByType.value[eventType] || 0
+  if (now - lastAt < VIOLATION_COOLDOWN_MS) return
+
+  lastViolationAtByType.value = {
+    ...lastViolationAtByType.value,
+    [eventType]: now
+  }
+
+  try {
+    await sendMonitoringEvent(attemptId.value, eventType, details)
+  } catch {
+    // ignore monitoring send failures and keep exam flow stable
+  }
+}
+
+const applyAttemptStatus = (status, message = '') => {
+  const normalized = String(status || '').toUpperCase() || 'IN_PROGRESS'
+  attemptStatus.value = normalized
+
+  if (normalized === 'STOPPED') {
+    isSuspended.value = true
+    if (message) {
+      suspensionMessage.value = message
+    }
+    showSubmitModal.value = false
+    return
+  }
+
+  isSuspended.value = false
+}
+
+const syncAttemptStatus = async () => {
+  if (!attemptId.value) return
+  try {
+    const detail = await getAttemptDetail(attemptId.value)
+    applyAttemptStatus(detail?.status || 'IN_PROGRESS')
+  } catch {
+    // ignore status sync errors
+  }
+}
+
+const connectProctorRealtime = () => {
+  if (!attemptId.value) return
+
+  const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
+  stompClient = new Client({
+    reconnectDelay: 5000,
+    webSocketFactory: () => new SockJS(wsUrl)
+  })
+
+  stompClient.onConnect = () => {
+    stompClient.subscribe(`/topic/attempts/${attemptId.value}/proctor-actions`, (frame) => {
+      try {
+        const payload = JSON.parse(frame.body || '{}')
+        const type = String(payload.type || '').toUpperCase()
+        if (type === 'TEACHER_WARNING') {
+          realtimeWarningMessage.value = payload.message || 'Giám thị vừa gửi cảnh báo.'
+        }
+        if (type === 'ATTEMPT_STOPPED') {
+          applyAttemptStatus(payload.status || 'STOPPED', payload.message || 'Bài thi đã bị đình chỉ.')
+        }
+      } catch {
+        // ignore malformed realtime payload
+      }
+    })
+  }
+
+  stompClient.activate()
+}
+
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    pendingViolationByType.value = {
+      ...pendingViolationByType.value,
+      TAB_SWITCH: true
+    }
+    void reportViolation('TAB_SWITCH', 'Document hidden during exam attempt')
+  } else if (pendingViolationByType.value.TAB_SWITCH) {
+    pendingViolationByType.value = {
+      ...pendingViolationByType.value,
+      TAB_SWITCH: false
+    }
+  }
+}
+
+const handleWindowBlur = () => {
+  clearBlurGraceTimer()
+  blurGraceTimer = window.setTimeout(() => {
+    pendingViolationByType.value = {
+      ...pendingViolationByType.value,
+      BLUR: true
+    }
+    void reportViolation('BLUR', 'Window lost focus during exam attempt')
+  }, BLUR_GRACE_MS)
+}
+
+const handleWindowFocus = () => {
+  clearBlurGraceTimer()
+  if (pendingViolationByType.value.BLUR) {
+    pendingViolationByType.value = {
+      ...pendingViolationByType.value,
+      BLUR: false
+    }
+  }
+}
+
+const handleFullscreenChange = () => {
+  const inFullscreen = Boolean(document.fullscreenElement)
+  if (inFullscreen) {
+    pendingViolationByType.value = {
+      ...pendingViolationByType.value,
+      EXIT_FULLSCREEN: false
+    }
+    return
+  }
+
+  pendingViolationByType.value = {
+    ...pendingViolationByType.value,
+    EXIT_FULLSCREEN: true
+  }
+  void reportViolation('EXIT_FULLSCREEN', 'Exited fullscreen during exam attempt')
+}
+
 const selectQuestion = (index) => {
+  if (isSuspended.value) return
   currentIndex.value = index
 }
 
 const goPrevious = () => {
+  if (isSuspended.value) return
   if (currentIndex.value > 0) currentIndex.value -= 1
 }
 
 const goNext = () => {
+  if (isSuspended.value) return
   if (currentIndex.value < questions.value.length - 1) currentIndex.value += 1
 }
 
 const persistDraft = async () => {
-  if (!attemptId.value) return
+  if (!attemptId.value || isSuspended.value) return
   const payload = Object.entries(answers.value).map(([questionId, selectedAnswer]) => ({
     questionId: Number(questionId),
     selectedAnswer
@@ -218,6 +380,8 @@ const persistDraft = async () => {
 }
 
 const onSelectAnswer = async (questionId, selectedAnswer) => {
+  if (isSuspended.value) return
+
   answers.value = {
     ...answers.value,
     [questionId]: selectedAnswer
@@ -231,6 +395,7 @@ const onSelectAnswer = async (questionId, selectedAnswer) => {
 }
 
 const openSubmitModal = () => {
+  if (isSuspended.value) return
   showSubmitModal.value = true
 }
 
@@ -239,7 +404,7 @@ const closeSubmitModal = () => {
 }
 
 const submitExamAction = async () => {
-  if (!attemptId.value) return
+  if (!attemptId.value || isSuspended.value) return
 
   isSubmitting.value = true
   try {
@@ -307,6 +472,8 @@ onMounted(async () => {
       return acc
     }, {})
 
+    applyAttemptStatus(draftData?.status || 'IN_PROGRESS')
+
     if (remainingSeconds.value <= 0 && route.query.deadlineAt) {
       const deadlineMs = new Date(String(route.query.deadlineAt)).getTime()
       remainingSeconds.value = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000))
@@ -315,6 +482,16 @@ onMounted(async () => {
     timerId = window.setInterval(() => {
       if (remainingSeconds.value > 0) remainingSeconds.value -= 1
     }, 1000)
+
+    connectProctorRealtime()
+    attemptStatusTimer = window.setInterval(() => {
+      syncAttemptStatus()
+    }, 5000)
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handleWindowBlur)
+    window.addEventListener('focus', handleWindowFocus)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
   } catch (error) {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải nội dung bài thi.'
   }
@@ -322,6 +499,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (timerId) window.clearInterval(timerId)
+  if (attemptStatusTimer) window.clearInterval(attemptStatusTimer)
+  clearBlurGraceTimer()
+  if (stompClient) {
+    stompClient.deactivate()
+    stompClient = null
+  }
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('blur', handleWindowBlur)
+  window.removeEventListener('focus', handleWindowFocus)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
 })
 </script>
 

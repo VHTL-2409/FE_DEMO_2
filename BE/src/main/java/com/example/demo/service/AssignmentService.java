@@ -44,6 +44,38 @@ public class AssignmentService {
         return assignmentRepository.findByExamOrderByCreatedAtDesc(exam).stream().map(this::toResponse).toList();
     }
 
+    public AssignmentResponse update(Exam exam, Long assignmentId, AssignmentRequest request) {
+        validateRequest(request);
+        Assignment assignment = requireByExam(exam, assignmentId);
+        assignment.setTitle(request.getTitle().trim());
+        assignment.setOpenAt(request.getOpenAt());
+        assignment.setCloseAt(request.getCloseAt());
+        assignment.setMaxAttempts(request.getMaxAttempts() == null ? 1 : request.getMaxAttempts());
+        assignment.setAllowReviewAfterSubmit(
+                request.getAllowReviewAfterSubmit() == null ? Boolean.TRUE : request.getAllowReviewAfterSubmit());
+        assignment.setIsPublished(request.getIsPublished() == null ? Boolean.FALSE : request.getIsPublished());
+        return toResponse(assignmentRepository.save(assignment));
+    }
+
+    public AssignmentResponse updatePublished(Exam exam, Long assignmentId, Boolean isPublished) {
+        if (isPublished == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "isPublished is required");
+        }
+        Assignment assignment = requireByExam(exam, assignmentId);
+        assignment.setIsPublished(isPublished);
+        return toResponse(assignmentRepository.save(assignment));
+    }
+
+    public void delete(Exam exam, Long assignmentId) {
+        Assignment assignment = requireByExam(exam, assignmentId);
+        assignmentRepository.delete(assignment);
+    }
+
+    private Assignment requireByExam(Exam exam, Long assignmentId) {
+        return assignmentRepository.findByIdAndExam(assignmentId, exam)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Assignment not found"));
+    }
+
     private void validateRequest(AssignmentRequest request) {
         if (request.getOpenAt() != null && request.getCloseAt() != null && !request.getOpenAt().isBefore(request.getCloseAt())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "openAt must be before closeAt");

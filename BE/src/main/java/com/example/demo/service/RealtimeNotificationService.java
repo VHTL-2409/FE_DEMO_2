@@ -21,4 +21,22 @@ public class RealtimeNotificationService {
             attempt.getRiskScore()
         );
     }
+
+    public void notifyTeacherWarning(ExamAttempt attempt, String message) {
+        teacherAlertGateway.publishTeacherWarning(
+            attempt.getExam().getId(),
+            attempt.getId(),
+            attempt.getStudent().getUsername(),
+            message
+        );
+    }
+
+    public void notifyAttemptStopped(ExamAttempt attempt, String message) {
+        teacherAlertGateway.publishAttemptStopped(
+            attempt.getExam().getId(),
+            attempt.getId(),
+            attempt.getStudent().getUsername(),
+            message
+        );
+    }
 }
