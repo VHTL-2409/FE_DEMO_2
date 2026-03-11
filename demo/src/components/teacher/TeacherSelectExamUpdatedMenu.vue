@@ -8,24 +8,24 @@
         <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
         <div class="mb-8 relative animate-fade-up">
-          <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Select Active Exam</h1>
-          <p class="text-slate-500 dark:text-slate-400">Monitor and manage your ongoing assessments in real-time.</p>
+          <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Chọn đề thi đang hoạt động</h1>
+          <p class="text-slate-500 dark:text-slate-400">Theo dõi và quản lý các bài thi đang diễn ra theo thời gian thực.</p>
         </div>
 
         <div class="relative flex flex-col md:flex-row gap-4 mb-8 animate-fade-up-delay">
           <div class="relative flex-1">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/50">search</span>
-            <input v-model="search" class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="Search exams by title or ID..." type="text" />
+            <input v-model="search" class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="Tìm đề thi theo tiêu đề hoặc mã..." type="text" />
           </div>
           <div class="flex gap-2">
             <button class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-slate-800 shadow-sm border-none text-slate-700 dark:text-slate-300 hover:bg-primary/5 transition-colors" type="button">
               <span class="material-symbols-outlined text-sm">filter_alt</span>
-              <span class="font-medium">Department</span>
+              <span class="font-medium">Khoa</span>
               <span class="material-symbols-outlined text-sm">expand_more</span>
             </button>
             <button class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-slate-800 shadow-sm border-none text-slate-700 dark:text-slate-300 hover:bg-primary/5 transition-colors" type="button">
               <span class="material-symbols-outlined text-sm">subject</span>
-              <span class="font-medium">Psychology</span>
+              <span class="font-medium">Tâm lý học</span>
               <span class="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
@@ -72,10 +72,10 @@
             <div class="size-16 rounded-full bg-primary/5 flex items-center justify-center mb-4">
               <span class="material-symbols-outlined text-primary/40 text-4xl">add</span>
             </div>
-            <h4 class="text-slate-500 dark:text-slate-400 font-bold">Schedule New Exam</h4>
-            <p class="text-slate-400 text-sm mt-1">Create or launch a new assessment</p>
+            <h4 class="text-slate-500 dark:text-slate-400 font-bold">Lên lịch đề thi mới</h4>
+            <p class="text-slate-400 text-sm mt-1">Tạo hoặc khởi chạy bài đánh giá mới</p>
             <button class="mt-6 px-4 py-2 text-primary font-bold hover:bg-primary/5 rounded-lg border border-primary/20 transition-all" type="button">
-              Browse Bank
+              Xem ngân hàng đề
             </button>
           </div>
         </div>
@@ -84,16 +84,16 @@
           <div class="flex items-center gap-6">
             <div class="flex items-center gap-2">
               <span class="size-3 rounded-full bg-green-500"></span>
-              <span class="text-sm font-medium">2 Active Exams</span>
+              <span class="text-sm font-medium">2 đề thi đang hoạt động</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="size-3 rounded-full bg-blue-500"></span>
-              <span class="text-sm font-medium">1 Scheduled</span>
+              <span class="text-sm font-medium">1 đề thi đã lên lịch</span>
             </div>
           </div>
           <div class="flex items-center gap-2">
             <button class="p-2 rounded hover:bg-primary/5 text-slate-400" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-            <span class="text-sm font-bold px-4">Page 1 of 1</span>
+            <span class="text-sm font-bold px-4">Trang 1 / 1</span>
             <button class="p-2 rounded hover:bg-primary/5 text-slate-400" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
           </div>
         </div>
@@ -124,54 +124,54 @@ const openLiveSession = (exam) => {
 const exams = [
   {
     id: 'PSY-2024-08',
-    title: 'Advanced Psychology Final Examination',
-    location: 'Room 402 • Main Hall',
-    sessionMeta: 'Room 402 • Started: 09:00 AM • 120m duration',
-    status: 'In Progress',
+    title: 'Thi cuối kỳ Tâm lý học nâng cao',
+    location: 'Phòng 402 • Hội trường chính',
+    sessionMeta: 'Phòng 402 • Bắt đầu: 09:00 • Thời lượng 120 phút',
+    status: 'Đang diễn ra',
     statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     students: '42 / 45',
-    leftLabel: 'Students',
-    timeLabel: 'Time Remaining',
+    leftLabel: 'Sinh viên',
+    timeLabel: 'Thời gian còn lại',
     timeIcon: 'timer',
     timeIconClass: 'text-orange-500',
     timeValue: '01:14:22',
-    actionLabel: 'Monitor Live',
+    actionLabel: 'Theo dõi trực tiếp',
     actionIcon: 'visibility',
     actionClass: 'bg-primary hover:bg-primary/90 text-white',
     cardBorder: 'border-l-green-500'
   },
   {
     id: 'CS-101-MID',
-    title: 'Introduction to Computer Science Midterm',
-    location: 'Virtual Hall B',
-    sessionMeta: 'Virtual Hall B • Started: 09:30 AM • 90m duration',
-    status: 'In Progress',
+    title: 'Thi giữa kỳ Nhập môn Khoa học máy tính',
+    location: 'Phòng thi trực tuyến B',
+    sessionMeta: 'Phòng trực tuyến B • Bắt đầu: 09:30 • Thời lượng 90 phút',
+    status: 'Đang diễn ra',
     statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     students: '128 / 130',
-    leftLabel: 'Students',
-    timeLabel: 'Time Remaining',
+    leftLabel: 'Sinh viên',
+    timeLabel: 'Thời gian còn lại',
     timeIcon: 'timer',
     timeIconClass: 'text-orange-500',
     timeValue: '00:42:05',
-    actionLabel: 'Monitor Live',
+    actionLabel: 'Theo dõi trực tiếp',
     actionIcon: 'visibility',
     actionClass: 'bg-primary hover:bg-primary/90 text-white',
     cardBorder: 'border-l-green-500'
   },
   {
     id: 'MATH-450',
-    title: 'Calculus III: Multi-variable Assessment',
-    location: 'Room 101 • Science Wing',
-    sessionMeta: 'Room 101 • Starts in: 00:08:45 • 100m duration',
-    status: 'Starting Soon',
+    title: 'Giải tích III: Đánh giá nhiều biến',
+    location: 'Phòng 101 • Khu Khoa học',
+    sessionMeta: 'Phòng 101 • Bắt đầu sau: 00:08:45 • Thời lượng 100 phút',
+    status: 'Sắp bắt đầu',
     statusClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     students: '12 / 28',
-    leftLabel: 'Joined',
-    timeLabel: 'Starts In',
+    leftLabel: 'Đã vào',
+    timeLabel: 'Bắt đầu sau',
     timeIcon: 'schedule',
     timeIconClass: 'text-blue-500',
     timeValue: '00:08:45',
-    actionLabel: 'Open Control Room',
+    actionLabel: 'Mở phòng điều khiển',
     actionIcon: 'play_circle',
     actionClass: 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-not-allowed',
     cardBorder: 'border-l-blue-500'

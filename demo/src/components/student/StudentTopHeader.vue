@@ -19,26 +19,27 @@
         @click="goToLogin"
         class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
       >
-        Sign Out
+        Đăng xuất
       </button>
       <button v-if="showProfile" type="button" @click="goToProfile" class="flex items-center gap-3 pl-2 border-l border-primary/10 hover:-translate-y-0.5 transition-all duration-200">
         <div class="hidden md:block text-right">
-          <p class="text-sm font-bold">Alex Johnson</p>
-          <p class="text-xs text-slate-500">ID: 4421-STU</p>
+          <p class="text-sm font-bold">{{ displayName }}</p>
+          <p class="text-xs text-slate-500">{{ displayId }}</p>
         </div>
         <div
-          class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20"
-          @click="goToProfile" 
-          type="button"
-          style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1e4bA4nxwNhHI-Fn4dFl5ffPsV2Qcq-aTU38W1KpDGwJVtSs8Uu50HUjL-6AQ1rsj8FzgZ85caSzJLBV2kIzkBDQx4LboDGfHJTBM4ekHERyEJBMrHARjYfGyK-OOed1VR2AVLI8Set2ttmV6DKD-1ADupmLpYFhEoCRyviMIao-qfOPN6LDLGiDaSyvu15GGz3wp3epYInY9djSMLy1DHqOjBrCWEn_nXjmRki5_ystPT2x5YTemNdGgEHmK39v616MkRN2Pcg")'
-        ></div>
+          class="rounded-full size-10 border-2 border-primary/20 bg-primary text-white flex items-center justify-center font-bold"
+        >
+          {{ avatarLabel }}
+        </div>
       </button>
     </div>
   </header>
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { clearAuthSession, fetchMyProfile } from '../../services/authService'
 
 defineProps({
   showSignOut: {
@@ -56,12 +57,30 @@ defineProps({
 })
 
 const router = useRouter()
+const profile = ref(null)
+
+const displayName = computed(() => profile.value?.username || 'Sinh viên')
+const displayId = computed(() => (profile.value?.id ? `ID: ${profile.value.id}` : ''))
+const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
+
+const loadProfile = async () => {
+  try {
+    profile.value = await fetchMyProfile()
+  } catch {
+    profile.value = null
+  }
+}
 
 const goToLogin = () => {
+  clearAuthSession()
   router.push('/login')
 }
 
 const goToProfile = () => {
   router.push('/student/profile')
 }
+
+onMounted(() => {
+  loadProfile()
+})
 </script>

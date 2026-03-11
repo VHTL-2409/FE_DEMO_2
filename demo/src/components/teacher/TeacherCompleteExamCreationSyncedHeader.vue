@@ -7,19 +7,19 @@
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
       <div class="relative mb-10 animate-fade-up">
-        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Create New Exam (Import)</h2>
-        <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Step 1: Add title and import file. Step 2: Configure schedule.</p>
+        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo đề thi mới (Nhập tệp)</h2>
+        <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Bước 1: Nhập tiêu đề và tải tệp. Bước 2: Cấu hình lịch thi.</p>
       </div>
 
       <div class="relative space-y-8 animate-fade-up-delay">
         <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div class="flex items-center gap-2 mb-6">
             <span class="material-symbols-outlined text-primary">info</span>
-            <h3 class="text-lg font-bold">General Information</h3>
+            <h3 class="text-lg font-bold">Thông tin chung</h3>
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Exam Title</label>
-            <input v-model="examTitle" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" placeholder="e.g., Q3 Advanced Calculus Midterm" type="text" />
+            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Tiêu đề đề thi</label>
+            <input v-model="examTitle" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" placeholder="VD: Kiểm tra giữa kỳ Giải tích nâng cao Q3" type="text" />
           </div>
         </section>
 
@@ -27,7 +27,7 @@
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">upload_file</span>
-              <h3 class="text-lg font-bold">Upload Exam Content</h3>
+              <h3 class="text-lg font-bold">Tải nội dung đề thi</h3>
             </div>
           </div>
 
@@ -36,16 +36,17 @@
             <div class="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
               <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
             </div>
-            <h4 class="text-lg font-semibold mb-1">Click to upload or drag and drop</h4>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Support for CSV and XLSX formats (Max 10MB)</p>
+            <h4 class="text-lg font-semibold mb-1">Nhấp để tải lên hoặc kéo thả</h4>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Hỗ trợ định dạng CSV và XLSX (tối đa 10MB)</p>
             <p v-if="fileName" class="text-primary text-sm font-semibold mt-3">{{ fileName }}</p>
           </label>
         </section>
 
         <div class="flex items-center justify-end gap-4 pt-6">
-          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Discard Draft</button>
-          <button class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2" type="button" @click="goNext">Next<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
+          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Hủy bản nháp</button>
+          <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">{{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
         </div>
+        <p v-if="errorMessage" class="text-sm text-rose-600 mt-3">{{ errorMessage }}</p>
       </div>
     </main>
   </div>
@@ -53,6 +54,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { createExam } from '../../services/examService'
+import { importQuestionsFromXlsx } from '../../services/questionService'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -60,17 +64,57 @@ const router = useRouter()
 const isDark = ref(false)
 const examTitle = ref('')
 const fileName = ref('')
+const selectedFile = ref(null)
+const isSubmitting = ref(false)
+const errorMessage = ref('')
 
 const onFileChange = (event) => {
-  fileName.value = event.target.files?.[0]?.name || ''
+  const file = event.target.files?.[0] || null
+  selectedFile.value = file
+  fileName.value = file?.name || ''
 }
 
 const goBack = () => {
   router.push('/teacher/exams')
 }
 
-const goNext = () => {
-  router.push({ path: '/teacher/exams/schedule', query: { title: examTitle.value || 'Imported Exam', source: 'import' } })
+const goNext = async () => {
+  errorMessage.value = ''
+
+  if (!examTitle.value.trim()) {
+    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi.'
+    return
+  }
+
+  if (!selectedFile.value) {
+    errorMessage.value = 'Vui lòng chọn tệp XLSX trước khi tiếp tục.'
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    const createdExam = await createExam({
+      title: examTitle.value.trim(),
+      description: '',
+      durationMinutes: 60,
+      isActive: false
+    })
+
+    await importQuestionsFromXlsx(createdExam.id, selectedFile.value)
+
+    router.push({
+      path: '/teacher/exams/schedule',
+      query: {
+        examId: createdExam.id,
+        title: createdExam.title || examTitle.value.trim(),
+        source: 'import'
+      }
+    })
+  } catch (error) {
+    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tạo đề thi từ tệp. Vui lòng thử lại.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 

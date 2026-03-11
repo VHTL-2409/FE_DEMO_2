@@ -8,54 +8,63 @@
         <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
         <div class="relative mb-6 animate-fade-up">
-          <h1 class="text-3xl font-bold tracking-tight">Manual Question Entry</h1>
-          <p class="text-slate-500 mt-1">Configure individual questions for your exam.</p>
+          <h1 class="text-3xl font-bold tracking-tight">Nhập câu hỏi thủ công</h1>
+          <p class="text-slate-500 mt-1">Cấu hình từng câu hỏi cho đề thi của bạn.</p>
         </div>
 
         <section class="bg-white dark:bg-slate-900 rounded-xl border border-primary/10 shadow-sm overflow-hidden animate-fade-up-delay hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
           <div class="p-6 border-b border-primary/10">
-            <h2 class="text-lg font-bold">Question Editor</h2>
+            <h2 class="text-lg font-bold">Trình soạn câu hỏi</h2>
           </div>
           <div class="p-6 space-y-6">
             <div class="space-y-2">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Exam Title</label>
-              <input v-model="examTitle" class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" placeholder="e.g. Mid-term Physics" type="text" />
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiêu đề đề thi</label>
+              <input v-model="examTitle" class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" placeholder="VD: Vật lý giữa kỳ" type="text" />
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Question Type</label>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Loại câu hỏi</label>
                 <select class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary">
-                  <option>Multiple Choice</option>
-                  <option>True/False</option>
-                  <option>Short Answer</option>
+                  <option>Trắc nghiệm</option>
                 </select>
               </div>
               <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Points / Marks</label>
-                <input class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" type="number" value="1.0" />
-              </div>
-              <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Difficulty</label>
-                <div class="flex gap-2">
-                  <button class="flex-1 py-2 text-xs font-semibold rounded-lg border border-green-200 bg-green-50 text-green-700" type="button">Easy</button>
-                  <button class="flex-1 py-2 text-xs font-semibold rounded-lg border border-primary/10 bg-slate-50 text-slate-600" type="button">Medium</button>
-                  <button class="flex-1 py-2 text-xs font-semibold rounded-lg border border-primary/10 bg-slate-50 text-slate-600" type="button">Hard</button>
-                </div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Điểm</label>
+                <input v-model.number="scoreWeight" class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" type="number" min="0.5" step="0.5" />
               </div>
             </div>
 
             <div class="space-y-2">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Question Stem</label>
-              <textarea class="w-full p-4 text-sm bg-white dark:bg-slate-900 border border-primary/10 rounded-lg resize-none" placeholder="Enter your question here..." rows="4"></textarea>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nội dung câu hỏi</label>
+              <textarea v-model="questionContent" class="w-full p-4 text-sm bg-white dark:bg-slate-900 border border-primary/10 rounded-lg resize-none" placeholder="Nhập câu hỏi của bạn tại đây..." rows="4"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-2" v-for="option in optionFields" :key="option.id">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Lựa chọn {{ option.id }}</label>
+                <input v-model="option.text" class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" type="text" :placeholder="`Lựa chọn ${option.id}`" />
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Đáp án đúng</label>
+              <select v-model="correctAnswer" class="w-full md:w-60 bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+              </select>
             </div>
           </div>
           <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-primary/10 flex justify-end gap-3">
-            <button class="px-4 py-2 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">Save Question</button>
+            <button :disabled="isSubmitting" class="px-4 py-2 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 disabled:opacity-70" type="button" @click="saveQuestion">{{ isSubmitting ? 'Đang lưu...' : 'Lưu câu hỏi' }}</button>
             <button class="px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200" type="button" @click="goNext">
-              Next
+              Tiếp theo
             </button>
           </div>
+          <p v-if="errorMessage" class="px-6 py-3 text-sm text-rose-600">{{ errorMessage }}</p>
+          <p v-if="successMessage" class="px-6 py-3 text-sm text-emerald-600">{{ successMessage }}</p>
         </section>
       </main>
     </div>
@@ -64,15 +73,112 @@
 
 <script setup>
 import { ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { createExam } from '../../services/examService'
+import { createQuestion } from '../../services/questionService'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
 const examTitle = ref('')
+const scoreWeight = ref(1)
+const questionContent = ref('')
+const correctAnswer = ref('A')
+const optionFields = ref([
+  { id: 'A', text: '' },
+  { id: 'B', text: '' },
+  { id: 'C', text: '' },
+  { id: 'D', text: '' }
+])
+const isSubmitting = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+let createdExamId = null
 
-const goNext = () => {
-  router.push({ path: '/teacher/exams/schedule', query: { title: examTitle.value || 'Manual Exam', source: 'manual' } })
+const saveQuestion = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  if (!examTitle.value.trim()) {
+    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi.'
+    return
+  }
+
+  if (!questionContent.value.trim()) {
+    errorMessage.value = 'Vui lòng nhập nội dung câu hỏi.'
+    return
+  }
+
+  const hasEmptyOption = optionFields.value.some((option) => !option.text.trim())
+  if (hasEmptyOption) {
+    errorMessage.value = 'Vui lòng điền đầy đủ các phương án trả lời (A, B, C, D).'
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    if (!createdExamId) {
+      const exam = await createExam({
+        title: examTitle.value.trim(),
+        description: '',
+        durationMinutes: 60,
+        isActive: false
+      })
+      createdExamId = exam.id
+    }
+
+    await createQuestion(createdExamId, {
+      content: questionContent.value.trim(),
+      scoreWeight: scoreWeight.value,
+      options: optionFields.value.map((option) => ({ id: option.id, text: option.text.trim() })),
+      correctAnswer: correctAnswer.value
+    })
+
+    successMessage.value = 'Lưu câu hỏi thành công.'
+    questionContent.value = ''
+    optionFields.value = optionFields.value.map((option) => ({ ...option, text: '' }))
+    correctAnswer.value = 'A'
+  } catch (error) {
+    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể lưu câu hỏi. Vui lòng thử lại.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const goNext = async () => {
+  errorMessage.value = ''
+
+  if (!examTitle.value.trim()) {
+    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi trước khi tiếp tục.'
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    if (!createdExamId) {
+      const exam = await createExam({
+        title: examTitle.value.trim(),
+        description: '',
+        durationMinutes: 60,
+        isActive: false
+      })
+      createdExamId = exam.id
+    }
+
+    router.push({
+      path: '/teacher/exams/schedule',
+      query: {
+        examId: createdExamId,
+        title: examTitle.value || 'Đề thi thủ công',
+        source: 'manual'
+      }
+    })
+  } catch (error) {
+    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tạo đề thi. Vui lòng thử lại.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 

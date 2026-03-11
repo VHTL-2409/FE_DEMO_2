@@ -4,23 +4,23 @@
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center gap-8">
           <div class="flex flex-col">
-            <span class="text-primary dark:text-slate-100 text-lg font-bold leading-none">Teacher Dashboard</span>
+            <span class="text-primary dark:text-slate-100 text-lg font-bold leading-none">Bảng điều khiển giáo viên</span>
             <span class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-              Online Exam System
+              Hệ thống thi trực tuyến
             </span>
           </div>
           <nav class="hidden md:flex items-center gap-1">
             <RouterLink :class="navClass('dashboard')" to="/teacher/dashboard">
-              Dashboard
+              Trang chủ
             </RouterLink>
             <RouterLink :class="navClass('exam')" to="/teacher/exams">
-              Exam Creation
+              Tạo đề thi
             </RouterLink>
             <RouterLink :class="navClass('monitoring')" to="/teacher/live-monitoring">
-              Live Monitoring
+              Giám sát trực tiếp
             </RouterLink>
             <RouterLink :class="navClass('profile')" to="/teacher/profile">
-              Profile
+              Hồ sơ
             </RouterLink>
           </nav>
         </div>
@@ -33,14 +33,14 @@
             @click="goToLogin"
             class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
           >
-            Sign Out
+            Đăng xuất
           </button>
           <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
             <div class="text-right hidden sm:block">
-              <p class="text-sm font-bold">Prof. John Doe</p>
-              <p class="text-[10px] text-slate-500 font-medium uppercase">Computer Science</p>
+              <p class="text-sm font-bold">{{ displayName }}</p>
+              <p class="text-[10px] text-slate-500 font-medium uppercase">{{ roleLabel }}</p>
             </div>
-            <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">JD</div>
+            <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">{{ avatarLabel }}</div>
           </div>
         </div>
       </div>
@@ -49,7 +49,9 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { clearAuthSession, fetchMyProfile } from '../../services/authService'
 
 const props = defineProps({
   activeSection: {
@@ -59,6 +61,16 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const profile = ref(null)
+
+const displayName = computed(() => profile.value?.username || 'Giáo viên')
+const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
+const roleLabel = computed(() => {
+  const rawRole = (profile.value?.roles || [])[0]
+  if (rawRole === 'TEACHER') return 'GIÁO VIÊN'
+  if (rawRole === 'ADMIN') return 'QUẢN TRỊ'
+  return rawRole || 'GIÁO VIÊN'
+})
 
 const navClass = (section) => {
   if (props.activeSection === section) {
@@ -68,7 +80,20 @@ const navClass = (section) => {
   return 'px-4 py-2 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:text-primary transition-colors'
 }
 
+const loadProfile = async () => {
+  try {
+    profile.value = await fetchMyProfile()
+  } catch {
+    profile.value = null
+  }
+}
+
 const goToLogin = () => {
+  clearAuthSession()
   router.push('/login')
 }
+
+onMounted(() => {
+  loadProfile()
+})
 </script>

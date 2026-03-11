@@ -6,8 +6,11 @@ import StudentDashboardEnhancedNavigation from './components/student/StudentDash
 import TeacherExamManagementUpdatedMenu from './components/teacher/TeacherExamManagementUpdatedMenu.vue'
 import TeacherCompleteExamCreationSyncedHeader from './components/teacher/TeacherCompleteExamCreationSyncedHeader.vue'
 import TeacherIncidentReviewUpdatedMenu from './components/teacher/TeacherIncidentReviewUpdatedMenu.vue'
+import TeacherExamReviewSummary from './components/teacher/TeacherExamReviewSummary.vue'
+import TeacherStudentReportDetail from './components/teacher/TeacherStudentReportDetail.vue'
 import TeacherManualQuestionEntry from './components/teacher/TeacherManualQuestionEntry.vue'
 import TeacherExamScheduleCreate from './components/teacher/TeacherExamScheduleCreate.vue'
+import TeacherExamCreatedSuccess from './components/teacher/TeacherExamCreatedSuccess.vue'
 import TeacherSelectExamUpdatedMenu from './components/teacher/TeacherSelectExamUpdatedMenu.vue'
 import TeacherLiveMonitoringUpdatedMenu from './components/teacher/TeacherLiveMonitoringUpdatedMenu.vue'
 import StudentViolationDetailMonitoring from './components/teacher/StudentViolationDetailMonitoring.vue'
@@ -31,7 +34,11 @@ const router = createRouter({
     { path: '/teacher/exams/create', component: TeacherCompleteExamCreationSyncedHeader },
     { path: '/teacher/exams/manual', component: TeacherManualQuestionEntry },
     { path: '/teacher/exams/schedule', component: TeacherExamScheduleCreate },
-    { path: '/teacher/exams/review', component: TeacherIncidentReviewUpdatedMenu },
+    { path: '/teacher/exams/created-success', component: TeacherExamCreatedSuccess },
+    { path: '/teacher/exams/review', redirect: to => ({ path: '/teacher/exams/review/summary', query: to.query }) },
+    { path: '/teacher/exams/review/summary', component: TeacherExamReviewSummary },
+    { path: '/teacher/exams/review/incidents', component: TeacherIncidentReviewUpdatedMenu },
+    { path: '/teacher/exams/review/student-report', component: TeacherStudentReportDetail },
     { path: '/teacher/live-monitoring', component: TeacherSelectExamUpdatedMenu },
     { path: '/teacher/live-monitoring/session', component: TeacherLiveMonitoringUpdatedMenu },
     { path: '/teacher/live-monitoring/student-detail', component: StudentViolationDetailMonitoring },

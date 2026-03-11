@@ -88,15 +88,15 @@
 
               <div class="space-y-5">
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold">Full Name</label>
+                  <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold">Username</label>
                   <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <span class="material-symbols-outlined text-slate-400 text-xl">person</span>
                     </div>
                     <input
-                      v-model="fullName"
+                      v-model="username"
                       class="block w-full pl-11 pr-4 py-3.5 bg-background-light dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-                      placeholder="Jane Doe"
+                      placeholder="janedoe"
                       type="text"
                     />
                   </div>
@@ -132,11 +132,16 @@
                 </div>
               </div>
 
+              <p v-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">
+                {{ errorMessage }}
+              </p>
+
               <button
-                class="w-full flex items-center justify-center bg-primary hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 shadow-lg shadow-primary/20"
+                :disabled="isSubmitting"
+                class="w-full flex items-center justify-center bg-primary hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 type="submit"
               >
-                Create Account
+                {{ isSubmitting ? 'Creating Account...' : 'Create Account' }}
                 <span class="material-symbols-outlined ml-2 text-xl">arrow_forward</span>
               </button>
               <p class="text-center text-xs text-slate-500 leading-relaxed">
@@ -156,26 +161,55 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ApiError } from '../../services/apiClient'
+import { register } from '../../services/authService'
 
 const router = useRouter()
 
 const isDark = ref(false)
 const role = ref('student')
-const fullName = ref('')
+const username = ref('')
 const email = ref('')
 const password = ref('')
+const isSubmitting = ref(false)
+const errorMessage = ref('')
 
 const goToLogin = () => {
   router.push('/login')
 }
 
-const onSubmit = () => {
-  console.log('Register payload:', {
-    role: role.value,
-    fullName: fullName.value,
-    email: email.value,
-    password: password.value
-  })
+const onSubmit = async () => {
+  errorMessage.value = ''
+
+  if (!username.value || !email.value || !password.value) {
+    errorMessage.value = 'Please fill in all required fields.'
+    return
+  }
+
+  isSubmitting.value = true
+
+  try {
+    const authData = await register({
+      username: username.value.trim(),
+      email: email.value.trim(),
+      password: password.value
+    })
+
+    if ((authData?.roles || []).includes('TEACHER')) {
+      router.push('/teacher/dashboard')
+      return
+    }
+
+    router.push('/student/dashboard')
+  } catch (error) {
+    if (error instanceof ApiError) {
+      errorMessage.value = error.message || 'Registration failed. Please try again.'
+    } else {
+      errorMessage.value = 'Unable to connect to server. Please try again.'
+    }
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 

@@ -23,11 +23,11 @@
               @click="goToLogin"
               class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
             >
-              Sign Out
+              Đăng xuất
             </button>
             <div class="flex items-center gap-3 pl-2 border-l border-primary/10">
               <div class="hidden md:block text-right">
-                <p class="text-sm font-bold">Alex Johnson</p>
+                <p class="text-sm font-bold">Sinh viên</p>
                 <p class="text-xs text-slate-500">ID: 4421-STU</p>
               </div>
               <div
@@ -43,8 +43,8 @@
           <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
           <section class="relative flex flex-col gap-2 animate-fade-up">
-            <h1 class="text-3xl md:text-4xl font-black tracking-tight text-primary dark:text-slate-100">Welcome back, Alex</h1>
-            <p class="text-slate-600 dark:text-slate-400 text-lg">Your dashboard for exams and self-paced learning.</p>
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight text-primary dark:text-slate-100">Chào mừng bạn quay lại</h1>
+            <p class="text-slate-600 dark:text-slate-400 text-lg">Bảng điều khiển cho kỳ thi và tự học của bạn.</p>
           </section>
 
           <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
@@ -52,34 +52,35 @@
               <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-primary/10 shadow-sm">
                 <div class="flex items-center gap-3 mb-6">
                   <span class="material-symbols-outlined text-primary text-3xl">login</span>
-                  <h2 class="text-xl font-bold">Join Examination</h2>
+                  <h2 class="text-xl font-bold">Vào phòng thi</h2>
                 </div>
                 <div class="flex flex-col md:flex-row items-end gap-4">
                   <div class="flex flex-col flex-1 w-full">
-                    <label class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Exam or Teacher Code</label>
+                    <label class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Mã / Code / Tiêu đề bài thi</label>
                     <input
                       v-model="examCode"
                       class="w-full rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                      placeholder="e.g. EXAM-2024-MATH"
+                      placeholder="Ví dụ: 12 hoặc Toán cao cấp"
                       type="text"
                     />
                   </div>
-                  <button @click="goToWaitingRoom" class="w-full md:w-auto px-8 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200" type="button">
-                    Enter Room
+                  <button :disabled="isJoining" @click="goToWaitingRoom" class="w-full md:w-auto px-8 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button">
+                    {{ isJoining ? 'Đang vào...' : 'Vào phòng' }}
                   </button>
                 </div>
-                <p class="mt-3 text-xs text-slate-500">Please ensure you have a stable internet connection before joining.</p>
+                <p class="mt-3 text-xs text-slate-500">Vui lòng đảm bảo kết nối internet ổn định trước khi vào phòng thi.</p>
+                <p v-if="joinError" class="mt-2 text-xs text-rose-600">{{ joinError }}</p>
               </div>
 
               <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-primary/10 shadow-sm">
                 <div class="flex items-center justify-between mb-6">
                   <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-primary text-3xl">model_training</span>
-                    <h2 class="text-xl font-bold">Self-Study &amp; Practice</h2>
+                    <h2 class="text-xl font-bold">Tự học &amp; Luyện tập</h2>
                   </div>
                   <button class="flex items-center gap-2 text-sm font-bold text-primary hover:underline" type="button">
                     <span class="material-symbols-outlined text-sm">download</span>
-                    Template
+                    Mẫu
                   </button>
                 </div>
                 <label
@@ -87,23 +88,23 @@
                   class="border-2 border-dashed border-primary/20 rounded-xl p-8 flex flex-col items-center justify-center bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group"
                 >
                   <span class="material-symbols-outlined text-4xl text-primary/60 group-hover:text-primary transition-colors mb-4">upload_file</span>
-                  <p class="font-bold text-slate-800 dark:text-slate-200">Upload CSV or XLSX to generate test</p>
-                  <p class="text-sm text-slate-500 mt-1">Maximum file size: 5MB</p>
+                  <p class="font-bold text-slate-800 dark:text-slate-200">Tải lên CSV hoặc XLSX để tạo bài luyện tập</p>
+                  <p class="text-sm text-slate-500 mt-1">Kích thước tệp tối đa: 5MB</p>
                   <input id="file-upload" class="hidden" type="file" @change="goToGeneratePractice" />
                 </label>
                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                     <span class="material-symbols-outlined text-primary">auto_awesome</span>
                     <div class="text-sm">
-                      <p class="font-bold">AI Generation</p>
-                      <p class="text-slate-500">Questions created from your notes</p>
+                      <p class="font-bold">Tạo bằng AI</p>
+                      <p class="text-slate-500">Câu hỏi được tạo từ ghi chú của bạn</p>
                     </div>
                   </div>
                   <div class="p-4 bg-background-light dark:bg-background-dark rounded-lg flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                     <span class="material-symbols-outlined text-primary">timer</span>
                     <div class="text-sm">
-                      <p class="font-bold">Timed Sessions</p>
-                      <p class="text-slate-500">Simulate real exam conditions</p>
+                      <p class="font-bold">Phiên có giới hạn thời gian</p>
+                      <p class="text-slate-500">Mô phỏng điều kiện thi thực tế</p>
                     </div>
                   </div>
                 </div>
@@ -115,7 +116,7 @@
                 <div class="p-6 border-b border-primary/10">
                   <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-primary text-3xl">history</span>
-                    <h2 class="text-xl font-bold">Exam History</h2>
+                    <h2 class="text-xl font-bold">Lịch sử bài thi</h2>
                   </div>
                 </div>
                 <div class="p-0 overflow-y-auto max-h-[600px]">
@@ -137,7 +138,7 @@
                 </div>
                 <div class="p-4 mt-auto">
                   <button @click="goToStudyHistory" class="w-full py-3 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-md shadow-primary/20" type="button">
-                    View Full Transcript
+                    Xem toàn bộ kết quả
                   </button>
                 </div>
               </div>
@@ -146,7 +147,7 @@
         </main>
 
         <footer class="bg-white dark:bg-background-dark border-t border-primary/10 py-6 px-10 text-center text-slate-500 text-sm">
-          <p>© 2024 ExamPortal Online Examination System. All rights reserved.</p>
+          <p>© 2024 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
         </footer>
       </div>
     </div>
@@ -154,30 +155,92 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { listMyAttempts } from '../../services/attemptService'
+import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const isDark = ref(false)
 const examCode = ref('')
+const isJoining = ref(false)
+const joinError = ref('')
+const attempts = ref([])
 
-const historyItems = [
-  { title: 'Advanced Mathematics', score: '92%', date: 'Oct 12, 2023', grade: 'Grade: A' },
-  { title: 'Physics II: Optics', score: '85%', date: 'Oct 05, 2023', grade: 'Grade: B+' },
-  { title: 'World History 101', score: '78%', date: 'Sep 28, 2023', grade: 'Grade: B' },
-  { title: 'Intro to Sociology', score: '88%', date: 'Sep 15, 2023', grade: 'Grade: A-' },
-  { title: 'Organic Chemistry', score: '64%', date: 'Sep 02, 2023', grade: 'Grade: C+' }
-]
-
-const goToWaitingRoom = () => {
-  router.push({
-    path: '/student/exam-waiting-room',
-    query: { exam: examCode.value || 'Advanced Psychology Midterm' }
+const historyItems = computed(() => attempts.value
+  .slice()
+  .sort((a, b) => {
+    const aTime = new Date(a.submittedAt || a.startedAt || 0).getTime()
+    const bTime = new Date(b.submittedAt || b.startedAt || 0).getTime()
+    return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
   })
+  .map((attempt) => ({
+    title: attempt.examTitle || `Bài thi #${attempt.examId}`,
+    score: `${Math.round(Number(attempt.score || 0))}%`,
+    date: attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString() : '-',
+    grade: attempt.status || 'SUBMITTED',
+    attemptId: attempt.id,
+    examId: attempt.examId,
+    accuracy: Math.round(Number(attempt.score || 0)),
+    time: attempt.startedAt && attempt.submittedAt
+      ? `${Math.max(1, Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000))}m`
+      : '-'
+  })))
+
+const resolveExamByInput = async () => {
+  const query = examCode.value.trim().toLowerCase()
+  const exams = await listExams()
+
+  if (!query) {
+    return exams.find((exam) => exam.isActive) || exams[0] || null
+  }
+
+  const byId = exams.find((exam) => String(exam.id) === query)
+  if (byId) return byId
+
+  const byCode = exams.find((exam) => String(exam.code || '').toLowerCase() === query)
+  if (byCode) return byCode
+
+  return exams.find((exam) => String(exam.title || '').toLowerCase().includes(query)) || null
+}
+
+const goToWaitingRoom = async () => {
+  isJoining.value = true
+  joinError.value = ''
+  try {
+    const matchedExam = await resolveExamByInput()
+    if (!matchedExam) {
+      joinError.value = 'Không tìm thấy bài thi. Vui lòng kiểm tra mã/tiêu đề và thử lại.'
+      return
+    }
+
+    if (!matchedExam.isActive) {
+      joinError.value = 'Bài thi này chưa được mở.'
+      return
+    }
+
+    router.push({
+      path: '/student/exam-waiting-room',
+      query: {
+        examId: matchedExam.id,
+        examCode: matchedExam.code || '',
+        exam: matchedExam.title || `Bài thi #${matchedExam.id}`,
+        duration: matchedExam.durationMinutes || 60,
+        questions: matchedExam.questionCount || 0,
+        startAt: matchedExam.startTime || '',
+        endAt: matchedExam.endTime || ''
+      }
+    })
+  } catch (error) {
+    joinError.value = error instanceof ApiError ? error.message : 'Không thể vào bài thi lúc này.'
+  } finally {
+    isJoining.value = false
+  }
 }
 
 const goToGeneratePractice = (event) => {
-  const fileName = event.target.files?.[0]?.name || 'Physics_Notes.pdf'
+  const fileName = event.target.files?.[0]?.name || 'Ghi_chu_Vat_ly.pdf'
   router.push({
     path: '/student/generate-practice-test',
     query: { file: fileName }
@@ -193,8 +256,12 @@ const goToExamResult = (item) => {
     path: '/student/exam-result',
     query: {
       exam: item.title,
+      attemptId: item.attemptId,
+      examId: item.examId,
       score: Number.parseInt(item.score, 10),
-      attempted: `Attempted on ${item.date}`
+      attempted: `Đã làm lúc ${item.date}`,
+      time: item.time,
+      accuracy: item.accuracy
     }
   })
 }
@@ -202,6 +269,14 @@ const goToExamResult = (item) => {
 const goToLogin = () => {
   router.push('/login')
 }
+
+onMounted(async () => {
+  try {
+    attempts.value = await listMyAttempts()
+  } catch {
+    attempts.value = []
+  }
+})
 </script>
 
 <style scoped>

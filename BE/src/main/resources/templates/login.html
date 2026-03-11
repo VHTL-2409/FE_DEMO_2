@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 520px; margin: 40px auto; }
+        input, button, select { padding: 8px; margin: 6px 0; width: 100%; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .msg { color: #b00020; min-height: 22px; }
+    </style>
+</head>
+<body>
+<h2>Exam Demo Login</h2>
+<div class="card">
+    <h3>Login</h3>
+    <input id="username" placeholder="username" />
+    <input id="password" type="password" placeholder="password" />
+    <button onclick="login()">Login</button>
+    <div id="loginMsg" class="msg"></div>
+</div>
+
+<div class="card">
+    <h3>Register Student</h3>
+    <input id="regUsername" placeholder="username" />
+    <input id="regEmail" placeholder="email" />
+    <input id="regPassword" type="password" placeholder="password" />
+    <button onclick="registerStudent()">Register</button>
+    <div id="registerMsg" class="msg"></div>
+</div>
+
+<script>
+async function login() {
+    const body = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value
+    };
+
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+        document.getElementById('loginMsg').textContent = data.message || 'Login failed';
+        return;
+    }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('roles', JSON.stringify(data.roles || []));
+
+    if ((data.roles || []).includes('TEACHER') || (data.roles || []).includes('ADMIN')) {
+        window.location.href = '/web/teacher';
+    } else {
+        window.location.href = '/web/student';
+    }
+}
+
+async function registerStudent() {
+    const body = {
+        username: document.getElementById('regUsername').value,
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value
+    };
+
+    const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    document.getElementById('registerMsg').textContent = res.ok ? 'Register success. You can login now.' : (data.message || 'Register failed');
+}
+</script>
+</body>
+</html>

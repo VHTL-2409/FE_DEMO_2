@@ -76,16 +76,16 @@
 
               <form class="space-y-5 animate-fade-up-delay" @submit.prevent="onSubmit">
                 <div class="flex flex-col gap-2">
-                  <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Email Address</label>
+                  <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Username</label>
                   <div class="relative">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      >mail</span
+                      >person</span
                     >
                     <input
-                      v-model="email"
+                      v-model="username"
                       class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                      placeholder="name@university.edu"
-                      type="email"
+                      placeholder="Enter your username"
+                      type="text"
                     />
                   </div>
                 </div>
@@ -127,11 +127,16 @@
                   >
                 </div>
 
+                <p v-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">
+                  {{ errorMessage }}
+                </p>
+
                 <button
                   type="submit"
-                  class="w-full py-3 px-4 bg-primary text-white rounded-lg font-bold text-base hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 shadow-lg shadow-primary/20 transition-all duration-200 flex items-center justify-center gap-2"
+                  :disabled="isSubmitting"
+                  class="w-full py-3 px-4 bg-primary text-white rounded-lg font-bold text-base hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 shadow-lg shadow-primary/20 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 >
-                  <span>Sign In</span>
+                  <span>{{ isSubmitting ? 'Signing In...' : 'Sign In' }}</span>
                   <span class="material-symbols-outlined text-sm">login</span>
                 </button>
               </form>
@@ -203,34 +208,59 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ApiError } from '../../services/apiClient'
+import { login } from '../../services/authService'
 
 const router = useRouter()
 
 const isDark = ref(false)
 const role = ref('Student')
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const remember = ref(false)
 const showPassword = ref(false)
+const isSubmitting = ref(false)
+const errorMessage = ref('')
 
 const goToRegister = () => {
   router.push('/register')
 }
 
-const onSubmit = () => {
-  console.log('Login payload:', {
-    role: role.value,
-    email: email.value,
-    password: password.value,
-    remember: remember.value
-  })
-
-  if (role.value === 'Teacher') {
+const routeByRole = (roles) => {
+  if (roles.includes('TEACHER')) {
     router.push('/teacher/dashboard')
     return
   }
 
   router.push('/student/dashboard')
+}
+
+const onSubmit = async () => {
+  errorMessage.value = ''
+
+  if (!username.value || !password.value) {
+    errorMessage.value = 'Please enter username and password.'
+    return
+  }
+
+  isSubmitting.value = true
+
+  try {
+    const authData = await login({
+      username: username.value.trim(),
+      password: password.value
+    })
+
+    routeByRole(authData?.roles || [])
+  } catch (error) {
+    if (error instanceof ApiError) {
+      errorMessage.value = error.message || 'Login failed. Please try again.'
+    } else {
+      errorMessage.value = 'Unable to connect to server. Please try again.'
+    }
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 

@@ -1,0 +1,33 @@
+package com.example.demo.service;
+
+import com.example.demo.common.ApiException;
+import com.example.demo.domain.entity.RoleName;
+import com.example.demo.domain.entity.User;
+import com.example.demo.repository.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class CurrentUserService {
+
+    private final UserRepository userRepository;
+
+    public CurrentUserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public User requireCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        return userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    public boolean hasRole(User user, RoleName roleName) {
+        return user.getRoles().stream().anyMatch(role -> role.getName() == roleName);
+    }
+}

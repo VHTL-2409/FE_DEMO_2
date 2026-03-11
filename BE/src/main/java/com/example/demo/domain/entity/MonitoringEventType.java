@@ -1,0 +1,9 @@
+package com.example.demo.domain.entity;
+
+public enum MonitoringEventType {
+    TAB_SWITCH,
+    BLUR,
+    EXIT_FULLSCREEN,
+    FAST_SUBMIT,
+    DUPLICATE_IP
+}

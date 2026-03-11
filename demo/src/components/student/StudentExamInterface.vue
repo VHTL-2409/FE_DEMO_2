@@ -4,29 +4,29 @@
       <template #rightActions>
         <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <span class="material-symbols-outlined text-sm leading-none">videocam</span>
-          <span>Camera On</span>
+          <span>Camera bật</span>
           <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
           <span class="material-symbols-outlined text-sm leading-none">wifi</span>
-          <span>Connected</span>
+          <span>Đã kết nối</span>
         </div>
         <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
           <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">01</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Hrs</span>
+            <span class="text-sm font-bold tabular-nums">{{ timerHours }}</span>
+            <span class="text-[9px] uppercase tracking-wider opacity-60">Giờ</span>
           </div>
           <span class="text-base font-light opacity-30">:</span>
           <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">29</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Min</span>
+            <span class="text-sm font-bold tabular-nums">{{ timerMinutes }}</span>
+            <span class="text-[9px] uppercase tracking-wider opacity-60">Phút</span>
           </div>
           <span class="text-base font-light opacity-30">:</span>
           <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">45</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Sec</span>
+            <span class="text-sm font-bold tabular-nums">{{ timerSeconds }}</span>
+            <span class="text-[9px] uppercase tracking-wider opacity-60">Giây</span>
           </div>
         </div>
         <button @click="openSubmitModal" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-bold text-xs transition-colors shadow-lg shadow-primary/20" type="button">
-          Submit Exam
+          Nộp bài
         </button>
       </template>
     </StudentTopHeader>
@@ -36,49 +36,47 @@
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
       <div class="relative flex-1 flex flex-col gap-6">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
+        <div v-if="loadError" class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
+          {{ loadError }}
+        </div>
+
+        <div v-if="currentQuestion" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
           <div class="flex justify-between items-center mb-8">
-            <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Question 12 of 30</span>
-            <button class="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors" type="button">
-              <span class="material-symbols-outlined text-xl">flag</span>
-              <span class="text-sm font-medium">Flag for Review</span>
-            </button>
+            <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Câu {{ currentIndex + 1 }} / {{ questions.length }}</span>
           </div>
           <div class="prose dark:prose-invert max-w-none">
             <h2 class="text-2xl font-semibold leading-relaxed mb-8">
-              According to the dual-process theory, which of the following best describes the difference between System 1 and System 2 thinking?
+              {{ currentQuestion.content }}
             </h2>
           </div>
 
           <div class="space-y-4">
-            <label class="group relative flex items-center p-5 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary/50 cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/30">
-              <input class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" name="exam-option" type="radio" />
-              <span class="ml-4 text-lg font-medium">System 1 is fast and intuitive; System 2 is slow and analytical.</span>
-            </label>
-            <label class="group relative flex items-center p-5 rounded-xl border-2 border-primary bg-primary/5 dark:bg-primary/10 cursor-pointer transition-all">
-              <input checked class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" name="exam-option" type="radio" />
-              <span class="ml-4 text-lg font-medium text-slate-900 dark:text-slate-100">System 1 is responsible for creative tasks; System 2 handles mathematical calculations.</span>
-              <span class="ml-auto material-symbols-outlined text-primary">check_circle</span>
-            </label>
-            <label class="group relative flex items-center p-5 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary/50 cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/30">
-              <input class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" name="exam-option" type="radio" />
-              <span class="ml-4 text-lg font-medium">System 1 handles long-term memory; System 2 handles working memory.</span>
-            </label>
-            <label class="group relative flex items-center p-5 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-primary/50 cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/30">
-              <input class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" name="exam-option" type="radio" />
-              <span class="ml-4 text-lg font-medium">Both systems operate simultaneously with equal metabolic cost.</span>
+            <label
+              v-for="option in currentQuestion.options"
+              :key="option.id"
+              :class="answers[currentQuestion.id] === option.id ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-slate-100 dark:border-slate-800 hover:border-primary/50 bg-slate-50/50 dark:bg-slate-800/30'"
+              class="group relative flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all"
+            >
+              <input
+                :checked="answers[currentQuestion.id] === option.id"
+                class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                :name="`exam-option-${currentQuestion.id}`"
+                type="radio"
+                @change="onSelectAnswer(currentQuestion.id, option.id)"
+              />
+              <span class="ml-4 text-lg font-medium">{{ option.text }}</span>
             </label>
           </div>
         </div>
 
         <div class="flex items-center justify-between py-2 animate-fade-up-delay">
-          <button class="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
+          <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0" type="button">
             <span class="material-symbols-outlined">arrow_back</span>
-            Previous Question
+            Câu trước
           </button>
           <div class="flex gap-4">
-            <button class="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold hover:opacity-90 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
-              Next Question
+            <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold hover:opacity-90 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0" type="button">
+              Câu tiếp theo
               <span class="material-symbols-outlined">arrow_forward</span>
             </button>
           </div>
@@ -88,50 +86,40 @@
       <aside class="relative w-80 flex flex-col gap-6 animate-fade-up-delay">
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
           <div class="flex justify-between items-end mb-3">
-            <h3 class="font-bold text-sm">Exam Progress</h3>
-            <span class="text-sm font-bold text-primary">40%</span>
+            <h3 class="font-bold text-sm">Tiến độ làm bài</h3>
+            <span class="text-sm font-bold text-primary">{{ progressPercent }}%</span>
           </div>
           <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div class="bg-primary h-full w-[40%] rounded-full"></div>
+            <div class="bg-primary h-full rounded-full" :style="{ width: `${progressPercent}%` }"></div>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3">
             <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
               <div class="w-2 h-2 rounded-full bg-primary"></div>
-              Answered (12)
+              Đã làm ({{ answeredCount }})
             </div>
             <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
               <div class="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-              Unanswered (18)
-            </div>
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-              Flagged (3)
+              Chưa làm ({{ unansweredCount }})
             </div>
           </div>
         </div>
 
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex-1 overflow-y-auto">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-sm">Question Navigator</h3>
-            <span class="text-xs text-slate-500 font-medium">30 Total</span>
+            <h3 class="font-bold text-sm">Danh sách câu hỏi</h3>
+            <span class="text-xs text-slate-500 font-medium">Tổng {{ questions.length }} câu</span>
           </div>
           <div class="grid grid-cols-5 gap-2">
-            <button v-for="item in questions" :key="item.number" :class="item.className" class="aspect-square flex items-center justify-center rounded-lg text-xs font-bold relative" type="button">
-              {{ item.number }}
-              <span v-if="item.flagged" class="absolute top-0 right-0 w-1.5 h-1.5 bg-white rounded-full translate-x-1/3 -translate-y-1/3"></span>
+            <button
+              v-for="(question, idx) in questions"
+              :key="question.id"
+              :class="questionButtonClass(idx)"
+              class="aspect-square flex items-center justify-center rounded-lg text-xs font-bold relative"
+              type="button"
+              @click="selectQuestion(idx)"
+            >
+              {{ idx + 1 }}
             </button>
-          </div>
-        </div>
-
-        <div class="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-2xl p-4">
-          <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-primary mt-0.5">verified_user</span>
-            <div>
-              <p class="text-xs font-bold text-slate-900 dark:text-slate-100">Exam Integrity</p>
-              <p class="text-[11px] text-slate-500 leading-relaxed mt-1">
-                Window focus is being monitored. Your session is protected by proctoring software.
-              </p>
-            </div>
           </div>
         </div>
       </aside>
@@ -139,7 +127,7 @@
 
     <footer class="p-4 border-t border-slate-200 dark:border-slate-800 text-center">
       <p class="text-xs text-slate-400 font-medium">
-        Need help? Contact exam support at <span class="text-primary cursor-pointer hover:underline">support@edu-portal.com</span>
+        Cần hỗ trợ? Liên hệ bộ phận thi tại <span class="text-primary cursor-pointer hover:underline">support@edu-portal.com</span>
       </p>
     </footer>
 
@@ -163,8 +151,8 @@
           <button @click="closeSubmitModal" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800" type="button">
             Quay lại làm bài
           </button>
-          <button @click="submitExam" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90" type="button">
-            Xác nhận nộp
+          <button :disabled="isSubmitting" @click="submitExamAction" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70" type="button">
+            {{ isSubmitting ? 'Đang nộp...' : 'Xác nhận nộp' }}
           </button>
         </div>
       </div>
@@ -173,7 +161,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
+import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
@@ -181,12 +172,63 @@ const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
 
-const examTitle = computed(() => route.query.exam || 'Advanced Psychology Midterm')
+const examTitle = computed(() => route.query.exam || 'Giữa kỳ Tâm lý học nâng cao')
+const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
+const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const showSubmitModal = ref(false)
+const isSubmitting = ref(false)
+const loadError = ref('')
+const questions = ref([])
+const answers = ref({})
+const currentIndex = ref(0)
+const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds || ''), 10) || 0)
+let timerId = null
 
-const unansweredCount = computed(() =>
-  questions.filter((item) => item.className.includes('bg-slate-100')).length
-)
+const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
+const answeredCount = computed(() => Object.values(answers.value).filter(Boolean).length)
+const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
+const progressPercent = computed(() => {
+  if (!questions.value.length) return 0
+  return Math.round((answeredCount.value / questions.value.length) * 100)
+})
+const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 3600)).padStart(2, '0'))
+const timerMinutes = computed(() => String(Math.floor((remainingSeconds.value % 3600) / 60)).padStart(2, '0'))
+const timerSeconds = computed(() => String(remainingSeconds.value % 60).padStart(2, '0'))
+
+const selectQuestion = (index) => {
+  currentIndex.value = index
+}
+
+const goPrevious = () => {
+  if (currentIndex.value > 0) currentIndex.value -= 1
+}
+
+const goNext = () => {
+  if (currentIndex.value < questions.value.length - 1) currentIndex.value += 1
+}
+
+const persistDraft = async () => {
+  if (!attemptId.value) return
+  const payload = Object.entries(answers.value).map(([questionId, selectedAnswer]) => ({
+    questionId: Number(questionId),
+    selectedAnswer
+  }))
+  if (!payload.length) return
+  await saveDraftAnswers(attemptId.value, payload)
+}
+
+const onSelectAnswer = async (questionId, selectedAnswer) => {
+  answers.value = {
+    ...answers.value,
+    [questionId]: selectedAnswer
+  }
+
+  try {
+    await persistDraft()
+  } catch {
+    // keep local state
+  }
+}
 
 const openSubmitModal = () => {
   showSubmitModal.value = true
@@ -196,46 +238,91 @@ const closeSubmitModal = () => {
   showSubmitModal.value = false
 }
 
-const submitExam = () => {
-  showSubmitModal.value = false
-  router.push({
-    path: '/student/submission-confirmation',
-    query: { exam: examTitle.value }
-  })
+const submitExamAction = async () => {
+  if (!attemptId.value) return
+
+  isSubmitting.value = true
+  try {
+    const payload = Object.entries(answers.value)
+      .filter(([, selectedAnswer]) => Boolean(selectedAnswer))
+      .map(([questionId, selectedAnswer]) => ({
+        questionId: Number(questionId),
+        selectedAnswer
+      }))
+
+    const result = await submitAttempt(attemptId.value, payload)
+    showSubmitModal.value = false
+    router.push({
+      path: '/student/submission-confirmation',
+      query: {
+        exam: examTitle.value,
+        attemptId: attemptId.value,
+        score: Math.round(Number(result?.score || 0)),
+        submittedAt: result?.submittedAt || ''
+      }
+    })
+  } catch (error) {
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể nộp bài lúc này.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
-const questions = [
-  { number: 1, className: 'bg-primary text-white', flagged: false },
-  { number: 2, className: 'bg-primary text-white', flagged: false },
-  { number: 3, className: 'bg-primary text-white', flagged: false },
-  { number: 4, className: 'bg-primary text-white', flagged: false },
-  { number: 5, className: 'bg-amber-400 text-white', flagged: true },
-  { number: 6, className: 'bg-primary text-white', flagged: false },
-  { number: 7, className: 'bg-primary text-white', flagged: false },
-  { number: 8, className: 'bg-primary text-white', flagged: false },
-  { number: 9, className: 'bg-primary text-white', flagged: false },
-  { number: 10, className: 'bg-primary text-white', flagged: false },
-  { number: 11, className: 'bg-primary text-white', flagged: false },
-  { number: 12, className: 'border-2 border-primary text-primary shadow-inner', flagged: false },
-  { number: 13, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 14, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 15, className: 'bg-amber-400 text-white', flagged: true },
-  { number: 16, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 17, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 18, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 19, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 20, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 21, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 22, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 23, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 24, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 25, className: 'bg-amber-400 text-white', flagged: true },
-  { number: 26, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 27, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 28, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 29, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false },
-  { number: 30, className: 'bg-slate-100 dark:bg-slate-800 text-slate-400', flagged: false }
-]
+const questionButtonClass = (index) => {
+  const question = questions.value[index]
+  if (!question) return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+
+  if (index === currentIndex.value) {
+    return 'border-2 border-primary text-primary shadow-inner'
+  }
+
+  if (answers.value[question.id]) {
+    return 'bg-primary text-white'
+  }
+
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+}
+
+onMounted(async () => {
+  loadError.value = ''
+  try {
+    if (!examId.value || !attemptId.value) {
+      loadError.value = 'Thiếu thông tin bài thi/lượt làm bài.'
+      return
+    }
+
+    const [questionList, draftData] = await Promise.all([
+      listExamQuestions(examId.value),
+      getDraftAnswers(attemptId.value)
+    ])
+
+    questions.value = questionList.map((item) => ({
+      id: item.id,
+      content: item.content,
+      options: parseQuestionOptions(item.options)
+    }))
+
+    answers.value = (draftData?.answers || []).reduce((acc, answer) => {
+      acc[answer.questionId] = answer.selectedAnswer
+      return acc
+    }, {})
+
+    if (remainingSeconds.value <= 0 && route.query.deadlineAt) {
+      const deadlineMs = new Date(String(route.query.deadlineAt)).getTime()
+      remainingSeconds.value = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000))
+    }
+
+    timerId = window.setInterval(() => {
+      if (remainingSeconds.value > 0) remainingSeconds.value -= 1
+    }, 1000)
+  } catch (error) {
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải nội dung bài thi.'
+  }
+})
+
+onUnmounted(() => {
+  if (timerId) window.clearInterval(timerId)
+})
 </script>
 
 <style scoped>

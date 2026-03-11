@@ -1,0 +1,74 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082').replace(/\/$/, '')
+
+const getAuthToken = () => localStorage.getItem('auth_token')
+
+const parseJsonSafe = async (response) => {
+  const text = await response.text()
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+const resolveErrorMessage = (payload, fallbackMessage) => {
+  if (!payload) return fallbackMessage
+  if (typeof payload.message === 'string' && payload.message.trim()) return payload.message
+  if (typeof payload.error === 'string' && payload.error.trim()) return payload.error
+  return fallbackMessage
+}
+
+export class ApiError extends Error {
+  constructor(message, status, payload = null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
+  }
+}
+
+export const apiRequest = async (path, options = {}) => {
+  const token = getAuthToken()
+  const method = options.method || 'GET'
+  const headers = {
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(options.headers || {})
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    method,
+    headers
+  })
+
+  const payload = await parseJsonSafe(response)
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+
+    throw new ApiError(resolveErrorMessage(payload, 'Request failed'), response.status, payload)
+  }
+
+  return payload
+}
+
+export const unwrapApiData = (payload) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data
+  }
+  return payload
+}
+
+export { API_BASE_URL }

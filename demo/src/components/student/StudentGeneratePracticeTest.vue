@@ -12,13 +12,13 @@
             <div class="flex items-center animate-fade-up">
               <button @click="goBack" class="flex items-center gap-2 text-primary font-medium hover:underline text-sm" type="button">
                 <span class="material-symbols-outlined text-sm">arrow_back</span>
-                Back to Dashboard
+                Quay lại trang chủ
               </button>
             </div>
 
             <div class="flex flex-col gap-2 animate-fade-up">
-              <h1 class="text-slate-900 dark:text-slate-100 text-3xl font-bold leading-tight">Configure Your Test</h1>
-              <p class="text-slate-500 dark:text-slate-400 text-base font-normal">We've processed your file. Now, customize your practice session to match your learning goals.</p>
+              <h1 class="text-slate-900 dark:text-slate-100 text-3xl font-bold leading-tight">Cấu hình bài luyện tập</h1>
+              <p class="text-slate-500 dark:text-slate-400 text-base font-normal">Tệp của bạn đã được xử lý. Hãy tùy chỉnh phiên luyện tập theo mục tiêu học tập của bạn.</p>
             </div>
 
             <div class="p-1 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 animate-fade-up-delay">
@@ -28,11 +28,11 @@
                     <span class="material-symbols-outlined text-3xl">description</span>
                   </div>
                   <div class="flex flex-col gap-1">
-                    <p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">Uploaded Content</p>
+                    <p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">Nội dung đã tải lên</p>
                     <p class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight">{{ fileName }}</p>
                     <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
                       <span class="material-symbols-outlined text-sm">auto_awesome</span>
-                      <span>15 pages detected • 4 Key Chapters identified</span>
+                      <span>Đã phát hiện 15 trang • Xác định 4 chương chính</span>
                     </div>
                   </div>
                 </div>
@@ -40,10 +40,10 @@
             </div>
 
             <div class="flex flex-col gap-8 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-primary/5 animate-fade-up-delay">
-              <h3 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight border-b border-primary/10 pb-4">Test Settings</h3>
+              <h3 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight border-b border-primary/10 pb-4">Thiết lập bài kiểm tra</h3>
 
               <div class="space-y-2">
-                <label class="text-slate-900 dark:text-slate-100 text-base font-semibold">Number of Questions</label>
+                <label class="text-slate-900 dark:text-slate-100 text-base font-semibold">Số lượng câu hỏi</label>
                 <input
                   v-model.number="questionCount"
                   type="number"
@@ -51,14 +51,14 @@
                   max="50"
                   class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                 />
-                <p class="text-xs text-slate-500 dark:text-slate-400">Choose from 5 to 50 questions.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Chọn từ 5 đến 50 câu hỏi.</p>
               </div>
 
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
                   <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">timer</span>
-                    Time Limit (Minutes)
+                    Giới hạn thời gian (phút)
                   </label>
                   <span class="text-primary font-bold">{{ timeLimit }} min</span>
                 </div>
@@ -69,14 +69,14 @@
                 <div class="space-y-2">
                   <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">calendar_today</span>
-                    Start Date &amp; Time
+                    Ngày &amp; giờ bắt đầu
                   </label>
                   <input v-model="startAt" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="datetime-local" />
                 </div>
                 <div class="space-y-2">
                   <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">event_busy</span>
-                    End Date &amp; Time
+                    Ngày &amp; giờ kết thúc
                   </label>
                   <input v-model="endAt" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="datetime-local" />
                 </div>
@@ -86,17 +86,17 @@
             <div class="flex flex-col gap-4 mt-4 animate-fade-up-delay">
               <button @click="startPractice" class="flex w-full items-center justify-center gap-3 rounded-xl h-14 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all" type="button">
                 <span class="material-symbols-outlined">rocket_launch</span>
-                Generate &amp; Start Practice
+                Tạo &amp; bắt đầu luyện tập
               </button>
               <p class="text-center text-slate-400 text-xs">
-                By starting the test, AI will generate unique questions based on your specific document content.
+                Khi bắt đầu, AI sẽ tạo các câu hỏi riêng dựa trên nội dung tài liệu của bạn.
               </p>
             </div>
           </div>
         </main>
 
         <footer class="py-10 text-center text-slate-400 text-sm">
-          <p>© 2024 StudyPrep AI. All rights reserved.</p>
+          <p>© 2024 StudyPrep AI. Bảo lưu mọi quyền.</p>
         </footer>
       </div>
     </div>
@@ -116,7 +116,7 @@ const timeLimit = ref(30)
 const startAt = ref('')
 const endAt = ref('')
 
-const fileName = computed(() => route.query.file || 'Physics_Notes.pdf')
+const fileName = computed(() => route.query.file || 'Ghi_chu_Vat_ly.pdf')
 
 const goBack = () => {
   router.push('/student/dashboard')
@@ -125,7 +125,7 @@ const goBack = () => {
 const startPractice = () => {
   router.push({
     path: '/student/exam-interface',
-    query: { exam: `Practice Test - ${fileName.value}` }
+    query: { exam: `Bài luyện tập - ${fileName.value}` }
   })
 }
 </script>

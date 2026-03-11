@@ -11,16 +11,16 @@
           <div class="relative max-w-5xl mx-auto space-y-8">
             <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-up">
               <div class="space-y-1">
-                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Self-Study Results</h1>
-                <p class="text-slate-500 dark:text-slate-400">Track and review your previous learning sessions performance.</p>
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Kết quả tự học</h1>
+                <p class="text-slate-500 dark:text-slate-400">Theo dõi và xem lại hiệu suất các phiên học trước đây của bạn.</p>
               </div>
             </div>
 
             <div class="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-px animate-fade-up-delay">
-              <button class="border-b-2 border-primary pb-3 px-2 text-sm font-semibold text-primary" type="button">All Sessions</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Mathematics</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Sciences</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Languages</button>
+              <button class="border-b-2 border-primary pb-3 px-2 text-sm font-semibold text-primary" type="button">Tất cả phiên</button>
+              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Toán học</button>
+              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Khoa học</button>
+              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Ngôn ngữ</button>
             </div>
 
             <div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm animate-fade-up-delay">
@@ -28,10 +28,10 @@
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Subject</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Score</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Time Taken</th>
+                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Môn học</th>
+                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày thi</th>
+                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm</th>
+                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Thời gian làm bài</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -57,7 +57,7 @@
               </div>
 
               <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                <span class="text-sm text-slate-500 dark:text-slate-400">Showing 1 to 5 of 24 sessions</span>
+                <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1 đến 5 trong 24 phiên</span>
                 <div class="flex items-center gap-2">
                   <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
                     <span class="material-symbols-outlined">chevron_left</span>
@@ -75,7 +75,7 @@
         </main>
 
         <footer class="mt-auto px-6 md:px-20 lg:px-40 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
-          <p class="text-slate-500 dark:text-slate-400 text-sm">© 2023 StudyPortal. All study records are private and secured.</p>
+          <p class="text-slate-500 dark:text-slate-400 text-sm">© 2023 StudyPortal. Mọi hồ sơ học tập đều riêng tư và được bảo mật.</p>
         </footer>
       </div>
     </div>
@@ -83,67 +83,64 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { listMyAttempts } from '../../services/attemptService'
 import { useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
+const attempts = ref([])
+
+const sessions = computed(() => attempts.value
+  .slice()
+  .sort((a, b) => {
+    const aTime = new Date(a.submittedAt || a.startedAt || 0).getTime()
+    const bTime = new Date(b.submittedAt || b.startedAt || 0).getTime()
+    return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
+  })
+  .map((attempt) => {
+    const startedAt = attempt.startedAt ? new Date(attempt.startedAt) : null
+    const submittedAt = attempt.submittedAt ? new Date(attempt.submittedAt) : null
+    const durationMinutes = startedAt && submittedAt
+      ? Math.max(1, Math.round((submittedAt.getTime() - startedAt.getTime()) / 60000))
+      : 0
+
+    return {
+      subject: attempt.examTitle || `Bài thi #${attempt.examId}`,
+      date: submittedAt ? submittedAt.toLocaleDateString() : '-',
+      score: Math.round(Number(attempt.score || 0)),
+      timeTaken: durationMinutes ? `${durationMinutes}m` : '-',
+      icon: 'menu_book',
+      iconClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+      attemptId: attempt.id,
+      examId: attempt.examId,
+      attemptedAt: submittedAt ? submittedAt.toLocaleString() : '-'
+    }
+  }))
 
 const goToExamResult = (session) => {
   router.push({
     path: '/student/exam-result',
     query: {
       exam: session.subject,
+      attemptId: session.attemptId,
+      examId: session.examId,
       score: session.score,
-      attempted: `Attempted on ${session.date}`,
-      time: session.timeTaken
+      attempted: `Đã làm lúc ${session.attemptedAt}`,
+      time: session.timeTaken,
+      accuracy: session.score
     }
   })
 }
 
-const sessions = [
-  {
-    subject: 'Advanced Calculus',
-    date: 'Oct 24, 2023',
-    score: 85,
-    timeTaken: '45m 12s',
-    icon: 'calculate',
-    iconClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-  },
-  {
-    subject: 'Quantum Physics',
-    date: 'Oct 22, 2023',
-    score: 72,
-    timeTaken: '1h 05m',
-    icon: 'science',
-    iconClass: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-  },
-  {
-    subject: 'Modern World History',
-    date: 'Oct 20, 2023',
-    score: 90,
-    timeTaken: '32m 45s',
-    icon: 'history_edu',
-    iconClass: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-  },
-  {
-    subject: 'Molecular Biology',
-    date: 'Oct 18, 2023',
-    score: 65,
-    timeTaken: '58m 20s',
-    icon: 'biotech',
-    iconClass: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-  },
-  {
-    subject: 'English Literature',
-    date: 'Oct 15, 2023',
-    score: 88,
-    timeTaken: '40m 10s',
-    icon: 'menu_book',
-    iconClass: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+onMounted(async () => {
+  try {
+    attempts.value = await listMyAttempts()
+  } catch {
+    attempts.value = []
   }
-]
+})
 </script>
 
 <style scoped>

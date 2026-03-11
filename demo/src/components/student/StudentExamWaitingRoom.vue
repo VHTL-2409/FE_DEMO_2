@@ -15,30 +15,34 @@
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
-                Waiting Room Active
+                Phòng chờ đang hoạt động
               </div>
-              <h1 class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Waiting for Exam to Start</h1>
-              <p class="text-slate-600 dark:text-slate-400 text-lg font-normal leading-normal">The proctor will start the session shortly. Please remain on this screen and ensure your hardware is ready.</p>
+              <h1 class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Đang chờ bài thi bắt đầu</h1>
+              <p class="text-slate-600 dark:text-slate-400 text-lg font-normal leading-normal">Giám thị sẽ mở phiên thi trong giây lát. Vui lòng ở lại màn hình này và đảm bảo thiết bị đã sẵn sàng.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-up-delay">
               <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                 <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary">info</span>
-                  Exam Details
+                  Thông tin bài thi
                 </h2>
                 <div class="space-y-4">
                   <div class="flex justify-between border-b border-primary/5 pb-2">
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Exam Title</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Tên bài thi</p>
                     <p class="text-slate-900 dark:text-white text-sm font-semibold">{{ examTitle }}</p>
                   </div>
                   <div class="flex justify-between border-b border-primary/5 pb-2">
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Duration</p>
-                    <p class="text-slate-900 dark:text-white text-sm font-semibold">60 mins</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Mã bài thi</p>
+                    <p class="text-slate-900 dark:text-white text-sm font-semibold">{{ examCode }}</p>
+                  </div>
+                  <div class="flex justify-between border-b border-primary/5 pb-2">
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Thời lượng</p>
+                    <p class="text-slate-900 dark:text-white text-sm font-semibold">{{ examDuration }} phút</p>
                   </div>
                   <div class="flex justify-between">
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Total Questions</p>
-                    <p class="text-slate-900 dark:text-white text-sm font-semibold">30 Questions</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Tổng số câu hỏi</p>
+                    <p class="text-slate-900 dark:text-white text-sm font-semibold">{{ totalQuestions }} câu</p>
                   </div>
                 </div>
               </div>
@@ -46,7 +50,7 @@
               <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
                 <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary">check_circle</span>
-                  System Check
+                  Kiểm tra hệ thống
                 </h2>
                 <div class="space-y-4">
                   <div class="flex items-center justify-between">
@@ -54,21 +58,21 @@
                       <span class="material-symbols-outlined text-green-600 dark:text-green-400">videocam</span>
                       <span class="text-sm font-medium">Camera</span>
                     </div>
-                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Ready</span>
+                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Sẵn sàng</span>
                   </div>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                       <span class="material-symbols-outlined text-green-600 dark:text-green-400">mic</span>
-                      <span class="text-sm font-medium">Microphone</span>
+                      <span class="text-sm font-medium">Micro</span>
                     </div>
-                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Ready</span>
+                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Sẵn sàng</span>
                   </div>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                       <span class="material-symbols-outlined text-green-600 dark:text-green-400">wifi</span>
-                      <span class="text-sm font-medium">Internet Connection</span>
+                      <span class="text-sm font-medium">Kết nối Internet</span>
                     </div>
-                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Stable</span>
+                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Ổn định</span>
                   </div>
                 </div>
               </div>
@@ -77,50 +81,45 @@
             <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fade-up-delay">
               <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">gavel</span>
-                Exam Rules
+                Quy định phòng thi
               </h2>
               <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <li class="flex items-start gap-3">
                   <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Switching tabs or windows will result in automatic disqualification.</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Chuyển tab hoặc cửa sổ sẽ bị tính là vi phạm và có thể bị hủy kết quả.</p>
                 </li>
                 <li class="flex items-start gap-3">
                   <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Your camera and microphone must remain on for the entire duration.</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Camera và micro phải luôn bật trong suốt thời gian làm bài.</p>
                 </li>
                 <li class="flex items-start gap-3">
                   <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">No external materials, books, or notes are permitted on your desk.</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Không được để tài liệu, sách hoặc ghi chú không cho phép trên bàn làm bài.</p>
                 </li>
                 <li class="flex items-start gap-3">
                   <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Ensure you are in a quiet, well-lit environment alone.</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Hãy đảm bảo bạn ở một mình trong không gian yên tĩnh và đủ ánh sáng.</p>
                 </li>
               </ul>
             </div>
 
             <div class="flex flex-col items-center gap-6 py-8 border-t border-primary/10 dark:border-primary/20 animate-fade-up-delay">
               <div class="text-center">
-                <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 uppercase tracking-widest font-bold">Time until start (Est.)</p>
-                <div class="text-5xl font-black text-primary flex gap-4">
-                  <div class="flex flex-col items-center">
-                    <span>04</span>
-                    <span class="text-[10px] uppercase text-slate-400">min</span>
-                  </div>
-                  <span>:</span>
-                  <div class="flex flex-col items-center">
-                    <span>52</span>
-                    <span class="text-[10px] uppercase text-slate-400">sec</span>
-                  </div>
-                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 uppercase tracking-widest font-bold">Thời gian đến lúc bắt đầu</p>
+                <div class="text-5xl font-black text-primary">{{ countdownLabel }}</div>
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Bắt đầu lúc: {{ startAtDisplay }}</p>
               </div>
               <div class="w-full max-w-md space-y-4">
-                <button @click="goToExamInterface" class="w-full py-4 px-6 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors" type="button">
+                <button :disabled="isStarting || !canStart" @click="goToExamInterface" class="w-full py-4 px-6 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed" type="button">
                   <span class="material-symbols-outlined">play_arrow</span>
-                  Start Exam
+                  {{ isStarting ? 'Đang bắt đầu...' : 'Bắt đầu làm bài' }}
                 </button>
-                <p class="text-center text-slate-500 dark:text-slate-400 text-sm italic">
-                  The proctor will start the exam shortly. The button will be enabled once the session begins.
+                <p v-if="startError" class="text-center text-xs text-rose-600">{{ startError }}</p>
+                <p v-else-if="isEnded" class="text-center text-rose-600 text-sm italic">
+                  Bài thi đã kết thúc.
+                </p>
+                <p v-else-if="!canStart" class="text-center text-slate-500 dark:text-slate-400 text-sm italic">
+                  Bài thi chưa bắt đầu.
                 </p>
               </div>
             </div>
@@ -128,10 +127,10 @@
         </main>
 
         <footer class="p-6 text-center text-slate-400 text-xs">
-          © 2024 ExamPortal Security Suite. All rights reserved.
+          © 2024 Bộ công cụ bảo mật ExamPortal. Bảo lưu mọi quyền.
           <br>
-          Need help?
-          <button type="button" class="text-primary hover:underline">Contact Support</button>
+          Cần hỗ trợ?
+          <button type="button" class="text-primary hover:underline">Liên hệ hỗ trợ</button>
         </footer>
       </div>
     </div>
@@ -139,21 +138,124 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { startAttempt } from '../../services/attemptService'
+import { getExamDetail } from '../../services/examService'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
-const examTitle = computed(() => route.query.exam || 'Advanced Psychology Midterm')
+const isStarting = ref(false)
+const startError = ref('')
+const nowMs = ref(Date.now())
+const examDetail = ref(null)
+let timerId = null
+let examRefreshTimerId = null
 
-const goToExamInterface = () => {
-  router.push({
-    path: '/student/exam-interface',
-    query: { exam: examTitle.value }
-  })
+const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
+const examCode = computed(() => String(route.query.examCode || '-'))
+const examTitle = computed(() => examDetail.value?.title || route.query.exam || 'Giữa kỳ Tâm lý học nâng cao')
+const examDuration = computed(() => Number.parseInt(String(examDetail.value?.durationMinutes ?? route.query.duration ?? ''), 10) || 60)
+const totalQuestions = computed(() => Number.parseInt(String(examDetail.value?.questionCount ?? route.query.questions ?? ''), 10) || 0)
+const startAtRaw = computed(() => String(examDetail.value?.startTime || route.query.startAt || ''))
+const endAtRaw = computed(() => String(examDetail.value?.endTime || route.query.endAt || ''))
+const startAtDate = computed(() => {
+  if (!startAtRaw.value) return null
+  const date = new Date(startAtRaw.value)
+  return Number.isNaN(date.getTime()) ? null : date
+})
+const endAtDate = computed(() => {
+  if (!endAtRaw.value) return null
+  const date = new Date(endAtRaw.value)
+  return Number.isNaN(date.getTime()) ? null : date
+})
+const isEnded = computed(() => endAtDate.value ? nowMs.value > endAtDate.value.getTime() : false)
+const canStart = computed(() => {
+  if (isEnded.value) return false
+  return !startAtDate.value || nowMs.value >= startAtDate.value.getTime()
+})
+const startAtDisplay = computed(() => startAtDate.value ? startAtDate.value.toLocaleString() : '-')
+const countdownLabel = computed(() => {
+  if (isEnded.value) return 'EXPIRED'
+  if (!startAtDate.value) return '00:00'
+  const diffMs = startAtDate.value.getTime() - nowMs.value
+  if (diffMs <= 0) return '00:00'
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+
+const refreshExamDetail = async () => {
+  if (!examId.value) return
+  try {
+    examDetail.value = await getExamDetail(examId.value)
+  } catch {
+    // keep fallback query data if refresh fails
+  }
 }
+
+const goToExamInterface = async () => {
+  startError.value = ''
+
+  if (!examId.value) {
+    startError.value = 'Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.'
+    return
+  }
+
+  await refreshExamDetail()
+
+  if (isEnded.value) {
+    startError.value = 'Bài thi đã kết thúc.'
+    return
+  }
+
+  if (!canStart.value) {
+    startError.value = 'Bài thi chưa bắt đầu.'
+    return
+  }
+
+  isStarting.value = true
+  try {
+    const started = await startAttempt(examId.value)
+    router.push({
+      path: '/student/exam-interface',
+      query: {
+        exam: examTitle.value,
+        examId: examId.value,
+        attemptId: started.attemptId,
+        deadlineAt: started.deadlineAt,
+        remainingSeconds: started.remainingSeconds
+      }
+    })
+  } catch (error) {
+    startError.value = error instanceof ApiError ? error.message : 'Không thể bắt đầu bài thi lúc này.'
+  } finally {
+    isStarting.value = false
+  }
+}
+
+onMounted(async () => {
+  await refreshExamDetail()
+  timerId = window.setInterval(() => {
+    nowMs.value = Date.now()
+  }, 1000)
+  examRefreshTimerId = window.setInterval(() => {
+    refreshExamDetail()
+  }, 15000)
+})
+
+onUnmounted(() => {
+  if (timerId) {
+    window.clearInterval(timerId)
+  }
+  if (examRefreshTimerId) {
+    window.clearInterval(examRefreshTimerId)
+  }
+})
 </script>
 
 <style scoped>
