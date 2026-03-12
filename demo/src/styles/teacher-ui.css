@@ -1,0 +1,91 @@
+.font-display {
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes teacherFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes teacherFloatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes teacherFloatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: teacherFadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: teacherFadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: teacherFloatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: teacherFloatDelay 8s ease-in-out infinite;
+}
+
+.teacher-page-shell {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .teacher-page-shell {
+    padding: 2rem;
+  }
+}
+
+.teacher-card {
+  background: white;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+.dark .teacher-card {
+  background: rgb(15 23 42);
+  border-color: rgb(30 41 59);
+}
+
+.teacher-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+}
+
+.dark .teacher-section-title {
+  color: rgb(241 245 249);
+}

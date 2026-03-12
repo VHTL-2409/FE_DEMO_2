@@ -272,12 +272,19 @@ const syncAttemptStatus = async () => {
   }
 }
 
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return ''
+  return String(window.localStorage.getItem('auth_token') || '')
+}
+
 const connectProctorRealtime = () => {
   if (!attemptId.value) return
 
   const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
+  const token = getAuthToken()
   stompClient = new Client({
     reconnectDelay: 5000,
+    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     webSocketFactory: () => new SockJS(wsUrl)
   })
 
@@ -296,6 +303,7 @@ const connectProctorRealtime = () => {
         // ignore malformed realtime payload
       }
     })
+
   }
 
   stompClient.activate()

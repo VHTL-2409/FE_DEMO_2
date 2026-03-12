@@ -3,55 +3,10 @@
     :class="isDark ? 'dark' : 'light'"
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen"
   >
-    <div class="min-h-screen flex-col">
-      <header class="sticky top-0 z-50 w-full bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex justify-between items-center h-16">
-            <div class="flex items-center gap-8">
-              <div class="flex flex-col">
-                <span class="text-primary dark:text-slate-100 text-lg font-bold leading-none">Bảng điều khiển giáo viên</span>
-                <span class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                  Hệ thống thi trực tuyến
-                </span>
-              </div>
-              <nav class="hidden md:flex items-center gap-1">
-                <RouterLink class="px-4 py-2 rounded-lg text-sm text-primary border border-primary/10" to="/teacher/dashboard">
-                  Trang chủ
-                </RouterLink>
-                <RouterLink class="px-4 py-2 rounded-lg text-sm text-primary border border-primary/10" to="/teacher/exams">
-                  Tạo đề thi
-                </RouterLink>
-                <RouterLink
-                  class="px-4 py-2 rounded-lg text-sm text-primary border border-primary/10" to="/teacher/live-monitoring"
-                >
-                  Giám sát trực tiếp
-                </RouterLink>
-              </nav>
-            </div>
-            <div class="flex items-center gap-4">
-              <button class="p-2 text-slate-400 hover:text-primary transition-colors" type="button">
-                <span class="material-symbols-outlined">notifications</span>
-              </button>
-              <button
-                type="button"
-                @click="goToLogin"
-                class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
-              >
-                Đăng xuất
-              </button>
-              <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
-                <div class="text-right hidden sm:block">
-                  <p class="text-sm font-bold">GS. John Doe</p>
-                  <p class="text-[10px] text-slate-500 font-medium uppercase">Khoa học máy tính</p>
-                </div>
-                <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">JD</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div class="layout-container flex h-full grow flex-col">
+      <TeacherTopHeader active-section="dashboard" />
 
-      <main class="flex-1 relative p-6 md:p-10">
+      <main class="teacher-page-shell max-w-6xl">
         <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
         <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
         <div class="max-w-6xl mx-auto relative">
@@ -190,6 +145,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
@@ -253,10 +209,6 @@ const exams = [
   }
 ]
 
-const goToLogin = () => {
-  router.push('/login')
-}
-
 const openExamResult = (exam) => {
   if (exam.disabled || !exam.resultPath) {
     return
@@ -269,55 +221,3 @@ const openExamResult = (exam) => {
 }
 </script>
 
-<style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
-}
-</style>

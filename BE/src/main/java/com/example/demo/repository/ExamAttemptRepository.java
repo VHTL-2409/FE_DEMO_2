@@ -24,6 +24,22 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);
 
+    @Query("""
+            SELECT ea
+            FROM ExamAttempt ea
+            WHERE ea.exam = :exam
+              AND ea.clientIp = :clientIp
+              AND ea.id <> :attemptId
+              AND ea.student.id <> :studentId
+              AND ea.status IN :statuses
+            """)
+    List<ExamAttempt> findDuplicateIpCounterparts(
+            @Param("exam") Exam exam,
+            @Param("clientIp") String clientIp,
+            @Param("attemptId") Long attemptId,
+            @Param("studentId") Long studentId,
+            @Param("statuses") List<AttemptStatus> statuses);
+
     @Query(value = """
             SELECT ea
             FROM ExamAttempt ea LEFT JOIN FETCH ea.student

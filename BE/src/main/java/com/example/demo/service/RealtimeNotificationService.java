@@ -39,4 +39,14 @@ public class RealtimeNotificationService {
             message
         );
     }
+
+    public void notifyDraftSaved(ExamAttempt attempt, Integer answeredCount, Long remainingSeconds) {
+        teacherAlertGateway.publishDraftSaved(
+            attempt.getExam().getId(),
+            attempt.getId(),
+            attempt.getStudent().getUsername(),
+            answeredCount,
+            remainingSeconds
+        );
+    }
 }

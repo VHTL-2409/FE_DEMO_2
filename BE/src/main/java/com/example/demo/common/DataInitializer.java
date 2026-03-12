@@ -119,7 +119,7 @@ public class DataInitializer implements CommandLineRunner {
         jdbcTemplate.execute("""
             ALTER TABLE exam_attempts
             ADD CONSTRAINT exam_attempts_status_check
-            CHECK (status IN ('IN_PROGRESS', 'SUBMITTED', 'AUTO_SUBMITTED'))
+            CHECK (status IN ('IN_PROGRESS', 'SUBMITTED', 'AUTO_SUBMITTED', 'STOPPED'))
             """);
     }
 }

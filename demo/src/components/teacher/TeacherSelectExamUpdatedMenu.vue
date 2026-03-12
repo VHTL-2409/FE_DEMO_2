@@ -3,13 +3,13 @@
     <div class="layout-container flex h-full grow flex-col">
       <TeacherTopHeader active-section="monitoring" />
 
-      <main class="relative flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full overflow-hidden">
+      <main class="teacher-page-shell max-w-7xl">
         <div class="pointer-events-none absolute -top-16 -left-20 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
         <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
         <div class="mb-8 relative animate-fade-up">
-          <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Chọn đề thi đang hoạt động</h1>
-          <p class="text-slate-500 dark:text-slate-400">Theo dõi và quản lý các bài thi đang diễn ra theo thời gian thực.</p>
+          <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Chọn đề thi đang diễn ra</h1>
+          <p class="text-slate-500 dark:text-slate-400">Chỉ hiển thị các đề thi đang trong thời gian thi để giám sát theo thời gian thực.</p>
         </div>
 
         <div class="relative flex flex-col md:flex-row gap-4 mb-8 animate-fade-up-delay">
@@ -39,7 +39,7 @@
           </div>
 
           <div v-else-if="!filteredExams.length" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
-            Không tìm thấy đề thi phù hợp.
+            Không có đề thi nào đang diễn ra.
           </div>
 
           <div v-for="exam in filteredExams" :key="exam.id" :class="exam.cardBorder" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-primary/5 flex flex-col group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-l-4">
@@ -91,21 +91,11 @@
         </div>
 
         <div class="relative mt-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm animate-fade-up-delay">
-          <div class="flex items-center gap-6">
-            <div class="flex items-center gap-2">
-              <span class="size-3 rounded-full bg-green-500"></span>
-              <span class="text-sm font-medium">2 đề thi đang hoạt động</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="size-3 rounded-full bg-blue-500"></span>
-              <span class="text-sm font-medium">1 đề thi đã lên lịch</span>
-            </div>
-          </div>
           <div class="flex items-center gap-2">
-            <button class="p-2 rounded hover:bg-primary/5 text-slate-400" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-            <span class="text-sm font-bold px-4">Trang 1 / 1</span>
-            <button class="p-2 rounded hover:bg-primary/5 text-slate-400" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+            <span class="size-3 rounded-full bg-green-500"></span>
+            <span class="text-sm font-medium">{{ monitoringCards.length }} đề thi đang diễn ra</span>
           </div>
+          <span class="text-sm font-bold px-4">Trang 1 / 1</span>
         </div>
       </main>
     </div>
@@ -132,31 +122,38 @@ const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString()
 }
 
-const monitoringCards = computed(() => exams.value.map((exam) => {
-  const isActive = Boolean(exam.isActive)
-  return {
-    id: exam.id,
-    examId: exam.id,
-    examCode: exam.code || '',
-    title: exam.title,
-    location: exam.description || 'Đề thi trực tuyến',
-    sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Thời lượng: ${exam.durationMinutes || '-'} phút`,
-    status: isActive ? 'Đang hoạt động' : 'Bản nháp',
-    statusClass: isActive
-      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    students: `${exam.questionCount || 0} câu`,
-    leftLabel: 'Ngân hàng câu hỏi',
-    timeLabel: 'Bắt đầu',
-    timeIcon: isActive ? 'timer' : 'schedule',
-    timeIconClass: isActive ? 'text-orange-500' : 'text-blue-500',
-    timeValue: formatDateTime(exam.startTime),
-    actionLabel: 'Theo dõi trực tiếp',
-    actionIcon: 'visibility',
-    actionClass: 'bg-primary hover:bg-primary/90 text-white',
-    cardBorder: isActive ? 'border-l-green-500' : 'border-l-amber-500'
-  }
-}))
+const isExamOngoing = (exam, nowMs) => {
+  const startMs = new Date(exam.startTime || '').getTime()
+  const endMs = new Date(exam.endTime || '').getTime()
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return false
+  return Boolean(exam.isActive) && startMs <= nowMs && nowMs <= endMs
+}
+
+const monitoringCards = computed(() => {
+  const nowMs = Date.now()
+  return exams.value
+    .filter((exam) => isExamOngoing(exam, nowMs))
+    .map((exam) => ({
+      id: exam.id,
+      examId: exam.id,
+      examCode: exam.code || '',
+      title: exam.title,
+      location: exam.description || 'Đề thi trực tuyến',
+      sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Kết thúc: ${formatDateTime(exam.endTime)}`,
+      status: 'Đang hoạt động',
+      statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      students: `${exam.questionCount || 0} câu`,
+      leftLabel: 'Ngân hàng câu hỏi',
+      timeLabel: 'Kết thúc',
+      timeIcon: 'timer',
+      timeIconClass: 'text-orange-500',
+      timeValue: formatDateTime(exam.endTime),
+      actionLabel: 'Theo dõi trực tiếp',
+      actionIcon: 'visibility',
+      actionClass: 'bg-primary hover:bg-primary/90 text-white',
+      cardBorder: 'border-l-green-500'
+    }))
+})
 
 const filteredExams = computed(() => {
   const keyword = search.value.trim().toLowerCase()
@@ -192,55 +189,3 @@ const loadExams = async () => {
 onMounted(loadExams)
 </script>
 
-<style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
-}
-</style>

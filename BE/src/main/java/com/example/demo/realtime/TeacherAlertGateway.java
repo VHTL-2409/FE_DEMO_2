@@ -40,7 +40,6 @@ public class TeacherAlertGateway {
             .message(message)
             .issuedAt(LocalDateTime.now())
             .build();
-        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
@@ -54,8 +53,20 @@ public class TeacherAlertGateway {
             .message(message)
             .issuedAt(LocalDateTime.now())
             .build();
-        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
+    public void publishDraftSaved(Long examId, Long attemptId, String student, Integer answeredCount, Long remainingSeconds) {
+        AlertPayload payload = AlertPayload.builder()
+            .type("DRAFT_SAVED")
+            .examId(examId)
+            .attemptId(attemptId)
+            .student(student)
+            .answeredCount(answeredCount)
+            .remainingSeconds(remainingSeconds)
+            .issuedAt(LocalDateTime.now())
+            .build();
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/draft-updates", payload);
     }
 
     @Getter
@@ -67,6 +78,8 @@ public class TeacherAlertGateway {
         private Long attemptId;
         private String student;
         private Integer riskScore;
+        private Integer answeredCount;
+        private Long remainingSeconds;
         private String status;
         private String message;
         private LocalDateTime issuedAt;

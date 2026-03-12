@@ -66,9 +66,10 @@ public class SubmissionController {
     @PutMapping("/attempts/{attemptId}/draft-answers")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ApiResponse<DraftSaveResponse> saveDraft(@PathVariable Long attemptId,
-            @RequestBody @NotEmpty List<@Valid AnswerInput> answers) {
+            @RequestBody @NotEmpty List<@Valid AnswerInput> answers,
+            HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
-        return ApiResponse.success(submissionService.saveDraftAnswers(attemptId, student, answers));
+        return ApiResponse.success(submissionService.saveDraftAnswers(attemptId, student, request.getRemoteAddr(), answers));
     }
 
     @GetMapping("/attempts/{attemptId}/draft-answers")

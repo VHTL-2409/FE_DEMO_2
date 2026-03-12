@@ -47,40 +47,12 @@ public class MonitoringService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported event type");
         }
 
-        int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType);
+        return applyEvent(attempt, eventType, request.getDetails());
+    }
 
-        MonitoringEvent event = MonitoringEvent.builder()
-                .attempt(attempt)
-                .eventType(eventType)
-                .details(request.getDetails())
-                .createdAt(LocalDateTime.now())
-                .build();
-        monitoringEventRepository.save(event);
-
-        boolean suspicious = riskScoringService.isSuspicious(currentRisk);
-
-        attempt.setRiskScore(currentRisk);
-        attempt.setSuspicious(suspicious);
-        examAttemptRepository.save(attempt);
-
-        riskSnapshotRepository.save(
-                RiskSnapshot.builder()
-                        .attempt(attempt)
-                        .riskScore(currentRisk)
-                        .suspicious(suspicious)
-                        .createdAt(LocalDateTime.now())
-                        .build());
-
-        if (suspicious) {
-            realtimeNotificationService.notifySuspicious(attempt);
-        }
-
-        return MonitoringEventResponse.builder()
-                .attemptId(attempt.getId())
-                .riskScore(attempt.getRiskScore())
-                .suspicious(attempt.getSuspicious())
-                .status(attempt.getStatus().name())
-                .build();
+    @Transactional
+    public MonitoringEventResponse addSystemEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
+        return applyEvent(attempt, eventType, details);
     }
 
     @Transactional
@@ -165,6 +137,43 @@ public class MonitoringService {
         return java.util.stream.Stream.concat(eventRows.stream(), riskRows.stream())
                 .sorted(Comparator.comparing(MonitoringTimelineItem::getAt))
                 .toList();
+    }
+
+    private MonitoringEventResponse applyEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
+        int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType);
+
+        MonitoringEvent event = MonitoringEvent.builder()
+                .attempt(attempt)
+                .eventType(eventType)
+                .details(details)
+                .createdAt(LocalDateTime.now())
+                .build();
+        monitoringEventRepository.save(event);
+
+        boolean suspicious = riskScoringService.isSuspicious(currentRisk);
+
+        attempt.setRiskScore(currentRisk);
+        attempt.setSuspicious(suspicious);
+        examAttemptRepository.save(attempt);
+
+        riskSnapshotRepository.save(
+                RiskSnapshot.builder()
+                        .attempt(attempt)
+                        .riskScore(currentRisk)
+                        .suspicious(suspicious)
+                        .createdAt(LocalDateTime.now())
+                        .build());
+
+        if (suspicious) {
+            realtimeNotificationService.notifySuspicious(attempt);
+        }
+
+        return MonitoringEventResponse.builder()
+                .attemptId(attempt.getId())
+                .riskScore(attempt.getRiskScore())
+                .suspicious(attempt.getSuspicious())
+                .status(attempt.getStatus().name())
+                .build();
     }
 
     private void ensureCanAccessAttempt(ExamAttempt attempt, User actor) {

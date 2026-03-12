@@ -3,7 +3,7 @@
     <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
       <TeacherTopHeader active-section="monitoring" />
 
-      <main class="relative flex-1 max-w-[1440px] mx-auto w-full p-4 md:p-8 overflow-hidden">
+      <main class="teacher-page-shell max-w-[1440px]">
         <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
         <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
@@ -50,32 +50,46 @@
         </div>
         <p v-if="loadError" class="mb-4 text-sm text-rose-600 animate-fade-up-delay">{{ loadError }}</p>
 
+        <transition name="fade">
+          <div v-if="quickActionMessage || quickActionError" class="fixed top-5 right-5 z-50 w-[320px] rounded-xl border shadow-xl backdrop-blur-sm p-4"
+            :class="quickActionError ? 'bg-rose-50/95 border-rose-200 text-rose-700' : 'bg-emerald-50/95 border-emerald-200 text-emerald-700'">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-semibold leading-5">{{ quickActionError || quickActionMessage }}</p>
+              <button class="text-slate-500 hover:text-slate-700" type="button" @click="clearQuickActionNotice">
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+          </div>
+        </transition>
+
         <section class="relative mb-10 animate-fade-up-delay">
-          <h3 class="text-red-600 dark:text-red-400 text-sm font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-lg">warning</span>
-            Cần chú ý ngay
-          </h3>
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div v-for="alert in alerts" :key="alert.key" :class="alert.cardClass" class="rounded-xl p-5 shadow-lg relative overflow-hidden group hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-              <div v-if="alert.isCritical" class="absolute top-0 right-0 p-2">
-                <span class="flex h-3 w-3 rounded-full bg-red-500 animate-ping"></span>
-              </div>
-              <div class="flex gap-4 items-start">
-                <div :class="alert.avatarClass" class="h-16 w-16 rounded-lg overflow-hidden shrink-0 shadow-sm relative border-2">
-                  <img class="w-full h-full object-cover" :src="alert.image" :alt="alert.student" />
-                  <div :class="alert.feedClass" class="absolute bottom-0 inset-x-0 text-white text-[8px] text-center font-bold py-0.5 uppercase">Luồng trực tiếp</div>
-                </div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-red-600 dark:text-red-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg">warning</span>
+              Thông báo hành vi gian lận (mới nhất)
+            </h3>
+            <span class="text-xs text-slate-500">Hiển thị {{ alerts.length }}/5 thông báo</span>
+          </div>
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div v-if="alerts.length === 0" class="p-5 text-sm text-slate-500">Chưa có thông báo gian lận cần xử lý.</div>
+            <div v-for="alert in alerts" :key="alert.key" class="p-4 border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+              <div class="flex items-start justify-between gap-3">
                 <div class="flex-1">
-                  <h4 class="font-bold text-slate-900 dark:text-white text-lg leading-none">{{ alert.student }}</h4>
-                  <p :class="alert.titleClass" class="text-sm font-semibold mt-1">{{ alert.title }}</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ alert.meta }}</p>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span :class="alert.badgeClass" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">{{ alert.badge }}</span>
+                    <span class="text-xs text-slate-500">{{ alert.timeLabel }}</span>
+                  </div>
+                  <p class="font-semibold text-sm text-slate-900 dark:text-slate-100">{{ alert.student }}</p>
+                  <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">{{ alert.message }}</p>
                 </div>
-              </div>
-              <div class="mt-4 flex gap-2">
-                <button :class="alert.primaryActionClass" class="flex-1 py-2 text-white rounded-lg text-sm font-bold transition-all" type="button" @click="handlePrimaryAction(alert)">{{ alert.primaryAction }}</button>
-                <button class="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center justify-center" type="button" @click="openStudentDetail(alert)">
-                  <span class="material-symbols-outlined text-lg">videocam</span>
-                </button>
+                <div class="flex items-center gap-2">
+                  <button :disabled="!alert.canWarn || quickActionAttemptId === alert.attemptId" class="px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold disabled:opacity-60" type="button" @click="sendQuickWarning(alert)">
+                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}
+                  </button>
+                  <button :disabled="!alert.canStop || quickActionAttemptId === alert.attemptId" class="px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold disabled:opacity-60" type="button" @click="handleQuickInvalidate(alert)">
+                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'invalidate' ? 'Đang đình chỉ...' : 'Đình chỉ bài thi' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -163,7 +177,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { getAttemptDetail, listExamAttempts } from '../../services/attemptService'
-import { sendTeacherWarning } from '../../services/monitoringService'
+import { invalidateAttempt, sendTeacherWarning } from '../../services/monitoringService'
 import { useRoute, useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -175,7 +189,12 @@ const detailsByAttemptId = ref({})
 const loadError = ref('')
 const isSyncing = ref(false)
 const lastUpdatedAt = ref(null)
+const quickActionMessage = ref('')
+const quickActionError = ref('')
+const quickActionAttemptId = ref(null)
+const quickActionType = ref('')
 let refreshTimer = null
+let noticeTimer = null
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
@@ -194,31 +213,39 @@ const examDurationLabel = computed(() => {
 const flaggedCount = computed(() => attempts.value.filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious).length)
 
 const alerts = computed(() => attempts.value
-  .filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious)
+  .filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious || String(attempt.status || '').toUpperCase() === 'STOPPED')
   .sort((a, b) => {
-    const aAt = new Date(a.startedAt || 0).getTime()
-    const bAt = new Date(b.startedAt || 0).getTime()
+    const aAt = new Date(a.updatedAt || a.startedAt || 0).getTime()
+    const bAt = new Date(b.updatedAt || b.startedAt || 0).getTime()
     return bAt - aAt
   })
   .slice(0, 5)
   .map((attempt, index) => {
     const riskScore = Number(attempt.riskScore || 0)
+    const status = String(attempt.status || '').toUpperCase()
     const critical = riskScore >= 10 || Boolean(attempt.suspicious)
-    const sortAt = new Date(attempt.startedAt || 0).getTime() || 0
+    const sortAt = new Date(attempt.updatedAt || attempt.startedAt || 0).getTime() || 0
+
+    let message = `Phát hiện dấu hiệu bất thường (risk ${riskScore}).`
+    if (status === 'STOPPED') {
+      message = 'Bài thi đã bị đình chỉ bởi giám thị.'
+    } else if (critical) {
+      message = `Mức rủi ro cao (${riskScore}) cần can thiệp ngay.`
+    }
+
     return {
       key: `${attempt.id}-${sortAt}-${index}`,
       student: attempt.student || 'Sinh viên không rõ',
       studentId: `AT-${attempt.id}`,
-      meta: `Risk: ${riskScore} • Trạng thái: ${String(attempt.status || '').toUpperCase()}`,
+      message,
+      timeLabel: sortAt ? new Date(sortAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
+      badge: status === 'STOPPED' ? 'Đã đình chỉ' : (critical ? 'Mức cao' : 'Cảnh báo'),
+      badgeClass: status === 'STOPPED'
+        ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+        : (critical ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'),
+      canWarn: status !== 'STOPPED',
+      canStop: status !== 'STOPPED',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAIJ4SxrDKzIOAxYgwMxfCl9VECA94Lz5URlQAHT8wlNhUW4MNw9D1HLca97xsa6unSv5ggAypK-LlUtn8ncy9v-bzAFa3_8M1DavSb0bTFXN0n5cGflRifrcKtMGsdiwoybTbp9NCUsP7loGo43vS15PYo7KCItvkic1tbE7vNg_JatXHLLpScEs05NVeQLNXTuq294VTZO_Ynq_xP5jG7khjmSKYRitHROXp4_84cfjODRxtCxXX59LP1gTMP-0pkrK6iKTNdhA',
-      cardClass: critical ? 'bg-red-50 dark:bg-red-900/10 border-2 border-red-500' : 'bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-500',
-      avatarClass: critical ? 'border-red-200' : 'border-amber-200',
-      feedClass: critical ? 'bg-red-600' : 'bg-amber-600',
-      title: critical ? 'Mức độ rủi ro cao' : 'Có dấu hiệu bất thường',
-      titleClass: critical ? 'text-red-600' : 'text-amber-600',
-      primaryAction: critical ? 'Can thiệp ngay' : 'Gửi cảnh báo',
-      primaryActionClass: critical ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700',
-      isCritical: critical,
       attemptId: attempt.id,
       examId: attempt.examId
     }
@@ -274,20 +301,54 @@ const openStudentDetail = (item) => {
   })
 }
 
-const sendQuickWarning = async (item) => {
-  try {
-    await sendTeacherWarning(item.attemptId)
-  } catch {
-    // keep UX simple on live dashboard; detailed errors shown in detail page actions
+const clearQuickActionNotice = () => {
+  quickActionMessage.value = ''
+  quickActionError.value = ''
+  if (noticeTimer) {
+    window.clearTimeout(noticeTimer)
+    noticeTimer = null
   }
 }
 
-const handlePrimaryAction = (item) => {
-  if (item.primaryAction === 'Gửi cảnh báo') {
-    sendQuickWarning(item)
-    return
+const showQuickActionNotice = ({ message = '', error = '' }) => {
+  clearQuickActionNotice()
+  quickActionMessage.value = message
+  quickActionError.value = error
+  noticeTimer = window.setTimeout(() => {
+    clearQuickActionNotice()
+  }, 3500)
+}
+
+const sendQuickWarning = async (item) => {
+  quickActionType.value = 'warning'
+  quickActionAttemptId.value = item.attemptId
+
+  try {
+    const response = await sendTeacherWarning(item.attemptId)
+    showQuickActionNotice({ message: response?.message || `Đã gửi cảnh báo realtime tới ${item.student}.` })
+    await loadAttempts()
+  } catch (error) {
+    showQuickActionNotice({ error: error instanceof ApiError ? error.message : 'Không gửi được cảnh báo. Vui lòng thử lại.' })
+  } finally {
+    quickActionAttemptId.value = null
+    quickActionType.value = ''
   }
-  openStudentDetail(item)
+}
+
+const handleQuickInvalidate = async (item) => {
+  quickActionType.value = 'invalidate'
+  quickActionAttemptId.value = item.attemptId
+
+  try {
+    const response = await invalidateAttempt(item.attemptId)
+    showQuickActionNotice({ message: response?.message || `Đã đình chỉ bài thi của ${item.student}.` })
+    await loadAttempts()
+  } catch (error) {
+    showQuickActionNotice({ error: error instanceof ApiError ? error.message : 'Không thể đình chỉ bài thi. Vui lòng thử lại.' })
+  } finally {
+    quickActionAttemptId.value = null
+    quickActionType.value = ''
+  }
 }
 
 const loadAttempts = async () => {
@@ -331,58 +392,10 @@ onUnmounted(() => {
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
   }
+  if (noticeTimer) {
+    window.clearTimeout(noticeTimer)
+    noticeTimer = null
+  }
 })
 </script>
 
-<style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
-}
-</style>

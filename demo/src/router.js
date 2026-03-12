@@ -4,6 +4,7 @@ import RegistrationRoleSelection from './components/login/RegistrationRoleSelect
 import TeacherDashboardTopNav from './components/teacher/TeacherDashboardTopNav.vue'
 import StudentDashboardEnhancedNavigation from './components/student/StudentDashboardEnhancedNavigation.vue'
 import TeacherExamManagementUpdatedMenu from './components/teacher/TeacherExamManagementUpdatedMenu.vue'
+import TeacherExamListMenu from './components/teacher/TeacherExamListMenu.vue'
 import TeacherCompleteExamCreationSyncedHeader from './components/teacher/TeacherCompleteExamCreationSyncedHeader.vue'
 import TeacherIncidentReviewUpdatedMenu from './components/teacher/TeacherIncidentReviewUpdatedMenu.vue'
 import TeacherExamReviewSummary from './components/teacher/TeacherExamReviewSummary.vue'
@@ -31,6 +32,7 @@ const router = createRouter({
     { path: '/register', component: RegistrationRoleSelection },
     { path: '/teacher/dashboard', component: TeacherDashboardTopNav },
     { path: '/teacher/exams', component: TeacherExamManagementUpdatedMenu },
+    { path: '/teacher/exams/list', component: TeacherExamListMenu },
     { path: '/teacher/exams/create', component: TeacherCompleteExamCreationSyncedHeader },
     { path: '/teacher/exams/manual', component: TeacherManualQuestionEntry },
     { path: '/teacher/exams/schedule', component: TeacherExamScheduleCreate },

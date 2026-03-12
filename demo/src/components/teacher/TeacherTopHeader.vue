@@ -16,6 +16,9 @@
             <RouterLink :class="navClass('exam')" to="/teacher/exams">
               Tạo đề thi
             </RouterLink>
+            <RouterLink :class="navClass('exam-list')" to="/teacher/exams/list">
+              Danh sách đề thi
+            </RouterLink>
             <RouterLink :class="navClass('monitoring')" to="/teacher/live-monitoring">
               Giám sát trực tiếp
             </RouterLink>

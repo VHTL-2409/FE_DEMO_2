@@ -4,7 +4,7 @@
       <div class="layout-container flex h-full grow flex-col">
         <TeacherTopHeader active-section="monitoring" />
 
-        <main class="relative flex flex-col flex-1 px-4 lg:px-20 py-8 max-w-[1400px] mx-auto w-full overflow-hidden">
+        <main class="teacher-page-shell max-w-[1400px] flex flex-col">
           <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
           <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
@@ -46,40 +46,19 @@
                 <p v-if="loadError" class="mt-2 text-xs text-rose-600">{{ loadError }}</p>
               </div>
             </div>
-            <div class="flex gap-3 w-full md:w-auto">
-              <button class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
-                <span class="material-symbols-outlined text-lg">history</span> Xem nhật ký
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
+                <span class="material-symbols-outlined text-lg">history</span> Nhật ký vi phạm
               </button>
-              <button class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:opacity-90 transition-all" type="button">
-                <span class="material-symbols-outlined text-lg">chat</span> Trò chuyện trực tiếp
+              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:opacity-90 transition-all" type="button" @click="openLivestreamModal">
+                <span class="material-symbols-outlined text-lg">live_tv</span> Xem livestream
               </button>
             </div>
           </div>
 
           <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
             <div class="lg:col-span-2 flex flex-col gap-6">
-              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                  <div class="flex items-center gap-2">
-                    <span class="flex h-2 w-2 rounded-full bg-red-500"></span>
-                    <h3 class="font-bold text-slate-900 dark:text-slate-100">Luồng trực tiếp - Màn hình hiện tại</h3>
-                  </div>
-                  <div class="flex gap-2">
-                    <span class="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 font-medium uppercase">1080p</span>
-                    <span class="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 font-medium uppercase">Mã hóa</span>
-                  </div>
-                </div>
-                <div class="relative aspect-video bg-slate-900 flex items-center justify-center group">
-                  <div class="absolute inset-0 bg-cover bg-center opacity-80" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCvhXV2sdkMp4W2ffIoqzyfpojUOUjoYWCgLENEw6jGPAEyakBzOLVV326qs53ZLP9cecR4r1jR90UfB64FpbFkIXb-iLSxtTbHjmV8fJbeX7qntdiGj4QGEKm4VbEwPs9EaZYKeUzJdJ4KTAJR25evdSsQCkDXXqJYAJhWrFonOM7_GSC6sG7m9Yp-AYxNkZ8HB5j_jJ7pOEIcyZC2HDBaSL2-_wxckc48ydhrSO1P037tcfqD_4uG8yGDSAoznGeLWY70D4viaw');"></div>
-                  <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
-                    <div class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-xl mb-4">
-                      <span class="material-symbols-outlined">visibility</span> Phát hiện cửa sổ ngoài
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Tiến độ làm bài</p>
                   <div class="flex items-end justify-between">
@@ -101,7 +80,12 @@
                   <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Thời gian còn lại</p>
                   <div class="flex items-end justify-between">
                     <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ remainingTimeLabel }}</p>
-                    <span class="text-slate-500 bg-slate-100 dark:bg-slate-800 text-xs font-bold px-2 py-1 rounded">{{ statusLabel }}</span>
+                  </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Trạng thái bài thi</p>
+                  <div class="flex items-end justify-between">
+                    <span class="text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold px-2.5 py-1.5 rounded">{{ statusLabel }}</span>
                   </div>
                 </div>
               </div>
@@ -109,19 +93,19 @@
 
             <div class="flex flex-col gap-6">
               <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex-1">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
                   <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span class="material-symbols-outlined text-red-500">assignment_late</span>
                     Nhật ký vi phạm
                   </h3>
-                  <button class="text-xs text-primary font-bold hover:underline" type="button">Xóa tất cả</button>
+                  <span class="text-xs text-slate-500">{{ sortedTimelineItems.length }} sự kiện</span>
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-800">
-                  <div v-if="timelineItems.length === 0" class="p-4 text-sm text-slate-500 dark:text-slate-400">
+                  <div v-if="sortedTimelineItems.length === 0" class="p-4 text-sm text-slate-500 dark:text-slate-400">
                     Chưa có sự kiện vi phạm nào cho lần làm bài này.
                   </div>
                   <div
-                    v-for="item in timelineItems"
+                    v-for="item in paginatedTimelineItems"
                     :key="item.key"
                     :class="item.highlightClass"
                     class="p-4 flex gap-4"
@@ -134,6 +118,13 @@
                       </div>
                       <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{{ item.description }}</p>
                     </div>
+                  </div>
+                </div>
+                <div class="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between" v-if="totalTimelinePages > 0">
+                  <span class="text-xs text-slate-500">Trang {{ timelinePage }} / {{ totalTimelinePages }}</span>
+                  <div class="flex gap-2">
+                    <button class="px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded disabled:opacity-50" type="button" :disabled="timelinePage <= 1" @click="timelinePage -= 1">Trước</button>
+                    <button class="px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded disabled:opacity-50" type="button" :disabled="timelinePage >= totalTimelinePages" @click="timelinePage += 1">Tiếp</button>
                   </div>
                 </div>
               </div>
@@ -156,6 +147,54 @@
               </div>
             </div>
           </div>
+          <div v-if="isLivestreamModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div class="w-full max-w-5xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+              <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Theo dõi bài làm realtime - {{ studentName }}</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ liveAnsweredCount }} / {{ liveTotalQuestions }} câu đã trả lời · Cập nhật: {{ liveLastUpdatedLabel }}</p>
+                </div>
+                <button class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" type="button" @click="closeLivestreamModal">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="p-5 max-h-[70vh] overflow-y-auto bg-slate-50 dark:bg-slate-950/40">
+                <div v-if="liveModalLoading" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-300">
+                  Đang tải đề thi và đáp án của thí sinh...
+                </div>
+                <div v-else>
+                  <div class="flex items-center justify-between mb-4 text-xs">
+                    <span :class="liveModalSyncing ? 'text-amber-600' : (isLiveSocketConnected ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-300')" class="font-semibold">
+                      {{ liveModalSyncing ? 'Đang đồng bộ đáp án...' : (isLiveSocketConnected ? 'Đồng bộ websocket tức thì' : 'Đang dùng fallback polling') }}
+                    </span>
+                    <span v-if="liveModalError" class="text-rose-600">{{ liveModalError }}</span>
+                  </div>
+                  <div v-if="liveExamQuestions.length === 0" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-300">
+                    Không có dữ liệu câu hỏi để hiển thị.
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div v-for="(question, idx) in liveExamQuestions" :key="question.id" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+                      <p class="text-xs font-bold text-primary mb-2">Câu {{ idx + 1 }}</p>
+                      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">{{ question.content }}</p>
+                      <div class="space-y-2">
+                        <div
+                          v-for="option in question.options"
+                          :key="`${question.id}-${option.id}`"
+                          :class="liveAnswersByQuestionId[question.id] === option.id ? 'border-primary bg-primary/5 dark:bg-primary/10 text-primary' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'"
+                          class="rounded-lg border px-3 py-2 text-sm font-medium"
+                        >
+                          {{ option.text }}
+                        </div>
+                      </div>
+                      <p class="mt-3 text-xs" :class="liveAnswersByQuestionId[question.id] ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'">
+                        {{ liveAnswersByQuestionId[question.id] ? `Thí sinh chọn: ${getLiveSelectedAnswerLabel(question)}` : 'Chưa chọn đáp án' }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
       </div>
     </div>
@@ -164,10 +203,13 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
+import { Client } from '@stomp/stompjs'
+import { API_BASE_URL, ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { invalidateAttempt, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
+import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute } from 'vue-router'
+import SockJS from 'sockjs-client/dist/sockjs'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
@@ -182,7 +224,21 @@ const actionMessage = ref('')
 const actionError = ref('')
 const isWarningSending = ref(false)
 const isInvalidating = ref(false)
+const isLivestreamModalOpen = ref(false)
+const liveModalLoading = ref(false)
+const liveModalSyncing = ref(false)
+const liveModalError = ref('')
+const liveLastUpdatedAt = ref(null)
+const liveExamQuestions = ref([])
+const liveAnswersByQuestionId = ref({})
+const timelinePage = ref(1)
+const timelinePageSize = 3
 let refreshTimer = null
+let liveFallbackTimer = null
+let liveStompClient = null
+let isLiveAnswersFetching = false
+let hasPendingLiveAnswersFetch = false
+const isLiveSocketConnected = ref(false)
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const studentName = computed(() => attemptDetail.value?.student || route.query.student || 'Sinh viên không rõ')
@@ -208,6 +264,161 @@ const riskBadgeText = computed(() => (suspicious.value ? 'Hoạt động đáng 
 const riskBadgeClass = computed(() => (suspicious.value
   ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 animate-pulse border-red-200 dark:border-red-800'
   : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'))
+
+const examId = computed(() => {
+  const routeExamId = Number.parseInt(String(route.query.examId || ''), 10)
+  if (Number.isFinite(routeExamId) && routeExamId > 0) return routeExamId
+  const detailExamId = Number.parseInt(String(attemptDetail.value?.examId || ''), 10)
+  return Number.isFinite(detailExamId) && detailExamId > 0 ? detailExamId : null
+})
+
+const liveTotalQuestions = computed(() => liveExamQuestions.value.length)
+const liveAnsweredCount = computed(() => Object.values(liveAnswersByQuestionId.value).filter(Boolean).length)
+const liveLastUpdatedLabel = computed(() => {
+  if (!liveLastUpdatedAt.value) return 'chưa có dữ liệu'
+  return new Date(liveLastUpdatedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
+const getLiveSelectedAnswerLabel = (question) => {
+  const selected = liveAnswersByQuestionId.value[question.id]
+  if (!selected) return ''
+  const matched = question.options.find((option) => option.id === selected)
+  return matched?.text || selected
+}
+
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return ''
+  return String(window.localStorage.getItem('auth_token') || '')
+}
+
+const stopLiveFallbackPolling = () => {
+  if (liveFallbackTimer) {
+    window.clearInterval(liveFallbackTimer)
+    liveFallbackTimer = null
+  }
+}
+
+const applyLiveAnswersReport = (report) => {
+  const mapped = (report?.answers || []).reduce((acc, answer) => {
+    acc[answer.questionId] = answer.selectedAnswer
+    return acc
+  }, {})
+  liveAnswersByQuestionId.value = mapped
+  liveLastUpdatedAt.value = Date.now()
+  liveModalError.value = ''
+}
+
+const loadLiveAnswers = async (force = false) => {
+  if (!attemptId.value) return
+  if (isLiveAnswersFetching && !force) {
+    hasPendingLiveAnswersFetch = true
+    return
+  }
+
+  isLiveAnswersFetching = true
+  liveModalSyncing.value = true
+  try {
+    const report = await getAttemptReport(attemptId.value)
+    applyLiveAnswersReport(report)
+  } catch (error) {
+    liveModalError.value = error instanceof ApiError ? error.message : 'Đồng bộ đáp án bị gián đoạn tạm thời.'
+  } finally {
+    isLiveAnswersFetching = false
+    liveModalSyncing.value = false
+    if (hasPendingLiveAnswersFetch) {
+      hasPendingLiveAnswersFetch = false
+      await loadLiveAnswers(true)
+    }
+  }
+}
+
+const loadLiveQuestions = async () => {
+  if (!examId.value) {
+    liveModalError.value = 'Không xác định được đề thi để tải câu hỏi.'
+    liveExamQuestions.value = []
+    return
+  }
+  const questionList = await listExamQuestions(examId.value)
+  liveExamQuestions.value = questionList.map((item) => ({
+    id: item.id,
+    content: item.content,
+    options: parseQuestionOptions(item.options)
+  }))
+}
+
+const startLiveFallbackPolling = () => {
+  stopLiveFallbackPolling()
+  liveFallbackTimer = window.setInterval(() => {
+    if (isLivestreamModalOpen.value && !isLiveSocketConnected.value) {
+      loadLiveAnswers()
+    }
+  }, 7000)
+}
+
+const disconnectLiveAnswersSocket = () => {
+  if (liveStompClient) {
+    liveStompClient.deactivate()
+    liveStompClient = null
+  }
+  isLiveSocketConnected.value = false
+}
+
+const connectLiveAnswersSocket = () => {
+  if (!attemptId.value) return
+
+  disconnectLiveAnswersSocket()
+
+  const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
+  const token = getAuthToken()
+  liveStompClient = new Client({
+    reconnectDelay: 3000,
+    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+    webSocketFactory: () => new SockJS(wsUrl)
+  })
+
+  liveStompClient.onConnect = () => {
+    isLiveSocketConnected.value = true
+    liveStompClient.subscribe(`/topic/attempts/${attemptId.value}/draft-updates`, (frame) => {
+      try {
+        const payload = JSON.parse(frame.body || '{}')
+        if (String(payload?.type || '').toUpperCase() !== 'DRAFT_SAVED') return
+        void loadLiveAnswers()
+      } catch {
+        // ignore malformed draft update payload
+      }
+    })
+    void loadLiveAnswers()
+  }
+
+  liveStompClient.onStompError = () => {
+    isLiveSocketConnected.value = false
+    startLiveFallbackPolling()
+  }
+
+  liveStompClient.onWebSocketClose = () => {
+    isLiveSocketConnected.value = false
+    startLiveFallbackPolling()
+  }
+
+  liveStompClient.activate()
+}
+
+const startLiveAnswersSync = async () => {
+  liveModalLoading.value = true
+  liveModalError.value = ''
+  liveLastUpdatedAt.value = null
+  try {
+    await loadLiveQuestions()
+    await loadLiveAnswers(true)
+    if (!isLivestreamModalOpen.value) return
+    connectLiveAnswersSocket()
+    startLiveFallbackPolling()
+  } catch (error) {
+    liveModalError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu bài làm realtime.'
+  } finally {
+    liveModalLoading.value = false
+  }
+}
 
 const formatDuration = (totalSeconds) => {
   const safe = Math.max(0, Number(totalSeconds || 0))
@@ -247,21 +458,36 @@ const formatTimelineTime = (raw) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const timelineItems = computed(() => timeline.value.map((entry, index) => {
-  const isEvent = entry.type === 'MONITORING_EVENT'
-  const isSnapshot = entry.type === 'RISK_SNAPSHOT'
-  return {
-    key: `${entry.type || 'entry'}-${entry.at || index}-${index}`,
-    icon: isSnapshot ? 'monitor_heart' : 'warning',
-    iconClass: isSnapshot ? 'text-amber-500' : 'text-red-600',
-    highlightClass: isEvent ? 'bg-red-50 dark:bg-red-900/10' : '',
-    title: isEvent ? formatEventType(entry.eventType) : `Cập nhật risk score: ${entry.riskScore ?? 0}`,
-    description: isEvent
-      ? (entry.details || 'Không có mô tả chi tiết.')
-      : `Suspicious: ${entry.suspicious ? 'Có' : 'Không'}`,
-    timeLabel: formatTimelineTime(entry.at)
-  }
-}))
+const sortedTimelineItems = computed(() => timeline.value
+  .map((entry, index) => {
+    const isEvent = entry.type === 'MONITORING_EVENT'
+    const isSnapshot = entry.type === 'RISK_SNAPSHOT'
+    const atTs = new Date(entry.at || 0).getTime() || 0
+
+    return {
+      key: `${entry.type || 'entry'}-${entry.at || index}-${index}`,
+      atTs,
+      icon: isSnapshot ? 'monitor_heart' : 'warning',
+      iconClass: isSnapshot ? 'text-amber-500' : 'text-red-600',
+      highlightClass: isEvent ? 'bg-red-50 dark:bg-red-900/10' : '',
+      title: isEvent ? formatEventType(entry.eventType) : `Cập nhật risk score: ${entry.riskScore ?? 0}`,
+      description: isEvent
+        ? (entry.details || 'Không có mô tả chi tiết.')
+        : `Suspicious: ${entry.suspicious ? 'Có' : 'Không'}`,
+      timeLabel: formatTimelineTime(entry.at)
+    }
+  })
+  .sort((a, b) => b.atTs - a.atTs))
+
+const totalTimelinePages = computed(() => {
+  if (!sortedTimelineItems.value.length) return 0
+  return Math.ceil(sortedTimelineItems.value.length / timelinePageSize)
+})
+
+const paginatedTimelineItems = computed(() => {
+  const start = (timelinePage.value - 1) * timelinePageSize
+  return sortedTimelineItems.value.slice(start, start + timelinePageSize)
+})
 
 const flaggedEvents = computed(() => timeline.value.filter((entry) => entry.type === 'MONITORING_EVENT'))
 
@@ -286,6 +512,7 @@ const loadMonitoringDetail = async () => {
     attemptDetail.value = detail
     attemptReport.value = report
     timeline.value = Array.isArray(timelineData) ? timelineData : []
+    timelinePage.value = 1
     loadError.value = ''
     lastUpdatedAt.value = Date.now()
   } catch (error) {
@@ -331,6 +558,29 @@ const handleInvalidateAttempt = async () => {
   }
 }
 
+const resetLiveModalState = () => {
+  liveModalSyncing.value = false
+  liveModalError.value = ''
+  liveLastUpdatedAt.value = null
+  liveAnswersByQuestionId.value = {}
+  liveExamQuestions.value = []
+  isLiveSocketConnected.value = false
+  hasPendingLiveAnswersFetch = false
+  isLiveAnswersFetching = false
+}
+
+const openLivestreamModal = async () => {
+  isLivestreamModalOpen.value = true
+  await startLiveAnswersSync()
+}
+
+const closeLivestreamModal = () => {
+  isLivestreamModalOpen.value = false
+  stopLiveFallbackPolling()
+  disconnectLiveAnswersSocket()
+  resetLiveModalState()
+}
+
 onMounted(async () => {
   await loadMonitoringDetail()
   refreshTimer = window.setInterval(() => {
@@ -342,58 +592,9 @@ onUnmounted(() => {
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
   }
+  stopLiveFallbackPolling()
+  disconnectLiveAnswersSocket()
+  resetLiveModalState()
 })
 </script>
 
-<style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
-}
-</style>

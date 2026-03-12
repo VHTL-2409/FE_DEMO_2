@@ -44,6 +44,8 @@ public class SubmissionService {
     private final AnswerRepository answerRepository;
     private final SubmissionHelper submissionHelper;
     private final ExamService examService;
+    private final RealtimeNotificationService realtimeNotificationService;
+    private final DuplicateIpDetectionService duplicateIpDetectionService;
 
     @Transactional
     public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
@@ -54,8 +56,11 @@ public class SubmissionService {
                 .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.IN_PROGRESS)
                 .orElse(null);
         if (existing != null) {
+            enforceIpConsistency(existing, normalizeClientIp(clientIp));
             return toStartResponse(existing);
         }
+
+        String normalizedIp = normalizeClientIp(clientIp);
 
         ExamAttempt saved = examAttemptRepository.save(
                 ExamAttempt.builder()
@@ -66,8 +71,10 @@ public class SubmissionService {
                         .score(0.0)
                         .riskScore(0)
                         .suspicious(false)
-                        .clientIp(clientIp)
+                        .clientIp(normalizedIp)
                         .build());
+
+        duplicateIpDetectionService.detect(saved);
 
         return toStartResponse(saved);
     }
@@ -108,7 +115,7 @@ public class SubmissionService {
     }
 
     @Transactional
-    public DraftSaveResponse saveDraftAnswers(Long attemptId, User student, List<AnswerInput> answers) {
+    public DraftSaveResponse saveDraftAnswers(Long attemptId, User student, String clientIp, List<AnswerInput> answers) {
         ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
@@ -124,13 +131,22 @@ public class SubmissionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt time is over");
         }
 
+        String normalizedIp = normalizeClientIp(clientIp);
+        enforceIpConsistency(attempt, normalizedIp);
+
         submissionHelper.saveAnswers(attempt, answers);
+        duplicateIpDetectionService.detect(attempt);
+
+        int answeredCount = answerRepository.findByAttempt(attempt).size();
+        long remainingSeconds = submissionHelper.remainingSeconds(attempt);
+
+        realtimeNotificationService.notifyDraftSaved(attempt, answeredCount, remainingSeconds);
 
         return DraftSaveResponse.builder()
                 .attemptId(attempt.getId())
                 .savedAt(now)
-                .answeredCount(answerRepository.findByAttempt(attempt).size())
-                .remainingSeconds(submissionHelper.remainingSeconds(attempt))
+                .answeredCount(answeredCount)
+                .remainingSeconds(remainingSeconds)
                 .build();
     }
 
@@ -354,6 +370,30 @@ public class SubmissionService {
         attempt.setSubmittedAt(submittedAt);
         attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
         examAttemptRepository.save(attempt);
+    }
+
+    private String normalizeClientIp(String clientIp) {
+        if (clientIp == null) {
+            return null;
+        }
+        String normalized = clientIp.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private void enforceIpConsistency(ExamAttempt attempt, String currentIp) {
+        String registeredIp = normalizeClientIp(attempt.getClientIp());
+        if (registeredIp == null || currentIp == null || registeredIp.equals(currentIp)) {
+            return;
+        }
+
+        attempt.setStatus(AttemptStatus.STOPPED);
+        examAttemptRepository.save(attempt);
+        realtimeNotificationService.notifyAttemptStopped(attempt,
+                "Phát hiện thay đổi địa chỉ IP trong khi làm bài. Bài thi đã bị đình chỉ.");
+        throw new ApiException(HttpStatus.BAD_REQUEST, "IP changed during attempt. Attempt has been suspended");
     }
 
     private boolean hasRole(User user, RoleName roleName) {
