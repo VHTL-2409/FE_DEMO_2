@@ -128,20 +128,53 @@ const getExamSortTime = (exam) => {
   return 0
 }
 
+const getExamStatusMeta = (exam) => {
+  if (!exam.isActive) {
+    return {
+      label: 'Bản nháp',
+      className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+    }
+  }
+
+  const nowMs = Date.now()
+  const startMs = new Date(exam.startTime || '').getTime()
+  const endMs = new Date(exam.endTime || '').getTime()
+
+  if (!Number.isNaN(startMs) && nowMs < startMs) {
+    return {
+      label: 'Chưa bắt đầu',
+      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    }
+  }
+
+  if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && nowMs >= startMs && nowMs <= endMs) {
+    return {
+      label: 'Đã bắt đầu',
+      className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    }
+  }
+
+  return {
+    label: 'Đã kết thúc',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+  }
+}
+
 const formattedExams = computed(() => exams.value
   .slice()
   .sort((a, b) => getExamSortTime(b) - getExamSortTime(a))
-  .map((exam) => ({
-    id: exam.id,
-    title: exam.title,
-    subject: exam.description || '-',
-    questions: String(exam.questionCount || 0),
-    modified: exam.endTime ? new Date(exam.endTime).toLocaleString() : '-',
-    status: exam.isActive ? 'Đã xuất bản' : 'Bản nháp',
-    statusClass: exam.isActive
-      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-  })))
+  .map((exam) => {
+    const statusMeta = getExamStatusMeta(exam)
+    return {
+      id: exam.id,
+      title: exam.title,
+      subject: exam.description || '-',
+      questions: String(exam.questionCount || 0),
+      modified: exam.endTime ? new Date(exam.endTime).toLocaleString() : '-',
+      status: statusMeta.label,
+      statusClass: statusMeta.className
+    }
+  }))
 
 const goToReview = (exam) => {
   router.push({

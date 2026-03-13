@@ -67,6 +67,7 @@
 
                 <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                   <h3 class="font-bold mb-4">Lịch làm việc & liên hệ</h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Dữ liệu hồ sơ được lấy từ <span class="font-semibold">/api/profile/teacher</span>.</p>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-200 dark:border-slate-700">
                       <p class="text-slate-500">Giờ làm việc tại văn phòng</p>
@@ -90,22 +91,17 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchMyProfile } from '../../services/authService'
+import { fetchTeacherProfile } from '../../services/authService'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const isDark = ref(false)
 const router = useRouter()
 const profile = ref(null)
 
-const profileName = computed(() => profile.value?.username || 'Giáo viên')
+const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Giáo viên')
 const profileId = computed(() => profile.value?.id || '-')
 const profileEmail = computed(() => profile.value?.email || '-')
-const roleLabel = computed(() => {
-  const rawRole = (profile.value?.roles || [])[0]
-  if (rawRole === 'TEACHER') return 'Giáo viên'
-  if (rawRole === 'ADMIN') return 'Quản trị'
-  return rawRole || 'Giáo viên'
-})
+const roleLabel = computed(() => 'Giáo viên')
 const avatarLabel = computed(() => profileName.value.slice(0, 1).toUpperCase())
 
 const sessions = [
@@ -131,7 +127,7 @@ const sessions = [
 
 const loadProfile = async () => {
   try {
-    profile.value = await fetchMyProfile()
+    profile.value = await fetchTeacherProfile()
   } catch {
     profile.value = null
   }

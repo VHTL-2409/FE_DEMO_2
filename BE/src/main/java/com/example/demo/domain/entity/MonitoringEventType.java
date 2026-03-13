@@ -5,5 +5,8 @@ public enum MonitoringEventType {
     BLUR,
     EXIT_FULLSCREEN,
     FAST_SUBMIT,
-    DUPLICATE_IP
+    DUPLICATE_IP,
+    COPY_PASTE,
+    IDLE_TIME,
+    DEVTOOLS_OPEN
 }

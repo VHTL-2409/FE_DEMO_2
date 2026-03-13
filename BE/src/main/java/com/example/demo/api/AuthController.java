@@ -7,7 +7,6 @@ import com.example.demo.api.dto.auth.RegisterRequest;
 import com.example.demo.domain.entity.User;
 import com.example.demo.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,7 +33,6 @@ public class AuthController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<Map<String, Object>>> users() {
         List<Map<String, Object>> users = authService.listUsers().stream()
                 .map(this::toUserMap)

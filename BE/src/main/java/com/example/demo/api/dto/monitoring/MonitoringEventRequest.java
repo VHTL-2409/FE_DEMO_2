@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 public class MonitoringEventRequest {
     @NotBlank
-    @Pattern(regexp = "TAB_SWITCH|BLUR|EXIT_FULLSCREEN|FAST_SUBMIT|DUPLICATE_IP")
+    @Pattern(regexp = "TAB_SWITCH|BLUR|EXIT_FULLSCREEN|FAST_SUBMIT|DUPLICATE_IP|COPY_PASTE|IDLE_TIME|DEVTOOLS_OPEN")
     private String eventType;
 
     @Size(max = 500)

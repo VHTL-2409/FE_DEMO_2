@@ -94,7 +94,7 @@
                         <span class="px-2 py-1 rounded text-xs font-bold" :class="student.statusClass">{{ student.status }}</span>
                       </td>
                       <td class="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{{ student.joinedAt }}</td>
-                      <td class="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{{ student.score }}</td>
+                      <td class="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{{ student.score }} / 10</td>
                     </tr>
                   </tbody>
                 </table>
@@ -141,7 +141,7 @@ let countdownTimer = null
 let refreshTimer = null
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
-const examTitle = computed(() => route.query.title || `Đề thi #${examId.value || ''}`)
+const examTitle = computed(() => route.query.title || 'Đề thi')
 const joinCode = computed(() => String(route.query.code || examId.value || 'N/A'))
 const durationMinutes = computed(() => Number.parseInt(String(route.query.durationMinutes || ''), 10) || 0)
 const startAtDate = computed(() => {
@@ -187,7 +187,7 @@ const joinedStudents = computed(() => attempts.value.map((attempt) => ({
     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   joinedAt: attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : '-',
-  score: attempt.score == null ? '-' : Math.round(Number(attempt.score))
+  score: attempt.score == null ? '-' : (Number(attempt.score) / 10).toFixed(1)
 })))
 
 const loadStudents = async ({ silent = false } = {}) => {

@@ -36,56 +36,10 @@
               <h1 class="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight mb-2">
                 Create Account
               </h1>
-              <p class="text-slate-500 dark:text-slate-400 text-lg">Join our academic community today</p>
+              <p class="text-slate-500 dark:text-slate-400 text-lg">Join our academic community today. Choose role after login.</p>
             </div>
 
             <form class="space-y-8 animate-fade-up-delay" @submit.prevent="onSubmit">
-              <div class="space-y-4">
-                <p
-                  class="text-slate-900 dark:text-slate-100 text-sm font-bold uppercase tracking-wider text-center"
-                >
-                  I am a...
-                </p>
-                <div class="grid grid-cols-2 gap-4">
-                  <label class="relative flex cursor-pointer group">
-                    <input v-model="role" class="peer sr-only" name="role" type="radio" value="teacher" />
-                    <div
-                      class="flex flex-col items-center justify-center w-full p-6 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 peer-checked:border-primary peer-checked:bg-primary/5 hover:bg-slate-50 transition-all"
-                    >
-                      <span
-                        class="material-symbols-outlined text-4xl mb-2 text-slate-400 peer-checked:text-primary group-hover:text-primary"
-                        >person_4</span
-                      >
-                      <span
-                        class="text-base font-bold text-slate-600 dark:text-slate-300 peer-checked:text-primary"
-                        >Teacher</span
-                      >
-                    </div>
-                    <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 transition-opacity">
-                      <span class="material-symbols-outlined text-primary text-xl">check_circle</span>
-                    </div>
-                  </label>
-                  <label class="relative flex cursor-pointer group">
-                    <input v-model="role" class="peer sr-only" name="role" type="radio" value="student" />
-                    <div
-                      class="flex flex-col items-center justify-center w-full p-6 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 peer-checked:border-primary peer-checked:bg-primary/5 hover:bg-slate-50 transition-all"
-                    >
-                      <span
-                        class="material-symbols-outlined text-4xl mb-2 text-slate-400 peer-checked:text-primary group-hover:text-primary"
-                        >school</span
-                      >
-                      <span
-                        class="text-base font-bold text-slate-600 dark:text-slate-300 peer-checked:text-primary"
-                        >Student</span
-                      >
-                    </div>
-                    <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 transition-opacity">
-                      <span class="material-symbols-outlined text-primary text-xl">check_circle</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
               <div class="space-y-5">
                 <div class="flex flex-col gap-1.5">
                   <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold">Username</label>
@@ -167,7 +121,6 @@ import { register } from '../../services/authService'
 const router = useRouter()
 
 const isDark = ref(false)
-const role = ref('student')
 const username = ref('')
 const email = ref('')
 const password = ref('')
@@ -189,18 +142,13 @@ const onSubmit = async () => {
   isSubmitting.value = true
 
   try {
-    const authData = await register({
+    await register({
       username: username.value.trim(),
       email: email.value.trim(),
       password: password.value
     })
 
-    if ((authData?.roles || []).includes('TEACHER')) {
-      router.push('/teacher/dashboard')
-      return
-    }
-
-    router.push('/student/dashboard')
+    router.push('/login')
   } catch (error) {
     if (error instanceof ApiError) {
       errorMessage.value = error.message || 'Registration failed. Please try again.'

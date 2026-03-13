@@ -28,8 +28,9 @@ export const submitAttempt = async (attemptId, answers) => {
   return unwrapApiData(payload)
 }
 
-export const listMyAttempts = async () => {
-  const payload = await apiRequest('/api/attempts/my')
+export const listMyAttempts = async ({ type } = {}) => {
+  const query = type ? `?type=${encodeURIComponent(type)}` : ''
+  const payload = await apiRequest(`/api/attempts/my${query}`)
   return unwrapApiData(payload) || []
 }
 

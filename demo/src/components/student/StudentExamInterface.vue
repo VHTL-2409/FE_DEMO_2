@@ -205,9 +205,14 @@ let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
 let stompClient = null
+let idleTimer = null
+let devtoolsCheckTimer = null
 
 const VIOLATION_COOLDOWN_MS = 7000
+const LONG_VIOLATION_COOLDOWN_MS = 60000
 const BLUR_GRACE_MS = 1200
+const IDLE_THRESHOLD_MS = 3 * 60 * 1000
+const DEVTOOLS_GAP_PX = 160
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const answeredCount = computed(() => Object.values(answers.value).filter(Boolean).length)
@@ -227,12 +232,12 @@ const clearBlurGraceTimer = () => {
   }
 }
 
-const reportViolation = async (eventType, details) => {
+const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
   if (!attemptId.value || isSuspended.value) return
 
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
-  if (now - lastAt < VIOLATION_COOLDOWN_MS) return
+  if (now - lastAt < cooldownMs) return
 
   lastViolationAtByType.value = {
     ...lastViolationAtByType.value,
@@ -360,6 +365,35 @@ const handleFullscreenChange = () => {
     EXIT_FULLSCREEN: true
   }
   void reportViolation('EXIT_FULLSCREEN', 'Exited fullscreen during exam attempt')
+}
+
+const resetIdleTimer = () => {
+  if (idleTimer) window.clearTimeout(idleTimer)
+  idleTimer = window.setTimeout(() => {
+    void reportViolation('IDLE_TIME', `Idle for ${Math.round(IDLE_THRESHOLD_MS / 60000)} minutes`, LONG_VIOLATION_COOLDOWN_MS)
+  }, IDLE_THRESHOLD_MS)
+}
+
+const handleCopyPaste = (event) => {
+  const target = event?.target
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+  void reportViolation('COPY_PASTE', `Detected ${event.type} during exam`, LONG_VIOLATION_COOLDOWN_MS)
+}
+
+const detectDevToolsOpen = () => {
+  if (document.hidden) return false
+  const widthGap = Math.abs(window.outerWidth - window.innerWidth)
+  const heightGap = Math.abs(window.outerHeight - window.innerHeight)
+  return widthGap > DEVTOOLS_GAP_PX || heightGap > DEVTOOLS_GAP_PX
+}
+
+const scheduleDevToolsCheck = () => {
+  if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer)
+  devtoolsCheckTimer = window.setInterval(() => {
+    if (detectDevToolsOpen()) {
+      void reportViolation('DEVTOOLS_OPEN', 'DevTools detected during exam', LONG_VIOLATION_COOLDOWN_MS)
+    }
+  }, 5000)
 }
 
 const selectQuestion = (index) => {
@@ -496,10 +530,18 @@ onMounted(async () => {
       syncAttemptStatus()
     }, 5000)
 
+    resetIdleTimer()
+    scheduleDevToolsCheck()
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('blur', handleWindowBlur)
     window.addEventListener('focus', handleWindowFocus)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('copy', handleCopyPaste)
+    document.addEventListener('paste', handleCopyPaste)
+    window.addEventListener('mousemove', resetIdleTimer)
+    window.addEventListener('keydown', resetIdleTimer)
+    window.addEventListener('scroll', resetIdleTimer)
   } catch (error) {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải nội dung bài thi.'
   }
@@ -508,6 +550,8 @@ onMounted(async () => {
 onUnmounted(() => {
   if (timerId) window.clearInterval(timerId)
   if (attemptStatusTimer) window.clearInterval(attemptStatusTimer)
+  if (idleTimer) window.clearTimeout(idleTimer)
+  if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer)
   clearBlurGraceTimer()
   if (stompClient) {
     stompClient.deactivate()
@@ -517,6 +561,11 @@ onUnmounted(() => {
   window.removeEventListener('blur', handleWindowBlur)
   window.removeEventListener('focus', handleWindowFocus)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('copy', handleCopyPaste)
+  document.removeEventListener('paste', handleCopyPaste)
+  window.removeEventListener('mousemove', resetIdleTimer)
+  window.removeEventListener('keydown', resetIdleTimer)
+  window.removeEventListener('scroll', resetIdleTimer)
 })
 </script>
 

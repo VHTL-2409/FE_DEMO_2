@@ -206,7 +206,9 @@ public class SubmissionService {
                 .map(answer -> AttemptReportAnswerItem.builder()
                         .questionId(answer.getQuestion().getId())
                         .question(answer.getQuestion().getContent())
+                        .options(answer.getQuestion().getOptions())
                         .selectedAnswer(answer.getSelectedAnswer())
+                        .correctAnswer(answer.getQuestion().getCorrectAnswer())
                         .correct(answer.getCorrect())
                         .scoreWeight(answer.getQuestion().getScoreWeight())
                         .build())
@@ -294,9 +296,12 @@ public class SubmissionService {
     }
 
     public AttemptSummaryResponse toSummary(ExamAttempt attempt) {
+        boolean isPractice = attempt.getExam().getCreatedBy().getId().equals(attempt.getStudent().getId());
         return AttemptSummaryResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
+                .examTitle(attempt.getExam().getTitle())
+                .isPractice(isPractice)
                 .student(attempt.getStudent().getUsername())
                 .status(attempt.getStatus().name())
                 .score(attempt.getScore())

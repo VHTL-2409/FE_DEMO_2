@@ -446,6 +446,12 @@ const formatEventType = (eventType) => {
       return 'Nộp bài quá nhanh'
     case 'DUPLICATE_IP':
       return 'Trùng địa chỉ IP'
+    case 'COPY_PASTE':
+      return 'Copy/paste trong lúc làm bài'
+    case 'IDLE_TIME':
+      return 'Không thao tác trong thời gian dài'
+    case 'DEVTOOLS_OPEN':
+      return 'Mở DevTools trong lúc làm bài'
     default:
       return normalized || 'Sự kiện giám sát'
   }

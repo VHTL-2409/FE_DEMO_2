@@ -15,7 +15,6 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,8 +41,8 @@ public class QuestionController {
 
     @GetMapping("/api/exams/{examId}/questions")
     public ApiResponse<List<QuestionResponse>> list(@PathVariable Long examId) {
-        Exam exam = examService.requireExam(examId);
         var actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireAccessibleExam(examId, actor);
         boolean isAdmin = currentUserService.hasRole(actor, RoleName.ADMIN);
         boolean isExamTeacher = currentUserService.hasRole(actor, RoleName.TEACHER)
                 && exam.getCreatedBy().getId().equals(actor.getId());
@@ -52,7 +51,6 @@ public class QuestionController {
     }
 
     @PostMapping("/api/exams/{examId}/questions")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<QuestionResponse> create(@PathVariable Long examId,
             @Valid @RequestBody QuestionRequest request) {
         Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
@@ -60,7 +58,6 @@ public class QuestionController {
     }
 
     @PutMapping("/api/exams/{examId}/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<QuestionResponse> update(@PathVariable Long examId,
             @PathVariable Long questionId,
             @Valid @RequestBody QuestionRequest request) {
@@ -70,7 +67,6 @@ public class QuestionController {
     }
 
     @DeleteMapping("/api/exams/{examId}/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<Void> delete(@PathVariable Long examId, @PathVariable Long questionId) {
         examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
         questionService.deleteQuestion(examId, questionId, currentUserService.requireCurrentUser());
@@ -78,7 +74,6 @@ public class QuestionController {
     }
 
     @PostMapping("/api/exams/{examId}/questions/import")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<ImportQuestionsResponse> importFile(@PathVariable Long examId,
             @RequestParam("file") MultipartFile file) {
         Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
@@ -87,7 +82,6 @@ public class QuestionController {
     }
 
     @PostMapping("/api/exams/{examId}/questions/import-xlsx")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<ImportQuestionsResponse> importXlsx(@PathVariable Long examId,
             @RequestParam("file") MultipartFile file) {
         Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
@@ -96,7 +90,6 @@ public class QuestionController {
     }
 
     @GetMapping("/api/questions/template")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<byte[]> downloadTemplate() {
         String content = "Question,Option A,Option B,Option C,Option D,Correct Answer (0-3),Points\n"
                 + "1+1,1,2,3,4,0,50\n"

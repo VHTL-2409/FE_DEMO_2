@@ -44,6 +44,10 @@ public class AssignmentService {
         return assignmentRepository.findByExamOrderByCreatedAtDesc(exam).stream().map(this::toResponse).toList();
     }
 
+    public List<AssignmentResponse> listPublishedByExam(Exam exam) {
+        return assignmentRepository.findPublishedByExamOrderByCreatedAtDesc(exam).stream().map(this::toResponse).toList();
+    }
+
     public AssignmentResponse update(Exam exam, Long assignmentId, AssignmentRequest request) {
         validateRequest(request);
         Assignment assignment = requireByExam(exam, assignmentId);

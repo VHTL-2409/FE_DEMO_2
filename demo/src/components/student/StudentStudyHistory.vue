@@ -1,98 +1,126 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased min-h-screen">
-    <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
-      <div class="layout-container flex h-full grow flex-col">
-        <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+    <div class="layout-container flex h-full grow flex-col">
+      <StudentTopHeader />
 
-        <main class="relative flex-1 px-6 md:px-20 lg:px-40 py-8 overflow-hidden">
-          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+      <main class="teacher-page-shell max-w-5xl">
+        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-          <div class="relative max-w-5xl mx-auto space-y-8">
-            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-up">
-              <div class="space-y-1">
-                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Kết quả tự học</h1>
-                <p class="text-slate-500 dark:text-slate-400">Theo dõi và xem lại hiệu suất các phiên học trước đây của bạn.</p>
-              </div>
+        <div class="relative space-y-8">
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-up">
+            <div class="space-y-1">
+              <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Lịch sử/Kết quả</h1>
+              <p class="text-slate-500 dark:text-slate-400">Theo dõi lại kết quả bài thi và các phiên luyện tập của bạn.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-px animate-fade-up-delay">
+            <button
+              type="button"
+              @click="setTab('exam')"
+              :class="activeTab === 'exam'
+                ? 'border-b-2 border-primary pb-3 px-2 text-sm font-semibold text-primary'
+                : 'pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors'"
+            >
+              Bài thi
+            </button>
+            <button
+              type="button"
+              @click="setTab('practice')"
+              :class="activeTab === 'practice'
+                ? 'border-b-2 border-primary pb-3 px-2 text-sm font-semibold text-primary'
+                : 'pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors'"
+            >
+              Luyện tập
+            </button>
+          </div>
+
+
+          <div class="teacher-card overflow-hidden shadow-sm animate-fade-up-delay">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Bài</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày làm</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Thời gian làm bài</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                  <tr v-if="isLoading" class="text-sm text-slate-500">
+                    <td colspan="4" class="px-6 py-8 text-center">Đang tải lịch sử...</td>
+                  </tr>
+                  <tr v-else-if="loadError" class="text-sm text-rose-600">
+                    <td colspan="4" class="px-6 py-8 text-center">{{ loadError }}</td>
+                  </tr>
+                  <tr v-else-if="!sessions.length" class="text-sm text-slate-500">
+                    <td colspan="4" class="px-6 py-8 text-center">{{ emptyMessage }}</td>
+                  </tr>
+                  <tr v-for="session in sessions" :key="session.attemptId" @click="goToExamResult(session)" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer hover:-translate-y-0.5">
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <div :class="session.iconClass" class="h-10 w-10 rounded-lg flex items-center justify-center">
+                          <span class="material-symbols-outlined">{{ session.icon }}</span>
+                        </div>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">{{ session.subject }}</span>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-slate-600 dark:text-slate-400">{{ session.date }}</td>
+                    <td class="px-6 py-5">
+                      <div class="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                        {{ session.score }} / 10
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-right text-slate-600 dark:text-slate-400 font-medium">{{ session.timeTaken }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            <div class="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-px animate-fade-up-delay">
-              <button class="border-b-2 border-primary pb-3 px-2 text-sm font-semibold text-primary" type="button">Tất cả phiên</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Toán học</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Khoa học</button>
-              <button class="pb-3 px-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" type="button">Ngôn ngữ</button>
-            </div>
-
-            <div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm animate-fade-up-delay">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                  <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Môn học</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày thi</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm</th>
-                      <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Thời gian làm bài</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                    <tr v-for="session in sessions" :key="session.subject + session.date" @click="goToExamResult(session)" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer hover:-translate-y-0.5">
-                      <td class="px-6 py-5">
-                        <div class="flex items-center gap-3">
-                          <div :class="session.iconClass" class="h-10 w-10 rounded-lg flex items-center justify-center">
-                            <span class="material-symbols-outlined">{{ session.icon }}</span>
-                          </div>
-                          <span class="font-semibold text-slate-900 dark:text-slate-100">{{ session.subject }}</span>
-                        </div>
-                      </td>
-                      <td class="px-6 py-5 text-slate-600 dark:text-slate-400">{{ session.date }}</td>
-                      <td class="px-6 py-5">
-                        <div class="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-sm">
-                          {{ session.score }} / 100
-                        </div>
-                      </td>
-                      <td class="px-6 py-5 text-right text-slate-600 dark:text-slate-400 font-medium">{{ session.timeTaken }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1 đến 5 trong 24 phiên</span>
-                <div class="flex items-center gap-2">
-                  <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
-                    <span class="material-symbols-outlined">chevron_left</span>
-                  </button>
-                  <button class="h-8 w-8 rounded-lg bg-primary text-white text-sm font-bold" type="button">1</button>
-                  <button class="h-8 w-8 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 text-sm font-medium" type="button">2</button>
-                  <button class="h-8 w-8 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 text-sm font-medium" type="button">3</button>
-                  <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400" type="button">
-                    <span class="material-symbols-outlined">chevron_right</span>
-                  </button>
-                </div>
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ sessions.length }} phiên</span>
+              <div class="flex items-center gap-2">
+                <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <button class="h-8 w-8 rounded-lg bg-primary text-white text-sm font-bold" type="button">1</button>
+                <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
               </div>
             </div>
           </div>
-        </main>
+        </div>
+      </main>
 
-        <footer class="mt-auto px-6 md:px-20 lg:px-40 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
-          <p class="text-slate-500 dark:text-slate-400 text-sm">© 2023 StudyPortal. Mọi hồ sơ học tập đều riêng tư và được bảo mật.</p>
-        </footer>
-      </div>
+      <footer class="mt-auto px-6 md:px-20 lg:px-40 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
+        <p class="text-slate-500 dark:text-slate-400 text-sm">© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
+      </footer>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ApiError } from '../../services/apiClient'
 import { listMyAttempts } from '../../services/attemptService'
-import { useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const router = useRouter()
+const route = useRoute()
 const isDark = ref(false)
 const attempts = ref([])
+const isLoading = ref(false)
+const loadError = ref('')
+const activeTab = computed(() => (route.query.tab === 'practice' ? 'practice' : 'exam'))
+
+const detectAttemptType = (attempt) => (attempt.isPractice ? 'practice' : 'exam')
 
 const sessions = computed(() => attempts.value
+  .filter((attempt) => detectAttemptType(attempt) === activeTab.value)
   .slice()
   .sort((a, b) => {
     const aTime = new Date(a.submittedAt || a.startedAt || 0).getTime()
@@ -106,92 +134,60 @@ const sessions = computed(() => attempts.value
       ? Math.max(1, Math.round((submittedAt.getTime() - startedAt.getTime()) / 60000))
       : 0
 
+    const subject = attempt.examTitle || 'Bài thi'
+    const isPractice = detectAttemptType(attempt) === 'practice'
+
     return {
-      subject: attempt.examTitle || `Bài thi #${attempt.examId}`,
+      subject,
       date: submittedAt ? submittedAt.toLocaleDateString() : '-',
-      score: Math.round(Number(attempt.score || 0)),
+      score: (Number(attempt.score || 0) / 10).toFixed(1),
       timeTaken: durationMinutes ? `${durationMinutes}m` : '-',
-      icon: 'menu_book',
-      iconClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+      icon: isPractice ? 'model_training' : 'menu_book',
+      iconClass: isPractice
+        ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
+        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
       attemptId: attempt.id,
       examId: attempt.examId,
+      examTitle: attempt.examTitle || subject,
       attemptedAt: submittedAt ? submittedAt.toLocaleString() : '-'
     }
   }))
+
+const emptyMessage = computed(() => {
+  if (activeTab.value === 'practice') {
+    return 'Chưa có lượt luyện tập nào.'
+  }
+  return 'Chưa có bài thi nào.'
+})
+
+const setTab = (tab) => {
+  router.replace({
+    path: '/student/study-history',
+    query: { tab }
+  })
+}
 
 const goToExamResult = (session) => {
   router.push({
     path: '/student/exam-result',
     query: {
-      exam: session.subject,
       attemptId: session.attemptId,
-      examId: session.examId,
-      score: session.score,
-      attempted: `Đã làm lúc ${session.attemptedAt}`,
-      time: session.timeTaken,
-      accuracy: session.score
+      examTitle: session.examTitle
     }
   })
 }
 
 onMounted(async () => {
+  isLoading.value = true
+  loadError.value = ''
+
   try {
-    attempts.value = await listMyAttempts()
-  } catch {
+    attempts.value = await listMyAttempts({ type: activeTab.value })
+  } catch (error) {
     attempts.value = []
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải lịch sử tự học.'
+  } finally {
+    isLoading.value = false
   }
 })
 </script>
-
-<style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
-}
-</style>

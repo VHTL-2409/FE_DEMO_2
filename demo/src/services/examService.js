@@ -24,6 +24,11 @@ export const getExamDetail = async (examId) => {
   return unwrapApiData(payload)
 }
 
+export const joinExamByCode = async (query) => {
+  const payload = await apiRequest(`/api/exams/join?query=${encodeURIComponent(query)}`)
+  return unwrapApiData(payload)
+}
+
 export const createExam = async ({ title, description = '', durationMinutes = 60, startTime = null, endTime = null, isActive = false }) => {
   const payload = await apiRequest('/api/exams', {
     method: 'POST',
@@ -53,6 +58,17 @@ export const updateExam = async (examId, { title, description = '', durationMinu
     })
   })
 
+  return unwrapApiData(payload)
+}
+
+export const createPracticeExam = async ({ questionCount = 20, durationMinutes = 30 } = {}) => {
+  const payload = await apiRequest('/api/exams/practice', {
+    method: 'POST',
+    body: JSON.stringify({
+      questionCount,
+      durationMinutes
+    })
+  })
   return unwrapApiData(payload)
 }
 

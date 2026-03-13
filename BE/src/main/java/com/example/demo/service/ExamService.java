@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
+import com.example.demo.api.dto.exam.PracticeExamRequest;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
@@ -79,18 +80,21 @@ public class ExamService {
     }
 
     @Transactional
-    public ExamResponse generatePracticeExam(User student) {
+    public ExamResponse generatePracticeExam(User student, PracticeExamRequest request) {
+        int questionCount = request == null || request.getQuestionCount() == null ? 20 : request.getQuestionCount();
+        int durationMinutes = request == null || request.getDurationMinutes() == null ? 30 : request.getDurationMinutes();
+
         Exam practiceExam = Exam.builder()
                 .title("Luyện Tập - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
                 .code(generateUniqueExamCode())
                 .description("Bài thi luyện tập ngẫu nhiên. (Hệ thống tự tạo)")
-                .durationMinutes(15)
+                .durationMinutes(durationMinutes)
                 .isActive(true)
-                .createdBy(student) // Student owns this practice exam
+                .createdBy(student)
                 .build();
         practiceExam = examRepository.save(practiceExam);
 
-        List<Question> randQs = questionRepository.findRandomQuestions();
+        List<Question> randQs = questionRepository.findRandomQuestions(questionCount);
         for (Question q : randQs) {
             Question newQ = Question.builder()
                     .exam(practiceExam)
@@ -107,6 +111,35 @@ public class ExamService {
     @Transactional(readOnly = true)
     public ExamResponse getExam(Long examId) {
         return toResponse(requireExam(examId));
+    }
+
+    @Transactional(readOnly = true)
+    public ExamResponse getExamForUser(Long examId, User actor) {
+        return toResponse(requireAccessibleExam(examId, actor));
+    }
+
+    @Transactional(readOnly = true)
+    public ExamResponse resolveJoinableExam(String query, User actor) {
+        if (query == null || query.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Query is required");
+        }
+
+        String trimmed = query.trim();
+        Exam exam = examRepository.findFirstByCodeIgnoreCase(trimmed)
+                .or(() -> {
+                    try {
+                        Long examId = Long.parseLong(trimmed);
+                        return examRepository.findById(examId);
+                    } catch (NumberFormatException ex) {
+                        return java.util.Optional.empty();
+                    }
+                })
+                .or(() -> examRepository.findFirstByTitleContainingIgnoreCase(trimmed))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
+
+        Exam accessibleExam = requireAccessibleExam(exam.getId(), actor);
+        validateExamAvailability(accessibleExam, LocalDateTime.now());
+        return toResponse(accessibleExam);
     }
 
     @Transactional
@@ -158,6 +191,29 @@ public class ExamService {
         }
         if (!exam.getCreatedBy().getId().equals(actor.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this exam");
+        }
+        return exam;
+    }
+
+    public Exam requireAccessibleExam(Long examId, User actor) {
+        Exam exam = requireExam(examId);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        if (isAdmin) {
+            return exam;
+        }
+
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        if (isTeacher) {
+            if (!exam.getCreatedBy().getId().equals(actor.getId())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this exam");
+            }
+            return exam;
+        }
+
+        boolean creatorIsTeacher = exam.getCreatedBy().getRoles().stream()
+                .anyMatch(role -> role.getName() == RoleName.TEACHER || role.getName() == RoleName.ADMIN);
+        if (!(creatorIsTeacher || exam.getCreatedBy().getId().equals(actor.getId()))) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this exam");
         }
         return exam;
     }

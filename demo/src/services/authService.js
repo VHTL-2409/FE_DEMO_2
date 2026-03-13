@@ -1,4 +1,4 @@
-import { apiRequest, unwrapApiData } from './apiClient'
+import { apiRequest, ApiError, unwrapApiData } from './apiClient'
 
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_USER_KEY = 'auth_user'
@@ -57,3 +57,41 @@ export const register = async ({ username, email, password }) => {
 }
 
 export const fetchMyProfile = async () => apiRequest('/api/me')
+
+export const validateSession = async () => {
+  const token = getStoredToken()
+  if (!token) return null
+
+  const cachedUser = getStoredUser()
+  if (cachedUser) return cachedUser
+
+  try {
+    const data = await apiRequest('/api/me')
+    const user = {
+      username: data?.username || '',
+      roles: Array.isArray(data?.roles) ? data.roles : []
+    }
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+    return user
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 404 && String(error?.payload?.message || '').includes('Student profile not found')) {
+        return getStoredUser()
+      }
+    }
+    clearAuthSession()
+    return null
+  }
+}
+
+export const fetchStudentProfile = async () => apiRequest('/api/profile/student')
+
+export const fetchTeacherProfile = async () => apiRequest('/api/profile/teacher')
+
+export const updateSharedProfile = async ({ displayName, email, phone, avatarUrl }) => {
+  const response = await apiRequest('/api/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ displayName, email, phone, avatarUrl })
+  })
+  return unwrapApiData(response)
+}

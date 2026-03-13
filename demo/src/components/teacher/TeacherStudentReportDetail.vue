@@ -100,7 +100,7 @@ const studentId = computed(() => attemptId.value ? `AT-${attemptId.value}` : 'N/
 const score = computed(() => {
   const scoreValue = Number(report.value?.score ?? detail.value?.score)
   if (Number.isNaN(scoreValue)) return 'Không có'
-  return `${scoreValue.toFixed(1)} / 10`
+  return `${(scoreValue / 10).toFixed(1)} / 10`
 })
 
 const accuracy = computed(() => {

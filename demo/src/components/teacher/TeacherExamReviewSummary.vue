@@ -55,7 +55,7 @@
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-up-delay">
           <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
             <h2 class="text-lg font-bold">Tổng quan điểm sinh viên</h2>
-            <p class="text-xs text-slate-500">Điểm trung bình lớp: {{ classAverageLabel }}</p>
+            <p class="text-xs text-slate-500">Điểm trung bình lớp: {{ classAverageLabel }} / 10</p>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -143,11 +143,11 @@ const averageScoreValue = computed(() => {
   return total / submittedAttempts.value.length
 })
 
-const classAverageLabel = computed(() => submittedAttempts.value.length ? averageScoreValue.value.toFixed(1) : '-')
+const classAverageLabel = computed(() => submittedAttempts.value.length ? (averageScoreValue.value / 10).toFixed(1) : '-')
 
 const passRateValue = computed(() => {
   if (!submittedAttempts.value.length) return 0
-  const passCount = submittedAttempts.value.filter((attempt) => Number(attempt.score || 0) >= 5).length
+  const passCount = submittedAttempts.value.filter((attempt) => Number(attempt.score || 0) >= 50).length
   return (passCount / submittedAttempts.value.length) * 100
 })
 
@@ -176,7 +176,7 @@ const summaryCards = computed(() => {
     {
       title: 'Điểm trung bình',
       icon: 'insights',
-      value: attemptCount ? averageScoreValue.value.toFixed(1) : '-',
+      value: attemptCount ? (averageScoreValue.value / 10).toFixed(1) : '-',
       trend: `${attemptCount} lượt làm`,
       trendClass: 'text-slate-500 dark:text-slate-400'
     },
@@ -184,13 +184,13 @@ const summaryCards = computed(() => {
       title: 'Tỷ lệ đạt',
       icon: 'check_circle',
       value: attemptCount ? `${passRateValue.value.toFixed(0)}%` : '-',
-      trend: 'Đạt ≥ 5.0',
+      trend: 'Đạt ≥ 5.0/10',
       trendClass: 'text-slate-500 dark:text-slate-400'
     },
     {
       title: 'Điểm cao nhất',
       icon: 'emoji_events',
-      value: attemptCount ? highestScoreValue.value.toFixed(1) : '-',
+      value: attemptCount ? (highestScoreValue.value / 10).toFixed(1) : '-',
       trend: attemptCount ? 'Chấm tự động' : 'Chưa có dữ liệu',
       trendClass: 'text-primary'
     },
@@ -243,7 +243,7 @@ const resultRows = computed(() => attempts.value.map((attempt) => {
     attemptId: attempt.id,
     student: attempt.student || 'Sinh viên không rõ',
     studentId: `AT-${attempt.id}`,
-    score: `${scoreValue.toFixed(1)} / 10`,
+    score: `${(scoreValue / 10).toFixed(1)} / 10`,
     accuracy: '-',
     timeSpent: formatDuration(attempt),
     status: statusMeta.label,

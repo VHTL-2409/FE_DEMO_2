@@ -26,7 +26,9 @@
               </label>
               <span class="text-primary font-bold">{{ timeLimit }} phút</span>
             </div>
-            <input v-model="timeLimit" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" type="range" min="5" max="240" step="5" />
+            <div class="px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300">
+              Thời lượng lấy theo đề thi đã chọn.
+            </div>
           </div>
           <div class="space-y-3">
             <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -84,7 +86,7 @@ import TeacherTopHeader from './TeacherTopHeader.vue'
 const router = useRouter()
 const route = useRoute()
 const isDark = ref(false)
-const timeLimit = ref(60)
+const timeLimit = ref(Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 

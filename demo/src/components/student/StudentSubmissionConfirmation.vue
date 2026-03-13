@@ -17,7 +17,7 @@
             </div>
 
             <h1 class="text-3xl lg:text-4xl font-bold text-center mb-3 animate-fade-up">Nộp bài thành công</h1>
-            <p class="text-slate-600 dark:text-slate-400 text-lg text-center mb-10">Câu trả lời của bạn đã được ghi nhận và gửi cho giảng viên để đánh giá.</p>
+            <p class="text-slate-600 dark:text-slate-400 text-lg text-center mb-10">Câu trả lời của bạn đã được ghi nhận và hệ thống đã chấm điểm tự động.</p>
 
             <div class="w-full bg-white dark:bg-slate-800/50 rounded-xl border border-primary/10 p-6 mb-8 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fade-up-delay">
               <h3 class="text-sm font-bold uppercase tracking-wider text-primary mb-6">Tóm tắt bài nộp</h3>

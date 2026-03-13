@@ -29,6 +29,15 @@ public class RiskScoringService {
     @Value("${demo.risk.duplicate-ip:50}")
     private int duplicateIpBase;
 
+    @Value("${demo.risk.copy-paste:20}")
+    private int copyPasteBase;
+
+    @Value("${demo.risk.idle-time:10}")
+    private int idleTimeBase;
+
+    @Value("${demo.risk.devtools-open:30}")
+    private int devToolsOpenBase;
+
     @Value("${demo.risk.threshold:50}")
     private int threshold;
 
@@ -54,6 +63,9 @@ public class RiskScoringService {
             case EXIT_FULLSCREEN -> exitFullscreenBase;
             case FAST_SUBMIT -> fastSubmitBase;
             case DUPLICATE_IP -> duplicateIpBase;
+            case COPY_PASTE -> copyPasteBase;
+            case IDLE_TIME -> idleTimeBase;
+            case DEVTOOLS_OPEN -> devToolsOpenBase;
         };
     }
 

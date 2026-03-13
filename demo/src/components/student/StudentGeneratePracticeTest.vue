@@ -1,110 +1,130 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
-    <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
-      <div class="layout-container flex h-full grow flex-col">
-        <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+    <div class="layout-container flex h-full grow flex-col">
+      <StudentTopHeader />
 
-        <main class="relative flex flex-1 justify-center py-8 px-4 md:px-0 overflow-hidden">
-          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+      <main class="relative max-w-4xl mx-auto px-4 py-10 overflow-hidden w-full">
+        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-          <div class="layout-content-container relative flex flex-col max-w-[800px] flex-1 gap-6">
-            <div class="flex items-center animate-fade-up">
-              <button @click="goBack" class="flex items-center gap-2 text-primary font-medium hover:underline text-sm" type="button">
-                <span class="material-symbols-outlined text-sm">arrow_back</span>
-                Quay lại trang chủ
-              </button>
+        <div class="relative mb-10 animate-fade-up">
+          <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo bài luyện tập mới</h2>
+          <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Thiết kế tương tự luồng tạo đề bên giáo viên, tối ưu cho sinh viên tự luyện tập nhanh.</p>
+        </div>
+
+        <div class="relative space-y-8 animate-fade-up-delay">
+          <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center gap-2 mb-6">
+              <span class="material-symbols-outlined text-primary">info</span>
+              <h3 class="text-lg font-bold">Thông tin chung</h3>
             </div>
-
-            <div class="flex flex-col gap-2 animate-fade-up">
-              <h1 class="text-slate-900 dark:text-slate-100 text-3xl font-bold leading-tight">Cấu hình bài luyện tập</h1>
-              <p class="text-slate-500 dark:text-slate-400 text-base font-normal">Tệp của bạn đã được xử lý. Hãy tùy chỉnh phiên luyện tập theo mục tiêu học tập của bạn.</p>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Nhập tệp đề thi</label>
+              <input
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+                type="file"
+                @change="handleFileChange"
+              />
+              <p v-if="fileName" class="text-xs text-slate-500 dark:text-slate-400">Đã chọn: {{ fileName }}</p>
             </div>
+          </section>
 
-            <div class="p-1 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 animate-fade-up-delay">
-              <div class="flex flex-col md:flex-row items-center justify-between gap-6 rounded-lg bg-white dark:bg-slate-800 p-6 shadow-sm border border-primary/5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                <div class="flex items-center gap-5 flex-1">
-                  <div class="size-16 flex items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                    <span class="material-symbols-outlined text-3xl">description</span>
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    <p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">Nội dung đã tải lên</p>
-                    <p class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight">{{ fileName }}</p>
-                    <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                      <span class="material-symbols-outlined text-sm">auto_awesome</span>
-                      <span>Đã phát hiện 15 trang • Xác định 4 chương chính</span>
-                    </div>
-                  </div>
-                </div>
+          <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">auto_awesome</span>
+                <h3 class="text-lg font-bold">Thiết lập phiên luyện tập</h3>
               </div>
             </div>
 
-            <div class="flex flex-col gap-8 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-primary/5 animate-fade-up-delay">
-              <h3 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight border-b border-primary/10 pb-4">Thiết lập bài kiểm tra</h3>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Số lượng câu hỏi</label>
+              <input
+                v-model.number="questionCount"
+                type="number"
+                min="5"
+                max="50"
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              />
+              <p class="text-xs text-slate-500 dark:text-slate-400">Hệ thống cho phép từ 5 đến 50 câu hỏi mỗi bài.</p>
+            </div>
 
-              <div class="space-y-2">
-                <label class="text-slate-900 dark:text-slate-100 text-base font-semibold">Số lượng câu hỏi</label>
-                <input
-                  v-model.number="questionCount"
-                  type="number"
-                  min="5"
-                  max="50"
-                  class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                />
-                <p class="text-xs text-slate-500 dark:text-slate-400">Chọn từ 5 đến 50 câu hỏi.</p>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">timer</span>
+                Thời lượng (phút)
+              </label>
+              <div class="px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300">
+                {{ timeLimit }} phút
               </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Thời lượng lấy theo đề thi đã import.</p>
+            </div>
 
-              <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">timer</span>
-                    Giới hạn thời gian (phút)
-                  </label>
-                  <span class="text-primary font-bold">{{ timeLimit }} min</span>
-                </div>
-                <input v-model="timeLimit" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" type="range" min="5" max="240" step="5" />
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">calendar_today</span>
+                Ngày &amp; giờ bắt đầu
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <input v-model="startDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" />
+                <input v-model="startClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" />
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">calendar_today</span>
-                    Ngày &amp; giờ bắt đầu
-                  </label>
-                  <input v-model="startAt" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="datetime-local" />
-                </div>
-                <div class="space-y-2">
-                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">event_busy</span>
-                    Ngày &amp; giờ kết thúc
-                  </label>
-                  <input v-model="endAt" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="datetime-local" />
-                </div>
+              <div class="flex flex-wrap gap-2">
+                <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setStartNow">Bây giờ</button>
+                <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setStartIn15Minutes">+15 phút</button>
               </div>
             </div>
 
-            <div class="flex flex-col gap-4 mt-4 animate-fade-up-delay">
-              <button @click="startPractice" class="flex w-full items-center justify-center gap-3 rounded-xl h-14 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all" type="button">
-                <span class="material-symbols-outlined">rocket_launch</span>
-                Tạo &amp; bắt đầu luyện tập
-              </button>
-              <p class="text-center text-slate-400 text-xs">
-                Khi bắt đầu, AI sẽ tạo các câu hỏi riêng dựa trên nội dung tài liệu của bạn.
-              </p>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">event_busy</span>
+                Ngày &amp; giờ kết thúc
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <input v-model="endDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" />
+                <input v-model="endClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" />
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setEndByDuration">Kết thúc = Bắt đầu + Thời lượng</button>
+                <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setEndAfter30Minutes">+30 phút</button>
+              </div>
             </div>
+          </section>
+
+          <div class="flex items-center justify-end gap-4 pt-2">
+            <button
+              class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+              type="button"
+              @click="goBack"
+            >
+              Quay lại
+            </button>
+            <button
+              :disabled="isCreating"
+              class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              type="button"
+              @click="startPractice"
+            >
+              {{ isCreating ? 'Đang tạo...' : 'Tạo & bắt đầu' }}
+              <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
           </div>
-        </main>
+          <p v-if="errorMessage" class="text-sm text-rose-600 mt-3">{{ errorMessage }}</p>
+        </div>
+      </main>
 
-        <footer class="py-10 text-center text-slate-400 text-sm">
-          <p>© 2024 StudyPrep AI. Bảo lưu mọi quyền.</p>
-        </footer>
-      </div>
+      <footer class="py-8 text-center text-slate-500 text-sm border-t border-primary/10">
+        <p>© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
+      </footer>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
+import { startAttempt } from '../../services/attemptService'
+import { createPracticeExam } from '../../services/examService'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
@@ -112,21 +132,116 @@ const router = useRouter()
 const route = useRoute()
 const isDark = ref(false)
 const questionCount = ref(20)
-const timeLimit = ref(30)
-const startAt = ref('')
-const endAt = ref('')
+const timeLimit = ref(Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)
+const isCreating = ref(false)
+const errorMessage = ref('')
+const fileName = ref('')
 
-const fileName = computed(() => route.query.file || 'Ghi_chu_Vat_ly.pdf')
+const formatDatePart = (date) => {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const formatTimePart = (date) => {
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+const now = new Date()
+const defaultEnd = new Date(now.getTime() + timeLimit.value * 60000)
+
+const startDate = ref(formatDatePart(now))
+const startClock = ref(formatTimePart(now))
+const endDate = ref(formatDatePart(defaultEnd))
+const endClock = ref(formatTimePart(defaultEnd))
+
+const buildLocalDateTime = (datePart, timePart) => {
+  if (!datePart || !timePart) return ''
+  return `${datePart}T${timePart}:00`
+}
+
+const startAt = computed(() => buildLocalDateTime(startDate.value, startClock.value))
+const endAtValue = computed(() => buildLocalDateTime(endDate.value, endClock.value))
+
+const toDate = (value) => {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const handleFileChange = (event) => {
+  const file = event?.target?.files?.[0]
+  fileName.value = file ? file.name : ''
+}
+
+const setStartNow = () => {
+  const date = new Date()
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setStartIn15Minutes = () => {
+  const date = new Date(Date.now() + 15 * 60000)
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setEndByDuration = () => {
+  const start = toDate(startAt.value)
+  if (!start) return
+  const date = new Date(start.getTime() + Number(timeLimit.value || 60) * 60000)
+  endDate.value = formatDatePart(date)
+  endClock.value = formatTimePart(date)
+}
+
+const setEndAfter30Minutes = () => {
+  const date = new Date(Date.now() + 30 * 60000)
+  endDate.value = formatDatePart(date)
+  endClock.value = formatTimePart(date)
+}
 
 const goBack = () => {
   router.push('/student/dashboard')
 }
 
-const startPractice = () => {
-  router.push({
-    path: '/student/exam-interface',
-    query: { exam: `Bài luyện tập - ${fileName.value}` }
-  })
+const startPractice = async () => {
+  isCreating.value = true
+  errorMessage.value = ''
+
+  const start = toDate(startAt.value)
+  const end = toDate(endAtValue.value)
+  if (!start || !end || end <= start) {
+    errorMessage.value = 'Thời gian kết thúc phải sau thời gian bắt đầu.'
+    isCreating.value = false
+    return
+  }
+
+  try {
+    const practiceExam = await createPracticeExam({
+      questionCount: questionCount.value,
+      durationMinutes: Number(timeLimit.value)
+    })
+
+    const attempt = await startAttempt(practiceExam.id)
+
+    router.push({
+      path: '/student/exam-interface',
+      query: {
+        exam: practiceExam.title || `Bài luyện tập - ${fileName.value}`,
+        examId: practiceExam.id,
+        attemptId: attempt.attemptId,
+        deadlineAt: attempt.deadlineAt || '',
+        remainingSeconds: attempt.remainingSeconds || 0,
+        startedAt: attempt.startedAt || ''
+      }
+    })
+  } catch (error) {
+    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tạo bài luyện tập lúc này.'
+  } finally {
+    isCreating.value = false
+  }
 }
 </script>
 

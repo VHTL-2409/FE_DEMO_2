@@ -8,7 +8,6 @@ import com.example.demo.service.AssignmentService;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamService;
 import jakarta.validation.Valid;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,15 +29,20 @@ public class AssignmentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public List<AssignmentResponse> list(@PathVariable Long examId) {
         User actor = currentUserService.requireCurrentUser();
         Exam exam = examService.requireManageableExam(examId, actor);
         return assignmentService.listByExam(exam);
     }
 
+    @GetMapping("/public")
+    public List<AssignmentResponse> listPublished(@PathVariable Long examId) {
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireAccessibleExam(examId, actor);
+        return assignmentService.listPublishedByExam(exam);
+    }
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public AssignmentResponse create(@PathVariable Long examId,
                                      @Valid @RequestBody AssignmentRequest request) {
         User actor = currentUserService.requireCurrentUser();
@@ -47,7 +51,6 @@ public class AssignmentController {
     }
 
     @PutMapping("/{assignmentId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public AssignmentResponse update(@PathVariable Long examId,
                                      @PathVariable Long assignmentId,
                                      @Valid @RequestBody AssignmentRequest request) {
@@ -57,7 +60,6 @@ public class AssignmentController {
     }
 
     @PatchMapping("/{assignmentId}/publish")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public AssignmentResponse publish(@PathVariable Long examId,
                                       @PathVariable Long assignmentId,
                                       @RequestParam Boolean isPublished) {
@@ -67,7 +69,6 @@ public class AssignmentController {
     }
 
     @DeleteMapping("/{assignmentId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public void delete(@PathVariable Long examId,
                        @PathVariable Long assignmentId) {
         User actor = currentUserService.requireCurrentUser();

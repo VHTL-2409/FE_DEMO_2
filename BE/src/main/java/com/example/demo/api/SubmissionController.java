@@ -26,7 +26,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,15 +47,13 @@ public class SubmissionController {
     }
 
     @PostMapping("/exams/{examId}/attempts/start")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ApiResponse<StartAttemptResponse> start(@PathVariable Long examId, HttpServletRequest request) {
-        Exam exam = examService.requireExam(examId);
         User student = currentUserService.requireCurrentUser();
+        Exam exam = examService.requireAccessibleExam(examId, student);
         return ApiResponse.success(submissionService.startAttempt(exam, student, request.getRemoteAddr()));
     }
 
     @PostMapping("/attempts/{attemptId}/submit")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ApiResponse<SubmitAttemptResponse> submit(@PathVariable Long attemptId,
             @Valid @RequestBody SubmitAttemptRequest request) {
         User student = currentUserService.requireCurrentUser();
@@ -64,7 +61,6 @@ public class SubmissionController {
     }
 
     @PutMapping("/attempts/{attemptId}/draft-answers")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ApiResponse<DraftSaveResponse> saveDraft(@PathVariable Long attemptId,
             @RequestBody @NotEmpty List<@Valid AnswerInput> answers,
             HttpServletRequest request) {
@@ -73,36 +69,48 @@ public class SubmissionController {
     }
 
     @GetMapping("/attempts/{attemptId}/draft-answers")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ApiResponse<DraftAnswersResponse> getDraft(@PathVariable Long attemptId) {
         User student = currentUserService.requireCurrentUser();
         return ApiResponse.success(submissionService.getDraftAnswers(attemptId, student));
     }
 
     @GetMapping("/attempts/{attemptId}")
-    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
     public ApiResponse<AttemptDetailResponse> attemptDetail(@PathVariable Long attemptId) {
         return ApiResponse
                 .success(submissionService.getAttemptDetail(attemptId, currentUserService.requireCurrentUser()));
     }
 
     @GetMapping("/attempts/{attemptId}/report")
-    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
     public ApiResponse<AttemptReportResponse> attemptReport(@PathVariable Long attemptId) {
         return ApiResponse
                 .success(submissionService.getAttemptReport(attemptId, currentUserService.requireCurrentUser()));
     }
 
     @GetMapping("/attempts/my")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public ApiResponse<List<AttemptSummaryResponse>> myAttempts() {
+    public ApiResponse<List<AttemptSummaryResponse>> myAttempts(@RequestParam(required = false) String type) {
         User student = currentUserService.requireCurrentUser();
-        return ApiResponse
-                .success(submissionService.listByStudent(student).stream().map(submissionService::toSummary).toList());
+        List<AttemptSummaryResponse> summaries = submissionService.listByStudent(student)
+                .stream()
+                .map(submissionService::toSummary)
+                .toList();
+
+        if (type == null || type.isBlank()) {
+            return ApiResponse.success(summaries);
+        }
+
+        String normalized = type.trim().toLowerCase();
+        if (!normalized.equals("practice") && !normalized.equals("exam")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported type");
+        }
+
+        boolean practiceOnly = normalized.equals("practice");
+        List<AttemptSummaryResponse> filtered = summaries.stream()
+                .filter(summary -> Boolean.TRUE.equals(summary.getIsPractice()) == practiceOnly)
+                .toList();
+        return ApiResponse.success(filtered);
     }
 
     @GetMapping("/exams/{examId}/attempts")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<AttemptSummaryResponse>> byExam(@PathVariable Long examId) {
         User actor = currentUserService.requireCurrentUser();
         Exam exam = examService.requireManageableExam(examId, actor);
@@ -111,7 +119,6 @@ public class SubmissionController {
     }
 
     @GetMapping("/exams/{examId}/attempts/filter")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<AttemptFilterResponse> byExamFiltered(@PathVariable Long examId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean suspicious,
@@ -127,7 +134,6 @@ public class SubmissionController {
     }
 
     @GetMapping("/exams/{examId}/attempts/{attemptId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<AttemptDetailResponse> byExamAttemptDetail(@PathVariable Long examId,
             @PathVariable Long attemptId) {
         User actor = currentUserService.requireCurrentUser();
@@ -140,7 +146,6 @@ public class SubmissionController {
     }
 
     @GetMapping("/exams/{examId}/attempts/report/export")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<byte[]> exportExamAttemptReport(@PathVariable Long examId,
             @RequestParam(defaultValue = "csv") String format) {
         if (!"csv".equalsIgnoreCase(format)) {

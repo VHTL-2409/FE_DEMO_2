@@ -226,8 +226,9 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-const routeByRole = (roles) => {
-  if (roles.includes('TEACHER')) {
+const routeByRole = (selectedRole) => {
+  const normalizedRole = String(selectedRole || '').toLowerCase()
+  if (normalizedRole === 'teacher') {
     router.push('/teacher/dashboard')
     return
   }
@@ -246,12 +247,12 @@ const onSubmit = async () => {
   isSubmitting.value = true
 
   try {
-    const authData = await login({
+    await login({
       username: username.value.trim(),
       password: password.value
     })
 
-    routeByRole(authData?.roles || [])
+    routeByRole(role.value)
   } catch (error) {
     if (error instanceof ApiError) {
       errorMessage.value = error.message || 'Login failed. Please try again.'

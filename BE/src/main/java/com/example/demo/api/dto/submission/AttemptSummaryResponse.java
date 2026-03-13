@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 public class AttemptSummaryResponse {
     private Long id;
     private Long examId;
+    private String examTitle;
+    private Boolean isPractice;
     private String student;
     private String status;
     private Double score;

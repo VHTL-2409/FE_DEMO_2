@@ -10,7 +10,9 @@ import lombok.Getter;
 public class AttemptReportAnswerItem {
     private Long questionId;
     private String question;
+    private String options;
     private String selectedAnswer;
+    private String correctAnswer;
     private Boolean correct;
     private Double scoreWeight;
 }
