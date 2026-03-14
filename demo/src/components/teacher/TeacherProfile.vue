@@ -4,11 +4,11 @@
       <div class="layout-container flex h-full grow flex-col">
         <TeacherTopHeader active-section="profile" />
 
-        <main class="teacher-page-shell max-w-6xl">
+        <main class="teacher-page-shell w-full">
           <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
           <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-          <div class="relative max-w-6xl mx-auto space-y-8">
+          <div class="relative space-y-8">
             <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-fade-up">
               <div>
                 <h1 class="text-3xl font-black tracking-tight">Hồ sơ giáo viên</h1>
@@ -19,68 +19,188 @@
               </button>
             </header>
 
-            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-fade-up-delay">
-              <div class="xl:col-span-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <section class="grid grid-cols-1 gap-6 animate-fade-up-delay">
+              <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm w-full">
                 <div class="flex flex-col items-center text-center">
-                  <div class="size-24 rounded-full border-4 border-primary/20 bg-primary text-white flex items-center justify-center text-2xl font-black">{{ avatarLabel }}</div>
-                  <h2 class="mt-4 text-xl font-bold">{{ profileName }}</h2>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ roleLabel }}</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ profileEmail }}</p>
+                  <div class="size-24 rounded-full border-4 border-primary/20 bg-primary text-white flex items-center justify-center text-2xl font-black overflow-hidden">
+                    <img v-if="profileAvatarUrl && formatField(profileAvatarUrl) !== 'Chưa điền'" :src="profileAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                    <span v-else>{{ avatarLabel }}</span>
+                  </div>
+                  <h2 class="mt-4 text-2xl font-bold">{{ profileName }}</h2>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">ID: {{ profileId }}</p>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ formatField(profileEmail) }}</p>
+                  <label class="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-primary px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/10 cursor-pointer hover:bg-primary/20">
+                    <input type="file" class="hidden" accept="image/png,image/jpeg" @change="handleAvatarChange" />
+                    <span class="material-symbols-outlined text-sm">photo_camera</span>
+                    {{ isUploadingAvatar ? 'Đang tải...' : 'Tải ảnh đại diện' }}
+                  </label>
+                  <p v-if="uploadError" class="text-xs text-rose-600 mt-2">{{ uploadError }}</p>
                 </div>
                 <div class="mt-6 space-y-3 text-sm">
-                  <div class="flex justify-between"><span class="text-slate-500">Mã nhân viên</span><span class="font-semibold">{{ profileId }}</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Văn phòng</span><span class="font-semibold">Tòa nhà A-204</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Trạng thái</span><span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ roleLabel }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Tên đăng nhập</span><span class="font-semibold">{{ formatField(profileUsername) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Tên hiển thị</span><span class="font-semibold">{{ formatField(profileDisplayName) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Họ và tên</span><span class="font-semibold">{{ formatField(profileFullName) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Ngày sinh</span><span class="font-semibold">{{ formatDate(profileDateOfBirth) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Email</span><span class="font-semibold">{{ formatField(profileEmail) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Số điện thoại</span><span class="font-semibold">{{ formatField(profilePhone) }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Avatar URL</span><span class="font-semibold break-all text-right max-w-[60%]">{{ formatField(profileAvatarUrl) }}</span></div>
                 </div>
+
+                <div class="mt-8 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    class="px-4 py-2 rounded-lg border border-primary/20 bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-all"
+                    @click="toggleEditProfile"
+                  >
+                    {{ isEditingProfile ? 'Đóng chỉnh sửa' : 'Chỉnh sửa thông tin' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold hover:border-primary/40 hover:text-primary transition-all"
+                    @click="toggleChangePassword"
+                  >
+                    {{ isChangingPassword ? 'Đóng đổi mật khẩu' : 'Đổi mật khẩu' }}
+                  </button>
+                  <p v-if="profileSuccess" class="text-sm text-emerald-600">{{ profileSuccess }}</p>
+                  <p v-if="passwordSuccess" class="text-sm text-emerald-600">{{ passwordSuccess }}</p>
+                </div>
+
               </div>
 
-              <div class="xl:col-span-2 space-y-6">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                    <p class="text-xs uppercase tracking-wider text-slate-500">Đề thi đã tạo</p>
-                    <p class="text-2xl font-bold mt-2">42</p>
-                  </div>
-                  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                    <p class="text-xs uppercase tracking-wider text-slate-500">Phiên đang hoạt động</p>
-                    <p class="text-2xl font-bold mt-2">3</p>
-                  </div>
-                  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                    <p class="text-xs uppercase tracking-wider text-slate-500">Sinh viên đã giám sát</p>
-                    <p class="text-2xl font-bold mt-2">428</p>
-                  </div>
-                </div>
-
-                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                  <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <h3 class="font-bold">Phiên thi gần đây</h3>
-                  </div>
-                  <div class="divide-y divide-slate-200 dark:divide-slate-800">
-                    <div v-for="session in sessions" :key="session.title" class="px-6 py-4 flex items-center justify-between hover:bg-primary/5 transition-colors">
-                      <div>
-                        <p class="font-semibold">{{ session.title }}</p>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ session.meta }}</p>
-                      </div>
-                      <span :class="session.statusClass" class="text-xs font-bold px-2 py-1 rounded-full">{{ session.status }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                  <h3 class="font-bold mb-4">Lịch làm việc & liên hệ</h3>
-                  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Dữ liệu hồ sơ được lấy từ <span class="font-semibold">/api/profile/teacher</span>.</p>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div class="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-200 dark:border-slate-700">
-                      <p class="text-slate-500">Giờ làm việc tại văn phòng</p>
-                      <p class="font-semibold mt-1">Thứ 2 - Thứ 5, 14:00 - 16:00</p>
-                    </div>
-                    <div class="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-200 dark:border-slate-700">
-                      <p class="text-slate-500">Kênh hỗ trợ</p>
-                      <p class="font-semibold mt-1">teacher-support@examportal.edu</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </section>
+          </div>
+
+          <div v-if="isEditingProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
+            <div class="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="text-lg font-semibold">Cập nhật thông tin</h3>
+                <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleEditProfile">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <form class="px-6 py-5 space-y-4" @submit.prevent="submitProfileUpdate">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Tên hiển thị</label>
+                    <input
+                      v-model="profileForm.displayName"
+                      class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      placeholder="Nhập tên hiển thị"
+                      type="text"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Họ và tên</label>
+                    <input
+                      v-model="profileForm.fullName"
+                      class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      placeholder="Nhập họ và tên"
+                      type="text"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Ngày sinh</label>
+                    <input
+                      v-model="profileForm.dateOfBirth"
+                      class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      type="date"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
+                    <input
+                      v-model="profileForm.email"
+                      class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      placeholder="Nhập email"
+                      type="email"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Số điện thoại</label>
+                    <input
+                      v-model="profileForm.phone"
+                      class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      placeholder="Nhập số điện thoại"
+                      type="tel"
+                    />
+                  </div>
+                </div>
+                <p v-if="profileError" class="text-sm text-rose-600">{{ profileError }}</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    type="button"
+                    class="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:border-primary/40 hover:text-primary transition-all"
+                    @click="toggleEditProfile"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="isSavingProfile"
+                    class="px-5 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {{ isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div v-if="isChangingPassword" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
+            <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="text-lg font-semibold">Thay đổi mật khẩu</h3>
+                <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleChangePassword">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <form class="px-6 py-5 space-y-4" @submit.prevent="submitChangePassword">
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Mật khẩu hiện tại</label>
+                  <input
+                    v-model="passwordForm.currentPassword"
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                    placeholder="Nhập mật khẩu hiện tại"
+                    type="password"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Mật khẩu mới</label>
+                  <input
+                    v-model="passwordForm.newPassword"
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                    placeholder="Nhập mật khẩu mới"
+                    type="password"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Xác nhận mật khẩu mới</label>
+                  <input
+                    v-model="passwordForm.confirmPassword"
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                    placeholder="Nhập lại mật khẩu mới"
+                    type="password"
+                  />
+                </div>
+                <p v-if="passwordError" class="text-sm text-rose-600">{{ passwordError }}</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    type="button"
+                    class="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:border-primary/40 hover:text-primary transition-all"
+                    @click="toggleChangePassword"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="isSavingPassword"
+                    class="px-5 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {{ isSavingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </main>
       </div>
@@ -91,45 +211,184 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchTeacherProfile } from '../../services/authService'
+import { ApiError } from '../../services/apiClient'
+import { changePassword, fetchTeacherProfile, updateSharedProfile, uploadAvatar } from '../../services/authService'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const isDark = ref(false)
 const router = useRouter()
 const profile = ref(null)
+const isUploadingAvatar = ref(false)
+const uploadError = ref('')
+const isEditingProfile = ref(false)
+const isSavingProfile = ref(false)
+const profileError = ref('')
+const profileSuccess = ref('')
+const profileForm = ref({
+  displayName: '',
+  fullName: '',
+  dateOfBirth: '',
+  email: '',
+  phone: ''
+})
+const isChangingPassword = ref(false)
+const isSavingPassword = ref(false)
+const passwordError = ref('')
+const passwordSuccess = ref('')
+const passwordForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
 
 const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Giáo viên')
 const profileId = computed(() => profile.value?.id || '-')
+const profileUsername = computed(() => profile.value?.username || '-')
+const profileDisplayName = computed(() => profile.value?.displayName || '-')
+const profileFullName = computed(() => profile.value?.fullName || '-')
+const profileDateOfBirth = computed(() => profile.value?.dateOfBirth || '-')
 const profileEmail = computed(() => profile.value?.email || '-')
-const roleLabel = computed(() => 'Giáo viên')
+const profilePhone = computed(() => profile.value?.phone || '-')
+const profileAvatarUrl = computed(() => profile.value?.avatarUrl || '-')
 const avatarLabel = computed(() => profileName.value.slice(0, 1).toUpperCase())
 
-const sessions = [
-  {
-    title: 'Thi giữa kỳ Nhập môn AI',
-    meta: '02/11/2026 • 120 sinh viên',
-    status: 'Đã hoàn thành',
-    statusClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
-  },
-  {
-    title: 'Bài kiểm tra Cấu trúc dữ liệu',
-    meta: '05/11/2026 • 88 sinh viên',
-    status: 'Đang diễn ra',
-    statusClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-  },
-  {
-    title: 'Thi cuối kỳ Hệ cơ sở dữ liệu',
-    meta: '10/11/2026 • 132 sinh viên',
-    status: 'Đã lên lịch',
-    statusClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
-  }
-]
+const formatField = (value) => {
+  if (value === null || value === undefined) return 'Chưa điền'
+  const normalized = String(value).trim()
+  return normalized ? normalized : 'Chưa điền'
+}
+
+const formatDate = (value) => {
+  if (!value) return 'Chưa điền'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Chưa điền'
+  return new Intl.DateTimeFormat('vi-VN').format(date)
+}
 
 const loadProfile = async () => {
   try {
     profile.value = await fetchTeacherProfile()
+    if (isEditingProfile.value) {
+      syncProfileForm()
+    }
   } catch {
     profile.value = null
+  }
+}
+
+const handleAvatarChange = async (event) => {
+  const file = event.target?.files?.[0]
+  if (!file) return
+
+  uploadError.value = ''
+  isUploadingAvatar.value = true
+  try {
+    const result = await uploadAvatar(file)
+    if (!profile.value) {
+      profile.value = result || {}
+    }
+    if (result?.avatarUrl) {
+      profile.value = { ...profile.value, avatarUrl: result.avatarUrl }
+    }
+  } catch (error) {
+    uploadError.value = error instanceof ApiError ? error.message : 'Không thể tải ảnh đại diện.'
+  } finally {
+    isUploadingAvatar.value = false
+    event.target.value = ''
+  }
+}
+
+const syncProfileForm = () => {
+  profileForm.value = {
+    displayName: profile.value?.displayName || '',
+    fullName: profile.value?.fullName || '',
+    dateOfBirth: profile.value?.dateOfBirth || '',
+    email: profile.value?.email || '',
+    phone: profile.value?.phone || ''
+  }
+}
+
+const toggleEditProfile = () => {
+  isEditingProfile.value = !isEditingProfile.value
+  profileError.value = ''
+  profileSuccess.value = ''
+  if (isEditingProfile.value) {
+    syncProfileForm()
+  }
+}
+
+const submitProfileUpdate = async () => {
+  profileError.value = ''
+  profileSuccess.value = ''
+
+  if (!profileForm.value.displayName?.trim()) {
+    profileError.value = 'Vui lòng nhập tên hiển thị.'
+    return
+  }
+  if (profileForm.value.email && !profileForm.value.email.includes('@')) {
+    profileError.value = 'Email không hợp lệ.'
+    return
+  }
+
+  isSavingProfile.value = true
+  try {
+    const payload = await updateSharedProfile({
+      displayName: profileForm.value.displayName.trim(),
+      fullName: profileForm.value.fullName?.trim() || null,
+      dateOfBirth: profileForm.value.dateOfBirth || null,
+      email: profileForm.value.email?.trim() || null,
+      phone: profileForm.value.phone?.trim() || null,
+      avatarUrl: profile.value?.avatarUrl || null
+    })
+    profile.value = { ...profile.value, ...payload }
+    profileSuccess.value = 'Đã cập nhật thông tin.'
+    isEditingProfile.value = false
+  } catch (error) {
+    profileError.value = error instanceof ApiError ? error.message : 'Không thể cập nhật thông tin.'
+  } finally {
+    isSavingProfile.value = false
+  }
+}
+
+const toggleChangePassword = () => {
+  isChangingPassword.value = !isChangingPassword.value
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  if (!isChangingPassword.value) {
+    passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  }
+}
+
+const submitChangePassword = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+
+  if (!passwordForm.value.currentPassword || !passwordForm.value.newPassword || !passwordForm.value.confirmPassword) {
+    passwordError.value = 'Vui lòng nhập đầy đủ thông tin.'
+    return
+  }
+  if (passwordForm.value.newPassword.length < 6) {
+    passwordError.value = 'Mật khẩu mới phải có ít nhất 6 ký tự.'
+    return
+  }
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    passwordError.value = 'Mật khẩu xác nhận không khớp.'
+    return
+  }
+
+  isSavingPassword.value = true
+  try {
+    await changePassword({
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword
+    })
+    passwordSuccess.value = 'Đổi mật khẩu thành công.'
+    passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    isChangingPassword.value = false
+  } catch (error) {
+    passwordError.value = error instanceof ApiError ? error.message : 'Không thể đổi mật khẩu.'
+  } finally {
+    isSavingPassword.value = false
   }
 }
 

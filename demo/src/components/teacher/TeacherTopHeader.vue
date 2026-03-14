@@ -1,6 +1,6 @@
 <template>
   <header class="sticky top-0 z-50 w-full bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-6 md:px-20">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center gap-8">
           <div class="flex flex-col">
@@ -41,7 +41,6 @@
           <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
             <div class="text-right hidden sm:block">
               <p class="text-sm font-bold">{{ displayName }}</p>
-              <p class="text-[10px] text-slate-500 font-medium uppercase">{{ roleLabel }}</p>
             </div>
             <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">{{ avatarLabel }}</div>
           </div>
@@ -68,13 +67,6 @@ const profile = ref(null)
 
 const displayName = computed(() => profile.value?.username || 'Giáo viên')
 const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
-const roleLabel = computed(() => {
-  const rawRole = (profile.value?.roles || [])[0]
-  if (rawRole === 'TEACHER') return 'GIÁO VIÊN'
-  if (rawRole === 'ADMIN') return 'QUẢN TRỊ'
-  return rawRole || 'GIÁO VIÊN'
-})
-
 const navClass = (section) => {
   if (props.activeSection === section) {
     return 'px-4 py-2 rounded-lg text-sm text-primary border border-primary/10'

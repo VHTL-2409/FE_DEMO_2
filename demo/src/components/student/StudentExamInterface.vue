@@ -2,12 +2,15 @@
   <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
     <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false">
       <template #rightActions>
-        <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          <span class="material-symbols-outlined text-sm leading-none">videocam</span>
-          <span>Camera bật</span>
+        <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium">
+          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">videocam</span>
+          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ cameraReady ? 'Camera bật' : 'Camera tắt' }}</span>
+          <span :class="micReady ? 'bg-emerald-400' : 'bg-rose-500'" class="w-1 h-1 rounded-full"></span>
+          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">mic</span>
+          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ micReady ? 'Mic bật' : 'Mic tắt' }}</span>
           <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-          <span class="material-symbols-outlined text-sm leading-none">wifi</span>
-          <span>Đã kết nối</span>
+          <span class="material-symbols-outlined text-sm leading-none text-slate-500">wifi</span>
+          <span class="text-slate-500">Đã kết nối</span>
         </div>
         <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
           <div class="flex flex-col items-center leading-none">
@@ -201,6 +204,10 @@ const suspensionMessage = ref('')
 const realtimeWarningMessage = ref('')
 const lastViolationAtByType = ref({})
 const pendingViolationByType = ref({})
+const cameraReady = ref(false)
+const micReady = ref(false)
+const deviceError = ref('')
+const isCheckingDevices = ref(false)
 let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
@@ -215,6 +222,7 @@ const IDLE_THRESHOLD_MS = 3 * 60 * 1000
 const DEVTOOLS_GAP_PX = 160
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
+const devicesReady = computed(() => cameraReady.value && micReady.value)
 const answeredCount = computed(() => Object.values(answers.value).filter(Boolean).length)
 const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
 const progressPercent = computed(() => {
@@ -229,6 +237,34 @@ const clearBlurGraceTimer = () => {
   if (blurGraceTimer) {
     window.clearTimeout(blurGraceTimer)
     blurGraceTimer = null
+  }
+}
+
+const checkDevices = async () => {
+  if (!navigator?.mediaDevices?.getUserMedia) {
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = 'Trình duyệt không hỗ trợ kiểm tra camera/micro.'
+    return
+  }
+
+  isCheckingDevices.value = true
+  deviceError.value = ''
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    const videoTrack = stream.getVideoTracks()[0]
+    const audioTrack = stream.getAudioTracks()[0]
+    cameraReady.value = Boolean(videoTrack)
+    micReady.value = Boolean(audioTrack)
+    stream.getTracks().forEach((track) => track.stop())
+  } catch (error) {
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = error?.name === 'NotAllowedError'
+      ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
+      : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
+  } finally {
+    isCheckingDevices.value = false
   }
 }
 
@@ -265,6 +301,14 @@ const applyAttemptStatus = (status, message = '') => {
   }
 
   isSuspended.value = false
+}
+
+const enforceDeviceAccess = async () => {
+  await checkDevices()
+  if (!devicesReady.value) {
+    isSuspended.value = true
+    suspensionMessage.value = deviceError.value || 'Bạn cần cấp quyền camera và micro để tiếp tục làm bài.'
+  }
 }
 
 const syncAttemptStatus = async () => {
@@ -525,9 +569,19 @@ onMounted(async () => {
       if (remainingSeconds.value > 0) remainingSeconds.value -= 1
     }, 1000)
 
+    await enforceDeviceAccess()
+
+    if (!devicesReady.value) {
+      loadError.value = suspensionMessage.value
+      return
+    }
+
+    isSuspended.value = false
+
     connectProctorRealtime()
     attemptStatusTimer = window.setInterval(() => {
       syncAttemptStatus()
+      enforceDeviceAccess()
     }, 5000)
 
     resetIdleTimer()

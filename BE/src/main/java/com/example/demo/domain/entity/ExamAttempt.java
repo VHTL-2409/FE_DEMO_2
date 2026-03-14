@@ -47,4 +47,13 @@ public class ExamAttempt {
 
     @Column(name = "client_ip", length = 64)
     private String clientIp;
+
+    @Column(name = "camera_on")
+    private Boolean cameraOn;
+
+    @Column(name = "mic_on")
+    private Boolean micOn;
+
+    @Column(name = "device_checked_at")
+    private LocalDateTime deviceCheckedAt;
 }

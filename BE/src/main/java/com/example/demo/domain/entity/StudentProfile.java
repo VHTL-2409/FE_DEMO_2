@@ -23,6 +23,12 @@ public class StudentProfile {
     @Column(length = 255)
     private String displayName;
 
+    @Column(length = 255)
+    private String fullName;
+
+    @Column
+    private java.time.LocalDate dateOfBirth;
+
     @Column(length = 150)
     private String email;
 

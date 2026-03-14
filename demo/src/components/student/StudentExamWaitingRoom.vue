@@ -62,18 +62,28 @@
                 <div class="space-y-4">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <span class="material-symbols-outlined text-green-600 dark:text-green-400">videocam</span>
+                      <span :class="cameraReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="material-symbols-outlined">videocam</span>
                       <span class="text-sm font-medium">Camera</span>
                     </div>
-                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Sẵn sàng</span>
+                    <span :class="cameraReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="text-xs font-bold uppercase">
+                      {{ cameraReady ? 'Sẵn sàng' : 'Chưa cấp quyền' }}
+                    </span>
                   </div>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <span class="material-symbols-outlined text-green-600 dark:text-green-400">mic</span>
+                      <span :class="micReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="material-symbols-outlined">mic</span>
                       <span class="text-sm font-medium">Micro</span>
                     </div>
-                    <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Sẵn sàng</span>
+                    <span :class="micReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="text-xs font-bold uppercase">
+                      {{ micReady ? 'Sẵn sàng' : 'Chưa cấp quyền' }}
+                    </span>
                   </div>
+                  <p v-if="isCheckingDevices" class="text-xs text-slate-500">
+                    Đang kiểm tra camera và micro...
+                  </p>
+                  <p v-else-if="deviceError" class="text-xs text-rose-500">
+                    {{ deviceError }}
+                  </p>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                       <span class="material-symbols-outlined text-green-600 dark:text-green-400">wifi</span>
@@ -117,7 +127,7 @@
                 <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Bắt đầu lúc: {{ startAtDisplay }}</p>
               </div>
               <div class="w-full max-w-md space-y-4">
-                <button :disabled="isStarting || !canStart" @click="goToExamInterface" class="w-full py-4 px-6 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed" type="button">
+                <button :disabled="isStarting || isCheckingDevices || !canStart" @click="goToExamInterface" class="w-full py-4 px-6 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed" type="button">
                   <span class="material-symbols-outlined">play_arrow</span>
                   {{ isStarting ? 'Đang bắt đầu...' : 'Bắt đầu làm bài' }}
                 </button>
@@ -161,6 +171,10 @@ const startError = ref('')
 const nowMs = ref(Date.now())
 const examDetail = ref(null)
 const lastSyncedAt = ref(null)
+const cameraReady = ref(false)
+const micReady = ref(false)
+const deviceError = ref('')
+const isCheckingDevices = ref(false)
 let timerId = null
 let examRefreshTimerId = null
 
@@ -182,8 +196,10 @@ const endAtDate = computed(() => {
   return Number.isNaN(date.getTime()) ? null : date
 })
 const isEnded = computed(() => endAtDate.value ? nowMs.value > endAtDate.value.getTime() : false)
+const devicesReady = computed(() => cameraReady.value && micReady.value)
 const canStart = computed(() => {
   if (isEnded.value) return false
+  if (!devicesReady.value) return false
   return !startAtDate.value || nowMs.value >= startAtDate.value.getTime()
 })
 const startAtDisplay = computed(() => startAtDate.value ? startAtDate.value.toLocaleString() : '-')
@@ -216,6 +232,34 @@ const refreshExamDetail = async () => {
   }
 }
 
+const checkDevices = async () => {
+  if (!navigator?.mediaDevices?.getUserMedia) {
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = 'Trình duyệt không hỗ trợ kiểm tra camera/micro.'
+    return
+  }
+
+  isCheckingDevices.value = true
+  deviceError.value = ''
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    const videoTrack = stream.getVideoTracks()[0]
+    const audioTrack = stream.getAudioTracks()[0]
+    cameraReady.value = Boolean(videoTrack)
+    micReady.value = Boolean(audioTrack)
+    stream.getTracks().forEach((track) => track.stop())
+  } catch (error) {
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = error?.name === 'NotAllowedError'
+      ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
+      : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
+  } finally {
+    isCheckingDevices.value = false
+  }
+}
+
 const goToExamInterface = async () => {
   startError.value = ''
 
@@ -225,6 +269,12 @@ const goToExamInterface = async () => {
   }
 
   await refreshExamDetail()
+  await checkDevices()
+
+  if (!devicesReady.value) {
+    startError.value = deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
+    return
+  }
 
   if (isEnded.value) {
     startError.value = 'Bài thi đã kết thúc.'
@@ -258,6 +308,7 @@ const goToExamInterface = async () => {
 
 onMounted(async () => {
   await refreshExamDetail()
+  await checkDevices()
   timerId = window.setInterval(() => {
     nowMs.value = Date.now()
   }, 1000)

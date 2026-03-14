@@ -2,10 +2,12 @@ package com.example.demo.api;
 
 import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.auth.AuthResponse;
+import com.example.demo.api.dto.auth.ChangePasswordRequest;
 import com.example.demo.api.dto.auth.LoginRequest;
 import com.example.demo.api.dto.auth.RegisterRequest;
 import com.example.demo.domain.entity.User;
 import com.example.demo.service.AuthService;
+import com.example.demo.service.CurrentUserService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,9 +19,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final CurrentUserService currentUserService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, CurrentUserService currentUserService) {
         this.authService = authService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping("/register")
@@ -30,6 +34,13 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request), "Login successful");
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Map<String, Object>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        User user = currentUserService.requireCurrentUser();
+        authService.changePassword(user, request);
+        return ApiResponse.success(Map.of("status", "ok"));
     }
 
     @GetMapping("/users")

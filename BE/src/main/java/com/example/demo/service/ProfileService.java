@@ -2,14 +2,12 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.profile.ProfileResponse;
 import com.example.demo.api.dto.profile.ProfileUpdateRequest;
-import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.StudentProfile;
 import com.example.demo.domain.entity.TeacherProfile;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.StudentProfileRepository;
 import com.example.demo.repository.TeacherProfileRepository;
 import com.example.demo.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,30 +30,26 @@ public class ProfileService {
     public void createProfilesForUser(User user) {
         StudentProfile studentProfile = StudentProfile.builder()
                 .user(user)
-                .displayName(user.getUsername())
-                .email(user.getEmail())
                 .build();
         TeacherProfile teacherProfile = TeacherProfile.builder()
                 .user(user)
-                .displayName(user.getUsername())
-                .email(user.getEmail())
                 .build();
 
         studentProfileRepository.save(studentProfile);
         teacherProfileRepository.save(teacherProfile);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ProfileResponse getStudentProfile(User user) {
         StudentProfile profile = studentProfileRepository.findByUser(user)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Student profile not found"));
+                .orElseGet(() -> studentProfileRepository.save(StudentProfile.builder().user(user).build()));
         return toResponse(profile, user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ProfileResponse getTeacherProfile(User user) {
         TeacherProfile profile = teacherProfileRepository.findByUser(user)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Teacher profile not found"));
+                .orElseGet(() -> teacherProfileRepository.save(TeacherProfile.builder().user(user).build()));
         return toResponse(profile, user);
     }
 
@@ -90,9 +84,28 @@ public class ProfileService {
         });
     }
 
+    @Transactional
+    public void updateAvatar(User user, String avatarUrl) {
+        studentProfileRepository.findByUser(user).ifPresent(profile -> {
+            profile.setAvatarUrl(avatarUrl);
+            studentProfileRepository.save(profile);
+        });
+
+        teacherProfileRepository.findByUser(user).ifPresent(profile -> {
+            profile.setAvatarUrl(avatarUrl);
+            teacherProfileRepository.save(profile);
+        });
+    }
+
     private void applyProfileUpdate(StudentProfile profile, ProfileUpdateRequest request) {
         if (request.getDisplayName() != null) {
             profile.setDisplayName(request.getDisplayName().trim());
+        }
+        if (request.getFullName() != null) {
+            profile.setFullName(request.getFullName().trim());
+        }
+        if (request.getDateOfBirth() != null) {
+            profile.setDateOfBirth(request.getDateOfBirth());
         }
         if (request.getEmail() != null) {
             profile.setEmail(request.getEmail().trim());
@@ -108,6 +121,12 @@ public class ProfileService {
     private void applyProfileUpdate(TeacherProfile profile, ProfileUpdateRequest request) {
         if (request.getDisplayName() != null) {
             profile.setDisplayName(request.getDisplayName().trim());
+        }
+        if (request.getFullName() != null) {
+            profile.setFullName(request.getFullName().trim());
+        }
+        if (request.getDateOfBirth() != null) {
+            profile.setDateOfBirth(request.getDateOfBirth());
         }
         if (request.getEmail() != null) {
             profile.setEmail(request.getEmail().trim());
@@ -126,6 +145,8 @@ public class ProfileService {
                 user.getId(),
                 user.getUsername(),
                 profile.getDisplayName(),
+                profile.getFullName(),
+                profile.getDateOfBirth(),
                 profile.getEmail(),
                 profile.getPhone(),
                 profile.getAvatarUrl());
@@ -137,6 +158,8 @@ public class ProfileService {
                 user.getId(),
                 user.getUsername(),
                 profile.getDisplayName(),
+                profile.getFullName(),
+                profile.getDateOfBirth(),
                 profile.getEmail(),
                 profile.getPhone(),
                 profile.getAvatarUrl());

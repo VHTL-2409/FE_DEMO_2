@@ -99,7 +99,7 @@
                     <div class="flex justify-between items-start mb-4">
                       <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Câu {{ item.index }}</span>
                       <span :class="item.correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" class="font-bold text-sm">
-                        {{ item.correct ? `+${item.scoreWeight} điểm` : `0/${item.scoreWeight} điểm` }}
+                        {{ item.correct ? 'Đúng' : 'Sai' }}
                       </span>
                     </div>
                     <p class="text-slate-900 dark:text-slate-100 text-lg font-medium mb-6">{{ item.question }}</p>

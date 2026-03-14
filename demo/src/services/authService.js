@@ -88,10 +88,28 @@ export const fetchStudentProfile = async () => apiRequest('/api/profile/student'
 
 export const fetchTeacherProfile = async () => apiRequest('/api/profile/teacher')
 
-export const updateSharedProfile = async ({ displayName, email, phone, avatarUrl }) => {
+export const updateSharedProfile = async ({ displayName, fullName, dateOfBirth, email, phone, avatarUrl }) => {
   const response = await apiRequest('/api/profile', {
     method: 'PUT',
-    body: JSON.stringify({ displayName, email, phone, avatarUrl })
+    body: JSON.stringify({ displayName, fullName, dateOfBirth, email, phone, avatarUrl })
+  })
+  return unwrapApiData(response)
+}
+
+export const uploadAvatar = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiRequest('/api/profile/avatar', {
+    method: 'POST',
+    body: formData
+  })
+  return unwrapApiData(response)
+}
+
+export const changePassword = async ({ currentPassword, newPassword }) => {
+  const response = await apiRequest('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword })
   })
   return unwrapApiData(response)
 }

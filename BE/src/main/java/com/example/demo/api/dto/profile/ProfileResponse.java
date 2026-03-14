@@ -10,6 +10,8 @@ public class ProfileResponse {
     private Long userId;
     private String username;
     private String displayName;
+    private String fullName;
+    private java.time.LocalDate dateOfBirth;
     private String email;
     private String phone;
     private String avatarUrl;

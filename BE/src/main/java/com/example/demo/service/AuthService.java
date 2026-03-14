@@ -77,6 +77,21 @@ public class AuthService {
         return new AuthResponse(token, user.getUsername(), List.of());
     }
 
+    public void changePassword(User user, com.example.demo.api.dto.auth.ChangePasswordRequest request) {
+        User stored = userRepository.findById(user.getId())
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), stored.getPassword())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 6) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 6 ký tự");
+        }
+
+        stored.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        userRepository.save(stored);
+    }
+
     public List<User> listUsers() {
         return userRepository.findAll();
     }
