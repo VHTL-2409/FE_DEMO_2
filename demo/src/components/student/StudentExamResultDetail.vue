@@ -21,9 +21,6 @@
             </div>
 
             <p v-if="isLoading" class="mb-6 text-sm text-slate-500">Đang tải báo cáo kết quả...</p>
-            <div v-if="errorMessage" class="mb-6 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
-              {{ errorMessage }}
-            </div>
 
             <div class="grid gap-4 mb-10 animate-fade-up-delay [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
               <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
@@ -182,17 +179,17 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { useRoute } from 'vue-router'
+import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
 const isDark = ref(false)
 const detail = ref(null)
 const report = ref(null)
-const errorMessage = ref('')
 const isLoading = ref(false)
+const toast = useToast()
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const examTitle = computed(() => detail.value?.examTitle || route.query.examTitle || route.query.exam || 'Kết quả bài thi')
@@ -301,11 +298,10 @@ const reviewAnswers = computed(() => (report.value?.answers || []).map((item, in
 
 onMounted(async () => {
   if (!attemptId.value) {
-    errorMessage.value = 'Thiếu mã bài làm. Vui lòng mở kết quả từ lịch sử bài thi.'
+    toast.error('Thiếu mã bài làm. Vui lòng mở kết quả từ lịch sử bài thi.')
     return
   }
 
-  errorMessage.value = ''
   isLoading.value = true
   try {
     const [detailPayload, reportPayload] = await Promise.all([
@@ -315,7 +311,7 @@ onMounted(async () => {
     detail.value = detailPayload
     report.value = reportPayload
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tải báo cáo lượt làm bài.'
+    toast.error('Không thể tải báo cáo lượt làm bài.')
   } finally {
     isLoading.value = false
   }

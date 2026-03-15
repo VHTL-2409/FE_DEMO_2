@@ -43,7 +43,6 @@
                   </span>
                   <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
                 </div>
-                <p v-if="loadError" class="mt-2 text-xs text-rose-600">{{ loadError }}</p>
               </div>
             </div>
             <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
@@ -142,16 +141,14 @@
                     <span class="material-symbols-outlined">block</span> {{ isInvalidating ? 'Đang đình chỉ...' : 'Hủy hiệu lực bài thi' }}
                   </button>
                 </div>
-                <p v-if="actionMessage" class="mt-3 text-xs text-emerald-600">{{ actionMessage }}</p>
-                <p v-if="actionError" class="mt-2 text-xs text-rose-600">{{ actionError }}</p>
               </div>
             </div>
           </div>
-          <div v-if="isLivestreamModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div v-if="isLivestreamModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" role="dialog" aria-modal="true" aria-labelledby="livestream-modal-title">
             <div class="w-full max-w-5xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
               <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
                 <div>
-                  <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Theo dõi bài làm realtime - {{ studentName }}</h3>
+                  <h3 id="livestream-modal-title" class="text-sm font-bold text-slate-900 dark:text-slate-100">Theo dõi bài làm realtime - {{ studentName }}</h3>
                   <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ liveAnsweredCount }} / {{ liveTotalQuestions }} câu đã trả lời · Cập nhật: {{ liveLastUpdatedLabel }}</p>
                 </div>
                 <button class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" type="button" @click="closeLivestreamModal">
@@ -167,7 +164,6 @@
                     <span :class="liveModalSyncing ? 'text-amber-600' : (isLiveSocketConnected ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-300')" class="font-semibold">
                       {{ liveModalSyncing ? 'Đang đồng bộ đáp án...' : (isLiveSocketConnected ? 'Đồng bộ websocket tức thì' : 'Đang dùng fallback polling') }}
                     </span>
-                    <span v-if="liveModalError" class="text-rose-600">{{ liveModalError }}</span>
                   </div>
                   <div v-if="liveExamQuestions.length === 0" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-300">
                     Không có dữ liệu câu hỏi để hiển thị.
@@ -203,34 +199,30 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Client } from '@stomp/stompjs'
 import { API_BASE_URL, ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { invalidateAttempt, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute } from 'vue-router'
-import SockJS from 'sockjs-client/dist/sockjs'
+import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
 const isDark = ref(false)
-const loadError = ref('')
 const isSyncing = ref(false)
 const attemptDetail = ref(null)
 const attemptReport = ref(null)
 const timeline = ref([])
 const lastUpdatedAt = ref(null)
-const actionMessage = ref('')
-const actionError = ref('')
 const isWarningSending = ref(false)
 const isInvalidating = ref(false)
 const isLivestreamModalOpen = ref(false)
 const liveModalLoading = ref(false)
 const liveModalSyncing = ref(false)
-const liveModalError = ref('')
 const liveLastUpdatedAt = ref(null)
 const liveExamQuestions = ref([])
 const liveAnswersByQuestionId = ref({})
+const toast = useToast()
 const timelinePage = ref(1)
 const timelinePageSize = 3
 let refreshTimer = null
@@ -286,9 +278,10 @@ const getLiveSelectedAnswerLabel = (question) => {
   return matched?.text || selected
 }
 
-const getAuthToken = () => {
+const getAuthToken = async () => {
   if (typeof window === 'undefined') return ''
-  return String(window.localStorage.getItem('auth_token') || '')
+  const { getStoredToken } = await import('../../services/authService')
+  return String(getStoredToken() || '')
 }
 
 const stopLiveFallbackPolling = () => {
@@ -305,7 +298,6 @@ const applyLiveAnswersReport = (report) => {
   }, {})
   liveAnswersByQuestionId.value = mapped
   liveLastUpdatedAt.value = Date.now()
-  liveModalError.value = ''
 }
 
 const loadLiveAnswers = async (force = false) => {
@@ -321,7 +313,7 @@ const loadLiveAnswers = async (force = false) => {
     const report = await getAttemptReport(attemptId.value)
     applyLiveAnswersReport(report)
   } catch (error) {
-    liveModalError.value = error instanceof ApiError ? error.message : 'Đồng bộ đáp án bị gián đoạn tạm thời.'
+    toast.error(error instanceof ApiError ? error.message : 'Đồng bộ đáp án bị gián đoạn tạm thời.')
   } finally {
     isLiveAnswersFetching = false
     liveModalSyncing.value = false
@@ -334,7 +326,7 @@ const loadLiveAnswers = async (force = false) => {
 
 const loadLiveQuestions = async () => {
   if (!examId.value) {
-    liveModalError.value = 'Không xác định được đề thi để tải câu hỏi.'
+    toast.error('Không xác định được đề thi để tải câu hỏi.')
     liveExamQuestions.value = []
     return
   }
@@ -363,13 +355,18 @@ const disconnectLiveAnswersSocket = () => {
   isLiveSocketConnected.value = false
 }
 
-const connectLiveAnswersSocket = () => {
+const connectLiveAnswersSocket = async () => {
   if (!attemptId.value) return
 
   disconnectLiveAnswersSocket()
 
+  const [{ Client }, { default: SockJS }] = await Promise.all([
+    import('@stomp/stompjs'),
+    import('sockjs-client')
+  ])
+
   const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
-  const token = getAuthToken()
+  const token = await getAuthToken()
   liveStompClient = new Client({
     reconnectDelay: 3000,
     connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
@@ -405,7 +402,6 @@ const connectLiveAnswersSocket = () => {
 
 const startLiveAnswersSync = async () => {
   liveModalLoading.value = true
-  liveModalError.value = ''
   liveLastUpdatedAt.value = null
   try {
     await loadLiveQuestions()
@@ -414,7 +410,7 @@ const startLiveAnswersSync = async () => {
     connectLiveAnswersSocket()
     startLiveFallbackPolling()
   } catch (error) {
-    liveModalError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu bài làm realtime.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu bài làm realtime.')
   } finally {
     liveModalLoading.value = false
   }
@@ -504,7 +500,7 @@ const lastUpdatedLabel = computed(() => {
 
 const loadMonitoringDetail = async () => {
   if (!attemptId.value) {
-    loadError.value = 'Thiếu attemptId. Vui lòng mở chi tiết từ trang giám sát trực tiếp.'
+    toast.error('Thiếu attemptId. Vui lòng mở chi tiết từ trang giám sát trực tiếp.')
     return
   }
 
@@ -519,10 +515,9 @@ const loadMonitoringDetail = async () => {
     attemptReport.value = report
     timeline.value = Array.isArray(timelineData) ? timelineData : []
     timelinePage.value = 1
-    loadError.value = ''
     lastUpdatedAt.value = Date.now()
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát chi tiết.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát chi tiết.')
   } finally {
     isSyncing.value = false
   }
@@ -531,14 +526,12 @@ const loadMonitoringDetail = async () => {
 const handleSendWarning = async () => {
   if (!attemptId.value) return
 
-  actionError.value = ''
-  actionMessage.value = ''
   isWarningSending.value = true
   try {
     const res = await sendTeacherWarning(attemptId.value)
-    actionMessage.value = res?.message || 'Đã gửi cảnh báo realtime đến thí sinh.'
+    toast.success(res?.message || 'Đã gửi cảnh báo realtime đến thí sinh.')
   } catch (error) {
-    actionError.value = error instanceof ApiError ? error.message : 'Không thể gửi cảnh báo lúc này.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể gửi cảnh báo lúc này.')
   } finally {
     isWarningSending.value = false
   }
@@ -550,15 +543,13 @@ const handleInvalidateAttempt = async () => {
   const confirmed = window.confirm('Bạn chắc chắn muốn hủy hiệu lực bài thi này?')
   if (!confirmed) return
 
-  actionError.value = ''
-  actionMessage.value = ''
   isInvalidating.value = true
   try {
     const res = await invalidateAttempt(attemptId.value)
-    actionMessage.value = res?.message || 'Đã đình chỉ bài thi thành công.'
+    toast.success(res?.message || 'Đã đình chỉ bài thi thành công.')
     await loadMonitoringDetail()
   } catch (error) {
-    actionError.value = error instanceof ApiError ? error.message : 'Không thể hủy hiệu lực bài thi.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể hủy hiệu lực bài thi.')
   } finally {
     isInvalidating.value = false
   }
@@ -566,7 +557,6 @@ const handleInvalidateAttempt = async () => {
 
 const resetLiveModalState = () => {
   liveModalSyncing.value = false
-  liveModalError.value = ''
   liveLastUpdatedAt.value = null
   liveAnswersByQuestionId.value = {}
   liveExamQuestions.value = []

@@ -127,9 +127,6 @@
                   >
                 </div>
 
-                <p v-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">
-                  {{ errorMessage }}
-                </p>
 
                 <button
                   type="submit"
@@ -208,8 +205,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { login } from '../../services/authService'
+import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
 
@@ -220,7 +217,8 @@ const password = ref('')
 const remember = ref(false)
 const showPassword = ref(false)
 const isSubmitting = ref(false)
-const errorMessage = ref('')
+
+const toast = useToast()
 
 const goToRegister = () => {
   router.push('/register')
@@ -237,10 +235,8 @@ const routeByRole = (selectedRole) => {
 }
 
 const onSubmit = async () => {
-  errorMessage.value = ''
-
   if (!username.value || !password.value) {
-    errorMessage.value = 'Please enter username and password.'
+    toast.error('Please enter username and password.')
     return
   }
 
@@ -254,11 +250,7 @@ const onSubmit = async () => {
 
     routeByRole(role.value)
   } catch (error) {
-    if (error instanceof ApiError) {
-      errorMessage.value = error.message || 'Login failed. Please try again.'
-    } else {
-      errorMessage.value = 'Unable to connect to server. Please try again.'
-    }
+    toast.error('Login failed. Please try again.')
   } finally {
     isSubmitting.value = false
   }

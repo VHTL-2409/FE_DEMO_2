@@ -31,7 +31,6 @@
           </div>
         </div>
 
-        <p v-if="loadError" class="mb-4 text-sm text-rose-600 animate-fade-up-delay">{{ loadError }}</p>
 
         <div class="relative grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-up-delay">
           <div v-if="isLoading" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
@@ -107,6 +106,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
+import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
@@ -114,7 +114,7 @@ const isDark = ref(false)
 const search = ref('')
 const exams = ref([])
 const isLoading = ref(false)
-const loadError = ref('')
+const toast = useToast()
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -176,11 +176,10 @@ const openLiveSession = (exam) => {
 
 const loadExams = async () => {
   isLoading.value = true
-  loadError.value = ''
   try {
     exams.value = await listExams()
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải danh sách đề thi.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải danh sách đề thi.')
   } finally {
     isLoading.value = false
   }

@@ -42,7 +42,6 @@
           </div>
 
           <p class="mt-3 text-xs text-slate-500">Vui lòng đảm bảo kết nối internet ổn định trước khi vào phòng thi.</p>
-          <p v-if="joinError" class="mt-2 text-xs text-rose-600">{{ joinError }}</p>
         </div>
       </main>
 
@@ -56,15 +55,15 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { joinExamByCode } from '../../services/examService'
+import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
 const examCode = ref('')
 const isJoining = ref(false)
-const joinError = ref('')
+const toast = useToast()
 
 const resolveExamByInput = async () => {
   const query = examCode.value.trim()
@@ -77,12 +76,11 @@ const resolveExamByInput = async () => {
 
 const goToWaitingRoom = async () => {
   isJoining.value = true
-  joinError.value = ''
 
   try {
     const matchedExam = await resolveExamByInput()
     if (!matchedExam) {
-      joinError.value = 'Vui lòng nhập mã hoặc tiêu đề để tìm bài thi.'
+      toast.error('Vui lòng nhập mã hoặc tiêu đề để tìm bài thi.')
       return
     }
 
@@ -99,7 +97,7 @@ const goToWaitingRoom = async () => {
       }
     })
   } catch (error) {
-    joinError.value = error instanceof ApiError ? error.message : 'Không thể vào bài thi lúc này.'
+    toast.error('Không thể vào bài thi lúc này.')
   } finally {
     isJoining.value = false
   }

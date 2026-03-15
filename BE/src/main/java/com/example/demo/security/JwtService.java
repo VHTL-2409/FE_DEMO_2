@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.function.Function;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class JwtService {
 
@@ -21,6 +23,19 @@ public class JwtService {
 
     @Value("${security.jwt.expiration-ms}")
     private long expirationMs;
+
+    @PostConstruct
+    private void validateSecretStrength() {
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(secret);
+        } catch (IllegalArgumentException ex) {
+            keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes)");
+        }
+    }
 
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
@@ -47,6 +62,7 @@ public class JwtService {
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
         Claims claims = Jwts.parser()
             .verifyWith(getSigningKey())
+            .clockSkewSeconds(60)
             .build()
             .parseSignedClaims(token)
             .getPayload();

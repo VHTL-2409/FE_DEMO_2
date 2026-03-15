@@ -17,7 +17,6 @@
             </p>
           </header>
 
-          <p v-if="loadError" class="mb-6 text-sm text-rose-600">{{ loadError }}</p>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-up-delay">
             <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
@@ -159,7 +158,7 @@
               </table>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-900/20 border-t border-slate-200 dark:border-slate-800 flex justify-center">
-              <button class="text-sm font-semibold text-primary hover:underline" type="button">Xem tất cả hồ sơ kỳ thi</button>
+              <button class="text-sm font-semibold text-primary hover:underline" type="button" @click="goToPath('/teacher/exams/list')">Xem tất cả hồ sơ kỳ thi</button>
             </div>
           </div>
         </div>
@@ -173,13 +172,14 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
+import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
 const rawExams = ref([])
-const loadError = ref('')
 const listFilter = ref('all')
+const toast = useToast()
 
 const quickActions = [
   { icon: 'add_circle', title: 'Tạo đề thi mới', subtitle: 'Lên lịch phiên thi mới', path: '/teacher/exams/create' },
@@ -307,11 +307,10 @@ const openExamResult = (exam) => {
 }
 
 const loadExams = async () => {
-  loadError.value = ''
   try {
     rawExams.value = await listExams()
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu dashboard.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu dashboard.')
   }
 }
 

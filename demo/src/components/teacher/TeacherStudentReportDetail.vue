@@ -22,7 +22,6 @@
 
           <h1 class="text-3xl font-black tracking-tight">{{ studentName }} - Chi tiết báo cáo</h1>
           <p class="text-slate-500 dark:text-slate-400 mt-1">{{ examTitle }} • {{ studentId }}</p>
-          <p v-if="loadError" class="text-sm text-rose-600 mt-2">{{ loadError }}</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 animate-fade-up-delay">
@@ -81,15 +80,16 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
 const isDark = ref(false)
 const isLoading = ref(false)
-const loadError = ref('')
 const detail = ref(null)
 const report = ref(null)
+const toast = useToast()
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
@@ -145,12 +145,11 @@ const goBack = () => {
 
 const loadAttemptData = async () => {
   if (!attemptId.value) {
-    loadError.value = 'Thiếu mã lượt làm bài. Vui lòng mở trang này từ tổng quan điểm.'
+    toast.error('Thiếu mã lượt làm bài. Vui lòng mở trang này từ tổng quan điểm.')
     return
   }
 
   isLoading.value = true
-  loadError.value = ''
   try {
     const [detailPayload, reportPayload] = await Promise.all([
       getAttemptDetail(attemptId.value),
@@ -159,7 +158,7 @@ const loadAttemptData = async () => {
     detail.value = detailPayload
     report.value = reportPayload
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải chi tiết báo cáo sinh viên.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải chi tiết báo cáo sinh viên.')
   } finally {
     isLoading.value = false
   }

@@ -6,9 +6,26 @@
       <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-      <div class="relative mb-10 animate-fade-up">
+      <div class="relative mb-6 animate-fade-up">
         <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo đề thi mới (Nhập tệp)</h2>
         <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Bước 1: Nhập tiêu đề và tải tệp. Bước 2: Cấu hình lịch thi.</p>
+      </div>
+
+      <div class="mb-10 animate-fade-up">
+        <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <template v-for="(step, index) in steps" :key="step">
+            <div class="flex items-center gap-3">
+              <span
+                class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+              >
+                {{ index + 1 }}
+              </span>
+              <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+            </div>
+            <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
+          </template>
+        </div>
       </div>
 
       <div class="relative space-y-8 animate-fade-up-delay">
@@ -39,39 +56,66 @@
             <h4 class="text-lg font-semibold mb-1">Nhấp để tải lên hoặc kéo thả</h4>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Hỗ trợ định dạng CSV và XLSX (tối đa 10MB)</p>
             <p v-if="fileName" class="text-primary text-sm font-semibold mt-3">{{ fileName }}</p>
+            <p v-if="selectedFile" class="text-xs text-slate-500 mt-1">Dung lượng: {{ fileSizeLabel }}</p>
           </label>
         </section>
 
-        <div class="flex items-center justify-end gap-4 pt-6">
-          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Hủy bản nháp</button>
-          <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">{{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
+        <div class="flex items-center justify-between gap-4 pt-6">
+          <div class="text-xs text-slate-500 dark:text-slate-400">Dung lượng tối đa 10MB · Hỗ trợ CSV, XLSX</div>
+          <div class="flex items-center gap-4">
+            <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Hủy bản nháp</button>
+            <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">{{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
+          </div>
         </div>
-        <p v-if="errorMessage" class="text-sm text-rose-600 mt-3">{{ errorMessage }}</p>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
+import { computed, ref } from 'vue'
 import { createExam } from '../../services/examService'
 import { importQuestionsFromFile } from '../../services/questionService'
+import { useToast } from '../../composables/useToast'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
+const currentStep = 2
 const examTitle = ref('')
 const fileName = ref('')
 const selectedFile = ref(null)
 const isSubmitting = ref(false)
-const errorMessage = ref('')
+
+const toast = useToast()
+
+const fileSizeLabel = computed(() => {
+  if (!selectedFile.value) return ''
+  const sizeInMb = selectedFile.value.size / (1024 * 1024)
+  return `${sizeInMb.toFixed(2)} MB`
+})
 
 const onFileChange = (event) => {
   const file = event.target.files?.[0] || null
   selectedFile.value = file
   fileName.value = file?.name || ''
+
+  if (!file) return
+
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+  if (!allowed.includes(file.type)) {
+    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV hoặc XLSX.')
+    selectedFile.value = null
+    fileName.value = ''
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('Dung lượng tệp vượt quá 10MB.')
+    selectedFile.value = null
+    fileName.value = ''
+  }
 }
 
 const goBack = () => {
@@ -79,15 +123,13 @@ const goBack = () => {
 }
 
 const goNext = async () => {
-  errorMessage.value = ''
-
   if (!examTitle.value.trim()) {
-    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi.'
+    toast.error('Vui lòng nhập tiêu đề đề thi.')
     return
   }
 
   if (!selectedFile.value) {
-    errorMessage.value = 'Vui lòng chọn tệp CSV hoặc XLSX trước khi tiếp tục.'
+    toast.error('Vui lòng chọn tệp CSV hoặc XLSX trước khi tiếp tục.')
     return
   }
 
@@ -111,7 +153,7 @@ const goNext = async () => {
       }
     })
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tạo đề thi từ tệp. Vui lòng thử lại.'
+    toast.error('Không thể tạo đề thi từ tệp. Vui lòng thử lại.')
   } finally {
     isSubmitting.value = false
   }

@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { toastService } from './services/toastService'
 import './styles/teacher-ui.css'
 
-createApp(App).use(router).mount('#app')
+createApp(App).provide('toast', toastService).use(router).mount('#app')

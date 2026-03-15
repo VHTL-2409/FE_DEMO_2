@@ -81,9 +81,6 @@
                   <p v-if="isCheckingDevices" class="text-xs text-slate-500">
                     Đang kiểm tra camera và micro...
                   </p>
-                  <p v-else-if="deviceError" class="text-xs text-rose-500">
-                    {{ deviceError }}
-                  </p>
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                       <span class="material-symbols-outlined text-green-600 dark:text-green-400">wifi</span>
@@ -131,11 +128,10 @@
                   <span class="material-symbols-outlined">play_arrow</span>
                   {{ isStarting ? 'Đang bắt đầu...' : 'Bắt đầu làm bài' }}
                 </button>
-                <p v-if="startError" class="text-center text-xs text-rose-600">{{ startError }}</p>
-                <p v-else-if="isEnded" class="text-center text-rose-600 text-sm italic">
+                <p v-if="isEnded" class="text-center text-rose-600 text-sm italic">
                   Bài thi đã kết thúc.
                 </p>
-                <p v-else-if="!canStart" class="text-center text-slate-500 dark:text-slate-400 text-sm italic">
+                <p v-if="!canStart && !isEnded" class="text-center text-slate-500 dark:text-slate-400 text-sm italic">
                   Bài thi chưa bắt đầu.
                 </p>
               </div>
@@ -156,9 +152,9 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { startAttempt } from '../../services/attemptService'
 import { getExamDetail } from '../../services/examService'
+import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
@@ -175,6 +171,8 @@ const cameraReady = ref(false)
 const micReady = ref(false)
 const deviceError = ref('')
 const isCheckingDevices = ref(false)
+
+const toast = useToast()
 let timerId = null
 let examRefreshTimerId = null
 
@@ -237,6 +235,7 @@ const checkDevices = async () => {
     cameraReady.value = false
     micReady.value = false
     deviceError.value = 'Trình duyệt không hỗ trợ kiểm tra camera/micro.'
+    toast.error(deviceError.value)
     return
   }
 
@@ -255,6 +254,7 @@ const checkDevices = async () => {
     deviceError.value = error?.name === 'NotAllowedError'
       ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
       : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
+    toast.error(deviceError.value)
   } finally {
     isCheckingDevices.value = false
   }
@@ -264,7 +264,7 @@ const goToExamInterface = async () => {
   startError.value = ''
 
   if (!examId.value) {
-    startError.value = 'Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.'
+    toast.error('Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.')
     return
   }
 
@@ -272,17 +272,17 @@ const goToExamInterface = async () => {
   await checkDevices()
 
   if (!devicesReady.value) {
-    startError.value = deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
+    toast.error(deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.')
     return
   }
 
   if (isEnded.value) {
-    startError.value = 'Bài thi đã kết thúc.'
+    toast.error('Bài thi đã kết thúc.')
     return
   }
 
   if (!canStart.value) {
-    startError.value = 'Bài thi chưa bắt đầu.'
+    toast.error('Bài thi chưa bắt đầu.')
     return
   }
 
@@ -300,7 +300,7 @@ const goToExamInterface = async () => {
       }
     })
   } catch (error) {
-    startError.value = error instanceof ApiError ? error.message : 'Không thể bắt đầu bài thi lúc này.'
+    toast.error('Không thể bắt đầu bài thi lúc này.')
   } finally {
     isStarting.value = false
   }

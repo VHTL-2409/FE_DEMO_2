@@ -2,6 +2,8 @@ import { apiRequest, ApiError, unwrapApiData } from './apiClient'
 
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_USER_KEY = 'auth_user'
+const AUTH_USER_TS_KEY = 'auth_user_ts'
+const USER_CACHE_TTL_MS = 5 * 60 * 1000
 
 const normalizeAuthUser = (authData) => ({
   username: authData?.username || '',
@@ -21,17 +23,43 @@ export const getStoredUser = () => {
   }
 }
 
+const getStoredUserTimestamp = () => {
+  const raw = localStorage.getItem(AUTH_USER_TS_KEY)
+  const parsed = raw ? Number.parseInt(raw, 10) : 0
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+const setStoredUserTimestamp = () => {
+  localStorage.setItem(AUTH_USER_TS_KEY, String(Date.now()))
+}
+
+const isUserCacheFresh = () => {
+  const ts = getStoredUserTimestamp()
+  if (!ts) return false
+  return Date.now() - ts < USER_CACHE_TTL_MS
+}
+
 export const storeAuthSession = (authData) => {
   if (authData?.token) {
     localStorage.setItem(AUTH_TOKEN_KEY, authData.token)
   }
 
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(normalizeAuthUser(authData)))
+  const normalizedUser = normalizeAuthUser(authData)
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(normalizedUser))
+  setStoredUserTimestamp()
 }
 
 export const clearAuthSession = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY)
   localStorage.removeItem(AUTH_USER_KEY)
+  localStorage.removeItem(AUTH_USER_TS_KEY)
+}
+
+export const invalidateSession = () => {
+  clearAuthSession()
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
 }
 
 export const login = async ({ username, password }) => {
@@ -63,7 +91,13 @@ export const validateSession = async () => {
   if (!token) return null
 
   const cachedUser = getStoredUser()
-  if (cachedUser) return cachedUser
+  if (cachedUser && isUserCacheFresh()) {
+    if (!cachedUser.username) {
+      clearAuthSession()
+      return null
+    }
+    return cachedUser
+  }
 
   try {
     const data = await apiRequest('/api/me')
@@ -72,6 +106,7 @@ export const validateSession = async () => {
       roles: Array.isArray(data?.roles) ? data.roles : []
     }
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+    setStoredUserTimestamp()
     return user
   } catch (error) {
     if (error instanceof ApiError) {

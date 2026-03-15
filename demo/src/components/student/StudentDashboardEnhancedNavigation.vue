@@ -97,7 +97,6 @@
 
               <div class="p-0 overflow-y-auto max-h-[520px]">
                 <p v-if="isLoadingAttempts" class="p-4 text-sm text-slate-500">Đang tải lịch sử bài thi...</p>
-                <p v-else-if="attemptsError" class="p-4 text-sm text-rose-600">{{ attemptsError }}</p>
                 <p v-else-if="!historyItems.length" class="p-4 text-sm text-slate-500">Chưa có lượt làm bài nào.</p>
 
                 <div
@@ -132,15 +131,15 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { listMyAttempts } from '../../services/attemptService'
+import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
 const attempts = ref([])
 const isLoadingAttempts = ref(false)
-const attemptsError = ref('')
+const toast = useToast()
 
 const historyItems = computed(() => attempts.value
   .slice()
@@ -194,12 +193,11 @@ const goToExamResult = (item) => {
 
 onMounted(async () => {
   isLoadingAttempts.value = true
-  attemptsError.value = ''
   try {
     attempts.value = await listMyAttempts()
   } catch (error) {
     attempts.value = []
-    attemptsError.value = error instanceof ApiError ? error.message : 'Không thể tải lịch sử bài thi.'
+    toast.error('Không thể tải lịch sử bài thi.')
   } finally {
     isLoadingAttempts.value = false
   }

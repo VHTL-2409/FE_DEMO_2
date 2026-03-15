@@ -9,9 +9,26 @@
       <main class="teacher-page-shell max-w-[1200px]">
         <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/10 blur-3xl animate-float-slow"></div>
         <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-        <div class="flex flex-col gap-2 mb-10 animate-fade-up">
+        <div class="flex flex-col gap-2 mb-6 animate-fade-up">
           <h1 class="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight">Tạo và quản lý đề thi</h1>
           <p class="text-slate-500 dark:text-slate-400 text-lg">Quản lý các bài đánh giá hiện có hoặc tạo mới bằng công cụ nhập liệu tối ưu.</p>
+        </div>
+
+        <div class="mb-10 animate-fade-up">
+          <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <template v-for="(step, index) in steps" :key="step">
+              <div class="flex items-center gap-3">
+                <span
+                  class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                  :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+                >
+                  {{ index + 1 }}
+                </span>
+                <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+              </div>
+              <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
+            </template>
+          </div>
         </div>
 
         <section class="mb-12 animate-fade-up-delay">
@@ -94,6 +111,8 @@ import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
+const currentStep = 1
 
 const goToCreateExam = () => {
   router.push('/teacher/exams/create')

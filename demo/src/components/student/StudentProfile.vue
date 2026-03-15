@@ -23,7 +23,6 @@
           </header>
 
           <p v-if="isLoading" class="text-sm text-slate-500">Đang tải hồ sơ...</p>
-          <p v-else-if="loadError" class="text-sm text-rose-600">{{ loadError }}</p>
 
           <section class="grid grid-cols-1 gap-6 animate-fade-up-delay">
             <div class="teacher-card p-8 w-full">
@@ -40,7 +39,6 @@
                   <span class="material-symbols-outlined text-sm">photo_camera</span>
                   {{ isUploadingAvatar ? 'Đang tải...' : 'Tải ảnh đại diện' }}
                 </label>
-                <p v-if="uploadError" class="text-xs text-rose-600 mt-2">{{ uploadError }}</p>
               </div>
 
               <div class="mt-6 space-y-3 text-sm">
@@ -89,18 +87,16 @@
                 >
                   {{ isChangingPassword ? 'Đóng đổi mật khẩu' : 'Đổi mật khẩu' }}
                 </button>
-                <p v-if="profileSuccess" class="text-sm text-emerald-600">{{ profileSuccess }}</p>
-                <p v-if="passwordSuccess" class="text-sm text-emerald-600">{{ passwordSuccess }}</p>
               </div>
 
             </div>
           </section>
         </div>
 
-        <div v-if="isEditingProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
+        <div v-if="isEditingProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="student-profile-edit-title">
           <div class="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 class="text-lg font-semibold">Cập nhật thông tin</h3>
+              <h3 id="student-profile-edit-title" class="text-lg font-semibold">Cập nhật thông tin</h3>
               <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleEditProfile">
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -108,8 +104,9 @@
             <form class="px-6 py-5 space-y-4" @submit.prevent="submitProfileUpdate">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Tên hiển thị</label>
+                  <label for="student-profile-display-name" class="text-sm font-medium text-slate-600 dark:text-slate-300">Tên hiển thị</label>
                   <input
+                    id="student-profile-display-name"
                     v-model="profileForm.displayName"
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     placeholder="Nhập tên hiển thị"
@@ -117,8 +114,9 @@
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Họ và tên</label>
+                  <label for="student-profile-full-name" class="text-sm font-medium text-slate-600 dark:text-slate-300">Họ và tên</label>
                   <input
+                    id="student-profile-full-name"
                     v-model="profileForm.fullName"
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     placeholder="Nhập họ và tên"
@@ -126,16 +124,18 @@
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Ngày sinh</label>
+                  <label for="student-profile-dob" class="text-sm font-medium text-slate-600 dark:text-slate-300">Ngày sinh</label>
                   <input
+                    id="student-profile-dob"
                     v-model="profileForm.dateOfBirth"
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     type="date"
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
+                  <label for="student-profile-email" class="text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
                   <input
+                    id="student-profile-email"
                     v-model="profileForm.email"
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     placeholder="Nhập email"
@@ -143,8 +143,9 @@
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Số điện thoại</label>
+                  <label for="student-profile-phone" class="text-sm font-medium text-slate-600 dark:text-slate-300">Số điện thoại</label>
                   <input
+                    id="student-profile-phone"
                     v-model="profileForm.phone"
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     placeholder="Nhập số điện thoại"
@@ -152,7 +153,6 @@
                   />
                 </div>
               </div>
-              <p v-if="profileError" class="text-sm text-rose-600">{{ profileError }}</p>
               <div class="flex flex-col sm:flex-row justify-end gap-3">
                 <button
                   type="button"
@@ -173,10 +173,10 @@
           </div>
         </div>
 
-        <div v-if="isChangingPassword" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
+        <div v-if="isChangingPassword" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="student-password-title">
           <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 class="text-lg font-semibold">Thay đổi mật khẩu</h3>
+              <h3 id="student-password-title" class="text-lg font-semibold">Thay đổi mật khẩu</h3>
               <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleChangePassword">
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -209,7 +209,6 @@
                   type="password"
                 />
               </div>
-              <p v-if="passwordError" class="text-sm text-rose-600">{{ passwordError }}</p>
               <div class="flex flex-col sm:flex-row justify-end gap-3">
                 <button
                   type="button"
@@ -241,9 +240,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { changePassword, fetchStudentProfile, updateSharedProfile, uploadAvatar } from '../../services/authService'
 import { listMyAttempts } from '../../services/attemptService'
+import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const isDark = ref(false)
@@ -251,13 +250,11 @@ const router = useRouter()
 const profile = ref(null)
 const attempts = ref([])
 const isLoading = ref(false)
-const loadError = ref('')
 const isUploadingAvatar = ref(false)
-const uploadError = ref('')
 const isEditingProfile = ref(false)
+
+const toast = useToast()
 const isSavingProfile = ref(false)
-const profileError = ref('')
-const profileSuccess = ref('')
 const profileForm = ref({
   displayName: '',
   fullName: '',
@@ -267,8 +264,6 @@ const profileForm = ref({
 })
 const isChangingPassword = ref(false)
 const isSavingPassword = ref(false)
-const passwordError = ref('')
-const passwordSuccess = ref('')
 const passwordForm = ref({
   currentPassword: '',
   newPassword: '',
@@ -278,7 +273,6 @@ const passwordForm = ref({
 const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Sinh viên')
 const profileInitial = computed(() => String(profileName.value).trim().charAt(0).toUpperCase() || 'S')
 const profileId = computed(() => profile.value?.id || '-')
-const profileUserId = computed(() => profile.value?.userId || '-')
 const profileUsername = computed(() => profile.value?.username || '-')
 const profileDisplayName = computed(() => profile.value?.displayName || '-')
 const profileFullName = computed(() => profile.value?.fullName || '-')
@@ -304,7 +298,6 @@ const handleAvatarChange = async (event) => {
   const file = event.target?.files?.[0]
   if (!file) return
 
-  uploadError.value = ''
   isUploadingAvatar.value = true
   try {
     const result = await uploadAvatar(file)
@@ -315,7 +308,7 @@ const handleAvatarChange = async (event) => {
       profile.value = { ...profile.value, avatarUrl: result.avatarUrl }
     }
   } catch (error) {
-    uploadError.value = error instanceof ApiError ? error.message : 'Không thể tải ảnh đại diện.'
+    toast.error('Không thể tải ảnh đại diện.')
   } finally {
     isUploadingAvatar.value = false
     event.target.value = ''
@@ -334,23 +327,18 @@ const syncProfileForm = () => {
 
 const toggleEditProfile = () => {
   isEditingProfile.value = !isEditingProfile.value
-  profileError.value = ''
-  profileSuccess.value = ''
   if (isEditingProfile.value) {
     syncProfileForm()
   }
 }
 
 const submitProfileUpdate = async () => {
-  profileError.value = ''
-  profileSuccess.value = ''
-
   if (!profileForm.value.displayName?.trim()) {
-    profileError.value = 'Vui lòng nhập tên hiển thị.'
+    toast.error('Vui lòng nhập tên hiển thị.')
     return
   }
   if (profileForm.value.email && !profileForm.value.email.includes('@')) {
-    profileError.value = 'Email không hợp lệ.'
+    toast.error('Email không hợp lệ.')
     return
   }
 
@@ -365,10 +353,10 @@ const submitProfileUpdate = async () => {
       avatarUrl: profile.value?.avatarUrl || null
     })
     profile.value = { ...profile.value, ...payload }
-    profileSuccess.value = 'Đã cập nhật thông tin.'
+    toast.success('Đã cập nhật thông tin.')
     isEditingProfile.value = false
   } catch (error) {
-    profileError.value = error instanceof ApiError ? error.message : 'Không thể cập nhật thông tin.'
+    toast.error('Không thể cập nhật thông tin.')
   } finally {
     isSavingProfile.value = false
   }
@@ -376,27 +364,22 @@ const submitProfileUpdate = async () => {
 
 const toggleChangePassword = () => {
   isChangingPassword.value = !isChangingPassword.value
-  passwordError.value = ''
-  passwordSuccess.value = ''
   if (!isChangingPassword.value) {
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
   }
 }
 
 const submitChangePassword = async () => {
-  passwordError.value = ''
-  passwordSuccess.value = ''
-
   if (!passwordForm.value.currentPassword || !passwordForm.value.newPassword || !passwordForm.value.confirmPassword) {
-    passwordError.value = 'Vui lòng nhập đầy đủ thông tin.'
+    toast.error('Vui lòng nhập đầy đủ thông tin.')
     return
   }
   if (passwordForm.value.newPassword.length < 6) {
-    passwordError.value = 'Mật khẩu mới phải có ít nhất 6 ký tự.'
+    toast.error('Mật khẩu mới phải có ít nhất 6 ký tự.')
     return
   }
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    passwordError.value = 'Mật khẩu xác nhận không khớp.'
+    toast.error('Mật khẩu xác nhận không khớp.')
     return
   }
 
@@ -406,11 +389,11 @@ const submitChangePassword = async () => {
       currentPassword: passwordForm.value.currentPassword,
       newPassword: passwordForm.value.newPassword
     })
-    passwordSuccess.value = 'Đổi mật khẩu thành công.'
+    toast.success('Đổi mật khẩu thành công.')
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     isChangingPassword.value = false
   } catch (error) {
-    passwordError.value = error instanceof ApiError ? error.message : 'Không thể đổi mật khẩu.'
+    toast.error('Không thể đổi mật khẩu.')
   } finally {
     isSavingPassword.value = false
   }
@@ -418,7 +401,6 @@ const submitChangePassword = async () => {
 
 const loadProfileData = async () => {
   isLoading.value = true
-  loadError.value = ''
 
   try {
     const [profilePayload, attemptsPayload] = await Promise.all([
@@ -434,7 +416,7 @@ const loadProfileData = async () => {
   } catch (error) {
     profile.value = null
     attempts.value = []
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải hồ sơ sinh viên.'
+    toast.error('Không thể tải hồ sơ sinh viên.')
   } finally {
     isLoading.value = false
   }

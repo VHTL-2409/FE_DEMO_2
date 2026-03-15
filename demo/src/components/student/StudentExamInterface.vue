@@ -45,12 +45,6 @@
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
       <div class="relative flex-1 flex flex-col gap-6">
-        <div v-if="loadError" class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-          {{ loadError }}
-        </div>
-        <div v-if="realtimeWarningMessage" class="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
-          {{ realtimeWarningMessage }}
-        </div>
 
         <div v-if="currentQuestion" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
           <div class="flex justify-between items-center mb-8">
@@ -144,12 +138,12 @@
       </p>
     </footer>
 
-    <div v-if="showSubmitModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+    <div v-if="showSubmitModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title">
       <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-6">
         <div class="flex items-start gap-3 mb-4">
           <span class="material-symbols-outlined text-primary text-3xl">help</span>
           <div>
-            <h3 class="text-lg font-bold">Xác nhận nộp bài?</h3>
+            <h3 id="submit-exam-title" class="text-lg font-bold">Xác nhận nộp bài?</h3>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
           </div>
         </div>
@@ -164,7 +158,7 @@
           <button @click="closeSubmitModal" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800" type="button">
             Quay lại làm bài
           </button>
-          <button :disabled="isSubmitting" @click="submitExamAction" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70" type="button">
+          <button id="submit-exam-confirm" :disabled="isSubmitting" @click="submitExamAction" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70" type="button">
             {{ isSubmitting ? 'Đang nộp...' : 'Xác nhận nộp' }}
           </button>
         </div>
@@ -175,13 +169,12 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Client } from '@stomp/stompjs'
-import { API_BASE_URL, ApiError } from '../../services/apiClient'
+import { API_BASE_URL } from '../../services/apiClient'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
 import { sendMonitoringEvent } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
+import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
-import SockJS from 'sockjs-client/dist/sockjs'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
@@ -191,17 +184,18 @@ const isDark = ref(false)
 const examTitle = computed(() => route.query.exam || 'Giữa kỳ Tâm lý học nâng cao')
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
+const isPracticeExam = computed(() => String(route.query.isPractice || '') === 'true')
 const showSubmitModal = ref(false)
 const isSubmitting = ref(false)
-const loadError = ref('')
 const questions = ref([])
 const answers = ref({})
 const currentIndex = ref(0)
 const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds || ''), 10) || 0)
+
+const toast = useToast()
 const attemptStatus = ref('IN_PROGRESS')
 const isSuspended = ref(false)
 const suspensionMessage = ref('')
-const realtimeWarningMessage = ref('')
 const lastViolationAtByType = ref({})
 const pendingViolationByType = ref({})
 const cameraReady = ref(false)
@@ -269,7 +263,7 @@ const checkDevices = async () => {
 }
 
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
-  if (!attemptId.value || isSuspended.value) return
+  if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
 
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
@@ -304,6 +298,7 @@ const applyAttemptStatus = (status, message = '') => {
 }
 
 const enforceDeviceAccess = async () => {
+  if (isPracticeExam.value) return
   await checkDevices()
   if (!devicesReady.value) {
     isSuspended.value = true
@@ -321,16 +316,22 @@ const syncAttemptStatus = async () => {
   }
 }
 
-const getAuthToken = () => {
+const getAuthToken = async () => {
   if (typeof window === 'undefined') return ''
-  return String(window.localStorage.getItem('auth_token') || '')
+  const { getStoredToken } = await import('../../services/authService')
+  return String(getStoredToken() || '')
 }
 
-const connectProctorRealtime = () => {
-  if (!attemptId.value) return
+const connectProctorRealtime = async () => {
+  if (isPracticeExam.value || !attemptId.value) return
+
+  const [{ Client }, { default: SockJS }] = await Promise.all([
+    import('@stomp/stompjs'),
+    import('sockjs-client')
+  ])
 
   const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
-  const token = getAuthToken()
+  const token = await getAuthToken()
   stompClient = new Client({
     reconnectDelay: 5000,
     connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
@@ -343,7 +344,7 @@ const connectProctorRealtime = () => {
         const payload = JSON.parse(frame.body || '{}')
         const type = String(payload.type || '').toUpperCase()
         if (type === 'TEACHER_WARNING') {
-          realtimeWarningMessage.value = payload.message || 'Giám thị vừa gửi cảnh báo.'
+          toast.warning(payload.message || 'Giám thị vừa gửi cảnh báo.')
         }
         if (type === 'ATTEMPT_STOPPED') {
           applyAttemptStatus(payload.status || 'STOPPED', payload.message || 'Bài thi đã bị đình chỉ.')
@@ -483,6 +484,9 @@ const onSelectAnswer = async (questionId, selectedAnswer) => {
 const openSubmitModal = () => {
   if (isSuspended.value) return
   showSubmitModal.value = true
+  setTimeout(() => {
+    document.getElementById('submit-exam-confirm')?.focus()
+  }, 0)
 }
 
 const closeSubmitModal = () => {
@@ -513,8 +517,7 @@ const submitExamAction = async () => {
       }
     })
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể nộp bài lúc này.'
-  } finally {
+    toast.error('Không thể nộp bài lúc này.')  } finally {
     isSubmitting.value = false
   }
 }
@@ -535,10 +538,9 @@ const questionButtonClass = (index) => {
 }
 
 onMounted(async () => {
-  loadError.value = ''
   try {
     if (!examId.value || !attemptId.value) {
-      loadError.value = 'Thiếu thông tin bài thi/lượt làm bài.'
+      toast.error('Thiếu thông tin bài thi/lượt làm bài.')
       return
     }
 
@@ -572,32 +574,34 @@ onMounted(async () => {
     await enforceDeviceAccess()
 
     if (!devicesReady.value) {
-      loadError.value = suspensionMessage.value
+      toast.error(suspensionMessage.value)
       return
     }
 
     isSuspended.value = false
 
-    connectProctorRealtime()
-    attemptStatusTimer = window.setInterval(() => {
-      syncAttemptStatus()
-      enforceDeviceAccess()
-    }, 5000)
+    if (!isPracticeExam.value) {
+      connectProctorRealtime()
+      attemptStatusTimer = window.setInterval(() => {
+        syncAttemptStatus()
+        enforceDeviceAccess()
+      }, 5000)
 
-    resetIdleTimer()
-    scheduleDevToolsCheck()
+      resetIdleTimer()
+      scheduleDevToolsCheck()
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('blur', handleWindowBlur)
-    window.addEventListener('focus', handleWindowFocus)
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    document.addEventListener('copy', handleCopyPaste)
-    document.addEventListener('paste', handleCopyPaste)
-    window.addEventListener('mousemove', resetIdleTimer)
-    window.addEventListener('keydown', resetIdleTimer)
-    window.addEventListener('scroll', resetIdleTimer)
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('blur', handleWindowBlur)
+      window.addEventListener('focus', handleWindowFocus)
+      document.addEventListener('fullscreenchange', handleFullscreenChange)
+      document.addEventListener('copy', handleCopyPaste)
+      document.addEventListener('paste', handleCopyPaste)
+      window.addEventListener('mousemove', resetIdleTimer)
+      window.addEventListener('keydown', resetIdleTimer)
+      window.addEventListener('scroll', resetIdleTimer)
+    }
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải nội dung bài thi.'
+    toast.error('Không thể tải nội dung bài thi.')
   }
 })
 
@@ -611,15 +615,17 @@ onUnmounted(() => {
     stompClient.deactivate()
     stompClient = null
   }
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-  window.removeEventListener('blur', handleWindowBlur)
-  window.removeEventListener('focus', handleWindowFocus)
-  document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  document.removeEventListener('copy', handleCopyPaste)
-  document.removeEventListener('paste', handleCopyPaste)
-  window.removeEventListener('mousemove', resetIdleTimer)
-  window.removeEventListener('keydown', resetIdleTimer)
-  window.removeEventListener('scroll', resetIdleTimer)
+  if (!isPracticeExam.value) {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.removeEventListener('blur', handleWindowBlur)
+    window.removeEventListener('focus', handleWindowFocus)
+    document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    document.removeEventListener('copy', handleCopyPaste)
+    document.removeEventListener('paste', handleCopyPaste)
+    window.removeEventListener('mousemove', resetIdleTimer)
+    window.removeEventListener('keydown', resetIdleTimer)
+    window.removeEventListener('scroll', resetIdleTimer)
+  }
 })
 </script>
 

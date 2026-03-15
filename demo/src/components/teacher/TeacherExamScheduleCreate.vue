@@ -6,9 +6,26 @@
       <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-      <div class="relative mb-8 animate-fade-up">
+      <div class="relative mb-6 animate-fade-up">
         <h1 class="text-3xl font-bold tracking-tight">Thiết lập &amp; tạo đề thi</h1>
         <p class="text-slate-500 mt-1">{{ selectedExamTitle }}</p>
+      </div>
+
+      <div class="mb-8 animate-fade-up">
+        <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <template v-for="(step, index) in steps" :key="step">
+            <div class="flex items-center gap-3">
+              <span
+                class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+              >
+                {{ index + 1 }}
+              </span>
+              <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+            </div>
+            <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
+          </template>
+        </div>
       </div>
 
       <section class="relative bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-up-delay hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
@@ -17,59 +34,68 @@
           <h3 class="text-lg font-bold">Cấu hình thời gian</h3>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">timer</span>
-                Thời lượng (phút)
-              </label>
-              <span class="text-primary font-bold">{{ timeLimit }} phút</span>
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/70 px-4 py-3">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span class="material-symbols-outlined text-base">timer</span>
+              Thời lượng (phút)
             </div>
-            <div class="px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300">
-              Thời lượng lấy theo đề thi đã chọn.
+            <span class="text-primary font-bold text-sm">{{ timeLimit }} phút</span>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span class="material-symbols-outlined text-base">schedule</span>
+              Bắt đầu
+            </div>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input v-model="startDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" @input="closePicker" @change="closePicker" />
+              <input v-model="startClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" @input="closePicker" @change="closePicker" />
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartNow">Bây giờ</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn15Minutes">+15 phút</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn30Minutes">+30 phút</button>
             </div>
           </div>
-          <div class="space-y-3">
-            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <span class="material-symbols-outlined text-sm">calendar_today</span>
-              Ngày &amp; giờ bắt đầu
-            </label>
-            <div class="grid grid-cols-2 gap-3">
-              <input v-model="startDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" />
-              <input v-model="startClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" />
+
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span class="material-symbols-outlined text-base">event_available</span>
+              Kết thúc
             </div>
-            <div class="flex flex-wrap gap-2">
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setStartNow">Bây giờ</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setStartIn15Minutes">+15 phút</button>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input v-model="endDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" @input="closePicker" @change="closePicker" />
+              <input v-model="endClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" @input="closePicker" @change="closePicker" />
             </div>
-          </div>
-          <div class="space-y-3">
-            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <span class="material-symbols-outlined text-sm">event_busy</span>
-              Ngày &amp; giờ kết thúc
-            </label>
-            <div class="grid grid-cols-2 gap-3">
-              <input v-model="endDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" />
-              <input v-model="endClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" />
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setEndByDuration">Kết thúc = Bắt đầu + Thời lượng</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" type="button" @click="setEndAfter30Minutes">+30 phút</button>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndByDuration">Kết thúc = Bắt đầu + Thời lượng</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfter30Minutes">+30 phút</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfter60Minutes">+60 phút</button>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-4 pt-8">
+        <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+          <span class="font-semibold text-slate-700 dark:text-slate-200">Xem trước:</span>
+          <span v-if="previewLabel"> {{ previewLabel }}</span>
+          <span v-else> Hãy chọn thời gian bắt đầu và kết thúc.</span>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-8">
           <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">
             Quay lại
           </button>
-          <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="handleCreateAssignment">
-            {{ isSubmitting ? 'Đang xuất bản...' : 'Tạo đề thi' }}
-            <span class="material-symbols-outlined text-lg">rocket_launch</span>
-          </button>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button class="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button" @click="setEndByDuration">
+              Tự tính kết thúc
+            </button>
+            <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="handleCreateAssignment">
+              {{ isSubmitting ? 'Đang xuất bản...' : 'Xuất bản đề thi' }}
+              <span class="material-symbols-outlined text-lg">rocket_launch</span>
+            </button>
+          </div>
         </div>
-        <p v-if="errorMessage" class="text-sm text-rose-600 mt-3">{{ errorMessage }}</p>
       </section>
     </main>
   </div>
@@ -77,18 +103,21 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { createExamAssignment } from '../../services/assignmentService'
 import { updateExam } from '../../services/examService'
+import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const route = useRoute()
 const isDark = ref(false)
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
+const currentStep = 3
 const timeLimit = ref(Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)
 const isSubmitting = ref(false)
-const errorMessage = ref('')
+
+const toast = useToast()
 
 const formatDatePart = (date) => {
   const yyyy = date.getFullYear()
@@ -121,10 +150,23 @@ const buildLocalDateTime = (datePart, timePart) => {
 
 const startAt = computed(() => buildLocalDateTime(startDate.value, startClock.value))
 const endAt = computed(() => buildLocalDateTime(endDate.value, endClock.value))
+const previewLabel = computed(() => {
+  const start = toDate(startAt.value)
+  const end = toDate(endAt.value)
+  if (!start || !end) return ''
+  if (end <= start) return 'Thời gian kết thúc đang sớm hơn thời gian bắt đầu.'
+  return `${start.toLocaleString()} → ${end.toLocaleString()}`
+})
 
 const toDate = (value) => {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+const closePicker = (event) => {
+  const target = event?.target
+  if (!target) return
+  window.setTimeout(() => target.blur(), 0)
 }
 
 const setStartNow = () => {
@@ -135,6 +177,12 @@ const setStartNow = () => {
 
 const setStartIn15Minutes = () => {
   const date = new Date(Date.now() + 15 * 60000)
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setStartIn30Minutes = () => {
+  const date = new Date(Date.now() + 30 * 60000)
   startDate.value = formatDatePart(date)
   startClock.value = formatTimePart(date)
 }
@@ -153,6 +201,12 @@ const setEndAfter30Minutes = () => {
   endClock.value = formatTimePart(date)
 }
 
+const setEndAfter60Minutes = () => {
+  const date = new Date(Date.now() + 60 * 60000)
+  endDate.value = formatDatePart(date)
+  endClock.value = formatTimePart(date)
+}
+
 const goBack = () => {
   const source = route.query.source
   if (source === 'manual') {
@@ -163,22 +217,20 @@ const goBack = () => {
 }
 
 const handleCreateAssignment = async () => {
-  errorMessage.value = ''
-
   if (!examId.value) {
-    errorMessage.value = 'Thiếu mã đề thi. Vui lòng tạo lại đề thi.'
+    toast.error('Thiếu mã đề thi. Vui lòng tạo lại đề thi.')
     return
   }
 
   if (!startAt.value || !endAt.value) {
-    errorMessage.value = 'Vui lòng chọn cả ngày/giờ bắt đầu và kết thúc.'
+    toast.error('Vui lòng chọn cả ngày/giờ bắt đầu và kết thúc.')
     return
   }
 
   const start = toDate(startAt.value)
   const end = toDate(endAt.value)
   if (!start || !end || end <= start) {
-    errorMessage.value = 'Thời gian kết thúc phải sau thời gian bắt đầu.'
+    toast.error('Thời gian kết thúc phải sau thời gian bắt đầu.')
     return
   }
 
@@ -214,7 +266,7 @@ const handleCreateAssignment = async () => {
       }
     })
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể xuất bản đề thi. Vui lòng thử lại.'
+    toast.error('Không thể xuất bản đề thi. Vui lòng thử lại.')
   } finally {
     isSubmitting.value = false
   }

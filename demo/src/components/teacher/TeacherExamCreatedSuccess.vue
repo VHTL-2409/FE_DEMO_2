@@ -5,6 +5,23 @@
 
       <main class="flex flex-1 justify-center py-10 px-4">
         <div class="flex flex-col max-w-[980px] w-full">
+          <div class="mb-8">
+            <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <template v-for="(step, index) in steps" :key="step">
+                <div class="flex items-center gap-3">
+                  <span
+                    class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                    :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+                  >
+                    {{ index + 1 }}
+                  </span>
+                  <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+                </div>
+                <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
+              </template>
+            </div>
+          </div>
+
           <div class="flex flex-col items-center gap-6 mb-10">
             <div class="flex items-center justify-center w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
               <span class="material-symbols-outlined !text-5xl">check_circle</span>
@@ -102,7 +119,6 @@
             </div>
 
             <p class="text-xs text-slate-500 mt-4">Cập nhật gần nhất: {{ lastUpdatedLabel }}</p>
-            <p v-if="errorMessage" class="text-sm text-rose-600 mt-2">{{ errorMessage }}</p>
           </div>
 
           <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,8 +139,8 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { listExamAttempts } from '../../services/attemptService'
+import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -133,8 +149,11 @@ const router = useRouter()
 const isDark = ref(false)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
-const errorMessage = ref('')
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
+const currentStep = 4
 const attempts = ref([])
+
+const toast = useToast()
 const nowMs = ref(Date.now())
 const lastUpdatedAt = ref(null)
 let countdownTimer = null
@@ -202,10 +221,9 @@ const loadStudents = async ({ silent = false } = {}) => {
   try {
     const fetched = await listExamAttempts(examId.value)
     attempts.value = fetched
-    errorMessage.value = ''
     lastUpdatedAt.value = Date.now()
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tải danh sách sinh viên đã vào.'
+    toast.error('Không thể tải danh sách sinh viên đã vào.')
   } finally {
     isLoading.value = false
     isRefreshing.value = false

@@ -86,9 +86,6 @@
                 </div>
               </div>
 
-              <p v-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">
-                {{ errorMessage }}
-              </p>
 
               <button
                 :disabled="isSubmitting"
@@ -115,8 +112,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { register } from '../../services/authService'
+import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
 
@@ -125,17 +122,16 @@ const username = ref('')
 const email = ref('')
 const password = ref('')
 const isSubmitting = ref(false)
-const errorMessage = ref('')
+
+const toast = useToast()
 
 const goToLogin = () => {
   router.push('/login')
 }
 
 const onSubmit = async () => {
-  errorMessage.value = ''
-
   if (!username.value || !email.value || !password.value) {
-    errorMessage.value = 'Please fill in all required fields.'
+    toast.error('Please fill in all required fields.')
     return
   }
 
@@ -150,11 +146,7 @@ const onSubmit = async () => {
 
     router.push('/login')
   } catch (error) {
-    if (error instanceof ApiError) {
-      errorMessage.value = error.message || 'Registration failed. Please try again.'
-    } else {
-      errorMessage.value = 'Unable to connect to server. Please try again.'
-    }
+    toast.error('Registration failed. Please try again.')
   } finally {
     isSubmitting.value = false
   }

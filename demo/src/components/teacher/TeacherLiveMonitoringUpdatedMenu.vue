@@ -48,19 +48,6 @@
           </span>
           <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
         </div>
-        <p v-if="loadError" class="mb-4 text-sm text-rose-600 animate-fade-up-delay">{{ loadError }}</p>
-
-        <transition name="fade">
-          <div v-if="quickActionMessage || quickActionError" class="fixed top-5 right-5 z-50 w-[320px] rounded-xl border shadow-xl backdrop-blur-sm p-4"
-            :class="quickActionError ? 'bg-rose-50/95 border-rose-200 text-rose-700' : 'bg-emerald-50/95 border-emerald-200 text-emerald-700'">
-            <div class="flex items-start justify-between gap-2">
-              <p class="text-sm font-semibold leading-5">{{ quickActionError || quickActionMessage }}</p>
-              <button class="text-slate-500 hover:text-slate-700" type="button" @click="clearQuickActionNotice">
-                <span class="material-symbols-outlined text-base">close</span>
-              </button>
-            </div>
-          </div>
-        </transition>
 
         <section class="relative mb-10 animate-fade-up-delay">
           <div class="flex items-center justify-between mb-4">
@@ -179,6 +166,7 @@ import { ApiError } from '../../services/apiClient'
 import { getAttemptDetail, listExamAttempts } from '../../services/attemptService'
 import { invalidateAttempt, sendTeacherWarning } from '../../services/monitoringService'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const route = useRoute()
@@ -186,15 +174,12 @@ const router = useRouter()
 const isDark = ref(false)
 const attempts = ref([])
 const detailsByAttemptId = ref({})
-const loadError = ref('')
 const isSyncing = ref(false)
 const lastUpdatedAt = ref(null)
-const quickActionMessage = ref('')
-const quickActionError = ref('')
 const quickActionAttemptId = ref(null)
 const quickActionType = ref('')
+const toast = useToast()
 let refreshTimer = null
-let noticeTimer = null
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
@@ -301,34 +286,16 @@ const openStudentDetail = (item) => {
   })
 }
 
-const clearQuickActionNotice = () => {
-  quickActionMessage.value = ''
-  quickActionError.value = ''
-  if (noticeTimer) {
-    window.clearTimeout(noticeTimer)
-    noticeTimer = null
-  }
-}
-
-const showQuickActionNotice = ({ message = '', error = '' }) => {
-  clearQuickActionNotice()
-  quickActionMessage.value = message
-  quickActionError.value = error
-  noticeTimer = window.setTimeout(() => {
-    clearQuickActionNotice()
-  }, 3500)
-}
-
 const sendQuickWarning = async (item) => {
   quickActionType.value = 'warning'
   quickActionAttemptId.value = item.attemptId
 
   try {
     const response = await sendTeacherWarning(item.attemptId)
-    showQuickActionNotice({ message: response?.message || `Đã gửi cảnh báo realtime tới ${item.student}.` })
+    toast.success(response?.message || `Đã gửi cảnh báo realtime tới ${item.student}.`)
     await loadAttempts()
   } catch (error) {
-    showQuickActionNotice({ error: error instanceof ApiError ? error.message : 'Không gửi được cảnh báo. Vui lòng thử lại.' })
+    toast.error(error instanceof ApiError ? error.message : 'Không gửi được cảnh báo. Vui lòng thử lại.')
   } finally {
     quickActionAttemptId.value = null
     quickActionType.value = ''
@@ -341,10 +308,10 @@ const handleQuickInvalidate = async (item) => {
 
   try {
     const response = await invalidateAttempt(item.attemptId)
-    showQuickActionNotice({ message: response?.message || `Đã đình chỉ bài thi của ${item.student}.` })
+    toast.success(response?.message || `Đã đình chỉ bài thi của ${item.student}.`)
     await loadAttempts()
   } catch (error) {
-    showQuickActionNotice({ error: error instanceof ApiError ? error.message : 'Không thể đình chỉ bài thi. Vui lòng thử lại.' })
+    toast.error(error instanceof ApiError ? error.message : 'Không thể đình chỉ bài thi. Vui lòng thử lại.')
   } finally {
     quickActionAttemptId.value = null
     quickActionType.value = ''
@@ -353,7 +320,7 @@ const handleQuickInvalidate = async (item) => {
 
 const loadAttempts = async () => {
   if (!examId.value) {
-    loadError.value = 'Thiếu mã đề thi. Vui lòng mở phiên giám sát từ danh sách đề thi.'
+    toast.error('Thiếu mã đề thi. Vui lòng mở phiên giám sát từ danh sách đề thi.')
     return
   }
 
@@ -372,10 +339,9 @@ const loadAttempts = async () => {
     )
     attempts.value = fetchedAttempts
     detailsByAttemptId.value = Object.fromEntries(detailPairs)
-    loadError.value = ''
     lastUpdatedAt.value = Date.now()
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát trực tiếp.'
+    toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu giám sát trực tiếp.')
   } finally {
     isSyncing.value = false
   }
@@ -391,10 +357,6 @@ onMounted(async () => {
 onUnmounted(() => {
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
-  }
-  if (noticeTimer) {
-    window.clearTimeout(noticeTimer)
-    noticeTimer = null
   }
 })
 </script>

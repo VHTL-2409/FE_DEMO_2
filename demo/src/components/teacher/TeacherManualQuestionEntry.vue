@@ -12,6 +12,23 @@
           <p class="text-slate-500 mt-1">Cấu hình từng câu hỏi cho đề thi của bạn.</p>
         </div>
 
+        <div class="mb-8 animate-fade-up">
+          <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <template v-for="(step, index) in steps" :key="step">
+              <div class="flex items-center gap-3">
+                <span
+                  class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                  :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+                >
+                  {{ index + 1 }}
+                </span>
+                <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+              </div>
+              <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
+            </template>
+          </div>
+        </div>
+
         <section class="bg-white dark:bg-slate-900 rounded-xl border border-primary/10 shadow-sm overflow-hidden animate-fade-up-delay hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
           <div class="p-6 border-b border-primary/10">
             <h2 class="text-lg font-bold">Trình soạn câu hỏi</h2>
@@ -32,6 +49,13 @@
               <div class="space-y-2">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Điểm</label>
                 <input v-model.number="scoreWeight" class="w-full bg-slate-50 dark:bg-slate-800 border-primary/10 rounded-lg text-sm focus:ring-primary focus:border-primary" type="number" min="0.5" step="0.5" />
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiến độ</label>
+                <div class="h-full rounded-lg border border-primary/10 bg-slate-50 dark:bg-slate-800 p-4 text-sm">
+                  <p class="font-semibold text-slate-700 dark:text-slate-200">Đã lưu: {{ savedQuestions }} câu</p>
+                  <p class="text-xs text-slate-500 mt-1">Tạo xong có thể chuyển sang bước lập lịch.</p>
+                </div>
               </div>
             </div>
 
@@ -63,8 +87,6 @@
               Tiếp theo
             </button>
           </div>
-          <p v-if="errorMessage" class="px-6 py-3 text-sm text-rose-600">{{ errorMessage }}</p>
-          <p v-if="successMessage" class="px-6 py-3 text-sm text-emerald-600">{{ successMessage }}</p>
         </section>
       </main>
     </div>
@@ -73,14 +95,16 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { createExam } from '../../services/examService'
 import { createQuestion } from '../../services/questionService'
+import { useToast } from '../../composables/useToast'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
+const currentStep = 2
 const examTitle = ref('')
 const scoreWeight = ref(1)
 const questionContent = ref('')
@@ -92,27 +116,25 @@ const optionFields = ref([
   { id: 'D', text: '' }
 ])
 const isSubmitting = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
+const savedQuestions = ref(0)
+
+const toast = useToast()
 let createdExamId = null
 
 const saveQuestion = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
-
   if (!examTitle.value.trim()) {
-    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi.'
+    toast.error('Vui lòng nhập tiêu đề đề thi.')
     return
   }
 
   if (!questionContent.value.trim()) {
-    errorMessage.value = 'Vui lòng nhập nội dung câu hỏi.'
+    toast.error('Vui lòng nhập nội dung câu hỏi.')
     return
   }
 
   const hasEmptyOption = optionFields.value.some((option) => !option.text.trim())
   if (hasEmptyOption) {
-    errorMessage.value = 'Vui lòng điền đầy đủ các phương án trả lời (A, B, C, D).'
+    toast.error('Vui lòng điền đầy đủ các phương án trả lời (A, B, C, D).')
     return
   }
 
@@ -135,22 +157,26 @@ const saveQuestion = async () => {
       correctAnswer: correctAnswer.value
     })
 
-    successMessage.value = 'Lưu câu hỏi thành công.'
+    toast.success('Lưu câu hỏi thành công.')
+    savedQuestions.value += 1
     questionContent.value = ''
     optionFields.value = optionFields.value.map((option) => ({ ...option, text: '' }))
     correctAnswer.value = 'A'
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể lưu câu hỏi. Vui lòng thử lại.'
+    toast.error('Không thể lưu câu hỏi. Vui lòng thử lại.')
   } finally {
     isSubmitting.value = false
   }
 }
 
 const goNext = async () => {
-  errorMessage.value = ''
-
   if (!examTitle.value.trim()) {
-    errorMessage.value = 'Vui lòng nhập tiêu đề đề thi trước khi tiếp tục.'
+    toast.error('Vui lòng nhập tiêu đề đề thi trước khi tiếp tục.')
+    return
+  }
+
+  if (savedQuestions.value === 0 && !questionContent.value.trim()) {
+    toast.error('Vui lòng lưu ít nhất 1 câu hỏi trước khi tiếp tục.')
     return
   }
 
@@ -175,7 +201,7 @@ const goNext = async () => {
       }
     })
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : 'Không thể tạo đề thi. Vui lòng thử lại.'
+    toast.error('Không thể tạo đề thi. Vui lòng thử lại.')
   } finally {
     isSubmitting.value = false
   }

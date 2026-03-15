@@ -138,7 +138,7 @@ public class ExamService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
 
         Exam accessibleExam = requireAccessibleExam(exam.getId(), actor);
-        validateExamAvailability(accessibleExam, LocalDateTime.now());
+        validateExamJoinable(accessibleExam, LocalDateTime.now());
         return toResponse(accessibleExam);
     }
 
@@ -225,6 +225,16 @@ public class ExamService {
 
         if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has not started yet");
+        }
+
+        if (exam.getEndTime() != null && !now.isBefore(exam.getEndTime())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
+        }
+    }
+
+    public void validateExamJoinable(Exam exam, LocalDateTime now) {
+        if (Boolean.FALSE.equals(exam.getIsActive())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam is not active");
         }
 
         if (exam.getEndTime() != null && !now.isBefore(exam.getEndTime())) {

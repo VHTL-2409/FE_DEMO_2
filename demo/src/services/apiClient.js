@@ -20,6 +20,22 @@ const resolveErrorMessage = (payload, fallbackMessage) => {
   return fallbackMessage
 }
 
+const invalidateSession = () => {
+  import('./authService')
+    .then(({ invalidateSession: invalidate }) => {
+      if (typeof invalidate === 'function') {
+        invalidate()
+      } else {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_user')
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
+    })
+}
+
 export class ApiError extends Error {
   constructor(message, status, payload = null) {
     super(message)
@@ -51,14 +67,16 @@ export const apiRequest = async (path, options = {}) => {
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('auth_user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
+      invalidateSession()
     }
 
-    throw new ApiError(resolveErrorMessage(payload, 'Request failed'), response.status, payload)
+    const errorMessage = resolveErrorMessage(payload, 'Request failed')
+    if (response.status !== 401) {
+      import('./toastService').then(({ toastService }) => {
+        toastService.error(errorMessage)
+      })
+    }
+    throw new ApiError(errorMessage, response.status, payload)
   }
 
   return payload

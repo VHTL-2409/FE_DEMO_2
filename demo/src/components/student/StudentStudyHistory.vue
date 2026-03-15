@@ -52,9 +52,6 @@
                   <tr v-if="isLoading" class="text-sm text-slate-500">
                     <td colspan="4" class="px-6 py-8 text-center">Đang tải lịch sử...</td>
                   </tr>
-                  <tr v-else-if="loadError" class="text-sm text-rose-600">
-                    <td colspan="4" class="px-6 py-8 text-center">{{ loadError }}</td>
-                  </tr>
                   <tr v-else-if="!sessions.length" class="text-sm text-slate-500">
                     <td colspan="4" class="px-6 py-8 text-center">{{ emptyMessage }}</td>
                   </tr>
@@ -105,8 +102,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
 import { listMyAttempts } from '../../services/attemptService'
+import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const router = useRouter()
@@ -114,7 +111,7 @@ const route = useRoute()
 const isDark = ref(false)
 const attempts = ref([])
 const isLoading = ref(false)
-const loadError = ref('')
+const toast = useToast()
 const activeTab = computed(() => (route.query.tab === 'practice' ? 'practice' : 'exam'))
 
 const detectAttemptType = (attempt) => (attempt.isPractice ? 'practice' : 'exam')
@@ -179,13 +176,12 @@ const goToExamResult = (session) => {
 
 onMounted(async () => {
   isLoading.value = true
-  loadError.value = ''
 
   try {
     attempts.value = await listMyAttempts({ type: activeTab.value })
   } catch (error) {
     attempts.value = []
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải lịch sử tự học.'
+    toast.error('Không thể tải lịch sử tự học.')
   } finally {
     isLoading.value = false
   }

@@ -61,8 +61,6 @@
               </div>
             </div>
 
-            <p v-if="loadError" class="mb-4 text-sm text-rose-600">{{ loadError }}</p>
-
             <div class="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
               <button @click="goToDashboard" class="flex items-center justify-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200" type="button">
                 <span class="material-symbols-outlined">dashboard</span>
@@ -88,8 +86,8 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
+import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
 
@@ -98,7 +96,8 @@ const router = useRouter()
 const isDark = ref(false)
 const detail = ref(null)
 const report = ref(null)
-const loadError = ref('')
+
+const toast = useToast()
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const submittedAtDisplay = computed(() => {
@@ -132,7 +131,6 @@ const goToDashboard = () => {
 onMounted(async () => {
   if (!attemptId.value) return
 
-  loadError.value = ''
   try {
     const [detailPayload, reportPayload] = await Promise.all([
       getAttemptDetail(attemptId.value),
@@ -141,7 +139,7 @@ onMounted(async () => {
     detail.value = detailPayload
     report.value = reportPayload
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải tóm tắt bài nộp.'
+    toast.error('Không thể tải tóm tắt bài nộp.')
   }
 })
 </script>
