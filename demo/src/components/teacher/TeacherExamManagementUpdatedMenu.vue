@@ -37,7 +37,7 @@
             Tạo đề thi mới
           </h2>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div class="lg:col-span-2 group bg-white dark:bg-slate-900 rounded-2xl shadow-soft border border-slate-200/80 dark:border-slate-700/80 overflow-hidden hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
               <div class="flex flex-col md:flex-row h-full">
                 <div class="md:w-1/3 bg-primary/5 dark:bg-primary/20 flex items-center justify-center p-8 border-r border-slate-100 dark:border-slate-800">
                   <div class="text-center">
@@ -56,21 +56,21 @@
                         <span class="material-symbols-outlined">publish</span>
                         Tải tệp lên
                       </button>
-                      <button class="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary/100 px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors" type="button">
+                      <a :href="getTemplateDownloadUrl()" download class="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary/100 px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors">
                         <span class="material-symbols-outlined">download</span>
                         Tải mẫu
-                      </button>
+                      </a>
                     </div>
                   </div>
                   <div class="mt-6 flex items-center gap-2 text-xs text-slate-400">
                     <span class="material-symbols-outlined text-sm">info</span>
-                    <span>Kích thước tệp tối đa: 25MB. Đảm bảo tiêu đề cột khớp với mẫu.</span>
+                    <span>Kích thước tệp tối đa: 10MB. Cột: content, optionA, optionB, optionC, optionD, correctAnswer (A/B/C/D), scoreWeight.</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center justify-center text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 group">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-soft border border-slate-200/80 dark:border-slate-700/80 p-8 flex flex-col items-center justify-center text-center hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200 group">
               <div class="size-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-3xl">edit_note</span>
               </div>
@@ -107,6 +107,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getTemplateDownloadUrl } from '../../services/questionService'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()

@@ -1,5 +1,9 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
+  <div
+    :class="isDark ? 'dark' : 'light'"
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display"
+    @contextmenu="handleRightClick"
+  >
     <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false">
       <template #rightActions>
         <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium">
@@ -138,27 +142,36 @@
       </p>
     </footer>
 
-    <div v-if="showSubmitModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title">
-      <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-6">
-        <div class="flex items-start gap-3 mb-4">
-          <span class="material-symbols-outlined text-primary text-3xl">help</span>
-          <div>
-            <h3 id="submit-exam-title" class="text-lg font-bold">Xác nhận nộp bài?</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
+    <div v-if="showSubmitModal" class="modal-overlay z-[60]" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title" @click.self="closeSubmitModal">
+      <div class="modal-content w-full max-w-md">
+        <div class="modal-header">
+          <div class="flex items-center gap-3">
+            <div class="size-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-xl">help</span>
+            </div>
+            <div>
+              <h3 id="submit-exam-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Xác nhận nộp bài?</h3>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeSubmitModal">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="unansweredCount > 0" class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 mb-4">
+            <p class="text-sm font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg">warning</span>
+              Bạn còn {{ unansweredCount }} câu chưa làm.
+            </p>
           </div>
         </div>
-
-        <div v-if="unansweredCount > 0" class="mb-5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-3">
-          <p class="text-sm font-semibold text-amber-700 dark:text-amber-300">
-            Bạn còn {{ unansweredCount }} câu chưa làm.
-          </p>
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <button @click="closeSubmitModal" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800" type="button">
+        <div class="modal-footer">
+          <button @click="closeSubmitModal" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" type="button">
             Quay lại làm bài
           </button>
-          <button id="submit-exam-confirm" :disabled="isSubmitting" @click="submitExamAction" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70" type="button">
+          <button id="submit-exam-confirm" :disabled="isSubmitting" @click="submitExamAction" class="px-4 py-2.5 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-70 flex items-center gap-2 transition-colors" type="button">
+            <span class="material-symbols-outlined text-lg" v-if="isSubmitting">hourglass_empty</span>
             {{ isSubmitting ? 'Đang nộp...' : 'Xác nhận nộp' }}
           </button>
         </div>
@@ -185,6 +198,21 @@ const examTitle = computed(() => route.query.exam || 'Giữa kỳ Tâm lý học
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const isPracticeExam = computed(() => String(route.query.isPractice || '') === 'true')
+const examConfig = ref({
+  monitorTabSwitch: true,
+  monitorBlur: true,
+  monitorExitFullscreen: true,
+  monitorCopyPaste: true,
+  monitorIdleTime: true,
+  monitorDevtools: true,
+  monitorDuplicateIp: true,
+  monitorFastSubmit: true,
+  monitorRightClick: true,
+  monitorPrintScreen: true,
+  monitorRapidQuestionSwitch: true,
+  monitorMultiMonitor: true,
+  requireCameraMic: true
+})
 const showSubmitModal = ref(false)
 const isSubmitting = ref(false)
 const questions = ref([])
@@ -198,6 +226,7 @@ const isSuspended = ref(false)
 const suspensionMessage = ref('')
 const lastViolationAtByType = ref({})
 const pendingViolationByType = ref({})
+const questionSwitchTimestamps = ref([])
 const cameraReady = ref(false)
 const micReady = ref(false)
 const deviceError = ref('')
@@ -217,6 +246,7 @@ const DEVTOOLS_GAP_PX = 160
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const devicesReady = computed(() => cameraReady.value && micReady.value)
+const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
 const answeredCount = computed(() => Object.values(answers.value).filter(Boolean).length)
 const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
 const progressPercent = computed(() => {
@@ -235,6 +265,12 @@ const clearBlurGraceTimer = () => {
 }
 
 const checkDevices = async () => {
+  if (!shouldCheckDevices.value) {
+    cameraReady.value = true
+    micReady.value = true
+    deviceError.value = ''
+    return
+  }
   if (!navigator?.mediaDevices?.getUserMedia) {
     cameraReady.value = false
     micReady.value = false
@@ -264,6 +300,17 @@ const checkDevices = async () => {
 
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
   if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
+  if (!examConfig.value || examConfig.value.monitorFastSubmit === false && eventType === 'FAST_SUBMIT') return
+  if (examConfig.value.monitorTabSwitch === false && eventType === 'TAB_SWITCH') return
+  if (examConfig.value.monitorBlur === false && eventType === 'BLUR') return
+  if (examConfig.value.monitorExitFullscreen === false && eventType === 'EXIT_FULLSCREEN') return
+  if (examConfig.value.monitorCopyPaste === false && eventType === 'COPY_PASTE') return
+  if (examConfig.value.monitorIdleTime === false && eventType === 'IDLE_TIME') return
+  if (examConfig.value.monitorDevtools === false && eventType === 'DEVTOOLS_OPEN') return
+  if (examConfig.value.monitorRightClick === false && eventType === 'RIGHT_CLICK') return
+  if (examConfig.value.monitorPrintScreen === false && eventType === 'PRINT_SCREEN') return
+  if (examConfig.value.monitorRapidQuestionSwitch === false && eventType === 'RAPID_QUESTION_SWITCH') return
+  if (examConfig.value.monitorMultiMonitor === false && eventType === 'MULTI_MONITOR') return
 
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
@@ -365,7 +412,7 @@ const handleVisibilityChange = () => {
       ...pendingViolationByType.value,
       TAB_SWITCH: true
     }
-    void reportViolation('TAB_SWITCH', 'Document hidden during exam attempt')
+    void reportViolation('TAB_SWITCH', 'TAB_SWITCH')
   } else if (pendingViolationByType.value.TAB_SWITCH) {
     pendingViolationByType.value = {
       ...pendingViolationByType.value,
@@ -441,19 +488,69 @@ const scheduleDevToolsCheck = () => {
   }, 5000)
 }
 
+const checkRapidQuestionSwitch = () => {
+  const now = Date.now()
+  questionSwitchTimestamps.value = [...questionSwitchTimestamps.value, now].filter(
+    (t) => now - t <= RAPID_SWITCH_WINDOW_MS
+  )
+  if (questionSwitchTimestamps.value.length >= RAPID_SWITCH_THRESHOLD) {
+    void reportViolation(
+      'RAPID_QUESTION_SWITCH',
+      `${questionSwitchTimestamps.value.length} lần đổi câu trong ${RAPID_SWITCH_WINDOW_MS / 1000}s`,
+      VIOLATION_COOLDOWN_MS
+    )
+    questionSwitchTimestamps.value = []
+  }
+}
+
 const selectQuestion = (index) => {
   if (isSuspended.value) return
+  if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) {
+    checkRapidQuestionSwitch()
+  }
   currentIndex.value = index
 }
 
 const goPrevious = () => {
   if (isSuspended.value) return
-  if (currentIndex.value > 0) currentIndex.value -= 1
+  if (currentIndex.value > 0) {
+    if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
+    currentIndex.value -= 1
+  }
 }
 
 const goNext = () => {
   if (isSuspended.value) return
-  if (currentIndex.value < questions.value.length - 1) currentIndex.value += 1
+  if (currentIndex.value < questions.value.length - 1) {
+    if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
+    currentIndex.value += 1
+  }
+}
+
+const handleRightClick = (e) => {
+  if (examConfig.value.monitorRightClick !== false) {
+    e.preventDefault()
+    e.stopPropagation()
+    void reportViolation('RIGHT_CLICK', 'Chuột phải bị chặn trong phòng thi', VIOLATION_COOLDOWN_MS)
+  }
+}
+
+const handlePrintScreen = (e) => {
+  if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) {
+    e.preventDefault()
+    void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS)
+  }
+}
+
+const checkMultiMonitor = () => {
+  if (examConfig.value.monitorMultiMonitor === false) return
+  const screenW = window.screen?.width || 0
+  const screenH = window.screen?.height || 0
+  const availW = window.screen?.availWidth || 0
+  const availH = window.screen?.availHeight || 0
+  if (screenW > 0 && availW > 0 && (screenW - availW > 100 || screenH - availH > 100)) {
+    void reportViolation('MULTI_MONITOR', 'Có thể sử dụng nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS)
+  }
 }
 
 const persistDraft = async () => {
@@ -544,10 +641,31 @@ onMounted(async () => {
       return
     }
 
-    const [questionList, draftData] = await Promise.all([
-      listExamQuestions(examId.value),
-      getDraftAnswers(attemptId.value)
+    const [{ getExamDetail }] = await Promise.all([
+      import('../../services/examService')
     ])
+
+    const [questionList, draftData, examDetail] = await Promise.all([
+      listExamQuestions(examId.value),
+      getDraftAnswers(attemptId.value),
+      getExamDetail(examId.value)
+    ])
+
+    examConfig.value = {
+      monitorTabSwitch: examDetail?.monitorTabSwitch !== false,
+      monitorBlur: examDetail?.monitorBlur !== false,
+      monitorExitFullscreen: examDetail?.monitorExitFullscreen !== false,
+      monitorCopyPaste: examDetail?.monitorCopyPaste !== false,
+      monitorIdleTime: examDetail?.monitorIdleTime !== false,
+      monitorDevtools: examDetail?.monitorDevtools !== false,
+      monitorDuplicateIp: examDetail?.monitorDuplicateIp !== false,
+      monitorFastSubmit: examDetail?.monitorFastSubmit !== false,
+      monitorRightClick: examDetail?.monitorRightClick !== false,
+      monitorPrintScreen: examDetail?.monitorPrintScreen !== false,
+      monitorRapidQuestionSwitch: examDetail?.monitorRapidQuestionSwitch !== false,
+      monitorMultiMonitor: examDetail?.monitorMultiMonitor !== false,
+      requireCameraMic: examDetail?.requireCameraMic !== false
+    }
 
     questions.value = questionList.map((item) => ({
       id: item.id,
@@ -574,8 +692,12 @@ onMounted(async () => {
     await enforceDeviceAccess()
 
     if (!devicesReady.value) {
-      toast.error(suspensionMessage.value)
-      return
+      if (!shouldCheckDevices.value) {
+        isSuspended.value = false
+      } else {
+        toast.error(suspensionMessage.value)
+        return
+      }
     }
 
     isSuspended.value = false
@@ -587,18 +709,37 @@ onMounted(async () => {
         enforceDeviceAccess()
       }, 5000)
 
-      resetIdleTimer()
-      scheduleDevToolsCheck()
+      if (examConfig.value.monitorIdleTime !== false) {
+        resetIdleTimer()
+        window.addEventListener('mousemove', resetIdleTimer)
+        window.addEventListener('keydown', resetIdleTimer)
+        window.addEventListener('scroll', resetIdleTimer)
+      }
 
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-      window.addEventListener('blur', handleWindowBlur)
-      window.addEventListener('focus', handleWindowFocus)
-      document.addEventListener('fullscreenchange', handleFullscreenChange)
-      document.addEventListener('copy', handleCopyPaste)
-      document.addEventListener('paste', handleCopyPaste)
-      window.addEventListener('mousemove', resetIdleTimer)
-      window.addEventListener('keydown', resetIdleTimer)
-      window.addEventListener('scroll', resetIdleTimer)
+      if (examConfig.value.monitorDevtools !== false) {
+        scheduleDevToolsCheck()
+      }
+
+      if (examConfig.value.monitorTabSwitch !== false) {
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+      }
+      if (examConfig.value.monitorBlur !== false) {
+        window.addEventListener('blur', handleWindowBlur)
+        window.addEventListener('focus', handleWindowFocus)
+      }
+      if (examConfig.value.monitorExitFullscreen !== false) {
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+      }
+      if (examConfig.value.monitorCopyPaste !== false) {
+        document.addEventListener('copy', handleCopyPaste)
+        document.addEventListener('paste', handleCopyPaste)
+      }
+      if (examConfig.value.monitorPrintScreen !== false) {
+        document.addEventListener('keydown', handlePrintScreen)
+      }
+      if (examConfig.value.monitorMultiMonitor !== false) {
+        setTimeout(checkMultiMonitor, 3000)
+      }
     }
   } catch (error) {
     toast.error('Không thể tải nội dung bài thi.')
@@ -616,15 +757,28 @@ onUnmounted(() => {
     stompClient = null
   }
   if (!isPracticeExam.value) {
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-    window.removeEventListener('blur', handleWindowBlur)
-    window.removeEventListener('focus', handleWindowFocus)
-    document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    document.removeEventListener('copy', handleCopyPaste)
-    document.removeEventListener('paste', handleCopyPaste)
-    window.removeEventListener('mousemove', resetIdleTimer)
-    window.removeEventListener('keydown', resetIdleTimer)
-    window.removeEventListener('scroll', resetIdleTimer)
+    if (examConfig.value.monitorTabSwitch !== false) {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+    if (examConfig.value.monitorBlur !== false) {
+      window.removeEventListener('blur', handleWindowBlur)
+      window.removeEventListener('focus', handleWindowFocus)
+    }
+    if (examConfig.value.monitorExitFullscreen !== false) {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+    if (examConfig.value.monitorCopyPaste !== false) {
+      document.removeEventListener('copy', handleCopyPaste)
+      document.removeEventListener('paste', handleCopyPaste)
+    }
+    if (examConfig.value.monitorPrintScreen !== false) {
+      document.removeEventListener('keydown', handlePrintScreen)
+    }
+    if (examConfig.value.monitorIdleTime !== false) {
+      window.removeEventListener('mousemove', resetIdleTimer)
+      window.removeEventListener('keydown', resetIdleTimer)
+      window.removeEventListener('scroll', resetIdleTimer)
+    }
   }
 })
 </script>

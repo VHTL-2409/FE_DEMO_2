@@ -67,15 +67,20 @@
             </section>
           </div>
 
-          <div v-if="isEditingProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="teacher-profile-edit-title">
-            <div class="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
-              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-                <h3 id="teacher-profile-edit-title" class="text-lg font-semibold">Cập nhật thông tin</h3>
-                <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleEditProfile">
+          <div v-if="isEditingProfile" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="teacher-profile-edit-title" @click.self="toggleEditProfile">
+            <div class="modal-content w-full max-w-2xl">
+              <div class="modal-header">
+                <div class="flex items-center gap-3">
+                  <div class="size-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-xl">person</span>
+                  </div>
+                  <h3 id="teacher-profile-edit-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Cập nhật thông tin</h3>
+                </div>
+                <button type="button" class="modal-close-btn" aria-label="Đóng" @click="toggleEditProfile">
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <form class="px-6 py-5 space-y-4" @submit.prevent="submitProfileUpdate">
+              <form class="modal-body space-y-4" @submit.prevent="submitProfileUpdate">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
                     <label for="teacher-profile-display-name" class="text-sm font-medium text-slate-600 dark:text-slate-300">Tên hiển thị</label>
@@ -127,10 +132,10 @@
                     />
                   </div>
                 </div>
-                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                <div class="modal-footer">
                   <button
                     type="button"
-                    class="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:border-primary/40 hover:text-primary transition-all"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     @click="toggleEditProfile"
                   >
                     Hủy
@@ -138,8 +143,9 @@
                   <button
                     type="submit"
                     :disabled="isSavingProfile"
-                    class="px-5 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    class="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                   >
+                    <span class="material-symbols-outlined text-lg" v-if="isSavingProfile">hourglass_empty</span>
                     {{ isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi' }}
                   </button>
                 </div>
@@ -147,15 +153,20 @@
             </div>
           </div>
 
-          <div v-if="isChangingPassword" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="teacher-password-title">
-            <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
-              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-                <h3 id="teacher-password-title" class="text-lg font-semibold">Thay đổi mật khẩu</h3>
-                <button type="button" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" @click="toggleChangePassword">
+          <div v-if="isChangingPassword" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="teacher-password-title" @click.self="toggleChangePassword">
+            <div class="modal-content w-full max-w-lg">
+              <div class="modal-header">
+                <div class="flex items-center gap-3">
+                  <div class="size-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">lock</span>
+                  </div>
+                  <h3 id="teacher-password-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Thay đổi mật khẩu</h3>
+                </div>
+                <button type="button" class="modal-close-btn" aria-label="Đóng" @click="toggleChangePassword">
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <form class="px-6 py-5 space-y-4" @submit.prevent="submitChangePassword">
+              <form class="modal-body space-y-4" @submit.prevent="submitChangePassword">
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-slate-600 dark:text-slate-300">Mật khẩu hiện tại</label>
                   <input
@@ -183,10 +194,10 @@
                     type="password"
                   />
                 </div>
-                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                <div class="modal-footer">
                   <button
                     type="button"
-                    class="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:border-primary/40 hover:text-primary transition-all"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     @click="toggleChangePassword"
                   >
                     Hủy
@@ -194,8 +205,9 @@
                   <button
                     type="submit"
                     :disabled="isSavingPassword"
-                    class="px-5 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    class="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                   >
+                    <span class="material-symbols-outlined text-lg" v-if="isSavingPassword">hourglass_empty</span>
                     {{ isSavingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
                   </button>
                 </div>

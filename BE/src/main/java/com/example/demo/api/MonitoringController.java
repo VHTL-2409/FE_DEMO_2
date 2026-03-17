@@ -1,5 +1,6 @@
 package com.example.demo.api;
 
+import com.example.demo.api.dto.monitoring.AuditLogItem;
 import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
@@ -31,6 +32,11 @@ public class MonitoringController {
     @GetMapping("/timeline")
     public List<MonitoringTimelineItem> timeline(@PathVariable Long attemptId) {
         return monitoringService.timeline(attemptId, currentUserService.requireCurrentUser());
+    }
+
+    @GetMapping("/audit")
+    public List<AuditLogItem> audit(@PathVariable Long attemptId) {
+        return monitoringService.auditLog(attemptId, currentUserService.requireCurrentUser());
     }
 
     @PostMapping("/warning")

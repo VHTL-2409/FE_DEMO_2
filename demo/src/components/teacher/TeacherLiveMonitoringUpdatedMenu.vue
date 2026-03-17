@@ -1,80 +1,102 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+  <div :class="isDark ? 'dark' : 'light'" class="bg-slate-50 dark:bg-slate-950 font-display text-slate-900 dark:text-slate-100 min-h-screen">
     <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
       <TeacherTopHeader active-section="monitoring" />
 
       <main class="teacher-page-shell max-w-[1440px]">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-indigo-500/20 blur-3xl animate-float-slow"></div>
+        <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-violet-500/15 blur-3xl animate-float-delay"></div>
 
-        <div class="relative flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 animate-fade-up">
+        <!-- Hero header -->
+        <div class="relative flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6 animate-fade-up">
           <div>
-            <nav class="flex text-sm text-slate-500 dark:text-slate-400 mb-2 gap-2 items-center">
-              <span class="material-symbols-outlined text-sm">home</span>
+            <nav class="flex text-sm text-slate-500 dark:text-slate-400 mb-3 gap-2 items-center">
+              <span class="material-symbols-outlined text-sm">monitoring</span>
               <span>/</span>
-              <span>Giám sát</span>
+              <span>Giám sát trực tiếp</span>
               <span>/</span>
-              <span class="text-primary font-medium">{{ selectedExamTitle }}</span>
+              <span class="text-indigo-600 dark:text-indigo-400 font-semibold">{{ selectedExamTitle }}</span>
             </nav>
-            <h1 class="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-              Giám sát phiên trực tiếp
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                <span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
-                Đang hoạt động
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3 flex-wrap">
+              Live Monitoring
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE
               </span>
             </h1>
-            <p class="text-slate-500 dark:text-slate-400 mt-1">{{ selectedExamMeta }}</p>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">{{ selectedExamMeta }}</p>
           </div>
-          <div class="flex gap-3">
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center min-w-[100px] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-              <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ attempts.length }}</span>
-              <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Đang có mặt</span>
+          <!-- Stats cards -->
+          <div class="flex gap-4 flex-wrap">
+            <div class="glass-card rounded-2xl p-5 min-w-[120px] flex flex-col items-center gap-1 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
+              <div class="size-10 rounded-xl bg-indigo-500/20 dark:bg-indigo-500/30 flex items-center justify-center mb-1">
+                <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-xl">group</span>
+              </div>
+              <span class="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{{ attempts.length }}</span>
+              <span class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Đang có mặt</span>
             </div>
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center min-w-[100px] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-              <span class="text-2xl font-bold text-red-600">{{ flaggedCount }}</span>
-              <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Bị gắn cờ</span>
+            <div class="glass-card rounded-2xl p-5 min-w-[120px] flex flex-col items-center gap-1 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5" :class="flaggedCount > 0 ? 'gradient-card-alert ring-1 ring-red-500/20' : ''">
+              <div class="size-10 rounded-xl flex items-center justify-center mb-1" :class="flaggedCount > 0 ? 'bg-red-500/20' : 'bg-slate-200/50 dark:bg-slate-700/50'">
+                <span class="material-symbols-outlined text-xl" :class="flaggedCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'">flag</span>
+              </div>
+              <span class="text-2xl font-bold tabular-nums" :class="flaggedCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'">{{ flaggedCount }}</span>
+              <span class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Bị gắn cờ</span>
             </div>
-            <div class="bg-primary text-white rounded-xl p-3 flex flex-col items-center min-w-[100px]">
-              <span class="text-2xl font-bold">{{ examDurationLabel }}</span>
-              <span class="text-[10px] uppercase font-bold text-white/70 tracking-wider">Thời lượng</span>
+            <div class="gradient-card-primary rounded-2xl p-5 min-w-[120px] flex flex-col items-center gap-1 shadow-lg ring-1 ring-indigo-500/20">
+              <div class="size-10 rounded-xl bg-white/30 dark:bg-white/10 flex items-center justify-center mb-1">
+                <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-300 text-xl">schedule</span>
+              </div>
+              <span class="text-2xl font-bold text-indigo-700 dark:text-indigo-300 tabular-nums">{{ examDurationLabel }}</span>
+              <span class="text-[10px] uppercase font-semibold text-indigo-600/80 dark:text-indigo-400/80 tracking-wider">Thời lượng</span>
             </div>
           </div>
         </div>
 
-        <div class="mb-4 flex flex-wrap items-center gap-3 text-xs animate-fade-up-delay">
-          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
-            <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+        <!-- Status bar -->
+        <div class="mb-6 flex flex-wrap items-center gap-3 text-sm animate-fade-up-delay">
+          <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-card text-slate-600 dark:text-slate-300">
+            <span :class="isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'" class="size-2.5 rounded-full"></span>
             {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
           </span>
-          <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
+          <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-card" :class="isSocketConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'">
+            <span class="material-symbols-outlined text-base">{{ isSocketConnected ? 'wifi' : 'wifi_off' }}</span>
+            {{ isSocketConnected ? 'Realtime' : 'Polling' }}
+          </span>
+          <span class="text-slate-500 dark:text-slate-400">Cập nhật: {{ lastUpdatedLabel }}</span>
         </div>
 
-        <section class="relative mb-10 animate-fade-up-delay">
+        <!-- Alerts section -->
+        <section class="relative mb-8 animate-fade-up-delay">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-red-600 dark:text-red-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-              <span class="material-symbols-outlined text-lg">warning</span>
-              Thông báo hành vi gian lận (mới nhất)
+            <h3 class="text-slate-900 dark:text-white text-base font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined text-red-500 text-xl">notifications_active</span>
+              Cảnh báo hành vi bất thường
             </h3>
-            <span class="text-xs text-slate-500">Hiển thị {{ alerts.length }}/5 thông báo</span>
+            <span class="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">{{ alerts.length }}/5</span>
           </div>
-          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-            <div v-if="alerts.length === 0" class="p-5 text-sm text-slate-500">Chưa có thông báo gian lận cần xử lý.</div>
-            <div v-for="alert in alerts" :key="alert.key" class="p-4 border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span :class="alert.badgeClass" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">{{ alert.badge }}</span>
-                    <span class="text-xs text-slate-500">{{ alert.timeLabel }}</span>
+          <div class="glass-card rounded-2xl overflow-hidden shadow-lg">
+            <div v-if="alerts.length === 0" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2 block">check_circle</span>
+              <p class="font-medium">Chưa có cảnh báo cần xử lý</p>
+            </div>
+            <div v-for="alert in alerts" :key="alert.key" class="p-5 border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+              <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span :class="alert.badgeClass" class="px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide">{{ alert.badge }}</span>
+                    <span class="text-xs text-slate-500 font-medium">{{ alert.timeLabel }}</span>
                   </div>
-                  <p class="font-semibold text-sm text-slate-900 dark:text-slate-100">{{ alert.student }}</p>
-                  <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">{{ alert.message }}</p>
+                  <p class="font-semibold text-slate-900 dark:text-slate-100">{{ alert.student }}</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">{{ alert.message }}</p>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button :disabled="!alert.canWarn || quickActionAttemptId === alert.attemptId" class="px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold disabled:opacity-60" type="button" @click="sendQuickWarning(alert)">
-                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}
+                <div class="flex items-center gap-2 shrink-0">
+                  <button :disabled="!alert.canWarn || quickActionAttemptId === alert.attemptId" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-1.5" type="button" @click="sendQuickWarning(alert)">
+                    <span class="material-symbols-outlined text-sm">warning</span>
+                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'warning' ? 'Đang gửi...' : 'Cảnh báo' }}
                   </button>
-                  <button :disabled="!alert.canStop || quickActionAttemptId === alert.attemptId" class="px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold disabled:opacity-60" type="button" @click="handleQuickInvalidate(alert)">
-                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'invalidate' ? 'Đang đình chỉ...' : 'Đình chỉ bài thi' }}
+                  <button :disabled="!alert.canStop || quickActionAttemptId === alert.attemptId" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-1.5" type="button" @click="handleQuickInvalidate(alert)">
+                    <span class="material-symbols-outlined text-sm">block</span>
+                    {{ quickActionAttemptId === alert.attemptId && quickActionType === 'invalidate' ? 'Đang xử lý...' : 'Đình chỉ' }}
                   </button>
                 </div>
               </div>
@@ -82,77 +104,93 @@
           </div>
         </section>
 
-        <section class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-fade-up-delay">
-          <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Phiên sinh viên đang hoạt động</h3>
-            <div class="flex items-center gap-2">
-              <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50" type="button">
-                <span class="material-symbols-outlined text-sm">filter_list</span> Lọc: Trạng thái
-              </button>
-              <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50" type="button">
-                <span class="material-symbols-outlined text-sm">sort</span> Sắp xếp: Tiến độ
-              </button>
+        <!-- Students table -->
+        <section class="relative glass-card rounded-2xl overflow-hidden shadow-lg animate-fade-up-delay">
+          <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="material-symbols-outlined text-indigo-500">person_pin</span>
+              Phiên sinh viên đang hoạt động
+            </h3>
+            <div class="flex items-center gap-2 flex-wrap">
+              <select v-model="filterMode" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500">
+                <option value="ALL">Tất cả</option>
+                <option value="FLAGGED">Có rủi ro</option>
+                <option value="SUSPICIOUS">Bị gắn cờ</option>
+                <option value="STOPPED">Đã đình chỉ</option>
+              </select>
+              <select v-model="sortMode" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500">
+                <option value="RISK_DESC">Risk cao nhất</option>
+                <option value="PROGRESS_ASC">Tiến độ thấp</option>
+                <option value="PROGRESS_DESC">Tiến độ cao</option>
+                <option value="RECENT">Mới nhất</option>
+              </select>
             </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full border-collapse">
               <thead>
-                <tr class="bg-slate-50 dark:bg-slate-800/50 text-left border-b border-slate-200 dark:border-slate-800">
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sinh viên</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tiến độ</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái hoạt động</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Camera/Âm thanh</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
+                <tr class="bg-slate-50/80 dark:bg-slate-800/50 text-left border-b border-slate-200 dark:border-slate-700">
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sinh viên</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiến độ</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thiết bị</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                <tr v-for="student in students" :key="student.id" :class="student.rowClass" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
+                <tr v-for="student in visibleStudents" :key="student.id" :class="student.rowClass" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                   <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="size-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                    <div class="flex items-center gap-4">
+                      <div class="size-11 rounded-xl overflow-hidden shrink-0 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900" :class="student.suspicious ? 'ring-red-500/50' : 'ring-slate-200 dark:ring-slate-700'">
                         <img class="w-full h-full object-cover" :src="student.image" :alt="student.name" />
                       </div>
                       <div>
-                        <p class="font-bold text-slate-900 dark:text-white">{{ student.name }}</p>
-                        <p class="text-xs text-slate-500">ID: {{ student.id }}</p>
+                        <p class="font-semibold text-slate-900 dark:text-white">{{ student.name }}</p>
+                        <p class="text-xs text-slate-500 font-mono">#{{ student.attemptId }}</p>
                       </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <div class="w-full max-w-[140px]">
-                      <div :class="student.progressTextClass" class="flex justify-between text-[10px] font-bold mb-1">
+                    <div class="w-full max-w-[160px]">
+                      <div :class="student.progressTextClass" class="flex justify-between text-xs font-semibold mb-1.5">
                         <span>{{ student.progress }}%</span>
-                        <span>{{ student.questions }}</span>
+                        <span class="text-slate-500">{{ student.questions }}</span>
                       </div>
-                      <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div :class="student.progressBarClass" class="h-full rounded-full" :style="{ width: `${student.progress}%` }"></div>
+                      <div class="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div :class="student.progressBarClass" class="h-full rounded-full transition-all duration-500" :style="{ width: `${student.progress}%` }"></div>
                       </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span :class="student.statusClass" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border">{{ student.status }}</span>
+                    <span :class="student.statusClass" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                      <span v-if="student.suspicious" class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                      {{ student.status }}
+                    </span>
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex gap-2">
-                      <span :class="student.cameraClass" class="material-symbols-outlined text-lg">{{ student.cameraIcon }}</span>
-                      <span :class="student.micClass" class="material-symbols-outlined text-lg">{{ student.micIcon }}</span>
+                      <span :class="student.cameraClass" class="material-symbols-outlined text-xl p-1 rounded-lg bg-slate-100 dark:bg-slate-800" :title="student.suspicious ? 'Tắt' : 'Bật'">{{ student.cameraIcon }}</span>
+                      <span :class="student.micClass" class="material-symbols-outlined text-xl p-1 rounded-lg bg-slate-100 dark:bg-slate-800">{{ student.micIcon }}</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-right">
-                    <button class="p-2 text-slate-400 hover:text-primary transition-colors" type="button" @click="openStudentDetail(student)">
-                      <span class="material-symbols-outlined">more_vert</span>
+                    <button class="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20 transition-all group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50" type="button" @click="openStudentDetail(student)">
+                      <span class="material-symbols-outlined">arrow_forward</span>
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <p class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ students.length }} sinh viên đang hoạt động</p>
-            <div class="flex gap-2">
-              <button class="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50" disabled type="button">Trước</button>
-              <button class="px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-50" disabled type="button">Tiếp</button>
-            </div>
+          <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              <span class="font-semibold text-slate-900 dark:text-white">{{ visibleStudents.length }}</span>
+              <span class="mx-1">/</span>
+              <span>{{ students.length }} sinh viên</span>
+              <span class="ml-3 text-xs px-2 py-0.5 rounded-md" :class="isSocketConnected ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'">
+                {{ isSocketConnected ? '● Live' : '○ Polling' }}
+              </span>
+            </p>
           </div>
         </section>
       </main>
@@ -180,6 +218,12 @@ const quickActionAttemptId = ref(null)
 const quickActionType = ref('')
 const toast = useToast()
 let refreshTimer = null
+let stompClient = null
+let lastRealtimeRefreshAt = 0
+
+const isSocketConnected = ref(false)
+const filterMode = ref('ALL')
+const sortMode = ref('RISK_DESC')
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
@@ -200,8 +244,8 @@ const flaggedCount = computed(() => attempts.value.filter((attempt) => Number(at
 const alerts = computed(() => attempts.value
   .filter((attempt) => Number(attempt.riskScore || 0) > 0 || attempt.suspicious || String(attempt.status || '').toUpperCase() === 'STOPPED')
   .sort((a, b) => {
-    const aAt = new Date(a.updatedAt || a.startedAt || 0).getTime()
-    const bAt = new Date(b.updatedAt || b.startedAt || 0).getTime()
+    const aAt = new Date(a.startedAt || 0).getTime()
+    const bAt = new Date(b.startedAt || 0).getTime()
     return bAt - aAt
   })
   .slice(0, 5)
@@ -268,9 +312,34 @@ const students = computed(() => attempts.value.map((attempt) => {
     micClass: suspicious ? 'text-red-500' : 'text-green-500',
     rowClass: suspicious ? 'bg-red-50/30 dark:bg-red-900/5' : '',
     attemptId: attempt.id,
-    examId: attempt.examId
+    examId: attempt.examId,
+    riskScore,
+    statusRaw,
+    suspicious,
+    sortAt: new Date(attempt.startedAt || 0).getTime() || 0
   }
 }))
+
+const visibleStudents = computed(() => {
+  const filtered = students.value.filter((row) => {
+    const status = String(row.statusRaw || '').toUpperCase()
+    if (filterMode.value === 'FLAGGED') return row.riskScore > 0
+    if (filterMode.value === 'SUSPICIOUS') return Boolean(row.suspicious)
+    if (filterMode.value === 'STOPPED') return status === 'STOPPED'
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortMode.value === 'PROGRESS_ASC') return a.progress - b.progress
+    if (sortMode.value === 'PROGRESS_DESC') return b.progress - a.progress
+    if (sortMode.value === 'RECENT') return b.sortAt - a.sortAt
+    // RISK_DESC default
+    if (b.riskScore !== a.riskScore) return b.riskScore - a.riskScore
+    return b.sortAt - a.sortAt
+  })
+
+  return sorted
+})
 
 const openStudentDetail = (item) => {
   router.push({
@@ -347,10 +416,69 @@ const loadAttempts = async () => {
   }
 }
 
+const disconnectRealtime = () => {
+  if (stompClient) {
+    stompClient.deactivate()
+    stompClient = null
+  }
+  isSocketConnected.value = false
+}
+
+const getAuthToken = async () => {
+  if (typeof window === 'undefined') return ''
+  const { getStoredToken } = await import('../../services/authService')
+  return String(getStoredToken() || '')
+}
+
+const connectRealtime = async () => {
+  if (!examId.value) return
+
+  disconnectRealtime()
+
+  const [{ Client }, { default: SockJS }] = await Promise.all([
+    import('@stomp/stompjs'),
+    import('sockjs-client')
+  ])
+
+  const { API_BASE_URL } = await import('../../services/apiClient')
+  const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
+  const token = await getAuthToken()
+
+  stompClient = new Client({
+    reconnectDelay: 3000,
+    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+    webSocketFactory: () => new SockJS(wsUrl)
+  })
+
+  stompClient.onConnect = () => {
+    isSocketConnected.value = true
+    stompClient.subscribe(`/topic/exams/${examId.value}/alerts`, () => {
+      // Throttle: tránh spam reload khi có nhiều event dồn
+      const now = Date.now()
+      if (now - lastRealtimeRefreshAt < 800) return
+      lastRealtimeRefreshAt = now
+      void loadAttempts()
+    })
+  }
+
+  stompClient.onStompError = () => {
+    isSocketConnected.value = false
+  }
+
+  stompClient.onWebSocketClose = () => {
+    isSocketConnected.value = false
+  }
+
+  stompClient.activate()
+}
+
 onMounted(async () => {
   await loadAttempts()
+  await connectRealtime()
   refreshTimer = window.setInterval(() => {
-    loadAttempts()
+    if (!isSocketConnected.value) {
+      loadAttempts()
+    }
   }, 5000)
 })
 
@@ -358,6 +486,7 @@ onUnmounted(() => {
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
   }
+  disconnectRealtime()
 })
 </script>
 

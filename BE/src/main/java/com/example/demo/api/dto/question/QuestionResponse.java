@@ -14,4 +14,5 @@ public class QuestionResponse {
     private Double scoreWeight;
     private String options;
     private String correctAnswer;
+    private String difficulty;
 }

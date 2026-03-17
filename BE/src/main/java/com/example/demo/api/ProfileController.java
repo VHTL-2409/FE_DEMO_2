@@ -1,11 +1,13 @@
 package com.example.demo.api;
 
+import com.example.demo.api.dto.auth.RoleAssignmentRequest;
 import com.example.demo.api.dto.profile.ProfileResponse;
 import com.example.demo.api.dto.profile.ProfileUpdateRequest;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.User;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ProfileService;
+import com.example.demo.service.UserRoleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,11 +18,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,27 +34,47 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class ProfileController {
 
+    private static final Logger log = LoggerFactory.getLogger(ProfileController.class);
+
     private final CurrentUserService currentUserService;
     private final ProfileService profileService;
+    private final UserRoleService userRoleService;
 
-    public ProfileController(CurrentUserService currentUserService, ProfileService profileService) {
+    public ProfileController(CurrentUserService currentUserService, ProfileService profileService, UserRoleService userRoleService) {
         this.currentUserService = currentUserService;
         this.profileService = profileService;
+        this.userRoleService = userRoleService;
     }
 
     @GetMapping("/me")
     public Map<String, Object> me() {
         User user = currentUserService.requireCurrentUser();
-        ProfileResponse studentProfile = profileService.getStudentProfile(user);
-        ProfileResponse teacherProfile = profileService.getTeacherProfile(user);
-        return Map.of(
-            "id", user.getId(),
-            "username", user.getUsername(),
-            "email", user.getEmail(),
-            "roles", user.getRoles().stream().map(r -> r.getName().name()).toList(),
-            "studentProfile", studentProfile,
-            "teacherProfile", teacherProfile
-        );
+        var roles = (user.getRoles() != null ? user.getRoles() : java.util.Set.<com.example.demo.domain.entity.Role>of())
+                .stream()
+                .map(r -> r.getName().name())
+                .toList();
+        boolean isTeacher = roles.contains("TEACHER") || roles.contains("ROLE_TEACHER");
+        boolean isStudent = roles.contains("STUDENT") || roles.contains("ROLE_STUDENT");
+        ProfileResponse studentProfile = null;
+        ProfileResponse teacherProfile = null;
+        try {
+            if (isStudent) studentProfile = profileService.getStudentProfile(user);
+        } catch (Exception e) {
+            log.warn("Failed to load student profile for user {}: {}", user.getUsername(), e.getMessage());
+        }
+        try {
+            if (isTeacher) teacherProfile = profileService.getTeacherProfile(user);
+        } catch (Exception e) {
+            log.warn("Failed to load teacher profile for user {}: {}", user.getUsername(), e.getMessage());
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId());
+        result.put("username", user.getUsername() != null ? user.getUsername() : "");
+        result.put("email", user.getEmail() != null ? user.getEmail() : "");
+        result.put("roles", roles);
+        result.put("studentProfile", studentProfile);
+        result.put("teacherProfile", teacherProfile);
+        return result;
     }
 
     @GetMapping("/profile/student")
@@ -61,6 +87,15 @@ public class ProfileController {
     public ProfileResponse teacherProfile() {
         User user = currentUserService.requireCurrentUser();
         return profileService.getTeacherProfile(user);
+    }
+
+    @PostMapping("/me/role")
+    public Map<String, Object> assignRole(@RequestBody(required = false) RoleAssignmentRequest request) {
+        if (request == null || request.getRole() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Role is required");
+        }
+        User user = currentUserService.requireCurrentUser();
+        return Map.of("roles", userRoleService.assignRole(user, request.getRole()));
     }
 
     @PutMapping("/profile")

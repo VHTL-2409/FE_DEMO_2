@@ -34,4 +34,8 @@ public class Question {
 
     @Column(name = "correct_answer", nullable = false, length = 20)
     private String correctAnswer;
+
+    /** Độ khó: EASY, MEDIUM, HARD. Có thể do AI phân tích hoặc nhập từ file. */
+    @Column(name = "difficulty", length = 20)
+    private String difficulty;
 }

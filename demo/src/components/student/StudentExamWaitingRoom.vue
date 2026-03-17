@@ -194,7 +194,11 @@ const endAtDate = computed(() => {
   return Number.isNaN(date.getTime()) ? null : date
 })
 const isEnded = computed(() => endAtDate.value ? nowMs.value > endAtDate.value.getTime() : false)
-const devicesReady = computed(() => cameraReady.value && micReady.value)
+const requireCameraMic = computed(() => {
+  if (route.query.requireCameraMic === 'false') return false
+  return examDetail.value?.requireCameraMic !== false
+})
+const devicesReady = computed(() => (requireCameraMic.value ? (cameraReady.value && micReady.value) : true))
 const canStart = computed(() => {
   if (isEnded.value) return false
   if (!devicesReady.value) return false
@@ -231,6 +235,12 @@ const refreshExamDetail = async () => {
 }
 
 const checkDevices = async () => {
+  if (!requireCameraMic.value) {
+    cameraReady.value = true
+    micReady.value = true
+    deviceError.value = ''
+    return
+  }
   if (!navigator?.mediaDevices?.getUserMedia) {
     cameraReady.value = false
     micReady.value = false
@@ -272,8 +282,12 @@ const goToExamInterface = async () => {
   await checkDevices()
 
   if (!devicesReady.value) {
-    toast.error(deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.')
-    return
+    if (!requireCameraMic.value) {
+      // no-op
+    } else {
+      toast.error(deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.')
+      return
+    }
   }
 
   if (isEnded.value) {

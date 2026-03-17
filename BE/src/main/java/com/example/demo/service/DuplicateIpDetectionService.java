@@ -23,12 +23,16 @@ public class DuplicateIpDetectionService {
     private final ExamAttemptRepository examAttemptRepository;
     private final MonitoringEventRepository monitoringEventRepository;
     private final MonitoringService monitoringService;
+    private final AuditLogService auditLogService;
 
     @Value("${demo.monitoring.duplicate-ip-cooldown-seconds:120}")
     private long duplicateIpCooldownSeconds;
 
     @Transactional
     public void detect(ExamAttempt attempt) {
+        if (!Boolean.TRUE.equals(attempt.getExam().getMonitorDuplicateIp())) {
+            return;
+        }
         String normalizedIp = normalizeIp(attempt.getClientIp());
         if (normalizedIp == null) {
             return;
@@ -49,6 +53,8 @@ public class DuplicateIpDetectionService {
 
             monitoringService.addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
             monitoringService.addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
+            auditLogService.logSystemDuplicateIp(attempt, pairSignature);
+            auditLogService.logSystemDuplicateIp(counterpart, pairSignature);
         }
     }
 

@@ -4,69 +4,61 @@
       <StudentTopHeader />
 
       <main class="relative max-w-4xl mx-auto px-4 py-10 overflow-hidden w-full">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-
         <div class="relative mb-10 animate-fade-up">
           <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo bài luyện tập mới</h2>
-          <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Thiết kế tương tự luồng tạo đề bên giáo viên, tối ưu cho sinh viên tự luyện tập nhanh.</p>
+          <p class="mt-2 text-slate-600 dark:text-slate-400">Tải tệp CSV/XLSX chứa câu hỏi, chọn thời lượng và bắt đầu luyện tập.</p>
         </div>
 
-        <div class="relative space-y-8 animate-fade-up-delay">
-          <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div class="flex items-center gap-2 mb-6">
-              <span class="material-symbols-outlined text-primary">info</span>
-              <h3 class="text-lg font-bold">Thông tin chung</h3>
-            </div>
-            <div class="space-y-2">
-              <input
-                class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
-                type="file"
-                @change="handleFileChange"
-              />
-              <p v-if="fileName" class="text-xs text-slate-500 dark:text-slate-400">Đã chọn: {{ fileName }}</p>
-            </div>
+        <div class="relative space-y-6 animate-fade-up-delay">
+          <section class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">upload_file</span>
+              Tải tệp câu hỏi
+            </h3>
+            <label class="block border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
+              <input class="hidden" type="file" accept=".csv,.xlsx" @change="onFileChange" />
+              <span class="material-symbols-outlined text-primary text-4xl mb-3">cloud_upload</span>
+              <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nhấp để chọn tệp CSV hoặc XLSX</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ FILE_FORMAT_DESC }}</p>
+              <a :href="getTemplateDownloadUrl()" download class="mt-2 text-primary hover:underline text-sm font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-lg">download</span>
+                Tải mẫu CSV
+              </a>
+              <p v-if="selectedFile" class="text-primary font-semibold mt-3">{{ selectedFile.name }}</p>
+            </label>
           </section>
 
-          <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div class="flex items-center justify-between mb-6">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">auto_awesome</span>
-                <h3 class="text-lg font-bold">Thiết lập phiên luyện tập</h3>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <input
-                v-model.number="questionCount"
-                type="number"
-                min="5"
-                max="50"
-                class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div class="grid grid-cols-1 gap-4 mt-4">
-              <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
-                <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span class="material-symbols-outlined text-base">schedule</span>
-                  Bắt đầu
+          <section class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">schedule</span>
+              Thời lượng làm bài
+            </h3>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Chọn thời gian tối đa để hoàn thành bài. Hết giờ sẽ tự động nộp bài.</p>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="opt in durationOptions"
+                    :key="opt.value"
+                    type="button"
+                    :class="durationMinutes === opt.value
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10'"
+                    class="px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all"
+                    @click="durationMinutes = opt.value"
+                  >
+                    {{ opt.label }}
+                  </button>
                 </div>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input v-model="startDate" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="date" @input="closePicker" @change="closePicker" />
-                  <input v-model="startClock" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" type="time" step="60" @input="closePicker" @change="closePicker" />
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
-                <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span class="material-symbols-outlined text-base">event_available</span>
-                  Kết thúc
-                </div>
-               
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndByDuration">Kết thúc = Bắt đầu + Thời lượng</button>
-                  <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfter30Minutes">+30 phút</button>
-                </div>
+              <div class="mt-3 flex items-center gap-2">
+                <span class="text-sm text-slate-500 dark:text-slate-400">Hoặc nhập:</span>
+                <input
+                  v-model.number="durationMinutes"
+                  type="number"
+                  min="5"
+                  max="240"
+                  class="w-24 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center"
+                />
+                <span class="text-sm text-slate-500 dark:text-slate-400">phút</span>
               </div>
             </div>
           </section>
@@ -92,128 +84,79 @@
         </div>
       </main>
 
-      <footer class="py-8 text-center text-slate-500 text-sm border-t border-primary/10">
-        <p>© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
-      </footer>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { startAttempt } from '../../services/attemptService'
-import { createPracticeExam } from '../../services/examService'
-import { useRoute, useRouter } from 'vue-router'
+import { createPracticeFromFile } from '../../services/examService'
+import { FILE_FORMAT_DESC, getTemplateDownloadUrl } from '../../services/questionService'
+import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
+const durationOptions = [
+  { value: 15, label: '15 phút' },
+  { value: 30, label: '30 phút' },
+  { value: 45, label: '45 phút' },
+  { value: 60, label: '60 phút' },
+  { value: 90, label: '90 phút' },
+  { value: 120, label: '2 giờ' }
+]
+
 const router = useRouter()
-const route = useRoute()
 const isDark = ref(false)
-const questionCount = ref(20)
-const timeLimit = ref(Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)
+const selectedFile = ref(null)
+const durationMinutes = ref(30)
 const isCreating = ref(false)
-const fileName = ref('')
 const toast = useToast()
 
-const formatDatePart = (date) => {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+const onFileChange = (e) => {
+  const file = e?.target?.files?.[0] || null
+  selectedFile.value = file
+
+  if (!file) return
+
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '']
+  const ext = (file.name || '').toLowerCase().slice(-5)
+  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx')
+  if (!validType) {
+    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV hoặc XLSX.')
+    selectedFile.value = null
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('Dung lượng tệp vượt quá 10MB.')
+    selectedFile.value = null
+  }
 }
 
-const formatTimePart = (date) => {
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  return `${hh}:${mm}`
-}
-
-const now = new Date()
-const defaultEnd = new Date(now.getTime() + timeLimit.value * 60000)
-
-const startDate = ref(formatDatePart(now))
-const startClock = ref(formatTimePart(now))
-const endDate = ref(formatDatePart(defaultEnd))
-const endClock = ref(formatTimePart(defaultEnd))
-
-const buildLocalDateTime = (datePart, timePart) => {
-  if (!datePart || !timePart) return ''
-  return `${datePart}T${timePart}:00`
-}
-
-const startAt = computed(() => buildLocalDateTime(startDate.value, startClock.value))
-const endAtValue = computed(() => buildLocalDateTime(endDate.value, endClock.value))
-
-const toDate = (value) => {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const handleFileChange = (event) => {
-  const file = event?.target?.files?.[0]
-  fileName.value = file ? file.name : ''
-}
-
-const setStartNow = () => {
-  const date = new Date()
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setStartIn15Minutes = () => {
-  const date = new Date(Date.now() + 15 * 60000)
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setEndByDuration = () => {
-  const start = toDate(startAt.value)
-  if (!start) return
-  const date = new Date(start.getTime() + Number(timeLimit.value || 60) * 60000)
-  endDate.value = formatDatePart(date)
-  endClock.value = formatTimePart(date)
-}
-
-const setEndAfter30Minutes = () => {
-  const date = new Date(Date.now() + 30 * 60000)
-  endDate.value = formatDatePart(date)
-  endClock.value = formatTimePart(date)
-}
-
-const goBack = () => {
-  router.push('/student/dashboard')
-}
-
-const closePicker = (event) => {
-  const target = event?.target
-  if (!target) return
-  window.setTimeout(() => target.blur(), 0)
-}
+const goBack = () => router.push('/student/dashboard')
 
 const startPractice = async () => {
-  isCreating.value = true
-
-  const start = toDate(startAt.value)
-  const end = toDate(endAtValue.value)
-  if (!start || !end || end <= start) {
-    toast.error('Thời gian kết thúc phải sau thời gian bắt đầu.')
-    isCreating.value = false
+  if (!selectedFile.value) {
+    toast.error('Vui lòng chọn tệp CSV hoặc XLSX chứa câu hỏi.')
     return
   }
 
+  const duration = Math.max(5, Math.min(240, Number(durationMinutes.value) || 30))
+  if (duration < 5 || duration > 240) {
+    toast.error('Thời lượng phải từ 5 đến 240 phút.')
+    return
+  }
+
+  isCreating.value = true
   try {
-    const practiceExam = await createPracticeExam({
-      questionCount: questionCount.value,
-      durationMinutes: Number(timeLimit.value)
-    })
+    const practiceExam = await createPracticeFromFile(selectedFile.value, duration)
 
     const attempt = await startAttempt(practiceExam.id)
 
     router.push({
       path: '/student/exam-interface',
       query: {
-        exam: practiceExam.title || `Bài luyện tập - ${fileName.value}`,
+        exam: practiceExam.title || 'Bài luyện tập',
         examId: practiceExam.id,
         attemptId: attempt.attemptId,
         deadlineAt: attempt.deadlineAt || '',
@@ -223,7 +166,7 @@ const startPractice = async () => {
       }
     })
   } catch (error) {
-    toast.error('Không thể tạo bài luyện tập lúc này.')
+    toast.error(error?.message || 'Không thể tạo bài luyện tập lúc này.')
   } finally {
     isCreating.value = false
   }
@@ -231,54 +174,10 @@ const startPractice = async () => {
 </script>
 
 <style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
+.animate-fade-up { animation: fadeUp 0.5s ease-out; }
+.animate-fade-up-delay { animation: fadeUp 0.65s ease-out; }
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

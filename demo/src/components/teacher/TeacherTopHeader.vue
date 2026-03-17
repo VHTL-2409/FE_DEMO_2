@@ -1,48 +1,51 @@
 <template>
-  <header class="sticky top-0 z-50 w-full bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
-    <div class="w-full px-6 md:px-20">
+  <header class="sticky top-0 z-50 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
-        <div class="flex items-center gap-8">
-          <div class="flex flex-col">
-            <span class="text-primary dark:text-slate-100 text-lg font-bold leading-none">Bảng điều khiển giáo viên</span>
-            <span class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-              Hệ thống thi trực tuyến
-            </span>
+        <div class="flex items-center gap-6 lg:gap-10">
+          <div class="flex items-center gap-3">
+            <div class="size-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/25">
+              <span class="material-symbols-outlined text-lg">school</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-slate-900 dark:text-white text-base font-bold leading-tight">Bảng điều khiển giáo viên</span>
+              <span class="text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Hệ thống thi trực tuyến</span>
+            </div>
           </div>
           <nav class="hidden md:flex items-center gap-1">
-            <RouterLink :class="navClass('dashboard')" to="/teacher/dashboard">
+            <RouterLink :class="navClass('dashboard')" to="/teacher/dashboard" class="px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200">
               Trang chủ
             </RouterLink>
-            <RouterLink :class="navClass('exam')" to="/teacher/exams">
+            <RouterLink :class="navClass('exam')" to="/teacher/exams" class="px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200">
               Tạo đề thi
             </RouterLink>
-            <RouterLink :class="navClass('exam-list')" to="/teacher/exams/list">
+            <RouterLink :class="navClass('exam-list')" to="/teacher/exams/list" class="px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200">
               Danh sách đề thi
             </RouterLink>
-            <RouterLink :class="navClass('monitoring')" to="/teacher/live-monitoring">
-              Giám sát trực tiếp
+            <RouterLink :class="navClass('monitoring')" to="/teacher/live-monitoring" class="px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+              Giám sát
             </RouterLink>
-            <RouterLink :class="navClass('profile')" to="/teacher/profile">
+            <RouterLink :class="navClass('profile')" to="/teacher/profile" class="px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200">
               Hồ sơ
             </RouterLink>
           </nav>
         </div>
-        <div class="flex items-center gap-4">
-          <button class="p-2 text-slate-400 hover:text-primary transition-colors" type="button">
-            <span class="material-symbols-outlined">notifications</span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button class="p-2.5 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all duration-200" type="button">
+            <span class="material-symbols-outlined text-xl">notifications</span>
           </button>
           <button
             type="button"
             @click="goToLogin"
-            class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
+            class="text-sm font-semibold px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200"
           >
             Đăng xuất
           </button>
-          <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700">
             <div class="text-right hidden sm:block">
-              <p class="text-sm font-bold">{{ displayName }}</p>
+              <p class="text-sm font-bold text-slate-900 dark:text-white">{{ displayName }}</p>
             </div>
-            <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">{{ avatarLabel }}</div>
+            <div class="size-10 rounded-xl bg-gradient-to-br from-primary to-primary-700 text-white flex items-center justify-center font-bold text-sm shadow-md">{{ avatarLabel }}</div>
           </div>
         </div>
       </div>
@@ -69,10 +72,9 @@ const displayName = computed(() => profile.value?.username || 'Giáo viên')
 const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const navClass = (section) => {
   if (props.activeSection === section) {
-    return 'px-4 py-2 rounded-lg text-sm text-primary border border-primary/10'
+    return 'text-primary bg-primary/10'
   }
-
-  return 'px-4 py-2 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:text-primary transition-colors'
+  return 'text-slate-600 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800'
 }
 
 const loadProfile = async () => {

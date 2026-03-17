@@ -1,4 +1,10 @@
-import { apiRequest, unwrapApiData } from './apiClient'
+import { apiRequest, unwrapApiData, API_BASE_URL } from './apiClient'
+
+/** Chuẩn file CSV/XLSX: content, optionA, optionB, optionC, optionD, correctAnswer (A/B/C/D), scoreWeight */
+export const FILE_FORMAT_DESC = 'Cột: content, optionA, optionB, optionC, optionD, correctAnswer (A/B/C/D), scoreWeight. Tối đa 10MB.'
+
+/** URL tải mẫu CSV chuẩn */
+export const getTemplateDownloadUrl = () => `${API_BASE_URL}/api/questions/template`
 
 export const parseQuestionOptions = (rawOptions) => {
   if (!rawOptions) return []

@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/login", "/web/**", "/css/**", "/js/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/api/questions/template").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated())

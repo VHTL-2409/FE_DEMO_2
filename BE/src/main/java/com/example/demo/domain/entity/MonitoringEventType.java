@@ -8,5 +8,9 @@ public enum MonitoringEventType {
     DUPLICATE_IP,
     COPY_PASTE,
     IDLE_TIME,
-    DEVTOOLS_OPEN
+    DEVTOOLS_OPEN,
+    RIGHT_CLICK,
+    PRINT_SCREEN,
+    RAPID_QUESTION_SWITCH,
+    MULTI_MONITOR
 }

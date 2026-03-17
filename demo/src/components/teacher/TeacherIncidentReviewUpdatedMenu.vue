@@ -21,10 +21,21 @@
               <h1 class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{{ selectedExamTitle }}</h1>
               <p class="text-slate-600 dark:text-slate-400 mt-1">Xem xét và xử lý các vi phạm liêm chính học thuật bị gắn cờ trong tất cả phiên đang hoạt động.</p>
             </div>
-            <button class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm" type="button">
-              <span class="material-symbols-outlined text-xl">download</span>
-              <span>Tải báo cáo</span>
-            </button>
+            <div class="flex gap-2">
+              <button
+                :disabled="isLoadingSimilarity"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 hover:-translate-y-0.5 transition-all duration-200 shadow-sm disabled:opacity-70"
+                type="button"
+                @click="loadAnswerSimilarity"
+              >
+                <span class="material-symbols-outlined text-xl">compare_arrows</span>
+                <span>{{ isLoadingSimilarity ? 'Đang phân tích...' : 'Phân tích tương đồng đáp án' }}</span>
+              </button>
+              <button class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm" type="button">
+                <span class="material-symbols-outlined text-xl">download</span>
+                <span>Tải báo cáo</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -52,6 +63,25 @@
             <div v-else class="flex items-baseline gap-2">
               <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ card.value }}</h3>
               <span :class="card.trendClass" class="text-sm font-bold flex items-center">{{ card.trend }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="similarityPairs.length > 0" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl shadow-sm mb-6">
+          <h3 class="font-bold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined">compare_arrows</span>
+            Cặp thí sinh có đáp án tương đồng cao (nghi ngờ gian lận)
+          </h3>
+          <div class="space-y-2">
+            <div
+              v-for="(pair, idx) in similarityPairs"
+              :key="idx"
+              class="flex items-center justify-between gap-4 py-2 px-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800"
+            >
+              <span class="font-semibold text-slate-900 dark:text-slate-100">{{ pair.student1 }}</span>
+              <span class="text-amber-600 dark:text-amber-400 font-bold">{{ (pair.similarity * 100).toFixed(1) }}%</span>
+              <span class="font-semibold text-slate-900 dark:text-slate-100">{{ pair.student2 }}</span>
+              <span class="text-xs text-slate-500">{{ pair.sameAnswers }}/{{ pair.commonQuestions }} câu trùng</span>
             </div>
           </div>
         </div>
@@ -136,21 +166,21 @@
       </main>
     </div>
 
-    <div v-if="showIncidentModal && selectedIncident" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700">
-        <header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-8 py-5 shrink-0 bg-white dark:bg-slate-900">
+    <div v-if="showIncidentModal && selectedIncident" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="incident-modal-title" @click.self="closeIncidentReport">
+      <div class="modal-content w-full max-w-4xl flex flex-col">
+        <header class="modal-header shrink-0">
           <div class="flex items-center gap-3">
-            <div class="bg-primary/10 p-2 rounded-lg">
-              <span class="material-symbols-outlined text-primary">report</span>
+            <div class="size-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-xl">report</span>
             </div>
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white leading-tight">Báo cáo sự cố: {{ selectedIncident.student }}</h2>
+            <h2 id="incident-modal-title" class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Báo cáo sự cố: {{ selectedIncident.student }}</h2>
           </div>
-          <button class="flex items-center justify-center rounded-lg h-10 w-10 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500" type="button" @click="closeIncidentReport">
+          <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeIncidentReport">
             <span class="material-symbols-outlined">close</span>
           </button>
         </header>
 
-        <div class="px-8 pt-5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+        <div class="px-6 pt-4 pb-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
           <div class="flex gap-2">
             <button type="button" @click="activeReportTab = 'result'" :class="activeReportTab === 'result' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors">
               Kết quả
@@ -161,7 +191,7 @@
           </div>
         </div>
 
-        <div class="overflow-y-auto p-8 space-y-8 bg-background-light/30 dark:bg-background-dark/30">
+        <div class="modal-body space-y-8 bg-slate-50/30 dark:bg-slate-900/30">
           <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
               <div class="space-y-1">
@@ -207,7 +237,7 @@
             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
               <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 mb-4">
                 <span class="material-symbols-outlined text-primary">timeline</span>
-                Thời điểm vi phạmline
+                Thời điểm vi phạm
               </h3>
               <div class="relative space-y-6">
                 <div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-700"></div>
@@ -259,6 +289,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { getAttemptReport, listExamAttempts } from '../../services/attemptService'
+import { getAnswerSimilarity } from '../../services/examService'
 import { RouterLink, useRoute } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -271,6 +302,8 @@ const isLoading = ref(false)
 const loadError = ref('')
 const attempts = ref([])
 const reportByAttempt = ref({})
+const similarityPairs = ref([])
+const isLoadingSimilarity = ref(false)
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
@@ -404,6 +437,19 @@ const loadIncidentData = async () => {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu sự cố.'
   } finally {
     isLoading.value = false
+  }
+}
+
+const loadAnswerSimilarity = async () => {
+  if (!examId.value) return
+  isLoadingSimilarity.value = true
+  similarityPairs.value = []
+  try {
+    similarityPairs.value = await getAnswerSimilarity(examId.value)
+  } catch {
+    similarityPairs.value = []
+  } finally {
+    isLoadingSimilarity.value = false
   }
 }
 

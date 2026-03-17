@@ -34,12 +34,15 @@
           >
             <div class="text-center mb-10">
               <h1 class="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight mb-2">
-                Create Account
+                Tạo Tài Khoản
               </h1>
-              <p class="text-slate-500 dark:text-slate-400 text-lg">Join our academic community today. Choose role after login.</p>
+              <p class="text-slate-500 dark:text-slate-400 text-lg">---------------------------</p>
             </div>
 
             <form class="space-y-8 animate-fade-up-delay" @submit.prevent="onSubmit">
+              <div v-if="errorMessage" class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold px-4 py-3">
+                {{ errorMessage }}
+              </div>
               <div class="space-y-5">
                 <div class="flex flex-col gap-1.5">
                   <label class="text-slate-700 dark:text-slate-300 text-sm font-semibold">Username</label>
@@ -122,6 +125,7 @@ const username = ref('')
 const email = ref('')
 const password = ref('')
 const isSubmitting = ref(false)
+const errorMessage = ref('')
 
 const toast = useToast()
 
@@ -144,9 +148,14 @@ const onSubmit = async () => {
       password: password.value
     })
 
-    router.push('/login')
+    router.push('/select-role')
   } catch (error) {
-    toast.error('Registration failed. Please try again.')
+    if (error?.status === 409) {
+      errorMessage.value = error?.payload?.message || 'Tài khoản hoặc email đã tồn tại.'
+      toast.error(errorMessage.value)
+    } else {
+      toast.error('Registration failed. Please try again.')
+    }
   } finally {
     isSubmitting.value = false
   }

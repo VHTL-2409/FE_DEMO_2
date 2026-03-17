@@ -84,6 +84,23 @@ export const register = async ({ username, email, password }) => {
   return authData
 }
 
+export const assignRole = async (role) => {
+  const response = await apiRequest('/api/me/role', {
+    method: 'POST',
+    body: JSON.stringify({ role })
+  })
+
+  const payload = unwrapApiData(response)
+  const storedUser = getStoredUser() || {}
+  const roles = Array.isArray(payload?.roles) ? payload.roles : []
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+    ...storedUser,
+    roles
+  }))
+  setStoredUserTimestamp()
+  return roles
+}
+
 export const fetchMyProfile = async () => apiRequest('/api/me')
 
 export const validateSession = async () => {

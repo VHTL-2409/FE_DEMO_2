@@ -68,13 +68,13 @@
               </button>
               <button class="flex items-center justify-center gap-2 bg-primary/10 text-primary border border-primary/20 px-8 py-3.5 rounded-xl font-bold hover:bg-primary/20 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
                 <span class="material-symbols-outlined">download</span>
-                Xem biên nhận nộp bài
+                Lưu Bài Làm
               </button>
             </div>
 
             <p class="mt-12 text-slate-400 text-sm flex items-center gap-2 italic">
               <span class="material-symbols-outlined text-sm">info</span>
-              Một bản sao biên nhận này đã được gửi đến email đã đăng ký của bạn.
+              Đã Lưu Bài Làm
             </p>
           </div>
         </main>

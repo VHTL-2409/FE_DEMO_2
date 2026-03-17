@@ -29,7 +29,27 @@ export const joinExamByCode = async (query) => {
   return unwrapApiData(payload)
 }
 
-export const createExam = async ({ title, description = '', durationMinutes = 60, startTime = null, endTime = null, isActive = false }) => {
+export const createExam = async ({
+  title,
+  description = '',
+  durationMinutes = 60,
+  startTime = null,
+  endTime = null,
+  isActive = false,
+  monitorTabSwitch,
+  monitorBlur,
+  monitorExitFullscreen,
+  monitorCopyPaste,
+  monitorIdleTime,
+  monitorDevtools,
+  monitorDuplicateIp,
+  monitorFastSubmit,
+  monitorRightClick,
+  monitorPrintScreen,
+  monitorRapidQuestionSwitch,
+  monitorMultiMonitor,
+  requireCameraMic
+}) => {
   const payload = await apiRequest('/api/exams', {
     method: 'POST',
     body: JSON.stringify({
@@ -38,14 +58,47 @@ export const createExam = async ({ title, description = '', durationMinutes = 60
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      isActive
+      isActive,
+      monitorTabSwitch,
+      monitorBlur,
+      monitorExitFullscreen,
+      monitorCopyPaste,
+      monitorIdleTime,
+      monitorDevtools,
+      monitorDuplicateIp,
+      monitorFastSubmit,
+      monitorRightClick,
+      monitorPrintScreen,
+      monitorRapidQuestionSwitch,
+      monitorMultiMonitor,
+      requireCameraMic
     })
   })
 
   return unwrapApiData(payload)
 }
 
-export const updateExam = async (examId, { title, description = '', durationMinutes, startTime = null, endTime = null, isActive = false }) => {
+export const updateExam = async (examId, {
+  title,
+  description = '',
+  durationMinutes,
+  startTime = null,
+  endTime = null,
+  isActive = false,
+  monitorTabSwitch,
+  monitorBlur,
+  monitorExitFullscreen,
+  monitorCopyPaste,
+  monitorIdleTime,
+  monitorDevtools,
+  monitorDuplicateIp,
+  monitorFastSubmit,
+  monitorRightClick,
+  monitorPrintScreen,
+  monitorRapidQuestionSwitch,
+  monitorMultiMonitor,
+  requireCameraMic
+}) => {
   const payload = await apiRequest(`/api/exams/${examId}`, {
     method: 'PUT',
     body: JSON.stringify({
@@ -54,11 +107,29 @@ export const updateExam = async (examId, { title, description = '', durationMinu
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      isActive
+      isActive,
+      monitorTabSwitch,
+      monitorBlur,
+      monitorExitFullscreen,
+      monitorCopyPaste,
+      monitorIdleTime,
+      monitorDevtools,
+      monitorDuplicateIp,
+      monitorFastSubmit,
+      monitorRightClick,
+      monitorPrintScreen,
+      monitorRapidQuestionSwitch,
+      monitorMultiMonitor,
+      requireCameraMic
     })
   })
 
   return unwrapApiData(payload)
+}
+
+export const getPracticeOptions = async () => {
+  const payload = await apiRequest('/api/exams/practice-options')
+  return unwrapApiData(payload) || { maxQuestions: 50 }
 }
 
 export const createPracticeExam = async ({ questionCount = 20, durationMinutes = 30 } = {}) => {
@@ -72,8 +143,24 @@ export const createPracticeExam = async ({ questionCount = 20, durationMinutes =
   return unwrapApiData(payload)
 }
 
+export const createPracticeFromFile = async (file, durationMinutes = 30) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('durationMinutes', String(durationMinutes))
+  const payload = await apiRequest('/api/exams/practice-from-file', {
+    method: 'POST',
+    body: formData
+  })
+  return unwrapApiData(payload)
+}
+
 export const deleteExam = async (examId) => {
   await apiRequest(`/api/exams/${examId}`, {
     method: 'DELETE'
   })
+}
+
+export const getAnswerSimilarity = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/answer-similarity`)
+  return unwrapApiData(payload) || []
 }

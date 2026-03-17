@@ -19,25 +19,25 @@
 
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-up-delay">
-            <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div class="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 p-6 rounded-2xl shadow-soft hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
               <div class="flex justify-between items-start mb-4">
-                <span class="material-symbols-outlined p-2 bg-primary/5 text-primary rounded-lg">inventory_2</span>
+                <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl">inventory_2</span>
                 <span class="text-primary text-xs font-bold px-2 py-1 bg-primary/10 rounded-full">Tổng quan</span>
               </div>
               <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Tổng số đề thi</p>
               <p class="text-3xl font-bold mt-1">{{ rawExams.length }}</p>
             </div>
-            <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div class="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 p-6 rounded-2xl shadow-soft hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
               <div class="flex justify-between items-start mb-4">
-                <span class="material-symbols-outlined p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">timer</span>
+                <span class="material-symbols-outlined p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">timer</span>
                 <span class="text-emerald-600 text-xs font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full">Đang bắt đầu</span>
               </div>
               <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Đề thi đang diễn ra</p>
               <p class="text-3xl font-bold mt-1">{{ startedCount }}</p>
             </div>
-            <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div class="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 p-6 rounded-2xl shadow-soft hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
               <div class="flex justify-between items-start mb-4">
-                <span class="material-symbols-outlined p-2 bg-amber-500/10 text-amber-600 rounded-lg">event_busy</span>
+                <span class="material-symbols-outlined p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">event_busy</span>
                 <span class="text-amber-700 text-xs font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full">Hoàn tất</span>
               </div>
               <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Đề thi đã kết thúc</p>
@@ -46,7 +46,7 @@
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-            <div class="lg:col-span-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+            <div class="lg:col-span-2 bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 p-6 rounded-2xl shadow-soft">
               <div class="flex justify-between items-center mb-6">
                 <div>
                   <h3 class="font-bold text-lg">Phân bố trạng thái đề thi</h3>
@@ -62,13 +62,13 @@
               </div>
             </div>
 
-            <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div class="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 p-6 rounded-2xl shadow-soft hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
               <h3 class="font-bold text-lg mb-4">Thao tác nhanh</h3>
               <div class="flex flex-col gap-3">
                 <button
                   v-for="action in quickActions"
                   :key="action.title"
-                  class="flex items-center gap-3 w-full p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-all"
+                  class="flex items-center gap-3 w-full p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left transition-all duration-200"
                   type="button"
                   @click="goToPath(action.path)"
                 >
@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+          <div class="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl shadow-soft overflow-hidden">
             <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
               <h3 class="font-bold text-lg">Đề thi gần đây</h3>
               <div class="flex gap-2">

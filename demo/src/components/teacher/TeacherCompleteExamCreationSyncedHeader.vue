@@ -17,11 +17,11 @@
             <div class="flex items-center gap-3">
               <span
                 class="size-7 rounded-full flex items-center justify-center text-[11px] font-bold"
-                :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+                :class="index + 1 <= stepIndex ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
               >
                 {{ index + 1 }}
               </span>
-              <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+              <span :class="index + 1 === stepIndex ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
             </div>
             <span v-if="index < steps.length - 1" class="h-px w-6 bg-slate-200 dark:bg-slate-700"></span>
           </template>
@@ -29,7 +29,7 @@
       </div>
 
       <div class="relative space-y-8 animate-fade-up-delay">
-        <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <section v-if="stepIndex === 2" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
           <div class="flex items-center gap-2 mb-6">
             <span class="material-symbols-outlined text-primary">info</span>
             <h3 class="text-lg font-bold">Thông tin chung</h3>
@@ -40,7 +40,7 @@
           </div>
         </section>
 
-        <section class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <section v-if="stepIndex === 2" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">upload_file</span>
@@ -48,23 +48,147 @@
             </div>
           </div>
 
-          <label class="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 flex flex-col items-center justify-center transition-all hover:border-primary hover:bg-primary/5 cursor-pointer">
-            <input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" type="file" accept=".csv, .xlsx" @change="onFileChange" />
+          <label class="relative group border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-12 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
+            <input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" type="file" accept=".csv,.xlsx" @change="onFileChange" />
             <div class="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
               <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
             </div>
             <h4 class="text-lg font-semibold mb-1">Nhấp để tải lên hoặc kéo thả</h4>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Hỗ trợ định dạng CSV và XLSX (tối đa 10MB)</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">{{ FILE_FORMAT_DESC }}</p>
+            <a :href="getTemplateDownloadUrl()" download class="mt-2 text-primary hover:underline text-sm font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-lg">download</span>
+              Tải mẫu CSV
+            </a>
             <p v-if="fileName" class="text-primary text-sm font-semibold mt-3">{{ fileName }}</p>
             <p v-if="selectedFile" class="text-xs text-slate-500 mt-1">Dung lượng: {{ fileSizeLabel }}</p>
           </label>
         </section>
 
+        <section v-if="stepIndex === 3" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
+          <div class="flex items-center gap-2 mb-6">
+            <span class="material-symbols-outlined text-primary">shield</span>
+            <h3 class="text-lg font-bold">Cấu hình giám sát</h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Theo dõi chuyển tab</p>
+                <p class="text-xs text-slate-500">Phát hiện đổi tab hoặc ẩn cửa sổ</p>
+              </div>
+              <input v-model="monitorTabSwitch" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Theo dõi blur</p>
+                <p class="text-xs text-slate-500">Ghi nhận khi mất focus</p>
+              </div>
+              <input v-model="monitorBlur" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Thoát fullscreen</p>
+                <p class="text-xs text-slate-500">Cảnh báo khi rời chế độ toàn màn hình</p>
+              </div>
+              <input v-model="monitorExitFullscreen" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Copy/Paste</p>
+                <p class="text-xs text-slate-500">Ghi nhận thao tác sao chép/dán</p>
+              </div>
+              <input v-model="monitorCopyPaste" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nhàn rỗi</p>
+                <p class="text-xs text-slate-500">Cảnh báo khi không thao tác</p>
+              </div>
+              <input v-model="monitorIdleTime" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">DevTools</p>
+                <p class="text-xs text-slate-500">Phát hiện mở DevTools</p>
+              </div>
+              <input v-model="monitorDevtools" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Duplicate IP</p>
+                <p class="text-xs text-slate-500">Phát hiện IP trùng</p>
+              </div>
+              <input v-model="monitorDuplicateIp" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nộp nhanh</p>
+                <p class="text-xs text-slate-500">Cảnh báo nộp bài quá nhanh</p>
+              </div>
+              <input v-model="monitorFastSubmit" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Chuột phải</p>
+                <p class="text-xs text-slate-500">Chặn menu chuột phải (copy)</p>
+              </div>
+              <input v-model="monitorRightClick" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Print Screen</p>
+                <p class="text-xs text-slate-500">Phát hiện chụp màn hình</p>
+              </div>
+              <input v-model="monitorPrintScreen" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Đổi câu nhanh</p>
+                <p class="text-xs text-slate-500">Cảnh báo đổi câu liên tục</p>
+              </div>
+              <input v-model="monitorRapidQuestionSwitch" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Đa màn hình</p>
+                <p class="text-xs text-slate-500">Phát hiện nhiều màn hình</p>
+              </div>
+              <input v-model="monitorMultiMonitor" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+
+            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Yêu cầu camera/mic</p>
+                <p class="text-xs text-slate-500">Bắt buộc bật camera và micro</p>
+              </div>
+              <input v-model="requireCameraMic" type="checkbox" class="h-5 w-5 accent-primary" />
+            </label>
+          </div>
+        </section>
+
         <div class="flex items-center justify-between gap-4 pt-6">
-          <div class="text-xs text-slate-500 dark:text-slate-400">Dung lượng tối đa 10MB · Hỗ trợ CSV, XLSX</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400">{{ FILE_FORMAT_DESC }}</div>
           <div class="flex items-center gap-4">
             <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Hủy bản nháp</button>
-            <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">{{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}<span class="material-symbols-outlined text-lg">arrow_forward</span></button>
+            <button v-if="stepIndex === 2" :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">
+              {{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}
+              <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
+            <button v-else :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="confirmMonitoring">
+              {{ isSubmitting ? 'Đang lưu...' : 'Tiếp tục lập lịch' }}
+              <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
           </div>
         </div>
       </div>
@@ -74,20 +198,35 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { createExam } from '../../services/examService'
-import { importQuestionsFromFile } from '../../services/questionService'
+import { createExam, updateExam } from '../../services/examService'
+import { FILE_FORMAT_DESC, getTemplateDownloadUrl, importQuestionsFromFile } from '../../services/questionService'
 import { useToast } from '../../composables/useToast'
 import { useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)
-const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tất']
-const currentStep = 2
+const steps = ['Chọn cách tạo', 'Nhập đề', 'Giám sát', 'Lập lịch', 'Hoàn tất']
+const stepIndex = ref(2)
 const examTitle = ref('')
 const fileName = ref('')
 const selectedFile = ref(null)
 const isSubmitting = ref(false)
+const createdExamId = ref(null)
+const createdExamTitle = ref('')
+const monitorTabSwitch = ref(true)
+const monitorBlur = ref(true)
+const monitorExitFullscreen = ref(true)
+const monitorCopyPaste = ref(true)
+const monitorIdleTime = ref(true)
+const monitorDevtools = ref(true)
+const monitorDuplicateIp = ref(true)
+const monitorFastSubmit = ref(true)
+const monitorRightClick = ref(true)
+const monitorPrintScreen = ref(true)
+const monitorRapidQuestionSwitch = ref(true)
+const monitorMultiMonitor = ref(true)
+const requireCameraMic = ref(true)
 
 const toast = useToast()
 
@@ -104,8 +243,10 @@ const onFileChange = (event) => {
 
   if (!file) return
 
-  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-  if (!allowed.includes(file.type)) {
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '']
+  const ext = (file.name || '').toLowerCase().slice(-5)
+  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx')
+  if (!validType) {
     toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV hoặc XLSX.')
     selectedFile.value = null
     fileName.value = ''
@@ -139,21 +280,85 @@ const goNext = async () => {
       title: examTitle.value.trim(),
       description: '',
       durationMinutes: 60,
-      isActive: false
+      isActive: false,
+      monitorTabSwitch: monitorTabSwitch.value,
+      monitorBlur: monitorBlur.value,
+      monitorExitFullscreen: monitorExitFullscreen.value,
+      monitorCopyPaste: monitorCopyPaste.value,
+      monitorIdleTime: monitorIdleTime.value,
+      monitorDevtools: monitorDevtools.value,
+      monitorDuplicateIp: monitorDuplicateIp.value,
+      monitorFastSubmit: monitorFastSubmit.value,
+      monitorRightClick: monitorRightClick.value,
+      monitorPrintScreen: monitorPrintScreen.value,
+      monitorRapidQuestionSwitch: monitorRapidQuestionSwitch.value,
+      monitorMultiMonitor: monitorMultiMonitor.value,
+      requireCameraMic: requireCameraMic.value
     })
 
     await importQuestionsFromFile(createdExam.id, selectedFile.value)
 
+    createdExamId.value = createdExam.id
+    createdExamTitle.value = createdExam.title || examTitle.value.trim()
+    stepIndex.value = 3
+  } catch (error) {
+    toast.error('Không thể tạo đề thi từ tệp. Vui lòng thử lại.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const confirmMonitoring = async () => {
+  if (!createdExamId.value) {
+    toast.error('Không tìm thấy đề thi vừa tạo.')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    await updateExam(createdExamId.value, {
+      title: createdExamTitle.value || examTitle.value.trim(),
+      description: '',
+      durationMinutes: 60,
+      isActive: false,
+      monitorTabSwitch: monitorTabSwitch.value,
+      monitorBlur: monitorBlur.value,
+      monitorExitFullscreen: monitorExitFullscreen.value,
+      monitorCopyPaste: monitorCopyPaste.value,
+      monitorIdleTime: monitorIdleTime.value,
+      monitorDevtools: monitorDevtools.value,
+      monitorDuplicateIp: monitorDuplicateIp.value,
+      monitorFastSubmit: monitorFastSubmit.value,
+      monitorRightClick: monitorRightClick.value,
+      monitorPrintScreen: monitorPrintScreen.value,
+      monitorRapidQuestionSwitch: monitorRapidQuestionSwitch.value,
+      monitorMultiMonitor: monitorMultiMonitor.value,
+      requireCameraMic: requireCameraMic.value
+    })
+
     router.push({
       path: '/teacher/exams/schedule',
       query: {
-        examId: createdExam.id,
-        title: createdExam.title || examTitle.value.trim(),
-        source: 'import'
+        examId: createdExamId.value,
+        title: createdExamTitle.value || examTitle.value.trim(),
+        source: 'import',
+        monitorTabSwitch: String(monitorTabSwitch.value),
+        monitorBlur: String(monitorBlur.value),
+        monitorExitFullscreen: String(monitorExitFullscreen.value),
+        monitorCopyPaste: String(monitorCopyPaste.value),
+        monitorIdleTime: String(monitorIdleTime.value),
+        monitorDevtools: String(monitorDevtools.value),
+        monitorDuplicateIp: String(monitorDuplicateIp.value),
+        monitorFastSubmit: String(monitorFastSubmit.value),
+        monitorRightClick: String(monitorRightClick.value),
+        monitorPrintScreen: String(monitorPrintScreen.value),
+        monitorRapidQuestionSwitch: String(monitorRapidQuestionSwitch.value),
+        monitorMultiMonitor: String(monitorMultiMonitor.value),
+        requireCameraMic: String(requireCameraMic.value)
       }
     })
   } catch (error) {
-    toast.error('Không thể tạo đề thi từ tệp. Vui lòng thử lại.')
+    toast.error('Không thể lưu cấu hình giám sát. Vui lòng thử lại.')
   } finally {
     isSubmitting.value = false
   }

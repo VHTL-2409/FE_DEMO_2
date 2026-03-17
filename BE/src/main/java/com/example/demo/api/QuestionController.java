@@ -18,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
+
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -90,17 +92,16 @@ public class QuestionController {
     }
 
     @GetMapping("/api/questions/template")
-    public ResponseEntity<byte[]> downloadTemplate() {
-        String content = "Question,Option A,Option B,Option C,Option D,Correct Answer (0-3),Points\n"
-                + "1+1,1,2,3,4,0,50\n"
-                + "2+2,2,4,6,8,1,50\n";
+    public ResponseEntity<byte[]> downloadTemplate() throws IOException {
+        var resource = new ClassPathResource("questions-template.csv");
+        byte[] content = resource.getInputStream().readAllBytes();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv"));
-        headers.setContentDisposition(ContentDisposition.attachment().filename("exam-question-template.csv").build());
+        headers.setContentDisposition(ContentDisposition.attachment().filename("questions-template.csv").build());
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(content.getBytes(StandardCharsets.UTF_8));
+                .body(content);
     }
 }

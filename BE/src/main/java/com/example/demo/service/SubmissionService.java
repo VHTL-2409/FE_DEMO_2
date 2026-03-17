@@ -19,11 +19,14 @@ import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
+import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.QuestionRepository;
 import com.example.demo.service.helper.SubmissionHelper;
 import lombok.RequiredArgsConstructor;
+
+import java.time.Duration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -46,6 +49,8 @@ public class SubmissionService {
     private final ExamService examService;
     private final RealtimeNotificationService realtimeNotificationService;
     private final DuplicateIpDetectionService duplicateIpDetectionService;
+    private final AuditLogService auditLogService;
+    private final MonitoringService monitoringService;
 
     @Transactional
     public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
@@ -110,6 +115,8 @@ public class SubmissionService {
         attempt.setSubmittedAt(now);
         attempt.setStatus(AttemptStatus.SUBMITTED);
         examAttemptRepository.save(attempt);
+
+        detectAndLogFastSubmit(attempt, now);
 
         return toSubmitResponse(attempt);
     }
@@ -377,6 +384,32 @@ public class SubmissionService {
         examAttemptRepository.save(attempt);
     }
 
+    private void detectAndLogFastSubmit(ExamAttempt attempt, LocalDateTime submittedAt) {
+        if (!Boolean.TRUE.equals(attempt.getExam().getMonitorFastSubmit())) {
+            return;
+        }
+        LocalDateTime startedAt = attempt.getStartedAt();
+        if (startedAt == null) return;
+
+        Integer durationMinutes = attempt.getExam().getDurationMinutes();
+        long totalSeconds = Math.max(60L, (durationMinutes == null ? 60 : durationMinutes) * 60L);
+        long elapsedSeconds = Duration.between(startedAt, submittedAt).getSeconds();
+        if (elapsedSeconds <= 0) return;
+
+        double progress = (double) elapsedSeconds / totalSeconds;
+        int totalQuestions = questionRepository.findByExam(attempt.getExam()).size();
+        int answeredCount = answerRepository.findByAttempt(attempt).size();
+
+        if (totalQuestions <= 0) return;
+
+        double progressAnswered = (double) answeredCount / totalQuestions;
+        if (progress < 0.25 && progressAnswered >= 0.9) {
+            String details = String.format("elapsed=%ds;total=%ds;progress=%.1f%%;answered=%d/%d",
+                    elapsedSeconds, totalSeconds, progress * 100, answeredCount, totalQuestions);
+            monitoringService.addSystemEvent(attempt, MonitoringEventType.FAST_SUBMIT, details);
+        }
+    }
+
     private String normalizeClientIp(String clientIp) {
         if (clientIp == null) {
             return null;
@@ -394,6 +427,8 @@ public class SubmissionService {
             return;
         }
 
+        String detail = "from=" + registeredIp + ";to=" + currentIp;
+        auditLogService.logSystemIpChange(attempt, detail);
         attempt.setStatus(AttemptStatus.STOPPED);
         examAttemptRepository.save(attempt);
         realtimeNotificationService.notifyAttemptStopped(attempt,

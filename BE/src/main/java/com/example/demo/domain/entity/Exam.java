@@ -42,4 +42,43 @@ public class Exam {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
+
+    @Column(name = "monitor_tab_switch")
+    private Boolean monitorTabSwitch;
+
+    @Column(name = "monitor_blur")
+    private Boolean monitorBlur;
+
+    @Column(name = "monitor_exit_fullscreen")
+    private Boolean monitorExitFullscreen;
+
+    @Column(name = "monitor_copy_paste")
+    private Boolean monitorCopyPaste;
+
+    @Column(name = "monitor_idle_time")
+    private Boolean monitorIdleTime;
+
+    @Column(name = "monitor_devtools")
+    private Boolean monitorDevtools;
+
+    @Column(name = "monitor_duplicate_ip")
+    private Boolean monitorDuplicateIp;
+
+    @Column(name = "monitor_fast_submit")
+    private Boolean monitorFastSubmit;
+
+    @Column(name = "monitor_right_click")
+    private Boolean monitorRightClick;
+
+    @Column(name = "monitor_print_screen")
+    private Boolean monitorPrintScreen;
+
+    @Column(name = "monitor_rapid_question_switch")
+    private Boolean monitorRapidQuestionSwitch;
+
+    @Column(name = "monitor_multi_monitor")
+    private Boolean monitorMultiMonitor;
+
+    @Column(name = "require_camera_mic")
+    private Boolean requireCameraMic;
 }

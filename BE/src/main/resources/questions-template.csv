@@ -1,3 +1,3 @@
-content,optionA,optionB,optionC,optionD,correctAnswer,scoreWeight
-Java is...,Programming language,Database,OS,Browser,A,1
-Which keyword creates object?,this,new,class,extends,B,1
+content,optionA,optionB,optionC,optionD,correctAnswer,scoreWeight,difficulty
+Java is...,Programming language,Database,OS,Browser,A,1,EASY
+Which keyword creates object?,this,new,class,extends,B,1,MEDIUM

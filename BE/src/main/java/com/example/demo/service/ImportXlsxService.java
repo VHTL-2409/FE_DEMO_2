@@ -33,11 +33,15 @@ import java.util.Map;
 @Service
 public class ImportXlsxService {
 
+    private static final String DEFAULT_DIFFICULTY = "MEDIUM";
+
     private final QuestionRepository questionRepository;
+    private final AiDifficultyAnalyzerService aiAnalyzer;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ImportXlsxService(QuestionRepository questionRepository) {
+    public ImportXlsxService(QuestionRepository questionRepository, AiDifficultyAnalyzerService aiAnalyzer) {
         this.questionRepository = questionRepository;
+        this.aiAnalyzer = aiAnalyzer;
     }
 
     public int importQuestions(Exam exam, MultipartFile file) {
@@ -72,11 +76,13 @@ public class ImportXlsxService {
                 String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond");
                 String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer");
                 String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points");
+                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty");
 
                 addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
-                        rowIndex + 1);
+                        difficulty, rowIndex + 1);
             }
 
+            analyzeDifficultyWithAi(questions);
             saveImportedQuestions(questions);
             return questions.size();
         } catch (IOException ex) {
@@ -109,11 +115,13 @@ public class ImportXlsxService {
                 String optionD = csvCellByHeader(record, headerIndexes, 4, "optiond");
                 String correctAnswer = csvCellByHeader(record, headerIndexes, 5, "correctanswer");
                 String scoreCell = csvCellByHeader(record, headerIndexes, 6, "scoreweight", "points");
+                String difficulty = csvCellByHeader(record, headerIndexes, 7, "difficulty");
 
                 addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
-                        rowNumber);
+                        difficulty, rowNumber);
             }
 
+            analyzeDifficultyWithAi(questions);
             saveImportedQuestions(questions);
             return questions.size();
         } catch (IOException ex) {
@@ -132,6 +140,7 @@ public class ImportXlsxService {
                                 String optionD,
                                 String correctAnswer,
                                 String scoreCell,
+                                String difficultyFromFile,
                                 int rowNumber) {
         if (content.isBlank()) {
             return;
@@ -155,6 +164,7 @@ public class ImportXlsxService {
         }
 
         String optionsJson = buildOptionsJson(optionA, optionB, optionC, optionD, rowNumber);
+        String difficulty = normalizeDifficulty(difficultyFromFile);
 
         Question question = Question.builder()
                 .exam(exam)
@@ -162,8 +172,56 @@ public class ImportXlsxService {
                 .scoreWeight(scoreWeight)
                 .options(optionsJson)
                 .correctAnswer(normalizedCorrectAnswer)
+                .difficulty(difficulty)
                 .build();
         questions.add(question);
+    }
+
+    private String normalizeDifficulty(String fromFile) {
+        if (fromFile != null && !fromFile.isBlank()) {
+            String d = fromFile.trim().toUpperCase(Locale.ROOT);
+            if (List.of("EASY", "MEDIUM", "HARD").contains(d)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    private void analyzeDifficultyWithAi(List<Question> questions) {
+        if (!aiAnalyzer.isAvailable()) {
+            for (Question q : questions) {
+                if (q.getDifficulty() == null || q.getDifficulty().isBlank()) {
+                    q.setDifficulty(DEFAULT_DIFFICULTY);
+                }
+            }
+            return;
+        }
+        for (Question q : questions) {
+            if (q.getDifficulty() != null && !q.getDifficulty().isBlank()) {
+                continue;
+            }
+            String[] opts = parseOptionsTexts(q.getOptions());
+            String diff = aiAnalyzer.analyzeDifficulty(
+                    q.getContent(),
+                    opts[0], opts[1], opts[2], opts[3]
+            );
+            q.setDifficulty(diff != null ? diff : DEFAULT_DIFFICULTY);
+        }
+    }
+
+    private String[] parseOptionsTexts(String optionsJson) {
+        String[] result = new String[]{"", "", "", ""};
+        if (optionsJson == null || optionsJson.isBlank()) return result;
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> list = objectMapper.readValue(optionsJson, List.class);
+            for (int i = 0; i < Math.min(4, list.size()); i++) {
+                Object text = list.get(i).get("text");
+                result[i] = text != null ? text.toString() : "";
+            }
+        } catch (Exception ignored) {
+        }
+        return result;
     }
 
     private Map<String, Integer> extractXlsxHeaderIndexes(Row headerRow) {

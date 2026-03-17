@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -47,7 +48,6 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
-
         userRepository.save(user);
         profileService.createProfilesForUser(user);
         log.info("Successfully registered new user: {}", user.getUsername());
@@ -55,7 +55,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
         String token = jwtService.generateToken(userDetails);
 
-        return new AuthResponse(token, user.getUsername(), List.of());
+        return new AuthResponse(token, user.getUsername(), extractRoleNames(user));
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -74,7 +74,7 @@ public class AuthService {
         String token = jwtService.generateToken(userDetails);
 
         log.info("User {} successfully logged in.", user.getUsername());
-        return new AuthResponse(token, user.getUsername(), List.of());
+        return new AuthResponse(token, user.getUsername(), extractRoleNames(user));
     }
 
     public void changePassword(User user, com.example.demo.api.dto.auth.ChangePasswordRequest request) {
@@ -82,10 +82,10 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), stored.getPassword())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Sai MK");
         }
         if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 6) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 6 ký tự");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "MK mới phải ít nhất 6 ký tự");
         }
 
         stored.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
@@ -94,5 +94,16 @@ public class AuthService {
 
     public List<User> listUsers() {
         return userRepository.findAll();
+    }
+
+    private List<String> extractRoleNames(User user) {
+        if (user == null || user.getRoles() == null || user.getRoles().isEmpty()) {
+            return List.of();
+        }
+        return user.getRoles().stream()
+                .filter(role -> role != null && role.getName() != null)
+                .sorted(Comparator.comparing(role -> role.getName().name()))
+                .map(role -> role.getName().name())
+                .toList();
     }
 }

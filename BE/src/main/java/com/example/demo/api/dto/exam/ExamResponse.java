@@ -20,4 +20,17 @@ public class ExamResponse {
     private Boolean isActive;
     private String createdBy;
     private Long questionCount;
+    private Boolean monitorTabSwitch;
+    private Boolean monitorBlur;
+    private Boolean monitorExitFullscreen;
+    private Boolean monitorCopyPaste;
+    private Boolean monitorIdleTime;
+    private Boolean monitorDevtools;
+    private Boolean monitorDuplicateIp;
+    private Boolean monitorFastSubmit;
+    private Boolean monitorRightClick;
+    private Boolean monitorPrintScreen;
+    private Boolean monitorRapidQuestionSwitch;
+    private Boolean monitorMultiMonitor;
+    private Boolean requireCameraMic;
 }

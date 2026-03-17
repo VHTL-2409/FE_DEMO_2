@@ -18,9 +18,9 @@
         <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
           <div class="lg:col-span-2 space-y-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="teacher-card p-6 flex flex-col gap-4">
+              <div class="teacher-card p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-200">
                 <div class="flex items-center gap-3">
-                  <span class="material-symbols-outlined text-primary text-3xl">login</span>
+                  <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">login</span>
                   <h2 class="text-xl font-bold">Thi qua mã</h2>
                 </div>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Nhập mã/tiêu đề bài thi để vào phòng chờ và bắt đầu làm bài.</p>
@@ -33,26 +33,26 @@
                 </button>
               </div>
 
-              <div class="teacher-card p-6 flex flex-col gap-4">
+              <div class="teacher-card p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-200">
                 <div class="flex items-center gap-3">
-                  <span class="material-symbols-outlined text-primary text-3xl">model_training</span>
+                  <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">model_training</span>
                   <h2 class="text-xl font-bold">Tự luyện tập</h2>
                 </div>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Tạo đề luyện tập nhanh từ ngân hàng câu hỏi và làm bài ngay.</p>
                 <button
                   type="button"
                   @click="goToPractice"
-                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200"
+                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all duration-200"
                 >
                   Đi đến luyện tập
                 </button>
               </div>
             </div>
 
-            <div class="teacher-card p-6">
+            <div class="teacher-card p-6 rounded-2xl shadow-soft">
               <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
                 <div class="flex items-center gap-3">
-                  <span class="material-symbols-outlined text-primary text-3xl">history</span>
+                  <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">history</span>
                   <h2 class="text-xl font-bold">Lịch sử/Kết quả</h2>
                 </div>
                 <button

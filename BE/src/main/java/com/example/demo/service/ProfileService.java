@@ -40,6 +40,16 @@ public class ProfileService {
     }
 
     @Transactional
+    public void removeStudentProfile(User user) {
+        studentProfileRepository.findByUser(user).ifPresent(studentProfileRepository::delete);
+    }
+
+    @Transactional
+    public void removeTeacherProfile(User user) {
+        teacherProfileRepository.findByUser(user).ifPresent(teacherProfileRepository::delete);
+    }
+
+    @Transactional
     public ProfileResponse getStudentProfile(User user) {
         StudentProfile profile = studentProfileRepository.findByUser(user)
                 .orElseGet(() -> studentProfileRepository.save(StudentProfile.builder().user(user).build()));

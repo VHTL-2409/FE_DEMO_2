@@ -126,6 +126,7 @@ public class QuestionService {
             .scoreWeight(question.getScoreWeight())
             .options(question.getOptions())
             .correctAnswer(includeCorrectAnswer ? question.getCorrectAnswer() : null)
+            .difficulty(question.getDifficulty())
             .build();
     }
 }

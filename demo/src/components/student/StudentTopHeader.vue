@@ -1,48 +1,46 @@
 <template>
-  <div class="border-b border-solid border-primary/10 bg-white dark:bg-background-dark">
-    <header class="flex items-center justify-between whitespace-nowrap px-6 md:px-20 py-4">
-      <div class="flex items-center gap-3 text-primary dark:text-slate-100">
-        <div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+  <div class="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-sm">
+    <header class="flex items-center justify-between whitespace-nowrap px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
+      <div class="flex items-center gap-3">
+        <div class="size-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/25">
           <span class="material-symbols-outlined">menu_book</span>
         </div>
-        <h2 class="text-xl font-bold leading-tight tracking-tight">ExamPortal</h2>
+        <h2 class="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">ExamPortal</h2>
       </div>
-      <div class="flex flex-1 justify-end gap-4 items-center">
+      <div class="flex flex-1 justify-end gap-2 sm:gap-3 items-center">
         <slot name="rightActions" />
-        <button v-if="showNotifications" class="flex items-center justify-center rounded-full size-10 bg-primary/10 text-primary hover:bg-primary/20 transition-colors" type="button">
+        <button v-if="showNotifications" class="flex items-center justify-center rounded-xl size-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all duration-200" type="button">
           <span class="material-symbols-outlined">notifications</span>
         </button>
         <button
           v-if="showSignOut"
           type="button"
           @click="goToLogin"
-          class="text-xs font-semibold px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
+          class="text-sm font-semibold px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200"
         >
           Đăng xuất
         </button>
-        <button v-if="showProfile" type="button" @click="goToProfile" class="flex items-center gap-3 pl-2 border-l border-primary/10 hover:-translate-y-0.5 transition-all duration-200">
+        <button v-if="showProfile" type="button" @click="goToProfile" class="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700 hover:opacity-90 transition-all duration-200">
           <div class="hidden md:block text-right">
-            <p class="text-sm font-bold">{{ displayName }}</p>
-            <p class="text-xs text-slate-500">{{ displayId }}</p>
+            <p class="text-sm font-bold text-slate-900 dark:text-white">{{ displayName }}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ displayId }}</p>
           </div>
-          <div
-            class="rounded-full size-10 border-2 border-primary/20 bg-primary text-white flex items-center justify-center font-bold"
-          >
+          <div class="rounded-xl size-10 bg-gradient-to-br from-primary to-primary-700 text-white flex items-center justify-center font-bold shadow-md">
             {{ avatarLabel }}
           </div>
         </button>
       </div>
     </header>
 
-    <nav v-if="showMenu" class="px-6 md:px-20 pb-3 flex flex-wrap gap-2">
+    <nav v-if="showMenu" class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-4 flex flex-wrap gap-2">
       <RouterLink
         v-for="item in studentMenu"
         :key="item.key"
         :to="item.path"
         :class="isMenuActive(item.key)
-          ? 'bg-primary/10 text-primary border border-primary/20'
-          : 'text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'"
-        class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+          ? 'bg-primary/10 text-primary font-semibold'
+          : 'text-slate-600 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
       >
         {{ item.label }}
       </RouterLink>

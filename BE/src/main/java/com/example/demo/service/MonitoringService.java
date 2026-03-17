@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.api.dto.monitoring.AuditLogItem;
 import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
@@ -11,11 +12,14 @@ import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.domain.entity.RiskSnapshot;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
+import com.example.demo.domain.entity.AuditLog;
+import com.example.demo.repository.AuditLogRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.RiskSnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +36,14 @@ public class MonitoringService {
     private final RiskSnapshotRepository riskSnapshotRepository;
     private final RiskScoringService riskScoringService;
     private final RealtimeNotificationService realtimeNotificationService;
+    private final AuditLogService auditLogService;
+    private final AuditLogRepository auditLogRepository;
+
+    @Value("${demo.monitoring.events.rate-limit.window-seconds:10}")
+    private long eventRateLimitWindowSeconds;
+
+    @Value("${demo.monitoring.events.rate-limit.max:25}")
+    private long eventRateLimitMax;
 
     @Transactional
     public MonitoringEventResponse addEvent(Long attemptId, MonitoringEventRequest request, User actor) {
@@ -47,6 +59,16 @@ public class MonitoringService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported event type");
         }
 
+        if (!isEventEnabled(attempt, eventType)) {
+            return MonitoringEventResponse.builder()
+                    .attemptId(attempt.getId())
+                    .riskScore(attempt.getRiskScore())
+                    .suspicious(attempt.getSuspicious())
+                    .status(attempt.getStatus().name())
+                    .build();
+        }
+
+        enforceMonitoringRateLimit(attempt);
         return applyEvent(attempt, eventType, request.getDetails());
     }
 
@@ -67,6 +89,7 @@ public class MonitoringService {
                 : message.trim();
 
         realtimeNotificationService.notifyTeacherWarning(attempt, warningMessage);
+        auditLogService.logTeacherWarning(attempt, actor, warningMessage);
 
         return MonitoringEventResponse.builder()
                 .attemptId(attempt.getId())
@@ -98,6 +121,7 @@ public class MonitoringService {
                 : reason.trim();
 
         realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
+        auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
 
         return MonitoringEventResponse.builder()
                 .attemptId(attempt.getId())
@@ -139,14 +163,35 @@ public class MonitoringService {
                 .toList();
     }
 
+    public List<AuditLogItem> auditLog(Long attemptId, User actor) {
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanAccessAttempt(attempt, actor);
+        return auditLogRepository.findByAttemptIdOrderByCreatedAtDesc(attemptId)
+                .stream()
+                .map(this::toAuditLogItem)
+                .toList();
+    }
+
+    private AuditLogItem toAuditLogItem(AuditLog log) {
+        return AuditLogItem.builder()
+                .id(log.getId())
+                .action(log.getAction().name())
+                .actorUsername(log.getActorUsername())
+                .details(log.getDetails())
+                .createdAt(log.getCreatedAt())
+                .build();
+    }
+
     private MonitoringEventResponse applyEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
-        int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType);
+        LocalDateTime now = LocalDateTime.now();
+        int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType, now);
 
         MonitoringEvent event = MonitoringEvent.builder()
                 .attempt(attempt)
                 .eventType(eventType)
                 .details(details)
-                .createdAt(LocalDateTime.now())
+                .createdAt(now)
                 .build();
         monitoringEventRepository.save(event);
 
@@ -161,7 +206,7 @@ public class MonitoringService {
                         .attempt(attempt)
                         .riskScore(currentRisk)
                         .suspicious(suspicious)
-                        .createdAt(LocalDateTime.now())
+                        .createdAt(now)
                         .build());
 
         if (suspicious) {
@@ -174,6 +219,34 @@ public class MonitoringService {
                 .suspicious(attempt.getSuspicious())
                 .status(attempt.getStatus().name())
                 .build();
+    }
+
+    private void enforceMonitoringRateLimit(ExamAttempt attempt) {
+        if (eventRateLimitWindowSeconds <= 0 || eventRateLimitMax <= 0) {
+            return;
+        }
+        LocalDateTime cutoff = LocalDateTime.now().minusSeconds(eventRateLimitWindowSeconds);
+        long recent = monitoringEventRepository.countByAttemptAndCreatedAtAfter(attempt, cutoff);
+        if (recent >= eventRateLimitMax) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Too many monitoring events. Please slow down.");
+        }
+    }
+
+    private boolean isEventEnabled(ExamAttempt attempt, MonitoringEventType eventType) {
+        return switch (eventType) {
+            case TAB_SWITCH -> Boolean.TRUE.equals(attempt.getExam().getMonitorTabSwitch());
+            case BLUR -> Boolean.TRUE.equals(attempt.getExam().getMonitorBlur());
+            case EXIT_FULLSCREEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorExitFullscreen());
+            case COPY_PASTE -> Boolean.TRUE.equals(attempt.getExam().getMonitorCopyPaste());
+            case IDLE_TIME -> Boolean.TRUE.equals(attempt.getExam().getMonitorIdleTime());
+            case DEVTOOLS_OPEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorDevtools());
+            case DUPLICATE_IP -> Boolean.TRUE.equals(attempt.getExam().getMonitorDuplicateIp());
+            case FAST_SUBMIT -> Boolean.TRUE.equals(attempt.getExam().getMonitorFastSubmit());
+            case RIGHT_CLICK -> Boolean.TRUE.equals(attempt.getExam().getMonitorRightClick());
+            case PRINT_SCREEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorPrintScreen());
+            case RAPID_QUESTION_SWITCH -> Boolean.TRUE.equals(attempt.getExam().getMonitorRapidQuestionSwitch());
+            case MULTI_MONITOR -> Boolean.TRUE.equals(attempt.getExam().getMonitorMultiMonitor());
+        };
     }
 
     private void ensureCanAccessAttempt(ExamAttempt attempt, User actor) {

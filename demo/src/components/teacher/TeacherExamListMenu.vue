@@ -102,23 +102,39 @@
 
       <div
         v-if="showDeleteModal && examPendingDelete"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4"
+        class="modal-overlay z-[60]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-exam-title"
+        @click.self="closeDeleteModal"
       >
-        <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-6">
-          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">Xác nhận xóa đề thi</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Bạn có chắc chắn muốn xóa đề thi này không? Hành động này không thể hoàn tác.</p>
-
-          <div class="rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 p-3 text-sm mb-5">
-            <p><span class="font-semibold">Tiêu đề:</span> {{ examPendingDelete.title }}</p>
-            <p><span class="font-semibold">Số câu:</span> {{ examPendingDelete.questions }}</p>
-            <p><span class="font-semibold">Trạng thái:</span> {{ examPendingDelete.status }}</p>
-            <p><span class="font-semibold">Cập nhật:</span> {{ examPendingDelete.modified }}</p>
-            <p><span class="font-semibold">ID:</span> {{ examPendingDelete.id }}</p>
+        <div class="modal-content w-full max-w-md">
+          <div class="modal-header">
+            <div class="flex items-center gap-3">
+              <div class="size-10 rounded-xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 text-xl">delete_forever</span>
+              </div>
+              <div>
+                <h3 id="delete-exam-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Xác nhận xóa đề thi</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+            <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeDeleteModal">
+              <span class="material-symbols-outlined">close</span>
+            </button>
           </div>
-
-          <div class="flex justify-end gap-3">
+          <div class="modal-body">
+            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Bạn có chắc chắn muốn xóa đề thi này không?</p>
+            <div class="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-800 p-4 text-sm space-y-2">
+              <p><span class="font-semibold text-slate-700 dark:text-slate-300">Tiêu đề:</span> <span class="text-slate-900 dark:text-slate-100">{{ examPendingDelete.title }}</span></p>
+              <p><span class="font-semibold text-slate-700 dark:text-slate-300">Số câu:</span> <span class="text-slate-900 dark:text-slate-100">{{ examPendingDelete.questions }}</span></p>
+              <p><span class="font-semibold text-slate-700 dark:text-slate-300">Trạng thái:</span> <span class="text-slate-900 dark:text-slate-100">{{ examPendingDelete.status }}</span></p>
+                  <p><span class="font-semibold text-slate-700 dark:text-slate-300">Cập nhật:</span> <span class="text-slate-900 dark:text-slate-100">{{ examPendingDelete.modified }}</span></p>
+            </div>
+          </div>
+          <div class="modal-footer">
             <button
-              class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
               type="button"
               :disabled="isDeleting"
               @click="closeDeleteModal"
@@ -126,11 +142,12 @@
               Hủy
             </button>
             <button
-              class="px-4 py-2 rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700 disabled:opacity-60"
+              class="px-4 py-2.5 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center gap-2"
               type="button"
               :disabled="isDeleting"
               @click="confirmDeleteExam"
             >
+              <span class="material-symbols-outlined text-lg" v-if="isDeleting">hourglass_empty</span>
               {{ isDeleting ? 'Đang xóa...' : 'Xác nhận xóa' }}
             </button>
           </div>

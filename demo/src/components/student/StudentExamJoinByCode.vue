@@ -93,7 +93,8 @@ const goToWaitingRoom = async () => {
         duration: matchedExam.durationMinutes || 60,
         questions: matchedExam.questionCount || 0,
         startAt: matchedExam.startTime || '',
-        endAt: matchedExam.endTime || ''
+        endAt: matchedExam.endTime || '',
+        requireCameraMic: matchedExam.requireCameraMic === false ? 'false' : 'true'
       }
     })
   } catch (error) {

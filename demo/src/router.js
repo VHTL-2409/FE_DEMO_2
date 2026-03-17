@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/', redirect: '/login' },
     { path: '/login', component: () => import('./components/login/LoginRoleSelection.vue'), meta: { guest: true } },
     { path: '/register', component: () => import('./components/login/RegistrationRoleSelection.vue'), meta: { guest: true } },
+    { path: '/select-role', component: () => import('./components/login/SelectRole.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/dashboard', component: () => import('./components/teacher/TeacherDashboardTopNav.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams', component: () => import('./components/teacher/TeacherExamManagementUpdatedMenu.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/list', component: () => import('./components/teacher/TeacherExamListMenu.vue'), meta: { requiresAuth: true } },
@@ -37,6 +38,7 @@ const router = createRouter({
 
 const getDashboardByRole = (user) => {
   const roles = user?.roles || []
+  if (!roles.length) return '/select-role'
   if (roles.some(r => r === 'ROLE_TEACHER' || r === 'TEACHER')) {
     return '/teacher/dashboard'
   }
@@ -70,6 +72,14 @@ router.beforeEach(async (to, from, next) => {
     if (!cachedUser) {
       invalidateSession()
       return next('/login')
+    }
+
+    if (!cachedUser.roles?.length && to.path !== '/select-role') {
+      return next('/select-role')
+    }
+
+    if (cachedUser.roles?.length && to.path === '/select-role') {
+      return next(getDashboardByRole(cachedUser))
     }
 
     return next()

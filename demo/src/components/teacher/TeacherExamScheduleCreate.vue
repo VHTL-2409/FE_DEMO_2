@@ -242,7 +242,20 @@ const handleCreateAssignment = async () => {
       durationMinutes: timeLimit.value,
       startTime: startAt.value,
       endTime: endAt.value,
-      isActive: true
+      isActive: true,
+      monitorTabSwitch: route.query.monitorTabSwitch === 'true',
+      monitorBlur: route.query.monitorBlur === 'true',
+      monitorExitFullscreen: route.query.monitorExitFullscreen === 'true',
+      monitorCopyPaste: route.query.monitorCopyPaste === 'true',
+      monitorIdleTime: route.query.monitorIdleTime === 'true',
+      monitorDevtools: route.query.monitorDevtools === 'true',
+      monitorDuplicateIp: route.query.monitorDuplicateIp === 'true',
+      monitorFastSubmit: route.query.monitorFastSubmit === 'true',
+      monitorRightClick: route.query.monitorRightClick !== 'false',
+      monitorPrintScreen: route.query.monitorPrintScreen !== 'false',
+      monitorRapidQuestionSwitch: route.query.monitorRapidQuestionSwitch !== 'false',
+      monitorMultiMonitor: route.query.monitorMultiMonitor !== 'false',
+      requireCameraMic: route.query.requireCameraMic === 'true'
     })
 
     await createExamAssignment(examId.value, {

@@ -17,6 +17,19 @@ public interface MonitoringEventRepository extends JpaRepository<MonitoringEvent
 
     List<MonitoringEvent> findByAttemptOrderByCreatedAtAsc(ExamAttempt attempt);
 
+    long countByAttempt(ExamAttempt attempt);
+
+    long countByAttemptAndEventType(ExamAttempt attempt, MonitoringEventType eventType);
+
+    long countByAttemptAndCreatedAtAfter(ExamAttempt attempt, LocalDateTime createdAtAfter);
+
+    long countByAttemptAndEventTypeAndCreatedAtAfter(
+            ExamAttempt attempt,
+            MonitoringEventType eventType,
+            LocalDateTime createdAtAfter);
+
+    MonitoringEvent findTop1ByAttemptAndEventTypeOrderByCreatedAtDesc(ExamAttempt attempt, MonitoringEventType eventType);
+
     void deleteByAttemptIn(List<ExamAttempt> attempts);
 
     @Modifying

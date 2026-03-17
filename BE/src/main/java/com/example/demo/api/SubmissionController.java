@@ -15,6 +15,7 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.User;
+import com.example.demo.service.ClientIpResolver;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamService;
 import com.example.demo.service.SubmissionService;
@@ -50,7 +51,7 @@ public class SubmissionController {
     public ApiResponse<StartAttemptResponse> start(@PathVariable Long examId, HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
         Exam exam = examService.requireAccessibleExam(examId, student);
-        return ApiResponse.success(submissionService.startAttempt(exam, student, request.getRemoteAddr()));
+        return ApiResponse.success(submissionService.startAttempt(exam, student, ClientIpResolver.resolveClientIp(request)));
     }
 
     @PostMapping("/attempts/{attemptId}/submit")
@@ -65,7 +66,11 @@ public class SubmissionController {
             @RequestBody @NotEmpty List<@Valid AnswerInput> answers,
             HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
-        return ApiResponse.success(submissionService.saveDraftAnswers(attemptId, student, request.getRemoteAddr(), answers));
+        return ApiResponse.success(submissionService.saveDraftAnswers(
+                attemptId,
+                student,
+                ClientIpResolver.resolveClientIp(request),
+                answers));
     }
 
     @GetMapping("/attempts/{attemptId}/draft-answers")

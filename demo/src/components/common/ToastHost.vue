@@ -1,32 +1,36 @@
 <template>
-  <div class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 w-[320px] max-w-[90vw]">
-    <TransitionGroup name="toast" tag="div" class="flex flex-col gap-3">
-      <div
-        v-for="toast in toasts"
-        :key="toast.id"
-        class="rounded-xl border shadow-lg px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur text-slate-900 dark:text-slate-100"
-        :class="typeClass(toast.type)"
-      >
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-lg" :class="iconClass(toast.type)">
-            {{ iconName(toast.type) }}
-          </span>
-          <div class="flex-1">
-            <p v-if="toast.title" class="text-sm font-semibold">{{ toast.title }}</p>
-            <p class="text-sm text-slate-600 dark:text-slate-300">{{ toast.message }}</p>
-          </div>
-          <button
-            type="button"
-            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-            @click="dismissToast(toast.id)"
-            aria-label="Đóng thông báo"
+  <Teleport to="body">
+    <div class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-2rem)] pointer-events-none">
+      <div class="pointer-events-auto flex flex-col gap-3">
+        <TransitionGroup name="toast" tag="div" class="flex flex-col gap-3">
+          <div
+            v-for="toast in toasts"
+            :key="toast.id"
+            class="toast-item rounded-2xl shadow-xl px-4 py-3.5 flex items-start gap-3 backdrop-blur-xl"
+            :class="typeClass(toast.type)"
           >
-            <span class="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
+            <div class="shrink-0 size-10 rounded-xl flex items-center justify-center" :class="iconBgClass(toast.type)">
+              <span class="material-symbols-outlined text-xl" :class="iconClass(toast.type)">
+                {{ iconName(toast.type) }}
+              </span>
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <p v-if="toast.title" class="text-sm font-bold text-slate-900 dark:text-slate-100 mb-0.5">{{ toast.title }}</p>
+              <p class="text-sm leading-relaxed" :class="messageClass(toast.type)">{{ toast.message }}</p>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700/50 transition-colors"
+              @click="dismissToast(toast.id)"
+              aria-label="Đóng thông báo"
+            >
+              <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+          </div>
+        </TransitionGroup>
       </div>
-    </TransitionGroup>
-  </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -42,26 +46,52 @@ const dismissToast = (id) => {
 const typeClass = (type) => {
   switch (type) {
     case 'success':
-      return 'border-emerald-200/70 dark:border-emerald-500/30'
+      return 'toast-success'
     case 'error':
-      return 'border-rose-200/70 dark:border-rose-500/30'
+      return 'toast-error'
     case 'warning':
-      return 'border-amber-200/70 dark:border-amber-500/30'
+      return 'toast-warning'
     default:
-      return 'border-slate-200/70 dark:border-slate-700/60'
+      return 'toast-info'
+  }
+}
+
+const iconBgClass = (type) => {
+  switch (type) {
+    case 'success':
+      return 'bg-emerald-100 dark:bg-emerald-500/20'
+    case 'error':
+      return 'bg-rose-100 dark:bg-rose-500/20'
+    case 'warning':
+      return 'bg-amber-100 dark:bg-amber-500/20'
+    default:
+      return 'bg-indigo-100 dark:bg-indigo-500/20'
   }
 }
 
 const iconClass = (type) => {
   switch (type) {
     case 'success':
-      return 'text-emerald-500'
+      return 'text-emerald-600 dark:text-emerald-400'
     case 'error':
-      return 'text-rose-500'
+      return 'text-rose-600 dark:text-rose-400'
     case 'warning':
-      return 'text-amber-500'
+      return 'text-amber-600 dark:text-amber-400'
     default:
-      return 'text-slate-500'
+      return 'text-indigo-600 dark:text-indigo-400'
+  }
+}
+
+const messageClass = (type) => {
+  switch (type) {
+    case 'success':
+      return 'text-slate-600 dark:text-slate-300'
+    case 'error':
+      return 'text-slate-700 dark:text-slate-300'
+    case 'warning':
+      return 'text-slate-700 dark:text-slate-300'
+    default:
+      return 'text-slate-600 dark:text-slate-300'
   }
 }
 
@@ -80,14 +110,70 @@ const iconName = (type) => {
 </script>
 
 <style scoped>
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.25s ease;
+.toast-success {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 24px rgba(16, 185, 129, 0.12);
+}
+.dark .toast-success {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
+.toast-error {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  box-shadow: 0 4px 24px rgba(244, 63, 94, 0.12);
+}
+.dark .toast-error {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(244, 63, 94, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.toast-warning {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  box-shadow: 0 4px 24px rgba(245, 158, 11, 0.12);
+}
+.dark .toast-warning {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.toast-info {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.12);
+}
+.dark .toast-info {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.toast-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toast-leave-active {
+  transition: all 0.25s ease-out;
+}
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-8px) scale(0.98);
+  transform: translateX(24px);
+}
+.toast-move {
+  transition: transform 0.3s ease;
 }
 </style>

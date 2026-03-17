@@ -10,12 +10,15 @@ import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.AssignmentRepository;
+import com.example.demo.repository.AuditLogRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.ExamRepository;
 import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.QuestionRepository;
 import com.example.demo.repository.RiskSnapshotRepository;
+import com.example.demo.service.ImportXlsxService;
 import jakarta.persistence.PersistenceException;
+import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -26,6 +29,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +46,8 @@ public class ExamService {
     private final AnswerRepository answerRepository;
     private final MonitoringEventRepository monitoringEventRepository;
     private final RiskSnapshotRepository riskSnapshotRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final ImportXlsxService importXlsxService;
 
     @Transactional
     public ExamResponse createExam(ExamRequest request, User teacher) {
@@ -56,33 +62,88 @@ public class ExamService {
                 .durationMinutes(request.getDurationMinutes())
                 .isActive(request.getIsActive() == null ? Boolean.TRUE : request.getIsActive())
                 .createdBy(teacher)
+                .monitorTabSwitch(Boolean.TRUE.equals(request.getMonitorTabSwitch()) || request.getMonitorTabSwitch() == null)
+                .monitorBlur(Boolean.TRUE.equals(request.getMonitorBlur()) || request.getMonitorBlur() == null)
+                .monitorExitFullscreen(Boolean.TRUE.equals(request.getMonitorExitFullscreen()) || request.getMonitorExitFullscreen() == null)
+                .monitorCopyPaste(Boolean.TRUE.equals(request.getMonitorCopyPaste()) || request.getMonitorCopyPaste() == null)
+                .monitorIdleTime(Boolean.TRUE.equals(request.getMonitorIdleTime()) || request.getMonitorIdleTime() == null)
+                .monitorDevtools(Boolean.TRUE.equals(request.getMonitorDevtools()) || request.getMonitorDevtools() == null)
+                .monitorDuplicateIp(Boolean.TRUE.equals(request.getMonitorDuplicateIp()) || request.getMonitorDuplicateIp() == null)
+                .monitorFastSubmit(Boolean.TRUE.equals(request.getMonitorFastSubmit()) || request.getMonitorFastSubmit() == null)
+                .monitorRightClick(Boolean.TRUE.equals(request.getMonitorRightClick()) || request.getMonitorRightClick() == null)
+                .monitorPrintScreen(Boolean.TRUE.equals(request.getMonitorPrintScreen()) || request.getMonitorPrintScreen() == null)
+                .monitorRapidQuestionSwitch(Boolean.TRUE.equals(request.getMonitorRapidQuestionSwitch()) || request.getMonitorRapidQuestionSwitch() == null)
+                .monitorMultiMonitor(Boolean.TRUE.equals(request.getMonitorMultiMonitor()) || request.getMonitorMultiMonitor() == null)
+                .requireCameraMic(Boolean.TRUE.equals(request.getRequireCameraMic()) || request.getRequireCameraMic() == null)
                 .build();
         return toResponse(examRepository.save(exam));
     }
 
     @Transactional(readOnly = true)
     public List<ExamResponse> listExams(User currentUser) {
-        boolean isTeacher = currentUser.getRoles().stream()
-                .anyMatch(r -> r.getName() == RoleName.TEACHER || r.getName() == RoleName.ADMIN);
+        boolean isTeacher = currentUser.getRoles().stream().anyMatch(r -> r.getName() == RoleName.TEACHER || r.getName() == RoleName.ADMIN);
 
-        return examRepository.findAllWithCreatedBy().stream()
-                .filter(e -> {
-                    if (isTeacher) {
-                        return e.getCreatedBy().getId().equals(currentUser.getId());
-                    } else {
-                        // Student sees exams created by Teachers OR created by themselves (practice)
-                        boolean creatorIsTeacher = e.getCreatedBy().getRoles().stream()
-                                .anyMatch(r -> r.getName() == RoleName.TEACHER || r.getName() == RoleName.ADMIN);
-                        return creatorIsTeacher || e.getCreatedBy().getId().equals(currentUser.getId());
-                    }
-                })
-                .map(this::toResponse).toList();
+        if (isTeacher) {
+            return examRepository.findByCreatedById(currentUser.getId()).stream()
+                    .map(this::toResponse).toList();
+        }
+
+        List<Exam> publishedExams = assignmentRepository.findDistinctPublishedExams();
+        List<Exam> practiceExams = examRepository.findByCreatedBy(currentUser);
+        List<Exam> combined = new java.util.ArrayList<>(publishedExams);
+        for (Exam exam : practiceExams) {
+            if (combined.stream().noneMatch(existing -> existing.getId().equals(exam.getId()))) {
+                combined.add(exam);
+            }
+        }
+        return combined.stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getPracticeOptions() {
+        long totalQuestions = questionRepository.count();
+        int maxQuestions = (int) Math.min(Math.max(0, totalQuestions), 50);
+        return Map.of("maxQuestions", maxQuestions);
+    }
+
+    @Transactional
+    public ExamResponse createPracticeExamFromFile(User student, MultipartFile file, int durationMinutes) {
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vui lòng chọn tệp CSV hoặc XLSX chứa câu hỏi.");
+        }
+        int dur = Math.max(5, Math.min(240, durationMinutes));
+
+        Exam practiceExam = Exam.builder()
+                .title("Luyện Tập - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
+                .code(generateUniqueExamCode())
+                .description("Bài thi luyện tập từ tệp. (Hệ thống tự tạo)")
+                .durationMinutes(dur)
+                .isActive(true)
+                .createdBy(student)
+                .build();
+        practiceExam = examRepository.save(practiceExam);
+
+        int count = importXlsxService.importQuestions(practiceExam, file);
+        if (count <= 0) {
+            examRepository.delete(practiceExam);
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Tệp không chứa câu hỏi hợp lệ. Vui lòng kiểm tra định dạng (CSV/XLSX) và thử lại.");
+        }
+
+        return toResponse(practiceExam);
     }
 
     @Transactional
     public ExamResponse generatePracticeExam(User student, PracticeExamRequest request) {
-        int questionCount = request == null || request.getQuestionCount() == null ? 20 : request.getQuestionCount();
+        int requestedCount = request == null || request.getQuestionCount() == null ? 20 : request.getQuestionCount();
         int durationMinutes = request == null || request.getDurationMinutes() == null ? 30 : request.getDurationMinutes();
+
+        long availableCount = questionRepository.count();
+        int questionCount = (int) Math.min(Math.max(0, requestedCount), Math.max(0, availableCount));
+        if (questionCount <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Ngân hàng câu hỏi trống. Giáo viên cần thêm câu hỏi (từ file hoặc nhập tay) trước khi sinh viên có thể luyện tập.");
+        }
 
         Exam practiceExam = Exam.builder()
                 .title("Luyện Tập - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
@@ -156,6 +217,71 @@ public class ExamService {
         exam.setEndTime(request.getEndTime());
         exam.setDurationMinutes(request.getDurationMinutes());
         exam.setIsActive(request.getIsActive() == null ? exam.getIsActive() : request.getIsActive());
+        if (request.getMonitorTabSwitch() != null) {
+            exam.setMonitorTabSwitch(request.getMonitorTabSwitch());
+        } else if (exam.getMonitorTabSwitch() == null) {
+            exam.setMonitorTabSwitch(Boolean.TRUE);
+        }
+        if (request.getMonitorBlur() != null) {
+            exam.setMonitorBlur(request.getMonitorBlur());
+        } else if (exam.getMonitorBlur() == null) {
+            exam.setMonitorBlur(Boolean.TRUE);
+        }
+        if (request.getMonitorExitFullscreen() != null) {
+            exam.setMonitorExitFullscreen(request.getMonitorExitFullscreen());
+        } else if (exam.getMonitorExitFullscreen() == null) {
+            exam.setMonitorExitFullscreen(Boolean.TRUE);
+        }
+        if (request.getMonitorCopyPaste() != null) {
+            exam.setMonitorCopyPaste(request.getMonitorCopyPaste());
+        } else if (exam.getMonitorCopyPaste() == null) {
+            exam.setMonitorCopyPaste(Boolean.TRUE);
+        }
+        if (request.getMonitorIdleTime() != null) {
+            exam.setMonitorIdleTime(request.getMonitorIdleTime());
+        } else if (exam.getMonitorIdleTime() == null) {
+            exam.setMonitorIdleTime(Boolean.TRUE);
+        }
+        if (request.getMonitorDevtools() != null) {
+            exam.setMonitorDevtools(request.getMonitorDevtools());
+        } else if (exam.getMonitorDevtools() == null) {
+            exam.setMonitorDevtools(Boolean.TRUE);
+        }
+        if (request.getMonitorDuplicateIp() != null) {
+            exam.setMonitorDuplicateIp(request.getMonitorDuplicateIp());
+        } else if (exam.getMonitorDuplicateIp() == null) {
+            exam.setMonitorDuplicateIp(Boolean.TRUE);
+        }
+        if (request.getMonitorFastSubmit() != null) {
+            exam.setMonitorFastSubmit(request.getMonitorFastSubmit());
+        } else if (exam.getMonitorFastSubmit() == null) {
+            exam.setMonitorFastSubmit(Boolean.TRUE);
+        }
+        if (request.getMonitorRightClick() != null) {
+            exam.setMonitorRightClick(request.getMonitorRightClick());
+        } else if (exam.getMonitorRightClick() == null) {
+            exam.setMonitorRightClick(Boolean.TRUE);
+        }
+        if (request.getMonitorPrintScreen() != null) {
+            exam.setMonitorPrintScreen(request.getMonitorPrintScreen());
+        } else if (exam.getMonitorPrintScreen() == null) {
+            exam.setMonitorPrintScreen(Boolean.TRUE);
+        }
+        if (request.getMonitorRapidQuestionSwitch() != null) {
+            exam.setMonitorRapidQuestionSwitch(request.getMonitorRapidQuestionSwitch());
+        } else if (exam.getMonitorRapidQuestionSwitch() == null) {
+            exam.setMonitorRapidQuestionSwitch(Boolean.TRUE);
+        }
+        if (request.getMonitorMultiMonitor() != null) {
+            exam.setMonitorMultiMonitor(request.getMonitorMultiMonitor());
+        } else if (exam.getMonitorMultiMonitor() == null) {
+            exam.setMonitorMultiMonitor(Boolean.TRUE);
+        }
+        if (request.getRequireCameraMic() != null) {
+            exam.setRequireCameraMic(request.getRequireCameraMic());
+        } else if (exam.getRequireCameraMic() == null) {
+            exam.setRequireCameraMic(Boolean.TRUE);
+        }
         return toResponse(examRepository.save(exam));
     }
 
@@ -166,6 +292,7 @@ public class ExamService {
         try {
             riskSnapshotRepository.deleteByExam(exam);
             monitoringEventRepository.deleteByExam(exam);
+            auditLogRepository.deleteByExam(exam);
             answerRepository.deleteByExam(exam);
             examAttemptRepository.deleteByExam(exam);
 
@@ -278,6 +405,19 @@ public class ExamService {
                 .isActive(exam.getIsActive())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())
                 .questionCount(questionRepository.countByExam(exam)) // We keep this simple count query per row
+                .monitorTabSwitch(exam.getMonitorTabSwitch())
+                .monitorBlur(exam.getMonitorBlur())
+                .monitorExitFullscreen(exam.getMonitorExitFullscreen())
+                .monitorCopyPaste(exam.getMonitorCopyPaste())
+                .monitorIdleTime(exam.getMonitorIdleTime())
+                .monitorDevtools(exam.getMonitorDevtools())
+                .monitorDuplicateIp(exam.getMonitorDuplicateIp())
+                .monitorFastSubmit(exam.getMonitorFastSubmit())
+                .monitorRightClick(exam.getMonitorRightClick())
+                .monitorPrintScreen(exam.getMonitorPrintScreen())
+                .monitorRapidQuestionSwitch(exam.getMonitorRapidQuestionSwitch())
+                .monitorMultiMonitor(exam.getMonitorMultiMonitor())
+                .requireCameraMic(exam.getRequireCameraMic())
                 .build();
     }
 }

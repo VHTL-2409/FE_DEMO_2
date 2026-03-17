@@ -27,52 +27,25 @@
         </header>
 
         <main
-          class="flex-1 relative flex items-center justify-center p-4 md:p-8 lg:p-12 bg-gradient-to-br from-primary/5 via-background-light to-primary/10 dark:from-background-dark dark:via-background-dark dark:to-primary/20 overflow-hidden"
+          class="flex-1 relative flex items-center justify-center p-4 md:p-8 lg:p-12 bg-gradient-to-br from-slate-50 via-white to-primary-50/50 dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20 overflow-hidden"
         >
-          <div class="pointer-events-none absolute -top-20 -left-16 size-72 rounded-full bg-primary/20 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/15 blur-3xl animate-float-delay"></div>
+          <div class="pointer-events-none absolute -top-20 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
+          <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
           <div
-            class="w-full max-w-[1000px] grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-slate-900/50 rounded-xl overflow-hidden shadow-2xl border border-primary/10 animate-fade-up"
+            class="w-full max-w-[1000px] grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-slate-900/80 backdrop-blur-sm rounded-2xl overflow-hidden shadow-xl border border-slate-200/80 dark:border-slate-800/80 animate-fade-up"
           >
             <div class="p-8 md:p-12 flex flex-col justify-center">
               <div class="mb-8">
                 <h1
-                  class="text-slate-900 dark:text-slate-100 text-3xl font-black leading-tight tracking-tight mb-2"
+                  class="text-slate-900 dark:text-slate-100 text-3xl font-black leading-tight tracking-tight mb-2 text-center"
                 >
-                  Login &amp; Role Selection
+                  Đăng nhập
                 </h1>
-                <p class="text-slate-500 dark:text-slate-400 text-base font-normal">
-                  Welcome back! Please enter your details.
+                <p class="text-slate-500 dark:text-slate-400 text-base font-normal text-center">
+                  Đăng nhập để truy cập hệ thống thi trực tuyến
                 </p>
               </div>
 
-              <div class="mb-6">
-                <p class="text-slate-900 dark:text-slate-100 text-sm font-semibold mb-3">
-                  Select your role
-                </p>
-                <div
-                  class="flex h-12 w-full items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1"
-                >
-                  <label
-                    class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary dark:has-[:checked]:text-white text-slate-500 text-sm font-medium transition-all"
-                  >
-                    <span class="truncate flex items-center gap-2">
-                      <span class="material-symbols-outlined text-sm">school</span>
-                      Student
-                    </span>
-                    <input v-model="role" class="hidden" name="role" type="radio" value="Student" />
-                  </label>
-                  <label
-                    class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:shadow-sm has-[:checked]:text-primary dark:has-[:checked]:text-white text-slate-500 text-sm font-medium transition-all"
-                  >
-                    <span class="truncate flex items-center gap-2">
-                      <span class="material-symbols-outlined text-sm">co_present</span>
-                      Teacher
-                    </span>
-                    <input v-model="role" class="hidden" name="role" type="radio" value="Teacher" />
-                  </label>
-                </div>
-              </div>
 
               <form class="space-y-5 animate-fade-up-delay" @submit.prevent="onSubmit">
                 <div class="flex flex-col gap-2">
@@ -123,7 +96,7 @@
                     type="checkbox"
                   />
                   <label class="text-slate-600 dark:text-slate-400 text-sm" for="remember"
-                    >Remember me for 30 days</label
+                    >Remember me </label
                   >
                 </div>
 
@@ -152,7 +125,7 @@
               </div>
             </div>
 
-            <div class="hidden lg:flex relative bg-primary flex-col justify-center items-center p-12 overflow-hidden">
+            <div class="hidden lg:flex relative bg-gradient-to-br from-primary to-primary-800 flex-col justify-center items-center p-12 overflow-hidden">
               <div class="absolute inset-0 opacity-10 pointer-events-none grid grid-cols-4 gap-8 p-12">
                 <span class="material-symbols-outlined text-8xl text-white">calculate</span>
                 <span class="material-symbols-outlined text-8xl text-white">science</span>
@@ -165,23 +138,22 @@
               </div>
               <div class="relative z-10 text-center text-white max-w-sm">
                 <div
-                  class="size-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white/30"
+                  class="size-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white/30 shadow-xl"
                 >
-                  <span class="material-symbols-outlined text-4xl text-white">auto_awesome</span>
+                  <span class="material-symbols-outlined text-4xl text-white">school</span>
                 </div>
-                <h2 class="text-3xl font-bold mb-4">Empowering the Future of Assessment</h2>
+                <h2 class="text-3xl font-bold mb-4">EduExam</h2>
                 <p class="text-white/80 leading-relaxed">
-                  Secure, accessible, and intuitive online examination platform designed for global excellence in
-                  education.
+                  Hệ thống thi trực tuyến
                 </p>
                 <div class="mt-12 grid grid-cols-2 gap-4">
-                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-                    <p class="text-2xl font-bold">99.9%</p>
-                    <p class="text-xs text-white/60 uppercase tracking-widest">Uptime</p>
+                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                    <p class="text-2xl font-bold">CSV</p>
+                    <p class="text-xs text-white/60 uppercase tracking-widest">Import đề thi</p>
                   </div>
-                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-                    <p class="text-2xl font-bold">Secure</p>
-                    <p class="text-xs text-white/60 uppercase tracking-widest">Proctoring</p>
+                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                    <p class="text-2xl font-bold">Live</p>
+                    <p class="text-xs text-white/60 uppercase tracking-widest">Giám sát</p>
                   </div>
                 </div>
               </div>
@@ -211,7 +183,6 @@ import { useToast } from '../../composables/useToast'
 const router = useRouter()
 
 const isDark = ref(false)
-const role = ref('Student')
 const username = ref('')
 const password = ref('')
 const remember = ref(false)
@@ -224,9 +195,9 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-const routeByRole = (selectedRole) => {
-  const normalizedRole = String(selectedRole || '').toLowerCase()
-  if (normalizedRole === 'teacher') {
+const routeByRole = (roles = []) => {
+  const normalizedRoles = roles.map((role) => String(role || '').toUpperCase())
+  if (normalizedRoles.some(role => role === 'ROLE_TEACHER' || role === 'TEACHER')) {
     router.push('/teacher/dashboard')
     return
   }
@@ -243,12 +214,17 @@ const onSubmit = async () => {
   isSubmitting.value = true
 
   try {
-    await login({
+    const authData = await login({
       username: username.value.trim(),
       password: password.value
     })
 
-    routeByRole(role.value)
+    if (!authData?.roles?.length) {
+      router.push('/select-role')
+      return
+    }
+
+    routeByRole(authData?.roles || [])
   } catch (error) {
     toast.error('Login failed. Please try again.')
   } finally {

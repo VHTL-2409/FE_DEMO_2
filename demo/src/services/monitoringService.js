@@ -1,4 +1,4 @@
-import { apiRequest, unwrapApiData } from './apiClient'
+  import { apiRequest, unwrapApiData } from './apiClient'
 
 export const sendMonitoringEvent = async (attemptId, eventType, details = '') => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events`, {
@@ -10,6 +10,11 @@ export const sendMonitoringEvent = async (attemptId, eventType, details = '') =>
 
 export const listMonitoringTimeline = async (attemptId) => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/timeline`)
+  return unwrapApiData(payload) || []
+}
+
+export const listMonitoringAudit = async (attemptId) => {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/audit`)
   return unwrapApiData(payload) || []
 }
 

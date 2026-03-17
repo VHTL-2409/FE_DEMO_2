@@ -1,161 +1,206 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen">
+  <div :class="isDark ? 'dark' : 'light'" class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-display min-h-screen">
     <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
       <div class="layout-container flex h-full grow flex-col">
         <TeacherTopHeader active-section="monitoring" />
 
         <main class="teacher-page-shell max-w-[1400px] flex flex-col">
-          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-indigo-500/20 blur-3xl animate-float-slow"></div>
+          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-violet-500/15 blur-3xl animate-float-delay"></div>
 
-          <div class="relative flex flex-wrap items-center gap-2 mb-6 animate-fade-up">
-            <span class="text-slate-500 text-sm">Đề thi</span>
-            <span class="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
-            <span class="text-slate-500 text-sm">{{ examName }}</span>
-            <span class="material-symbols-outlined text-sm text-slate-400">chevron_right</span>
-            <span class="text-slate-900 dark:text-slate-100 text-sm font-bold">Giám sát: {{ studentName }}</span>
-          </div>
+          <nav class="relative flex flex-wrap items-center gap-2 mb-6 animate-fade-up text-sm">
+            <span class="text-slate-500">Đề thi</span>
+            <span class="material-symbols-outlined text-slate-400 text-base">chevron_right</span>
+            <span class="text-slate-500">{{ examName }}</span>
+            <span class="material-symbols-outlined text-slate-400 text-base">chevron_right</span>
+            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">Giám sát: {{ studentName }}</span>
+          </nav>
 
-          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm animate-fade-up-delay hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <!-- Student profile card -->
+          <div class="glass-card rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-lg animate-fade-up-delay">
             <div class="flex gap-5 items-center">
-              <div class="relative">
-                <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-20 w-20 border-2 border-red-500" :style="`background-image: url('${studentAvatar}')`"></div>
-                <div class="absolute bottom-0 right-0 bg-red-600 h-6 w-6 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-[14px] text-white font-bold">warning</span>
+              <div class="relative shrink-0">
+                <div class="size-20 rounded-2xl bg-center bg-no-repeat bg-cover ring-2 ring-offset-2" :class="suspicious ? 'ring-red-500/50' : 'ring-slate-200 dark:ring-slate-700'" :style="`background-image: url('${studentAvatar}')`"></div>
+                <div v-if="suspicious" class="absolute -bottom-1 -right-1 size-7 rounded-lg bg-red-500 flex items-center justify-center shadow-lg">
+                  <span class="material-symbols-outlined text-white text-sm">warning</span>
                 </div>
               </div>
               <div>
-                <div class="flex items-center gap-3 mb-1">
-                  <h1 class="text-slate-900 dark:text-slate-100 text-2xl font-bold">{{ studentName }}</h1>
-                  <span :class="riskBadgeClass" class="px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wider border">
+                <div class="flex items-center gap-3 mb-1 flex-wrap">
+                  <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ studentName }}</h1>
+                  <span :class="riskBadgeClass" class="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
                     {{ riskBadgeText }}
                   </span>
                 </div>
-                <p class="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-4">
-                  <span>ID: <span class="font-medium text-slate-700 dark:text-slate-300">{{ studentId }}</span></span>
+                <p class="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-4 flex-wrap">
+                  <span>ID: <span class="font-medium text-slate-700 dark:text-slate-300 font-mono">{{ studentId }}</span></span>
                   <span class="h-4 w-px bg-slate-300 dark:bg-slate-700"></span>
                   <span>Đề thi: <span class="font-medium text-slate-700 dark:text-slate-300">{{ examName }}</span></span>
                 </p>
                 <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
+                  <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg glass-card text-slate-600 dark:text-slate-300">
                     <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
                     {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
                   </span>
-                  <span class="text-slate-500 dark:text-slate-400">Cập nhật gần nhất: {{ lastUpdatedLabel }}</span>
+                  <span class="text-slate-500 dark:text-slate-400">Cập nhật: {{ lastUpdatedLabel }}</span>
                 </div>
               </div>
             </div>
             <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
-              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button">
+              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button">
                 <span class="material-symbols-outlined text-lg">history</span> Nhật ký vi phạm
               </button>
-              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:opacity-90 transition-all" type="button" @click="openLivestreamModal">
+              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/25" type="button" @click="openLivestreamModal">
                 <span class="material-symbols-outlined text-lg">live_tv</span> Xem livestream
               </button>
             </div>
           </div>
 
-          <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
+          <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-up-delay">
             <div class="lg:col-span-2 flex flex-col gap-6">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Tiến độ làm bài</p>
-                  <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ answeredCount }} <span class="text-slate-400 font-normal">/ {{ totalQuestions }}</span></p>
-                    <span class="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-xs font-bold px-2 py-1 rounded">Hoàn thành {{ progressPercent }}%</span>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-card rounded-2xl p-5 shadow-lg">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-indigo-500 text-xl">task_alt</span>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Tiến độ</p>
                   </div>
-                  <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-4">
-                    <div class="bg-primary h-1.5 rounded-full" :style="{ width: `${progressPercent}%` }"></div>
+                  <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ answeredCount }} <span class="text-slate-400 font-normal">/ {{ totalQuestions }}</span></p>
+                  <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mt-3">
+                    <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" :style="{ width: `${progressPercent}%` }"></div>
                   </div>
+                  <span class="text-indigo-600 dark:text-indigo-400 text-xs font-bold mt-2 inline-block">{{ progressPercent }}% hoàn thành</span>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Sự kiện bị gắn cờ</p>
-                  <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-red-600 tracking-tight">{{ flaggedEvents.length }} <span class="text-slate-400 font-normal text-lg">Tổng</span></p>
-                    <span class="text-red-600 bg-red-50 dark:bg-red-900/20 text-xs font-bold px-2 py-1 rounded">Risk {{ riskScore }}</span>
+                <div class="glass-card rounded-2xl p-5 shadow-lg" :class="flaggedEvents.length > 0 ? 'gradient-card-alert ring-1 ring-red-500/20' : ''">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-xl" :class="flaggedEvents.length > 0 ? 'text-red-500' : 'text-slate-400'">flag</span>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Sự kiện gắn cờ</p>
                   </div>
+                  <p class="text-2xl font-bold tracking-tight" :class="flaggedEvents.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-slate-100'">{{ flaggedEvents.length }}</p>
+                  <span class="text-xs font-bold mt-2 inline-block" :class="flaggedEvents.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'">Risk {{ riskScore }}</span>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Thời gian còn lại</p>
-                  <div class="flex items-end justify-between">
-                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ remainingTimeLabel }}</p>
+                <div class="glass-card rounded-2xl p-5 shadow-lg">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-emerald-500 text-xl">schedule</span>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Còn lại</p>
                   </div>
+                  <p class="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">{{ remainingTimeLabel }}</p>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Trạng thái bài thi</p>
-                  <div class="flex items-end justify-between">
-                    <span class="text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold px-2.5 py-1.5 rounded">{{ statusLabel }}</span>
+                <div class="glass-card rounded-2xl p-5 shadow-lg">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-slate-500 text-xl">info</span>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Trạng thái</p>
                   </div>
+                  <span class="text-sm font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">{{ statusLabel }}</span>
                 </div>
               </div>
             </div>
 
             <div class="flex flex-col gap-6">
-              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex-1">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div class="glass-card rounded-2xl overflow-hidden shadow-lg flex-1">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between gap-3">
                   <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span class="material-symbols-outlined text-red-500">assignment_late</span>
                     Nhật ký vi phạm
                   </h3>
-                  <span class="text-xs text-slate-500">{{ sortedTimelineItems.length }} sự kiện</span>
+                  <span class="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">{{ sortedTimelineItems.length }} sự kiện</span>
                 </div>
-                <div class="divide-y divide-slate-100 dark:divide-slate-800">
-                  <div v-if="sortedTimelineItems.length === 0" class="p-4 text-sm text-slate-500 dark:text-slate-400">
-                    Chưa có sự kiện vi phạm nào cho lần làm bài này.
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[280px] overflow-y-auto">
+                  <div v-if="sortedTimelineItems.length === 0" class="p-6 text-center text-slate-500 dark:text-slate-400">
+                    <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 block mb-2">check_circle</span>
+                    Chưa có sự kiện vi phạm
                   </div>
                   <div
                     v-for="item in paginatedTimelineItems"
                     :key="item.key"
                     :class="item.highlightClass"
-                    class="p-4 flex gap-4"
+                    class="p-4 flex gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                   >
-                    <div class="shrink-0" :class="item.iconClass"><span class="material-symbols-outlined">{{ item.icon }}</span></div>
-                    <div class="flex-1">
-                      <div class="flex justify-between items-start mb-1">
-                        <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ item.title }}</p>
-                        <span class="text-[10px] text-slate-500 font-medium">{{ item.timeLabel }}</span>
+                    <div class="shrink-0 size-9 rounded-lg flex items-center justify-center" :class="item.highlightClass ? 'bg-red-100 dark:bg-red-900/20' : 'bg-slate-100 dark:bg-slate-800'">
+                      <span class="material-symbols-outlined text-lg" :class="item.iconClass">{{ item.icon }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex justify-between items-start mb-1 gap-2">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ item.title }}</p>
+                        <span class="text-[10px] text-slate-500 font-medium shrink-0">{{ item.timeLabel }}</span>
                       </div>
                       <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{{ item.description }}</p>
                     </div>
                   </div>
                 </div>
-                <div class="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between" v-if="totalTimelinePages > 0">
+                <div class="p-3 border-t border-slate-200 dark:border-slate-700/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30" v-if="totalTimelinePages > 0">
                   <span class="text-xs text-slate-500">Trang {{ timelinePage }} / {{ totalTimelinePages }}</span>
                   <div class="flex gap-2">
-                    <button class="px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded disabled:opacity-50" type="button" :disabled="timelinePage <= 1" @click="timelinePage -= 1">Trước</button>
-                    <button class="px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded disabled:opacity-50" type="button" :disabled="timelinePage >= totalTimelinePages" @click="timelinePage += 1">Tiếp</button>
+                    <button class="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-all" type="button" :disabled="timelinePage <= 1" @click="timelinePage -= 1">Trước</button>
+                    <button class="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-all" type="button" :disabled="timelinePage >= totalTimelinePages" @click="timelinePage += 1">Tiếp</button>
                   </div>
                 </div>
               </div>
 
-              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary">settings_applications</span>
+              <div class="glass-card rounded-2xl overflow-hidden shadow-lg flex-1">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between gap-3">
+                  <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-500">history_edu</span>
+                    Nhật ký hành động (Audit)
+                  </h3>
+                  <span class="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">{{ auditLogs.length }} mục</span>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[200px] overflow-y-auto">
+                  <div v-if="auditLogs.length === 0" class="p-6 text-center text-slate-500 dark:text-slate-400">
+                    <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 block mb-2">assignment</span>
+                    Chưa có sự kiện audit
+                  </div>
+                  <div
+                    v-for="item in auditLogs"
+                    :key="item.id"
+                    class="p-4 flex gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                  >
+                    <div class="shrink-0 size-9 rounded-lg flex items-center justify-center" :class="item.action?.startsWith('TEACHER_') ? 'bg-amber-100 dark:bg-amber-900/20' : 'bg-slate-100 dark:bg-slate-800'">
+                      <span class="material-symbols-outlined text-lg" :class="item.action?.startsWith('TEACHER_') ? 'text-amber-500' : 'text-slate-500'">{{ item.action?.startsWith('TEACHER_') ? 'admin_panel_settings' : 'settings' }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex justify-between items-start mb-1 gap-2">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAuditAction(item.action) }}</p>
+                        <span class="text-[10px] text-slate-500 font-medium shrink-0">{{ formatTimelineTime(item.createdAt) }}</span>
+                      </div>
+                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{{ item.actorUsername ? `Bởi: ${item.actorUsername}` : '' }} {{ item.details ? `· ${item.details}` : '' }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass-card rounded-2xl p-6 shadow-lg">
+                <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-indigo-500">tune</span>
                   Điều khiển giám thị
                 </h3>
                 <div class="flex flex-col gap-3">
-                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition-colors disabled:opacity-60" type="button" @click="handleSendWarning">
-                    <span class="material-symbols-outlined">warning</span> {{ isWarningSending ? 'Đang gửi cảnh báo...' : 'Gửi cảnh báo' }}
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-amber-500/20" type="button" @click="handleSendWarning">
+                    <span class="material-symbols-outlined">warning</span> {{ isWarningSending ? 'Đang gửi...' : 'Gửi cảnh báo' }}
                   </button>
-                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors disabled:opacity-60" type="button" @click="handleInvalidateAttempt">
-                    <span class="material-symbols-outlined">block</span> {{ isInvalidating ? 'Đang đình chỉ...' : 'Hủy hiệu lực bài thi' }}
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-red-500/20" type="button" @click="handleInvalidateAttempt">
+                    <span class="material-symbols-outlined">block</span> {{ isInvalidating ? 'Đang xử lý...' : 'Đình chỉ bài thi' }}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-          <div v-if="isLivestreamModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" role="dialog" aria-modal="true" aria-labelledby="livestream-modal-title">
-            <div class="w-full max-w-5xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-                <div>
-                  <h3 id="livestream-modal-title" class="text-sm font-bold text-slate-900 dark:text-slate-100">Theo dõi bài làm realtime - {{ studentName }}</h3>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ liveAnsweredCount }} / {{ liveTotalQuestions }} câu đã trả lời · Cập nhật: {{ liveLastUpdatedLabel }}</p>
+          <div v-if="isLivestreamModalOpen" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="livestream-modal-title" @click.self="closeLivestreamModal">
+            <div class="modal-content modal-content-glass w-full max-w-5xl">
+              <div class="modal-header bg-slate-50/50 dark:bg-slate-800/30">
+                <div class="flex items-center gap-3">
+                  <div class="size-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-xl">live_tv</span>
+                  </div>
+                  <div>
+                    <h3 id="livestream-modal-title" class="text-base font-bold text-slate-900 dark:text-slate-100">Theo dõi bài làm realtime - {{ studentName }}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ liveAnsweredCount }} / {{ liveTotalQuestions }} câu · Cập nhật: {{ liveLastUpdatedLabel }}</p>
+                  </div>
                 </div>
-                <button class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-200" type="button" @click="closeLivestreamModal">
+                <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeLivestreamModal">
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <div class="p-5 max-h-[70vh] overflow-y-auto bg-slate-50 dark:bg-slate-950/40">
+              <div class="p-6 max-h-[70vh] overflow-y-auto bg-slate-50/50 dark:bg-slate-900/50">
                 <div v-if="liveModalLoading" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-300">
                   Đang tải đề thi và đáp án của thí sinh...
                 </div>
@@ -165,25 +210,26 @@
                       {{ liveModalSyncing ? 'Đang đồng bộ đáp án...' : (isLiveSocketConnected ? 'Đồng bộ websocket tức thì' : 'Đang dùng fallback polling') }}
                     </span>
                   </div>
-                  <div v-if="liveExamQuestions.length === 0" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-300">
+                  <div v-if="liveExamQuestions.length === 0" class="rounded-2xl glass-card p-8 text-center text-slate-500 dark:text-slate-400">
+                    <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 block mb-2">quiz</span>
                     Không có dữ liệu câu hỏi để hiển thị.
                   </div>
                   <div v-else class="space-y-4">
-                    <div v-for="(question, idx) in liveExamQuestions" :key="question.id" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-                      <p class="text-xs font-bold text-primary mb-2">Câu {{ idx + 1 }}</p>
-                      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">{{ question.content }}</p>
+                    <div v-for="(question, idx) in liveExamQuestions" :key="question.id" class="rounded-2xl glass-card p-5 border border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg transition-shadow">
+                      <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">Câu {{ idx + 1 }}</p>
+                      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ question.content }}</p>
                       <div class="space-y-2">
                         <div
                           v-for="option in question.options"
                           :key="`${question.id}-${option.id}`"
-                          :class="liveAnswersByQuestionId[question.id] === option.id ? 'border-primary bg-primary/5 dark:bg-primary/10 text-primary' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'"
-                          class="rounded-lg border px-3 py-2 text-sm font-medium"
+                          :class="liveAnswersByQuestionId[question.id] === option.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500/30' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'"
+                          class="rounded-xl border px-4 py-2.5 text-sm font-medium transition-all"
                         >
                           {{ option.text }}
                         </div>
                       </div>
-                      <p class="mt-3 text-xs" :class="liveAnswersByQuestionId[question.id] ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'">
-                        {{ liveAnswersByQuestionId[question.id] ? `Thí sinh chọn: ${getLiveSelectedAnswerLabel(question)}` : 'Chưa chọn đáp án' }}
+                      <p class="mt-3 text-xs font-medium" :class="liveAnswersByQuestionId[question.id] ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'">
+                        {{ liveAnswersByQuestionId[question.id] ? `✓ Thí sinh chọn: ${getLiveSelectedAnswerLabel(question)}` : 'Chưa chọn đáp án' }}
                       </p>
                     </div>
                   </div>
@@ -201,7 +247,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { API_BASE_URL, ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
-import { invalidateAttempt, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
+import { invalidateAttempt, listMonitoringAudit, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
@@ -213,6 +259,7 @@ const isSyncing = ref(false)
 const attemptDetail = ref(null)
 const attemptReport = ref(null)
 const timeline = ref([])
+const auditLogs = ref([])
 const lastUpdatedAt = ref(null)
 const isWarningSending = ref(false)
 const isInvalidating = ref(false)
@@ -429,6 +476,16 @@ const formatDuration = (totalSeconds) => {
 
 const remainingTimeLabel = computed(() => formatDuration(attemptDetail.value?.remainingSeconds ?? attemptReport.value?.remainingSeconds ?? 0))
 
+const formatAuditAction = (action) => {
+  const map = {
+    TEACHER_WARNING: 'Cảnh báo từ giám thị',
+    TEACHER_INVALIDATE: 'Đình chỉ bài thi',
+    SYSTEM_DUPLICATE_IP: 'Hệ thống: Trùng IP',
+    SYSTEM_IP_CHANGE: 'Hệ thống: Thay đổi IP'
+  }
+  return map[String(action || '').toUpperCase()] || action || 'Hành động'
+}
+
 const formatEventType = (eventType) => {
   const normalized = String(eventType || '').toUpperCase()
   switch (normalized) {
@@ -506,14 +563,16 @@ const loadMonitoringDetail = async () => {
 
   isSyncing.value = true
   try {
-    const [detail, report, timelineData] = await Promise.all([
+    const [detail, report, timelineData, auditResult] = await Promise.all([
       getAttemptDetail(attemptId.value),
       getAttemptReport(attemptId.value),
-      listMonitoringTimeline(attemptId.value)
+      listMonitoringTimeline(attemptId.value),
+      listMonitoringAudit(attemptId.value).catch(() => [])
     ])
     attemptDetail.value = detail
     attemptReport.value = report
     timeline.value = Array.isArray(timelineData) ? timelineData : []
+    auditLogs.value = Array.isArray(auditResult) ? auditResult : []
     timelinePage.value = 1
     lastUpdatedAt.value = Date.now()
   } catch (error) {
@@ -530,6 +589,7 @@ const handleSendWarning = async () => {
   try {
     const res = await sendTeacherWarning(attemptId.value)
     toast.success(res?.message || 'Đã gửi cảnh báo realtime đến thí sinh.')
+    await loadMonitoringDetail()
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : 'Không thể gửi cảnh báo lúc này.')
   } finally {
