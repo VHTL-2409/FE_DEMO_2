@@ -33,3 +33,26 @@ export const createExamAssignment = async (examId, {
 
   return Array.isArray(payload) ? payload : unwrapApiData(payload)
 }
+
+export const updateExamAssignment = async (examId, assignmentId, {
+  title,
+  openAt = null,
+  closeAt = null,
+  maxAttempts = 1,
+  allowReviewAfterSubmit = true,
+  isPublished = true
+}) => {
+  const payload = await apiRequest(`/api/exams/${examId}/assignments/${assignmentId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      title,
+      openAt: toIsoOrNull(openAt),
+      closeAt: toIsoOrNull(closeAt),
+      maxAttempts,
+      allowReviewAfterSubmit,
+      isPublished
+    })
+  })
+
+  return unwrapApiData(payload)
+}

@@ -10,7 +10,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -41,6 +43,8 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         ensureAttemptStatusConstraint();
         ensureExamMonitoringColumns();
+        ensureExamCodeForExistingExams();
+        ensureEmailVerifiedColumn();
         ensureSingleRoleConstraint();
         cleanupUserRoles();
 
@@ -79,8 +83,10 @@ public class DataInitializer implements CommandLineRunner {
                 .build()));
 
         if (examRepository.count() == 0) {
+            String demoCode = generateUniqueExamCode();
             Exam exam = examRepository.save(Exam.builder()
                 .title("Java Core Demo Exam")
+                .code(demoCode)
                 .description("Demo exam for online testing flow")
                 .startTime(LocalDateTime.now().minusDays(1))
                 .endTime(LocalDateTime.now().plusDays(7))
@@ -129,6 +135,21 @@ public class DataInitializer implements CommandLineRunner {
             """);
     }
 
+    private void ensureEmailVerifiedColumn() {
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE");
+        jdbcTemplate.execute("UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL");
+    }
+
+    private void ensureExamCodeForExistingExams() {
+        List<Exam> examsWithoutCode = examRepository.findAll().stream()
+            .filter(e -> e.getCode() == null || e.getCode().isBlank())
+            .toList();
+        for (Exam exam : examsWithoutCode) {
+            exam.setCode(generateUniqueExamCode());
+            examRepository.save(exam);
+        }
+    }
+
     private void ensureExamMonitoringColumns() {
         String[] cols = {
             "monitor_tab_switch", "monitor_blur", "monitor_exit_fullscreen", "monitor_copy_paste",
@@ -139,6 +160,7 @@ public class DataInitializer implements CommandLineRunner {
         for (String col : cols) {
             jdbcTemplate.execute("ALTER TABLE exams ADD COLUMN IF NOT EXISTS " + col + " BOOLEAN");
         }
+        jdbcTemplate.execute("UPDATE exams SET is_active = COALESCE(is_active, TRUE) WHERE is_active IS NULL");
         jdbcTemplate.execute("""
             UPDATE exams
             SET monitor_tab_switch = COALESCE(monitor_tab_switch, TRUE),
@@ -206,6 +228,22 @@ public class DataInitializer implements CommandLineRunner {
             WHERE LOWER(u.username) LIKE 'student%'
               AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id)
             """, studentRole.getId());
+    }
+
+    private static final String EXAM_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final int EXAM_CODE_LENGTH = 8;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    private String generateUniqueExamCode() {
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(EXAM_CODE_LENGTH);
+            for (int i = 0; i < EXAM_CODE_LENGTH; i++) {
+                sb.append(EXAM_CODE_CHARS.charAt(RANDOM.nextInt(EXAM_CODE_CHARS.length())));
+            }
+            code = sb.toString();
+        } while (examRepository.existsByCode(code));
+        return code;
     }
 
     private void cleanupProfilesByRole() {

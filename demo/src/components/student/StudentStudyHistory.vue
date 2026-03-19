@@ -77,13 +77,23 @@
             </div>
 
             <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ sessions.length }} phiên</span>
+              <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ allSessions.length }} phiên</span>
               <div class="flex items-center gap-2">
-                <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
+                <button
+                  type="button"
+                  @click="goToPrevPage"
+                  :disabled="currentPage <= 1"
+                  class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <span class="material-symbols-outlined">chevron_left</span>
                 </button>
-                <button class="h-8 w-8 rounded-lg bg-primary text-white text-sm font-bold" type="button">1</button>
-                <button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-400 disabled:opacity-50" disabled type="button">
+                <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Trang {{ currentPage }} / {{ totalPages }}</span>
+                <button
+                  type="button"
+                  @click="goToNextPage"
+                  :disabled="currentPage >= totalPages"
+                  class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <span class="material-symbols-outlined">chevron_right</span>
                 </button>
               </div>
@@ -100,7 +110,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
@@ -116,7 +126,10 @@ const activeTab = computed(() => (route.query.tab === 'practice' ? 'practice' : 
 
 const detectAttemptType = (attempt) => (attempt.isPractice ? 'practice' : 'exam')
 
-const sessions = computed(() => attempts.value
+const PAGE_SIZE = 8
+const currentPage = ref(1)
+
+const allSessions = computed(() => attempts.value
   .filter((attempt) => detectAttemptType(attempt) === activeTab.value)
   .slice()
   .sort((a, b) => {
@@ -150,11 +163,30 @@ const sessions = computed(() => attempts.value
     }
   }))
 
+const sessions = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return allSessions.value.slice(start, start + PAGE_SIZE)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(allSessions.value.length / PAGE_SIZE)))
+
+const goToPrevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
 const emptyMessage = computed(() => {
   if (activeTab.value === 'practice') {
     return 'Chưa có lượt luyện tập nào.'
   }
   return 'Chưa có bài thi nào.'
+})
+
+watch(activeTab, () => {
+  currentPage.value = 1
 })
 
 const setTab = (tab) => {

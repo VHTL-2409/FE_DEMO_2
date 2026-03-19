@@ -47,6 +47,32 @@
               </div>
 
 
+              <div v-if="emailNotVerified" class="mb-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <p class="text-amber-800 dark:text-amber-200 text-sm font-medium mb-2">Email chưa được xác minh. Vui lòng kiểm tra hộp thư hoặc gửi lại link xác minh.</p>
+                <div class="flex gap-2">
+                  <input
+                    v-model="resendEmail"
+                    type="email"
+                    placeholder="Email đăng ký"
+                    class="flex-1 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                  <button
+                    type="button"
+                    :disabled="isResending"
+                    @click="onResendVerification"
+                    class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-60"
+                  >
+                    {{ isResending ? 'Đang gửi...' : 'Gửi lại' }}
+                  </button>
+                </div>
+                <p v-if="resendMessage" class="mt-2 text-sm" :class="resendSuccess ? 'text-green-600 dark:text-green-400' : 'text-rose-600 dark:text-rose-400'">
+                  <template v-if="resendSuccess && resendVerificationUrl">
+                    Chế độ demo: <RouterLink :to="{ path: '/verify-email', query: { token: resendVerificationToken } }" class="font-bold underline hover:no-underline">Nhấp vào đây để xác minh</RouterLink>
+                  </template>
+                  <template v-else>{{ resendMessage }}</template>
+                </p>
+              </div>
+
               <form class="space-y-5 animate-fade-up-delay" @submit.prevent="onSubmit">
                 <div class="flex flex-col gap-2">
                   <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Username</label>
@@ -66,7 +92,7 @@
                 <div class="flex flex-col gap-2">
                   <div class="flex justify-between items-center">
                     <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Password</label>
-                    <a class="text-primary text-xs font-bold hover:underline" href="#">Forgot Password?</a>
+                    <RouterLink to="/forgot-password" class="text-primary text-xs font-bold hover:underline">Quên mật khẩu?</RouterLink>
                   </div>
                   <div class="relative flex items-center">
                     <span class="material-symbols-outlined absolute left-3 text-slate-400">lock</span>
@@ -177,7 +203,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login } from '../../services/authService'
+import { login, resendVerification } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
@@ -188,6 +214,13 @@ const password = ref('')
 const remember = ref(false)
 const showPassword = ref(false)
 const isSubmitting = ref(false)
+const emailNotVerified = ref(false)
+const resendEmail = ref('')
+const isResending = ref(false)
+const resendMessage = ref('')
+const resendSuccess = ref(false)
+const resendVerificationUrl = ref('')
+const resendVerificationToken = ref('')
 
 const toast = useToast()
 
@@ -212,6 +245,8 @@ const onSubmit = async () => {
   }
 
   isSubmitting.value = true
+  emailNotVerified.value = false
+  resendMessage.value = ''
 
   try {
     const authData = await login({
@@ -226,9 +261,42 @@ const onSubmit = async () => {
 
     routeByRole(authData?.roles || [])
   } catch (error) {
-    toast.error('Login failed. Please try again.')
+    if (error?.status === 403 && String(error?.payload?.message || '').includes('EMAIL_NOT_VERIFIED')) {
+      emailNotVerified.value = true
+      resendEmail.value = ''
+      toast.error('Email chưa được xác minh. Vui lòng kiểm tra hộp thư hoặc gửi lại link.')
+    } else {
+      toast.error('Login failed. Please try again.')
+    }
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const onResendVerification = async () => {
+  if (!resendEmail.value?.trim()) {
+    toast.error('Vui lòng nhập email đăng ký.')
+    return
+  }
+  isResending.value = true
+  resendMessage.value = ''
+  resendVerificationUrl.value = ''
+  resendVerificationToken.value = ''
+  try {
+    const data = await resendVerification({ email: resendEmail.value.trim() })
+    resendSuccess.value = true
+    if (data?.verificationUrl) {
+      resendVerificationUrl.value = data.verificationUrl
+      resendVerificationToken.value = data.verificationUrl.replace(/^.*token=/, '')
+      resendMessage.value = 'Chế độ demo: Nhấp vào link để xác minh.'
+    } else {
+      resendMessage.value = 'Đã gửi lại email xác minh. Vui lòng kiểm tra hộp thư.'
+    }
+  } catch (error) {
+    resendSuccess.value = false
+    resendMessage.value = 'Không thể gửi. Email có thể đã được xác minh hoặc không tồn tại.'
+  } finally {
+    isResending.value = false
   }
 }
 </script>

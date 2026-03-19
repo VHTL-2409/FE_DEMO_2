@@ -163,6 +163,23 @@ public class MonitoringService {
                 .toList();
     }
 
+    @Transactional
+    public void updateDeviceStatus(Long attemptId, Boolean cameraOn, Boolean micOn, User actor) {
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanAccessAttempt(attempt, actor);
+        if (!attempt.getStudent().getId().equals(actor.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Only the student can update their own device status");
+        }
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            return;
+        }
+        attempt.setCameraOn(cameraOn);
+        attempt.setMicOn(micOn);
+        attempt.setDeviceCheckedAt(LocalDateTime.now());
+        examAttemptRepository.save(attempt);
+    }
+
     public List<AuditLogItem> auditLog(Long attemptId, User actor) {
         ExamAttempt attempt = examAttemptRepository.findById(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));

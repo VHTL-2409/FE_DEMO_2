@@ -21,10 +21,23 @@
               <h1 class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{{ selectedExamTitle }}</h1>
               <p class="text-slate-600 dark:text-slate-400 mt-1">Báo cáo tổng điểm và tóm tắt kết quả học tập của sinh viên cho đề thi đã hoàn tất này.</p>
             </div>
-            <button class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm" type="button">
-              <span class="material-symbols-outlined text-xl">download</span>
-              <span>Tải báo cáo</span>
-            </button>
+            <div class="flex flex-wrap gap-2">
+              <RouterLink
+                :to="{ path: '/teacher/exams/new-session', query: { examId: examId, title: selectedExamTitle } }"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
+              >
+                <span class="material-symbols-outlined text-xl">add_circle</span>
+                <span>Tạo đợt thi mới</span>
+              </RouterLink>
+              <button
+                type="button"
+                @click="downloadReport"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
+              >
+                <span class="material-symbols-outlined text-xl">download</span>
+                <span>Tải báo cáo</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -49,6 +62,46 @@
               <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ card.value }}</h3>
               <span :class="card.trendClass" class="text-sm font-bold">{{ card.trend }}</span>
             </div>
+          </div>
+        </div>
+
+        <div v-if="questionWrongStats.length > 0" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-up-delay mb-8">
+          <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">warning</span>
+              Câu hỏi sai nhiều nhất
+            </h2>
+            <p class="text-xs text-slate-500">Điểm yếu cần ôn tập</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">#</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nội dung câu hỏi</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Số thí sinh</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sai</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Đúng</th>
+                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tỷ lệ sai</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr v-for="item in questionWrongStats" :key="item.questionId" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td class="px-6 py-4">
+                    <span :class="item.rank <= 3 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'" class="inline-flex items-center justify-center size-8 rounded-lg font-bold text-sm">{{ item.rank }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-800 dark:text-slate-200 max-w-md" :title="item.questionContent">
+                    <span class="line-clamp-2">{{ item.questionContent }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">{{ item.totalAnswered }}</td>
+                  <td class="px-6 py-4 text-sm font-bold text-rose-600 dark:text-rose-400">{{ item.wrongCount }}</td>
+                  <td class="px-6 py-4 text-sm font-medium text-emerald-600 dark:text-emerald-400">{{ item.correctCount }}</td>
+                  <td class="px-6 py-4">
+                    <span :class="item.wrongRatePercent >= 50 ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-600 dark:text-slate-400'" class="text-sm">{{ item.wrongRatePercent }}%</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -117,6 +170,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { listExamAttempts } from '../../services/attemptService'
+import { getQuestionWrongStats } from '../../services/examService'
+import { exportToCsv } from '../../utils/reportExport'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -126,6 +181,7 @@ const isDark = ref(false)
 const isLoading = ref(false)
 const loadError = ref('')
 const attempts = ref([])
+const questionWrongStats = ref([])
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
@@ -252,6 +308,19 @@ const resultRows = computed(() => attempts.value.map((attempt) => {
   }
 }))
 
+const downloadReport = () => {
+  const columns = [
+    { key: 'student', label: 'Sinh viên' },
+    { key: 'studentId', label: 'Mã sinh viên' },
+    { key: 'score', label: 'Điểm' },
+    { key: 'accuracy', label: 'Độ chính xác' },
+    { key: 'timeSpent', label: 'Thời gian làm bài' },
+    { key: 'status', label: 'Trạng thái' }
+  ]
+  const safeTitle = (selectedExamTitle.value || 'bao-cao').replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, '-')
+  exportToCsv(resultRows.value, columns, `bao-cao-diem-${safeTitle}.csv`)
+}
+
 const viewStudentReport = (item) => {
   router.push({
     path: '/teacher/exams/review/student-report',
@@ -272,7 +341,12 @@ const loadAttempts = async () => {
   isLoading.value = true
   loadError.value = ''
   try {
-    attempts.value = await listExamAttempts(examId.value)
+    const [attemptsData, wrongStats] = await Promise.all([
+      listExamAttempts(examId.value),
+      getQuestionWrongStats(examId.value)
+    ])
+    attempts.value = attemptsData
+    questionWrongStats.value = wrongStats
   } catch (error) {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải lượt làm bài của đề thi.'
   } finally {

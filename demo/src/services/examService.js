@@ -160,7 +160,24 @@ export const deleteExam = async (examId) => {
   })
 }
 
+export const createNewSession = async (examId, { startTime, endTime, durationMinutes }) => {
+  const payload = await apiRequest(`/api/exams/${examId}/sessions`, {
+    method: 'POST',
+    body: JSON.stringify({
+      startTime: toLocalDateTimeOrNull(startTime),
+      endTime: toLocalDateTimeOrNull(endTime),
+      durationMinutes: durationMinutes || null
+    })
+  })
+  return unwrapApiData(payload)
+}
+
 export const getAnswerSimilarity = async (examId) => {
   const payload = await apiRequest(`/api/exams/${examId}/answer-similarity`)
+  return unwrapApiData(payload) || []
+}
+
+export const getQuestionWrongStats = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/question-wrong-stats`)
   return unwrapApiData(payload) || []
 }

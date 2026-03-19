@@ -1,6 +1,7 @@
 package com.example.demo.api;
 
 import com.example.demo.api.dto.ApiResponse;
+import com.example.demo.api.dto.assignment.NewSessionRequest;
 import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
 import com.example.demo.api.dto.exam.PracticeExamRequest;
@@ -71,6 +72,12 @@ public class ExamController {
         return ApiResponse.success(examService.updateExam(examId, request, currentUserService.requireCurrentUser()));
     }
 
+    @PostMapping("/{examId}/sessions")
+    public ApiResponse<ExamResponse> createNewSession(@PathVariable Long examId,
+                                                      @Valid @RequestBody NewSessionRequest request) {
+        return ApiResponse.success(examService.createNewSession(examId, request, currentUserService.requireCurrentUser()));
+    }
+
     @PatchMapping("/{examId}/monitoring-config")
     public ApiResponse<ExamResponse> updateMonitoringConfig(@PathVariable Long examId, @RequestBody ExamRequest request) {
         return ApiResponse.success(examService.updateExam(examId, request, currentUserService.requireCurrentUser()));
@@ -86,5 +93,10 @@ public class ExamController {
     public ApiResponse<List<AnswerSimilarityService.SimilarityPair>> answerSimilarity(@PathVariable Long examId) {
         var exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
         return ApiResponse.success(answerSimilarityService.findSuspiciousPairs(exam));
+    }
+
+    @GetMapping("/{examId}/question-wrong-stats")
+    public ApiResponse<List<com.example.demo.api.dto.exam.QuestionWrongStatsItem>> questionWrongStats(@PathVariable Long examId) {
+        return ApiResponse.success(examService.getQuestionWrongStats(examId, currentUserService.requireCurrentUser()));
     }
 }

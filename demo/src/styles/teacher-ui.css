@@ -58,14 +58,25 @@
   animation: teacherFloatDelay 9s ease-in-out infinite;
 }
 
+.layout-container {
+  min-height: 100vh;
+  width: 100%;
+}
+
 .teacher-page-shell {
   position: relative;
   flex: 1;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 2rem;
+  padding: 1rem 1rem 2rem;
   overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .teacher-page-shell {
+    padding: 1.5rem 1.5rem 2rem;
+  }
 }
 
 @media (min-width: 1024px) {

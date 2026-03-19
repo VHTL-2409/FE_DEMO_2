@@ -68,7 +68,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                <tr v-for="exam in filteredExams" :key="exam.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr v-for="exam in paginatedExams" :key="exam.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td class="px-6 py-4">
                     <div class="flex flex-col">
                       <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ exam.title }}</span>
@@ -81,7 +81,9 @@
                     <span :class="exam.statusClass" class="px-2.5 py-1 text-[11px] font-bold rounded-full">{{ exam.status }}</span>
                   </td>
                   <td class="px-6 py-4">
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2">
+                      <button v-if="canEditExam(exam)" @click="goToEdit(exam)" class="px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-lg transition-colors" type="button">Chỉnh sửa</button>
+                      <button v-if="canCreateNewSession(exam)" @click="goToNewSession(exam)" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-lg transition-colors" type="button">Tạo đợt thi mới</button>
                       <button @click="goToReview(exam)" class="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg transition-colors" type="button">Xem</button>
                       <button @click="openDeleteModal(exam)" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 rounded-lg transition-colors" type="button">Xóa</button>
                     </div>
@@ -91,9 +93,24 @@
             </table>
             <div v-if="filteredExams.length > 0" class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p class="text-xs font-medium text-slate-500">Hiển thị {{ filteredExams.length }} đề thi</p>
-              <div class="flex gap-2">
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50" disabled type="button">Trước</button>
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50" disabled type="button">Tiếp</button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="goToPrevPage"
+                  :disabled="currentPage <= 1"
+                  class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+                <span class="text-xs text-slate-600 dark:text-slate-300">Trang {{ currentPage }} / {{ totalPages }}</span>
+                <button
+                  type="button"
+                  @click="goToNextPage"
+                  :disabled="currentPage >= totalPages"
+                  class="px-3 py-1 text-xs font-semibold rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Tiếp
+                </button>
               </div>
             </div>
           </div>
@@ -158,7 +175,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { deleteExam, listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
@@ -267,6 +284,46 @@ const filteredExams = computed(() => {
   })
 })
 
+const PAGE_SIZE = 10
+const currentPage = ref(1)
+
+const paginatedExams = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredExams.value.slice(start, start + PAGE_SIZE)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredExams.value.length / PAGE_SIZE)))
+
+const goToPrevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
+const canEditExam = (exam) => exam.statusKey === 'upcoming' || exam.statusKey === 'draft'
+
+const canCreateNewSession = (exam) => exam.statusKey === 'ended'
+
+const goToNewSession = (exam) => {
+  router.push({
+    path: '/teacher/exams/new-session',
+    query: { examId: exam.id, title: exam.title }
+  })
+}
+
+const goToEdit = (exam) => {
+  router.push({
+    path: '/teacher/exams/schedule',
+    query: {
+      examId: exam.id,
+      title: exam.title,
+      mode: 'edit'
+    }
+  })
+}
+
 const goToReview = (exam) => {
   router.push({
     path: '/teacher/exams/review/summary',
@@ -289,6 +346,7 @@ const resetFilters = () => {
   searchQuery.value = ''
   filterDate.value = ''
   statusFilter.value = 'all'
+  currentPage.value = 1
 }
 
 const confirmDeleteExam = async () => {
@@ -319,6 +377,10 @@ const loadExams = async () => {
     isLoading.value = false
   }
 }
+
+watch([searchQuery, filterDate, statusFilter], () => {
+  currentPage.value = 1
+})
 
 onMounted(loadExams)
 </script>

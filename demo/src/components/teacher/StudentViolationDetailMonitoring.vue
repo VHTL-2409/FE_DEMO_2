@@ -46,19 +46,16 @@
                 </div>
               </div>
             </div>
-            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
-              <button class="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button">
-                <span class="material-symbols-outlined text-lg">history</span> Nhật ký vi phạm
-              </button>
+            <div class="w-full md:w-auto">
               <button class="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/25" type="button" @click="openLivestreamModal">
-                <span class="material-symbols-outlined text-lg">live_tv</span> Xem livestream
+                <span class="material-symbols-outlined text-lg">live_tv</span> Xem bài làm realtime
               </button>
             </div>
           </div>
 
-          <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-up-delay">
-            <div class="lg:col-span-2 flex flex-col gap-6">
-              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-up-delay">
+            <div class="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div class="glass-card rounded-2xl p-5 shadow-lg">
                   <div class="flex items-center gap-2 mb-3">
                     <span class="material-symbols-outlined text-indigo-500 text-xl">task_alt</span>
@@ -95,19 +92,20 @@
               </div>
             </div>
 
-            <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-4 sm:gap-6">
+              <!-- Card hành vi gian lận -->
               <div class="glass-card rounded-2xl overflow-hidden shadow-lg flex-1">
                 <div class="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between gap-3">
                   <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span class="material-symbols-outlined text-red-500">assignment_late</span>
-                    Nhật ký vi phạm
+                    Hành vi gian lận
                   </h3>
                   <span class="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">{{ sortedTimelineItems.length }} sự kiện</span>
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[280px] overflow-y-auto">
                   <div v-if="sortedTimelineItems.length === 0" class="p-6 text-center text-slate-500 dark:text-slate-400">
                     <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 block mb-2">check_circle</span>
-                    Chưa có sự kiện vi phạm
+                    Chưa có hành vi gian lận nào được ghi nhận
                   </div>
                   <div
                     v-for="item in paginatedTimelineItems"
@@ -136,54 +134,77 @@
                 </div>
               </div>
 
-              <div class="glass-card rounded-2xl overflow-hidden shadow-lg flex-1">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between gap-3">
-                  <h3 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-indigo-500">history_edu</span>
-                    Nhật ký hành động (Audit)
-                  </h3>
-                  <span class="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">{{ auditLogs.length }} mục</span>
-                </div>
-                <div class="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[200px] overflow-y-auto">
-                  <div v-if="auditLogs.length === 0" class="p-6 text-center text-slate-500 dark:text-slate-400">
-                    <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 block mb-2">assignment</span>
-                    Chưa có sự kiện audit
-                  </div>
-                  <div
-                    v-for="item in auditLogs"
-                    :key="item.id"
-                    class="p-4 flex gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                  >
-                    <div class="shrink-0 size-9 rounded-lg flex items-center justify-center" :class="item.action?.startsWith('TEACHER_') ? 'bg-amber-100 dark:bg-amber-900/20' : 'bg-slate-100 dark:bg-slate-800'">
-                      <span class="material-symbols-outlined text-lg" :class="item.action?.startsWith('TEACHER_') ? 'text-amber-500' : 'text-slate-500'">{{ item.action?.startsWith('TEACHER_') ? 'admin_panel_settings' : 'settings' }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex justify-between items-start mb-1 gap-2">
-                        <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAuditAction(item.action) }}</p>
-                        <span class="text-[10px] text-slate-500 font-medium shrink-0">{{ formatTimelineTime(item.createdAt) }}</span>
-                      </div>
-                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{{ item.actorUsername ? `Bởi: ${item.actorUsername}` : '' }} {{ item.details ? `· ${item.details}` : '' }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <div class="glass-card rounded-2xl p-6 shadow-lg">
                 <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
                   <span class="material-symbols-outlined text-indigo-500">tune</span>
                   Điều khiển giám thị
                 </h3>
                 <div class="flex flex-col gap-3">
-                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-amber-500/20" type="button" @click="handleSendWarning">
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-amber-500/20" type="button" @click="openWarningModal">
                     <span class="material-symbols-outlined">warning</span> {{ isWarningSending ? 'Đang gửi...' : 'Gửi cảnh báo' }}
                   </button>
-                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-red-500/20" type="button" @click="handleInvalidateAttempt">
+                  <button :disabled="isWarningSending || isInvalidating" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all disabled:opacity-60 shadow-lg shadow-red-500/20" type="button" @click="openInvalidateModal">
                     <span class="material-symbols-outlined">block</span> {{ isInvalidating ? 'Đang xử lý...' : 'Đình chỉ bài thi' }}
                   </button>
                 </div>
               </div>
+
             </div>
           </div>
+
+          <!-- Modal gửi cảnh báo -->
+          <div v-if="showWarningModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeWarningModal">
+            <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="size-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">warning</span>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Gửi cảnh báo</h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Sinh viên: {{ studentName }}</p>
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nội dung cảnh báo (tùy chọn)</label>
+                <textarea v-model="warningMessageInput" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all" placeholder="Để trống sẽ dùng mặc định."></textarea>
+              </div>
+              <div class="flex gap-3 justify-end">
+                <button type="button" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800" @click="closeWarningModal">Hủy</button>
+                <button type="button" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold flex items-center gap-2" @click="confirmSendWarning">
+                  <span class="material-symbols-outlined text-lg">send</span>
+                  Gửi cảnh báo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal đình chỉ bài thi -->
+          <div v-if="showInvalidateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeInvalidateModal">
+            <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="size-12 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 text-2xl">block</span>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Xác nhận đình chỉ bài thi</h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Sinh viên: {{ studentName }}</p>
+                </div>
+              </div>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Hành động này không thể hoàn tác. Bạn chắc chắn muốn đình chỉ bài thi?</p>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Lý do đình chỉ (tùy chọn)</label>
+                <textarea v-model="invalidateReasonInput" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all" placeholder="Để trống sẽ dùng mặc định."></textarea>
+              </div>
+              <div class="flex gap-3 justify-end">
+                <button type="button" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800" @click="closeInvalidateModal">Hủy</button>
+                <button type="button" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2" @click="confirmInvalidate">
+                  <span class="material-symbols-outlined text-lg">block</span>
+                  Xác nhận đình chỉ
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div v-if="isLivestreamModalOpen" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="livestream-modal-title" @click.self="closeLivestreamModal">
             <div class="modal-content modal-content-glass w-full max-w-5xl">
               <div class="modal-header bg-slate-50/50 dark:bg-slate-800/30">
@@ -247,7 +268,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { API_BASE_URL, ApiError } from '../../services/apiClient'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
-import { invalidateAttempt, listMonitoringAudit, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
+import { invalidateAttempt, listMonitoringTimeline, sendTeacherWarning } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
@@ -259,10 +280,13 @@ const isSyncing = ref(false)
 const attemptDetail = ref(null)
 const attemptReport = ref(null)
 const timeline = ref([])
-const auditLogs = ref([])
 const lastUpdatedAt = ref(null)
 const isWarningSending = ref(false)
 const isInvalidating = ref(false)
+const showWarningModal = ref(false)
+const showInvalidateModal = ref(false)
+const warningMessageInput = ref('')
+const invalidateReasonInput = ref('')
 const isLivestreamModalOpen = ref(false)
 const liveModalLoading = ref(false)
 const liveModalSyncing = ref(false)
@@ -284,9 +308,7 @@ const studentName = computed(() => attemptDetail.value?.student || route.query.s
 const studentId = computed(() => route.query.studentId || (attemptId.value ? `AT-${attemptId.value}` : 'AT-?'))
 const examName = computed(() => attemptDetail.value?.examTitle || route.query.exam || 'Đề thi đã chọn')
 const studentAvatar = computed(
-  () =>
-    route.query.avatar ||
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCS2RhYd0VS4fVVYoA2GgJuZzt6TTNNleFcdImbGSB3IZsBGlQY3W3_8DnpvWiAQ08yeiCuKP9ul1X8fZKIsAa2kb6Fz6jRM8rrBUK30-_8x487epcjiAGOetJYM1jwVrdUReYJacR8oMZG3jkyeYdbaMIJksyOphO4c7DzJeO8jaczGPgMZ5nrqWAw003cc3HOtSP0jxqftO4wuJCLWj7meS0yE7HT-vnt3XHDdKYANhCOuN2bCqpr_GQhbNfL4asVsRK5JTBzwQ'
+  () => route.query.avatar || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2394a3b8"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/%3E%3C/svg%3E'
 )
 
 const answeredCount = computed(() => Number(attemptDetail.value?.answeredCount ?? attemptReport.value?.answeredCount ?? 0))
@@ -391,7 +413,7 @@ const startLiveFallbackPolling = () => {
     if (isLivestreamModalOpen.value && !isLiveSocketConnected.value) {
       loadLiveAnswers()
     }
-  }, 7000)
+  }, 1500)
 }
 
 const disconnectLiveAnswersSocket = () => {
@@ -415,7 +437,7 @@ const connectLiveAnswersSocket = async () => {
   const wsUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`
   const token = await getAuthToken()
   liveStompClient = new Client({
-    reconnectDelay: 3000,
+    reconnectDelay: 1000,
     connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     webSocketFactory: () => new SockJS(wsUrl)
   })
@@ -476,16 +498,6 @@ const formatDuration = (totalSeconds) => {
 
 const remainingTimeLabel = computed(() => formatDuration(attemptDetail.value?.remainingSeconds ?? attemptReport.value?.remainingSeconds ?? 0))
 
-const formatAuditAction = (action) => {
-  const map = {
-    TEACHER_WARNING: 'Cảnh báo từ giám thị',
-    TEACHER_INVALIDATE: 'Đình chỉ bài thi',
-    SYSTEM_DUPLICATE_IP: 'Hệ thống: Trùng IP',
-    SYSTEM_IP_CHANGE: 'Hệ thống: Thay đổi IP'
-  }
-  return map[String(action || '').toUpperCase()] || action || 'Hành động'
-}
-
 const formatEventType = (eventType) => {
   const normalized = String(eventType || '').toUpperCase()
   switch (normalized) {
@@ -518,21 +530,17 @@ const formatTimelineTime = (raw) => {
 }
 
 const sortedTimelineItems = computed(() => timeline.value
+  .filter((entry) => entry.type === 'MONITORING_EVENT')
   .map((entry, index) => {
-    const isEvent = entry.type === 'MONITORING_EVENT'
-    const isSnapshot = entry.type === 'RISK_SNAPSHOT'
     const atTs = new Date(entry.at || 0).getTime() || 0
-
     return {
       key: `${entry.type || 'entry'}-${entry.at || index}-${index}`,
       atTs,
-      icon: isSnapshot ? 'monitor_heart' : 'warning',
-      iconClass: isSnapshot ? 'text-amber-500' : 'text-red-600',
-      highlightClass: isEvent ? 'bg-red-50 dark:bg-red-900/10' : '',
-      title: isEvent ? formatEventType(entry.eventType) : `Cập nhật risk score: ${entry.riskScore ?? 0}`,
-      description: isEvent
-        ? (entry.details || 'Không có mô tả chi tiết.')
-        : `Suspicious: ${entry.suspicious ? 'Có' : 'Không'}`,
+      icon: 'warning',
+      iconClass: 'text-red-600',
+      highlightClass: 'bg-red-50 dark:bg-red-900/10',
+      title: formatEventType(entry.eventType),
+      description: entry.details || 'Không có mô tả chi tiết.',
       timeLabel: formatTimelineTime(entry.at)
     }
   })
@@ -563,16 +571,14 @@ const loadMonitoringDetail = async () => {
 
   isSyncing.value = true
   try {
-    const [detail, report, timelineData, auditResult] = await Promise.all([
+    const [detail, report, timelineData] = await Promise.all([
       getAttemptDetail(attemptId.value),
       getAttemptReport(attemptId.value),
-      listMonitoringTimeline(attemptId.value),
-      listMonitoringAudit(attemptId.value).catch(() => [])
+      listMonitoringTimeline(attemptId.value)
     ])
     attemptDetail.value = detail
     attemptReport.value = report
     timeline.value = Array.isArray(timelineData) ? timelineData : []
-    auditLogs.value = Array.isArray(auditResult) ? auditResult : []
     timelinePage.value = 1
     lastUpdatedAt.value = Date.now()
   } catch (error) {
@@ -582,13 +588,24 @@ const loadMonitoringDetail = async () => {
   }
 }
 
-const handleSendWarning = async () => {
+const openWarningModal = () => {
+  warningMessageInput.value = ''
+  showWarningModal.value = true
+}
+
+const closeWarningModal = () => {
+  showWarningModal.value = false
+  warningMessageInput.value = ''
+}
+
+const confirmSendWarning = async () => {
   if (!attemptId.value) return
 
   isWarningSending.value = true
   try {
-    const res = await sendTeacherWarning(attemptId.value)
-    toast.success(res?.message || 'Đã gửi cảnh báo realtime đến thí sinh.')
+    await sendTeacherWarning(attemptId.value, warningMessageInput.value.trim())
+    toast.success('Đã gửi cảnh báo realtime đến thí sinh.')
+    closeWarningModal()
     await loadMonitoringDetail()
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : 'Không thể gửi cảnh báo lúc này.')
@@ -597,16 +614,24 @@ const handleSendWarning = async () => {
   }
 }
 
-const handleInvalidateAttempt = async () => {
-  if (!attemptId.value) return
+const openInvalidateModal = () => {
+  invalidateReasonInput.value = ''
+  showInvalidateModal.value = true
+}
 
-  const confirmed = window.confirm('Bạn chắc chắn muốn hủy hiệu lực bài thi này?')
-  if (!confirmed) return
+const closeInvalidateModal = () => {
+  showInvalidateModal.value = false
+  invalidateReasonInput.value = ''
+}
+
+const confirmInvalidate = async () => {
+  if (!attemptId.value) return
 
   isInvalidating.value = true
   try {
-    const res = await invalidateAttempt(attemptId.value)
-    toast.success(res?.message || 'Đã đình chỉ bài thi thành công.')
+    await invalidateAttempt(attemptId.value, invalidateReasonInput.value.trim())
+    toast.success('Đã đình chỉ bài thi thành công.')
+    closeInvalidateModal()
     await loadMonitoringDetail()
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : 'Không thể hủy hiệu lực bài thi.')
@@ -641,7 +666,7 @@ onMounted(async () => {
   await loadMonitoringDetail()
   refreshTimer = window.setInterval(() => {
     loadMonitoringDetail()
-  }, 5000)
+  }, 2000)
 })
 
 onUnmounted(() => {

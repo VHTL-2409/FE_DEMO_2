@@ -16,14 +16,14 @@
               Tải tệp câu hỏi
             </h3>
             <label class="block border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
-              <input class="hidden" type="file" accept=".csv,.xlsx" @change="onFileChange" />
+              <input class="hidden" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
               <span class="material-symbols-outlined text-primary text-4xl mb-3">cloud_upload</span>
-              <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nhấp để chọn tệp CSV hoặc XLSX</p>
+              <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nhấp để chọn tệp CSV, XLSX, PDF hoặc Word</p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ FILE_FORMAT_DESC }}</p>
-              <a :href="getTemplateDownloadUrl()" download class="mt-2 text-primary hover:underline text-sm font-semibold flex items-center gap-1">
-                <span class="material-symbols-outlined text-lg">download</span>
-                Tải mẫu CSV
-              </a>
+              <div class="mt-2 flex flex-wrap gap-3">
+                <a :href="getTemplateDownloadUrl('csv')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">Mẫu CSV</a>
+                <a :href="getTemplateDownloadUrl('xlsx')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">Mẫu Excel</a>
+              </div>
               <p v-if="selectedFile" class="text-primary font-semibold mt-3">{{ selectedFile.name }}</p>
             </label>
           </section>
@@ -119,11 +119,11 @@ const onFileChange = (e) => {
 
   if (!file) return
 
-  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '']
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '']
   const ext = (file.name || '').toLowerCase().slice(-5)
-  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx')
+  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx') || ext.endsWith('.pdf') || ext.endsWith('.docx')
   if (!validType) {
-    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV hoặc XLSX.')
+    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV, XLSX, PDF hoặc Word.')
     selectedFile.value = null
     return
   }
@@ -137,7 +137,7 @@ const goBack = () => router.push('/student/dashboard')
 
 const startPractice = async () => {
   if (!selectedFile.value) {
-    toast.error('Vui lòng chọn tệp CSV hoặc XLSX chứa câu hỏi.')
+    toast.error('Vui lòng chọn tệp (CSV, XLSX, PDF hoặc Word) chứa câu hỏi.')
     return
   }
 

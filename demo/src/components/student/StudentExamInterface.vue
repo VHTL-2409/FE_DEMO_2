@@ -4,7 +4,7 @@
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display"
     @contextmenu="handleRightClick"
   >
-    <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false">
+    <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false" :show-menu="false">
       <template #rightActions>
         <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium">
           <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">videocam</span>
@@ -16,7 +16,7 @@
           <span class="material-symbols-outlined text-sm leading-none text-slate-500">wifi</span>
           <span class="text-slate-500">Đã kết nối</span>
         </div>
-        <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div class="flex flex-col items-center leading-none">
             <span class="text-sm font-bold tabular-nums">{{ timerHours }}</span>
             <span class="text-[9px] uppercase tracking-wider opacity-60">Giờ</span>
@@ -38,94 +38,150 @@
       </template>
     </StudentTopHeader>
 
-    <main class="relative flex-1 flex max-w-[1440px] mx-auto w-full p-6 gap-6 overflow-hidden">
+    <main class="relative flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full p-4 sm:p-6 gap-6 overflow-hidden">
       <div v-if="isSuspended" class="absolute inset-0 z-20 bg-black/60 backdrop-blur-[1px] flex items-center justify-center px-4">
         <div class="max-w-lg w-full rounded-2xl border border-rose-300 bg-white p-6 text-center shadow-2xl">
           <h2 class="text-2xl font-bold text-rose-700 mb-2">Bài thi đã bị đình chỉ</h2>
           <p class="text-sm text-slate-600">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
         </div>
       </div>
+
+      <!-- Modal cảnh báo từ giám thị -->
+      <div v-if="showTeacherWarningModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-amber-900/40 backdrop-blur-sm" @click.self="showTeacherWarningModal = false">
+        <div class="max-w-lg w-full rounded-2xl border-2 border-amber-400 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-fade-up ring-4 ring-amber-500/30">
+          <div class="flex items-center gap-4 mb-4">
+            <div class="size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl">warning</span>
+            </div>
+            <div>
+              <h2 class="text-xl font-bold text-amber-800 dark:text-amber-200">Cảnh báo từ giám thị</h2>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
+            </div>
+          </div>
+          <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 mb-6">
+            <p class="text-slate-800 dark:text-slate-200 font-medium">{{ teacherWarningMessage }}</p>
+          </div>
+          <button type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center gap-2" @click="showTeacherWarningModal = false">
+            <span class="material-symbols-outlined">check_circle</span>
+            Tôi đã hiểu
+          </button>
+        </div>
+      </div>
       <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
       <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
 
-      <div class="relative flex-1 flex flex-col gap-6">
+      <div class="relative flex-1 flex flex-col gap-6 min-w-0">
 
-        <div v-if="currentQuestion" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm flex-1 animate-fade-up">
-          <div class="flex justify-between items-center mb-8">
-            <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Câu {{ currentIndex + 1 }} / {{ questions.length }}</span>
+        <div v-if="currentQuestion" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-lg flex-1 animate-fade-up">
+          <div class="flex justify-between items-center mb-6">
+            <span class="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-xl text-sm font-bold">
+              <span class="material-symbols-outlined text-base">quiz</span>
+              Câu {{ currentIndex + 1 }} / {{ questions.length }}
+            </span>
           </div>
-          <div class="prose dark:prose-invert max-w-none">
-            <h2 class="text-2xl font-semibold leading-relaxed mb-8">
+          <div class="prose dark:prose-invert max-w-none mb-8">
+            <h2 class="text-xl sm:text-2xl font-semibold leading-relaxed text-slate-900 dark:text-slate-100">
               {{ currentQuestion.content }}
             </h2>
           </div>
 
-          <div class="space-y-4">
+          <div class="space-y-3">
             <label
               v-for="option in currentQuestion.options"
               :key="option.id"
-              :class="answers[currentQuestion.id] === option.id ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-slate-100 dark:border-slate-800 hover:border-primary/50 bg-slate-50/50 dark:bg-slate-800/30'"
-              class="group relative flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all"
+              :class="answers[currentQuestion.id] === option.id ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/30' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40 bg-slate-50/50 dark:bg-slate-800/30'"
+              class="group relative flex items-center p-4 sm:p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
             >
               <input
                 :checked="answers[currentQuestion.id] === option.id"
                 :disabled="isSuspended"
-                class="w-5 h-5 text-primary focus:ring-primary border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                class="w-5 h-5 text-primary focus:ring-2 focus:ring-primary/50 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 shrink-0"
                 :name="`exam-option-${currentQuestion.id}`"
                 type="radio"
                 @change="onSelectAnswer(currentQuestion.id, option.id)"
               />
-              <span class="ml-4 text-lg font-medium">{{ option.text }}</span>
+              <span class="ml-4 text-base sm:text-lg font-medium text-slate-800 dark:text-slate-200">{{ option.text }}</span>
             </label>
           </div>
         </div>
 
-        <div class="flex items-center justify-between py-2 animate-fade-up-delay">
-          <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0" type="button">
-            <span class="material-symbols-outlined">arrow_back</span>
+        <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 py-4 animate-fade-up-delay">
+          <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center justify-center gap-2 px-5 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent" type="button">
+            <span class="material-symbols-outlined text-xl">arrow_back</span>
             Câu trước
           </button>
-          <div class="flex gap-4">
-            <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold hover:opacity-90 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0" type="button">
-              Câu tiếp theo
-              <span class="material-symbols-outlined">arrow_forward</span>
-            </button>
-          </div>
+          <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/25 hover:shadow-primary/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none" type="button">
+            Câu tiếp theo
+            <span class="material-symbols-outlined text-xl">arrow_forward</span>
+          </button>
         </div>
       </div>
 
-      <aside class="relative w-80 flex flex-col gap-6 animate-fade-up-delay">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div class="flex justify-between items-end mb-3">
-            <h3 class="font-bold text-sm">Tiến độ làm bài</h3>
-            <span class="text-sm font-bold text-primary">{{ progressPercent }}%</span>
-          </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div class="bg-primary h-full rounded-full" :style="{ width: `${progressPercent}%` }"></div>
-          </div>
-          <div class="mt-4 grid grid-cols-2 gap-3">
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <div class="w-2 h-2 rounded-full bg-primary"></div>
-              Đã làm ({{ answeredCount }})
+      <aside class="relative w-full lg:w-80 shrink-0 flex flex-col gap-6 animate-fade-up-delay">
+        <div v-if="shouldCheckDevices && mediaStreamRef" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Camera của bạn</span>
+            <div class="flex items-center gap-1">
+              <button
+                :disabled="isSuspended"
+                :title="cameraReady ? 'Tắt camera' : 'Bật camera'"
+                :class="cameraReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
+                class="p-2 rounded-lg transition-all disabled:opacity-50"
+                type="button"
+                @click="toggleCamera"
+              >
+                <span class="material-symbols-outlined text-lg">{{ cameraReady ? 'videocam' : 'videocam_off' }}</span>
+              </button>
+              <button
+                :disabled="isSuspended"
+                :title="micReady ? 'Tắt micro' : 'Bật micro'"
+                :class="micReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
+                class="p-2 rounded-lg transition-all disabled:opacity-50"
+                type="button"
+                @click="toggleMic"
+              >
+                <span class="material-symbols-outlined text-lg">{{ micReady ? 'mic' : 'mic_off' }}</span>
+              </button>
             </div>
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <div class="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-              Chưa làm ({{ unansweredCount }})
+          </div>
+          <div class="relative aspect-video bg-slate-900">
+            <video ref="cameraPreviewRef" autoplay playsinline muted class="w-full h-full object-cover" :class="{ 'opacity-0': !cameraReady }" />
+            <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center bg-slate-800/90">
+              <span class="material-symbols-outlined text-4xl text-slate-500">videocam_off</span>
             </div>
           </div>
         </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">trending_up</span>
+              Tiến độ làm bài
+            </h3>
+            <span class="text-lg font-bold text-primary tabular-nums">{{ progressPercent }}%</span>
+          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+            <div class="bg-primary h-full rounded-full transition-all duration-500" :style="{ width: `${progressPercent}%` }"></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary"></span> Đã làm: {{ answeredCount }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Chưa làm: {{ unansweredCount }}</span>
+          </div>
+        </div>
 
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex-1 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex-1 overflow-y-auto min-h-0">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-sm">Danh sách câu hỏi</h3>
-            <span class="text-xs text-slate-500 font-medium">Tổng {{ questions.length }} câu</span>
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">list</span>
+              Danh sách câu hỏi
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">{{ questions.length }} câu</span>
           </div>
           <div class="grid grid-cols-5 gap-2">
             <button
               v-for="(question, idx) in questions"
               :key="question.id"
               :class="questionButtonClass(idx)"
-              class="aspect-square flex items-center justify-center rounded-lg text-xs font-bold relative"
+              class="aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105"
               type="button"
               @click="selectQuestion(idx)"
             >
@@ -136,9 +192,9 @@
       </aside>
     </main>
 
-    <footer class="p-4 border-t border-slate-200 dark:border-slate-800 text-center">
-      <p class="text-xs text-slate-400 font-medium">
-        Cần hỗ trợ? Liên hệ bộ phận thi tại <span class="text-primary cursor-pointer hover:underline">support@edu-portal.com</span>
+    <footer class="py-3 px-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 text-center">
+      <p class="text-xs text-slate-500 dark:text-slate-400">
+        Cần hỗ trợ? Liên hệ <span class="text-primary font-medium cursor-pointer hover:underline">support@edu-portal.com</span>
       </p>
     </footer>
 
@@ -181,10 +237,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { API_BASE_URL } from '../../services/apiClient'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
-import { sendMonitoringEvent } from '../../services/monitoringService'
+import { sendMonitoringEvent, updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionOptions } from '../../services/questionService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
@@ -222,6 +278,8 @@ const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds
 
 const toast = useToast()
 const attemptStatus = ref('IN_PROGRESS')
+const teacherWarningMessage = ref('')
+const showTeacherWarningModal = ref(false)
 const isSuspended = ref(false)
 const suspensionMessage = ref('')
 const lastViolationAtByType = ref({})
@@ -231,12 +289,16 @@ const cameraReady = ref(false)
 const micReady = ref(false)
 const deviceError = ref('')
 const isCheckingDevices = ref(false)
+const mediaStreamRef = ref(null)
+const cameraPreviewRef = ref(null)
+let deviceStatusInterval = null
 let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
 let stompClient = null
 let idleTimer = null
 let devtoolsCheckTimer = null
+let blockBackHandler = null
 
 const VIOLATION_COOLDOWN_MS = 7000
 const LONG_VIOLATION_COOLDOWN_MS = 60000
@@ -264,6 +326,33 @@ const clearBlurGraceTimer = () => {
   }
 }
 
+const syncDeviceStatusToBackend = async () => {
+  if (!attemptId.value || isPracticeExam.value || isSuspended.value) return
+  try {
+    await updateDeviceStatus(attemptId.value, cameraReady.value, micReady.value)
+  } catch {
+    // ignore
+  }
+}
+
+const toggleCamera = () => {
+  const stream = mediaStreamRef.value
+  const videoTrack = stream?.getVideoTracks()[0]
+  if (!videoTrack) return
+  videoTrack.enabled = !videoTrack.enabled
+  cameraReady.value = videoTrack.enabled
+  void syncDeviceStatusToBackend()
+}
+
+const toggleMic = () => {
+  const stream = mediaStreamRef.value
+  const audioTrack = stream?.getAudioTracks()[0]
+  if (!audioTrack) return
+  audioTrack.enabled = !audioTrack.enabled
+  micReady.value = audioTrack.enabled
+  void syncDeviceStatusToBackend()
+}
+
 const checkDevices = async () => {
   if (!shouldCheckDevices.value) {
     cameraReady.value = true
@@ -284,9 +373,20 @@ const checkDevices = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     const videoTrack = stream.getVideoTracks()[0]
     const audioTrack = stream.getAudioTracks()[0]
-    cameraReady.value = Boolean(videoTrack)
-    micReady.value = Boolean(audioTrack)
-    stream.getTracks().forEach((track) => track.stop())
+    cameraReady.value = Boolean(videoTrack?.enabled)
+    micReady.value = Boolean(audioTrack?.enabled)
+    mediaStreamRef.value = stream
+
+    const onTrackEnded = () => {
+      cameraReady.value = Boolean(stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live'))
+      micReady.value = Boolean(stream.getAudioTracks().some((t) => t.enabled && t.readyState === 'live'))
+      syncDeviceStatusToBackend()
+    }
+    videoTrack?.addEventListener('ended', onTrackEnded)
+    audioTrack?.addEventListener('ended', onTrackEnded)
+
+    await syncDeviceStatusToBackend()
+    deviceStatusInterval = setInterval(syncDeviceStatusToBackend, 15000)
   } catch (error) {
     cameraReady.value = false
     micReady.value = false
@@ -297,6 +397,30 @@ const checkDevices = async () => {
     isCheckingDevices.value = false
   }
 }
+
+const stopMediaStream = () => {
+  if (deviceStatusInterval) {
+    clearInterval(deviceStatusInterval)
+    deviceStatusInterval = null
+  }
+  const stream = mediaStreamRef.value
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop())
+    mediaStreamRef.value = null
+  }
+  if (cameraPreviewRef.value) {
+    cameraPreviewRef.value.srcObject = null
+  }
+}
+
+watch(mediaStreamRef, (stream) => {
+  if (!stream) return
+  nextTick(() => {
+    if (cameraPreviewRef.value) {
+      cameraPreviewRef.value.srcObject = stream
+    }
+  })
+})
 
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
   if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
@@ -338,6 +462,7 @@ const applyAttemptStatus = (status, message = '') => {
       suspensionMessage.value = message
     }
     showSubmitModal.value = false
+    stopMediaStream()
     return
   }
 
@@ -346,6 +471,21 @@ const applyAttemptStatus = (status, message = '') => {
 
 const enforceDeviceAccess = async () => {
   if (isPracticeExam.value) return
+  if (mediaStreamRef.value) {
+    const videoTrack = mediaStreamRef.value.getVideoTracks()[0]
+    const audioTrack = mediaStreamRef.value.getAudioTracks()[0]
+    const videoEnded = !videoTrack || videoTrack.readyState === 'ended'
+    const audioEnded = !audioTrack || audioTrack.readyState === 'ended'
+    if (videoEnded || audioEnded) {
+      isSuspended.value = true
+      suspensionMessage.value = 'Camera hoặc micro đã bị thu hồi. Vui lòng tải lại trang và cấp quyền lại.'
+      return
+    }
+    cameraReady.value = Boolean(videoTrack?.enabled)
+    micReady.value = Boolean(audioTrack?.enabled)
+    await syncDeviceStatusToBackend()
+    return
+  }
   await checkDevices()
   if (!devicesReady.value) {
     isSuspended.value = true
@@ -358,6 +498,11 @@ const syncAttemptStatus = async () => {
   try {
     const detail = await getAttemptDetail(attemptId.value)
     applyAttemptStatus(detail?.status || 'IN_PROGRESS')
+    // Đồng bộ thời gian còn lại từ server (tránh lệch do client)
+    if (typeof detail?.remainingSeconds === 'number' && detail.remainingSeconds >= 0) {
+      const diff = Math.abs(remainingSeconds.value - detail.remainingSeconds)
+      if (diff > 5) remainingSeconds.value = Math.max(0, detail.remainingSeconds)
+    }
   } catch {
     // ignore status sync errors
   }
@@ -391,7 +536,9 @@ const connectProctorRealtime = async () => {
         const payload = JSON.parse(frame.body || '{}')
         const type = String(payload.type || '').toUpperCase()
         if (type === 'TEACHER_WARNING') {
-          toast.warning(payload.message || 'Giám thị vừa gửi cảnh báo.')
+          teacherWarningMessage.value = payload.message || 'Bạn đang bị cảnh báo bởi giám thị. Vui lòng tuân thủ quy định phòng thi.'
+          showTeacherWarningModal.value = true
+          toast.warning(teacherWarningMessage.value)
         }
         if (type === 'ATTEMPT_STOPPED') {
           applyAttemptStatus(payload.status || 'STOPPED', payload.message || 'Bài thi đã bị đình chỉ.')
@@ -400,10 +547,25 @@ const connectProctorRealtime = async () => {
         // ignore malformed realtime payload
       }
     })
-
   }
 
   stompClient.activate()
+}
+
+const setupBlockBackButton = () => {
+  history.pushState({ examInProgress: true }, '', window.location.href)
+  blockBackHandler = () => {
+    history.pushState({ examInProgress: true }, '', window.location.href)
+    toast.warning('Không thể quay lại khi đang làm bài thi. Vui lòng nộp bài để thoát.')
+  }
+  window.addEventListener('popstate', blockBackHandler)
+}
+
+const teardownBlockBackButton = () => {
+  if (blockBackHandler) {
+    window.removeEventListener('popstate', blockBackHandler)
+    blockBackHandler = null
+  }
 }
 
 const handleVisibilityChange = () => {
@@ -590,6 +752,35 @@ const closeSubmitModal = () => {
   showSubmitModal.value = false
 }
 
+const autoSubmitOnTimeUp = async () => {
+  if (!attemptId.value || isSuspended.value || isSubmitting.value) return
+  isSubmitting.value = true
+  toast.info('Hết giờ làm bài. Đang tự động nộp bài...')
+  try {
+    const payload = Object.entries(answers.value)
+      .filter(([, selectedAnswer]) => Boolean(selectedAnswer))
+      .map(([questionId, selectedAnswer]) => ({
+        questionId: Number(questionId),
+        selectedAnswer
+      }))
+    const result = await submitAttempt(attemptId.value, payload)
+    showSubmitModal.value = false
+    router.push({
+      path: '/student/submission-confirmation',
+      query: {
+        exam: examTitle.value,
+        attemptId: attemptId.value,
+        score: Math.round(Number(result?.score || 0)),
+        submittedAt: result?.submittedAt || ''
+      }
+    })
+  } catch (error) {
+    toast.error('Không thể tự động nộp bài. Vui lòng thử nộp thủ công.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
 const submitExamAction = async () => {
   if (!attemptId.value || isSuspended.value) return
 
@@ -624,14 +815,14 @@ const questionButtonClass = (index) => {
   if (!question) return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
 
   if (index === currentIndex.value) {
-    return 'border-2 border-primary text-primary shadow-inner'
+    return 'border-2 border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
   }
 
   if (answers.value[question.id]) {
-    return 'bg-primary text-white'
+    return 'bg-primary text-white border-2 border-primary'
   }
 
-  return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600'
 }
 
 onMounted(async () => {
@@ -680,13 +871,32 @@ onMounted(async () => {
 
     applyAttemptStatus(draftData?.status || 'IN_PROGRESS')
 
-    if (remainingSeconds.value <= 0 && route.query.deadlineAt) {
-      const deadlineMs = new Date(String(route.query.deadlineAt)).getTime()
+    // Thời gian làm bài tính từ lúc sinh viên tham gia (startAttempt). Đồng bộ từ backend.
+    const serverRemaining = draftData?.remainingSeconds
+    const serverDeadline = draftData?.deadlineAt || route.query.deadlineAt
+    if (typeof serverRemaining === 'number' && serverRemaining >= 0) {
+      remainingSeconds.value = Math.max(0, serverRemaining)
+    } else if (serverDeadline) {
+      const deadlineMs = new Date(String(serverDeadline)).getTime()
       remainingSeconds.value = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000))
     }
 
+    if (remainingSeconds.value <= 0 && !isPracticeExam.value) {
+      void autoSubmitOnTimeUp()
+      return
+    }
+
     timerId = window.setInterval(() => {
-      if (remainingSeconds.value > 0) remainingSeconds.value -= 1
+      if (remainingSeconds.value > 0) {
+        remainingSeconds.value -= 1
+        if (remainingSeconds.value === 0) {
+          if (timerId) {
+            clearInterval(timerId)
+            timerId = null
+          }
+          void autoSubmitOnTimeUp()
+        }
+      }
     }, 1000)
 
     await enforceDeviceAccess()
@@ -701,6 +911,8 @@ onMounted(async () => {
     }
 
     isSuspended.value = false
+
+    setupBlockBackButton()
 
     if (!isPracticeExam.value) {
       connectProctorRealtime()
@@ -747,6 +959,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  teardownBlockBackButton()
+  stopMediaStream()
   if (timerId) window.clearInterval(timerId)
   if (attemptStatusTimer) window.clearInterval(attemptStatusTimer)
   if (idleTimer) window.clearTimeout(idleTimer)

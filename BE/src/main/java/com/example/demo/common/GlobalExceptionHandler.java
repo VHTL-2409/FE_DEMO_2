@@ -2,6 +2,8 @@ package com.example.demo.common;
 
 import com.example.demo.api.dto.ApiResponse;
 import jakarta.persistence.PersistenceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<Object>> handleApiException(ApiException ex) {
@@ -55,14 +59,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ DataAccessException.class, PersistenceException.class })
     public ResponseEntity<ApiResponse<Object>> handlePersistence(Exception ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ApiResponse.error("Database operation failed due to related data constraints."));
+        log.error("Database error", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponse.error("Lỗi hệ thống. Vui lòng thử lại sau."));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnknown(Exception ex) {
-        ex.printStackTrace(); // Keep for server logging
+        log.error("Unexpected error", ex);
         return ResponseEntity.internalServerError().body(
-                ApiResponse.error("An unexpected error occurred. Please try again later."));
+                ApiResponse.error("Đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau."));
     }
 }

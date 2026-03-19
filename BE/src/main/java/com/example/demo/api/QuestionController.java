@@ -92,16 +92,21 @@ public class QuestionController {
     }
 
     @GetMapping("/api/questions/template")
-    public ResponseEntity<byte[]> downloadTemplate() throws IOException {
+    public ResponseEntity<byte[]> downloadTemplate(@RequestParam(required = false) String format) throws IOException {
+        boolean wantXlsx = "xlsx".equalsIgnoreCase(format);
+        if (wantXlsx) {
+            var resource = new ClassPathResource("questions-template.xlsx");
+            byte[] content = resource.getInputStream().readAllBytes();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(ContentDisposition.attachment().filename("questions-template.xlsx").build());
+            return ResponseEntity.ok().headers(headers).body(content);
+        }
         var resource = new ClassPathResource("questions-template.csv");
         byte[] content = resource.getInputStream().readAllBytes();
-
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv"));
         headers.setContentDisposition(ContentDisposition.attachment().filename("questions-template.csv").build());
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(content);
+        return ResponseEntity.ok().headers(headers).body(content);
     }
 }

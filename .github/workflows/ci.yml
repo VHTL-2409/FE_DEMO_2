@@ -18,7 +18,7 @@ jobs:
           java-version: "17"
           cache: maven
       - name: Test
-        run: ./mvnw test
+        run: mvn test
 
   frontend:
     runs-on: ubuntu-latest

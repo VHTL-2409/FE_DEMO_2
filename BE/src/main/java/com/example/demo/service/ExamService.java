@@ -1,9 +1,13 @@
 package com.example.demo.service;
 
+import com.example.demo.api.dto.assignment.NewSessionRequest;
 import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
 import com.example.demo.api.dto.exam.PracticeExamRequest;
+import com.example.demo.api.dto.exam.QuestionWrongStatsItem;
 import com.example.demo.common.ApiException;
+import com.example.demo.domain.entity.Assignment;
+import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
 import com.example.demo.domain.entity.RoleName;
@@ -180,6 +184,58 @@ public class ExamService {
     }
 
     @Transactional(readOnly = true)
+    public List<QuestionWrongStatsItem> getQuestionWrongStats(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        List<Answer> answers;
+        if (exam.getStartTime() != null && exam.getEndTime() != null) {
+            answers = answerRepository.findByExamSubmittedAttemptsInSession(
+                    exam, exam.getStartTime(), exam.getEndTime());
+        } else {
+            answers = answerRepository.findByExamSubmittedAttempts(exam);
+        }
+        if (answers.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, java.util.List<Answer>> byQuestion = answers.stream()
+                .collect(java.util.stream.Collectors.groupingBy(a -> a.getQuestion().getId()));
+        List<QuestionWrongStatsItem> items = new java.util.ArrayList<>();
+        for (Map.Entry<Long, java.util.List<Answer>> e : byQuestion.entrySet()) {
+            List<Answer> list = e.getValue();
+            long wrongCount = list.stream().filter(a -> !Boolean.TRUE.equals(a.getCorrect())).count();
+            long correctCount = list.size() - wrongCount;
+            double wrongRate = list.isEmpty() ? 0 : (wrongCount * 100.0 / list.size());
+            String content = list.isEmpty() ? "" : list.get(0).getQuestion().getContent();
+            if (content != null && content.length() > 200) {
+                content = content.substring(0, 197) + "...";
+            }
+            items.add(QuestionWrongStatsItem.builder()
+                    .questionId(e.getKey())
+                    .questionContent(content != null ? content : "")
+                    .totalAnswered(list.size())
+                    .wrongCount((int) wrongCount)
+                    .correctCount((int) correctCount)
+                    .wrongRatePercent(Math.round(wrongRate * 10) / 10.0)
+                    .rank(0)
+                    .build());
+        }
+        items.sort((a, b) -> Integer.compare(b.getWrongCount(), a.getWrongCount()));
+        List<QuestionWrongStatsItem> ranked = new java.util.ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            QuestionWrongStatsItem it = items.get(i);
+            ranked.add(QuestionWrongStatsItem.builder()
+                    .questionId(it.getQuestionId())
+                    .questionContent(it.getQuestionContent())
+                    .totalAnswered(it.getTotalAnswered())
+                    .wrongCount(it.getWrongCount())
+                    .correctCount(it.getCorrectCount())
+                    .wrongRatePercent(it.getWrongRatePercent())
+                    .rank(i + 1)
+                    .build());
+        }
+        return ranked;
+    }
+
+    @Transactional(readOnly = true)
     public ExamResponse resolveJoinableExam(String query, User actor) {
         if (query == null || query.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Query is required");
@@ -208,6 +264,12 @@ public class ExamService {
         validateExamRequest(request);
 
         Exam exam = requireManageableExam(examId, actor);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (exam.getStartTime() != null && !now.isBefore(exam.getStartTime())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Không thể chỉnh sửa đề thi đã bắt đầu. Chỉ cho phép sửa đề thi chưa đến thời gian bắt đầu.");
+        }
         exam.setTitle(request.getTitle());
         if (exam.getCode() == null || exam.getCode().isBlank()) {
             exam.setCode(generateUniqueExamCode());
@@ -283,6 +345,47 @@ public class ExamService {
             exam.setRequireCameraMic(Boolean.TRUE);
         }
         return toResponse(examRepository.save(exam));
+    }
+
+    /**
+     * Tạo đợt thi mới cho đề thi đã có (mở lại đề thi với thời gian khác).
+     * Cập nhật Exam.startTime, endTime và tạo Assignment mới.
+     */
+    @Transactional
+    public ExamResponse createNewSession(Long examId, NewSessionRequest request, User actor) {
+        if (request.getStartTime() == null || request.getEndTime() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Thời gian bắt đầu và kết thúc là bắt buộc.");
+        }
+        if (!request.getStartTime().isBefore(request.getEndTime())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Thời gian kết thúc phải sau thời gian bắt đầu.");
+        }
+
+        Exam exam = requireManageableExam(examId, actor);
+
+        int duration = request.getDurationMinutes() != null && request.getDurationMinutes() > 0
+                ? Math.max(5, Math.min(480, request.getDurationMinutes()))
+                : exam.getDurationMinutes() != null ? exam.getDurationMinutes() : 60;
+
+        Assignment assignment = Assignment.builder()
+                .exam(exam)
+                .createdBy(actor)
+                .title(exam.getTitle() + " (Đợt mới)")
+                .openAt(request.getStartTime())
+                .closeAt(request.getEndTime())
+                .maxAttempts(1)
+                .allowReviewAfterSubmit(true)
+                .isPublished(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        assignmentRepository.save(assignment);
+
+        exam.setStartTime(request.getStartTime());
+        exam.setEndTime(request.getEndTime());
+        exam.setDurationMinutes(duration);
+        exam.setIsActive(true);
+        examRepository.save(exam);
+
+        return toResponse(exam);
     }
 
     @Transactional

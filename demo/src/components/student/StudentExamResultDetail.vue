@@ -161,7 +161,11 @@
 
             <div class="bg-primary/5 rounded-xl p-8 flex flex-col items-center justify-center gap-4 border border-primary/10 mb-8">
               <p class="text-slate-600 dark:text-slate-400 text-center font-medium">Cần trao đổi kết quả này với giảng viên của bạn?</p>
-              <button class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2" type="button">
+              <button
+                type="button"
+                @click="openTeacherContact"
+                class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+              >
                 <span class="material-symbols-outlined text-xl">mail</span>
                 Liên hệ giảng viên
               </button>
@@ -179,12 +183,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useNotifications } from '../../composables/useNotifications'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
+const { openTeacherContact } = useNotifications()
 const isDark = ref(false)
 const detail = ref(null)
 const report = ref(null)

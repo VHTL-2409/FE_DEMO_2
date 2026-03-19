@@ -31,7 +31,11 @@
                 <span class="material-symbols-outlined text-xl">compare_arrows</span>
                 <span>{{ isLoadingSimilarity ? 'Đang phân tích...' : 'Phân tích tương đồng đáp án' }}</span>
               </button>
-              <button class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm" type="button">
+              <button
+                type="button"
+                @click="downloadReport"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
+              >
                 <span class="material-symbols-outlined text-xl">download</span>
                 <span>Tải báo cáo</span>
               </button>
@@ -271,11 +275,19 @@
         </div>
 
         <footer class="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-8 py-5 shrink-0 bg-slate-50 dark:bg-slate-900/80">
-          <button class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors" type="button">
+          <button
+            type="button"
+            @click="printIncidentReport"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
+          >
             <span class="material-symbols-outlined text-lg">print</span>
             In báo cáo
           </button>
-          <button class="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 transition-shadow shadow-sm" type="button">
+          <button
+            type="button"
+            @click="downloadIncidentPdf"
+            class="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 transition-shadow shadow-sm"
+          >
             <span class="material-symbols-outlined text-lg">download</span>
             Tải PDF
           </button>
@@ -290,6 +302,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { getAttemptReport, listExamAttempts } from '../../services/attemptService'
 import { getAnswerSimilarity } from '../../services/examService'
+import { exportToCsv } from '../../utils/reportExport'
 import { RouterLink, useRoute } from 'vue-router'
 import TeacherTopHeader from './TeacherTopHeader.vue'
 
@@ -401,6 +414,32 @@ const summaryCards = computed(() => {
     }
   ]
 })
+
+const downloadReport = () => {
+  const columns = [
+    { key: 'student', label: 'Sinh viên' },
+    { key: 'studentId', label: 'Mã sinh viên' },
+    { key: 'date', label: 'Ngày' },
+    { key: 'time', label: 'Thời gian' },
+    { key: 'violation', label: 'Vi phạm' },
+    { key: 'severity', label: 'Mức độ' },
+    { key: 'warningCount', label: 'Số cảnh báo' }
+  ]
+  const safeTitle = (selectedExamTitle.value || 'bao-cao-gian-lan').replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, '-')
+  exportToCsv(incidents.value, columns, `bao-cao-gian-lan-${safeTitle}.csv`)
+}
+
+const printIncidentReport = () => {
+  if (showIncidentModal.value && selectedIncident.value) {
+    window.print()
+  } else {
+    window.print()
+  }
+}
+
+const downloadIncidentPdf = () => {
+  window.print()
+}
 
 const openIncidentReport = (incident) => {
   selectedIncident.value = incident

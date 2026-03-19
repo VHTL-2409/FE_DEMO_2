@@ -103,8 +103,11 @@ public class SubmissionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
         }
 
-        // Use Helper
+        // Use Helper - khi hết hạn: lưu đáp án hiện tại rồi tự động nộp
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
+            if (request.getAnswers() != null && !request.getAnswers().isEmpty()) {
+                submissionHelper.saveAnswers(attempt, request.getAnswers());
+            }
             autoSubmitFromDraft(attempt, now);
             return toSubmitResponse(attempt);
         }
@@ -132,10 +135,16 @@ public class SubmissionService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // Use Helper
+        // Use Helper - khi hết hạn: lưu đáp án rồi tự động nộp, không throw
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
+            submissionHelper.saveAnswers(attempt, answers);
             autoSubmitFromDraft(attempt, now);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt time is over");
+            return DraftSaveResponse.builder()
+                    .attemptId(attempt.getId())
+                    .savedAt(now)
+                    .answeredCount(answerRepository.findByAttempt(attempt).size())
+                    .remainingSeconds(0L)
+                    .build();
         }
 
         String normalizedIp = normalizeClientIp(clientIp);
@@ -243,7 +252,15 @@ public class SubmissionService {
         return examAttemptRepository.findByStudent(student);
     }
 
+    /**
+     * Danh sách attempts của đợt thi hiện tại (theo exam.startTime, exam.endTime).
+     * Khi tạo đợt thi mới, chỉ lấy attempts trong khoảng thời gian đó, không lấy dữ liệu cũ.
+     */
     public List<ExamAttempt> listByExam(Exam exam) {
+        if (exam.getStartTime() != null && exam.getEndTime() != null) {
+            return examAttemptRepository.findByExamAndStartedAtBetween(
+                    exam, exam.getStartTime(), exam.getEndTime());
+        }
         return examAttemptRepository.findByExam(exam);
     }
 
@@ -269,8 +286,13 @@ public class SubmissionService {
 
         String studentKeyword = (student == null || student.isBlank()) ? "" : student.trim().toLowerCase();
 
+        java.time.LocalDateTime sessionFrom = exam.getStartTime();
+        java.time.LocalDateTime sessionTo = exam.getEndTime();
+
         Page<ExamAttempt> filteredPage = examAttemptRepository.searchByExam(
                 exam,
+                sessionFrom,
+                sessionTo,
                 parsedStatus,
                 suspicious,
                 studentKeyword,
@@ -318,6 +340,8 @@ public class SubmissionService {
                 .submittedAt(attempt.getSubmittedAt())
                 .deadlineAt(submissionHelper.deadlineAt(attempt))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
+                .cameraOn(attempt.getCameraOn())
+                .micOn(attempt.getMicOn())
                 .build();
     }
 

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,12 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
     List<ExamAttempt> findByStudent(User student);
 
     List<ExamAttempt> findByExam(Exam exam);
+
+    @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam = :exam AND ea.startedAt >= :fromInclusive AND ea.startedAt <= :toInclusive ORDER BY ea.startedAt DESC")
+    List<ExamAttempt> findByExamAndStartedAtBetween(
+            @Param("exam") Exam exam,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toInclusive") LocalDateTime toInclusive);
 
     void deleteByExam(Exam exam);
 
@@ -32,18 +39,24 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
               AND ea.id <> :attemptId
               AND ea.student.id <> :studentId
               AND ea.status IN :statuses
+              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
+              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
             """)
     List<ExamAttempt> findDuplicateIpCounterparts(
             @Param("exam") Exam exam,
             @Param("clientIp") String clientIp,
             @Param("attemptId") Long attemptId,
             @Param("studentId") Long studentId,
-            @Param("statuses") List<AttemptStatus> statuses);
+            @Param("statuses") List<AttemptStatus> statuses,
+            @Param("sessionFrom") LocalDateTime sessionFrom,
+            @Param("sessionTo") LocalDateTime sessionTo);
 
     @Query(value = """
             SELECT ea
             FROM ExamAttempt ea LEFT JOIN FETCH ea.student
             WHERE ea.exam = :exam
+              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
+              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
               AND (:student = '' OR LOWER(ea.student.username) LIKE CONCAT('%', :student, '%'))
@@ -53,6 +66,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             SELECT count(ea)
             FROM ExamAttempt ea
             WHERE ea.exam = :exam
+              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
+              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
               AND (:student = '' OR LOWER(ea.student.username) LIKE CONCAT('%', :student, '%'))
@@ -61,10 +76,14 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             """)
     Page<ExamAttempt> searchByExam(
             @Param("exam") Exam exam,
+            @Param("sessionFrom") LocalDateTime sessionFrom,
+            @Param("sessionTo") LocalDateTime sessionTo,
             @Param("status") AttemptStatus status,
             @Param("suspicious") Boolean suspicious,
             @Param("student") String student,
             @Param("riskMin") Integer riskMin,
             @Param("riskMax") Integer riskMax,
             Pageable pageable);
+
+    List<ExamAttempt> findByStatus(AttemptStatus status);
 }

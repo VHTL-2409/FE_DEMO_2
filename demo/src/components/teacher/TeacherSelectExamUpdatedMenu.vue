@@ -17,18 +17,6 @@
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/50">search</span>
             <input v-model="search" class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="Tìm đề thi theo tiêu đề hoặc mã..." type="text" />
           </div>
-          <div class="flex gap-2">
-            <button class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-slate-800 shadow-sm border-none text-slate-700 dark:text-slate-300 hover:bg-primary/5 transition-colors" type="button">
-              <span class="material-symbols-outlined text-sm">filter_alt</span>
-              <span class="font-medium">Khoa</span>
-              <span class="material-symbols-outlined text-sm">expand_more</span>
-            </button>
-            <button class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-slate-800 shadow-sm border-none text-slate-700 dark:text-slate-300 hover:bg-primary/5 transition-colors" type="button">
-              <span class="material-symbols-outlined text-sm">subject</span>
-              <span class="font-medium">Tâm lý học</span>
-              <span class="material-symbols-outlined text-sm">close</span>
-            </button>
-          </div>
         </div>
 
 
@@ -83,18 +71,19 @@
             </div>
             <h4 class="text-slate-500 dark:text-slate-400 font-bold">Lên lịch đề thi mới</h4>
             <p class="text-slate-400 text-sm mt-1">Tạo hoặc khởi chạy bài đánh giá mới</p>
-            <button class="mt-6 px-4 py-2 text-primary font-bold hover:bg-primary/5 rounded-lg border border-primary/20 transition-all" type="button">
+            <button
+              type="button"
+              @click="goToExamBank"
+              class="mt-6 px-4 py-2 text-primary font-bold hover:bg-primary/5 rounded-lg border border-primary/20 transition-all"
+            >
               Xem ngân hàng đề
             </button>
           </div>
         </div>
 
-        <div class="relative mt-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm animate-fade-up-delay">
-          <div class="flex items-center gap-2">
-            <span class="size-3 rounded-full bg-green-500"></span>
-            <span class="text-sm font-medium">{{ monitoringCards.length }} đề thi đang diễn ra</span>
-          </div>
-          <span class="text-sm font-bold px-4">Trang 1 / 1</span>
+        <div class="relative mt-12 flex justify-center items-center gap-2 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm animate-fade-up-delay">
+          <span class="size-3 rounded-full bg-green-500"></span>
+          <span class="text-sm font-medium">{{ monitoringCards.length }} đề thi đang diễn ra</span>
         </div>
       </main>
     </div>
@@ -138,12 +127,13 @@ const monitoringCards = computed(() => {
       examId: exam.id,
       examCode: exam.code || '',
       title: exam.title,
+      durationMinutes: exam.durationMinutes,
       location: exam.description || 'Đề thi trực tuyến',
       sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Kết thúc: ${formatDateTime(exam.endTime)}`,
       status: 'Đang hoạt động',
       statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      students: `${exam.questionCount || 0} câu`,
-      leftLabel: 'Ngân hàng câu hỏi',
+      students: `${exam.questionCount || 0}`,
+      leftLabel: 'Số câu hỏi',
       timeLabel: 'Kết thúc',
       timeIcon: 'timer',
       timeIconClass: 'text-orange-500',
@@ -163,13 +153,19 @@ const filteredExams = computed(() => {
   )
 })
 
+const goToExamBank = () => {
+  router.push('/teacher/exams')
+}
+
 const openLiveSession = (exam) => {
   router.push({
     path: '/teacher/live-monitoring/session',
     query: {
       examId: exam.examId,
       title: exam.title,
-      meta: exam.sessionMeta
+      code: exam.examCode || '',
+      meta: exam.sessionMeta,
+      durationMinutes: exam.durationMinutes || ''
     }
   })
 }

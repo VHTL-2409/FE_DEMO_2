@@ -1,6 +1,7 @@
 package com.example.demo.api;
 
 import com.example.demo.api.dto.monitoring.AuditLogItem;
+import com.example.demo.api.dto.monitoring.DeviceStatusRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
@@ -21,6 +22,16 @@ public class MonitoringController {
     public MonitoringController(MonitoringService monitoringService, CurrentUserService currentUserService) {
         this.monitoringService = monitoringService;
         this.currentUserService = currentUserService;
+    }
+
+    @PatchMapping("/device-status")
+    public void deviceStatus(@PathVariable Long attemptId,
+                            @Valid @RequestBody DeviceStatusRequest request) {
+        monitoringService.updateDeviceStatus(
+                attemptId,
+                request.getCameraOn(),
+                request.getMicOn(),
+                currentUserService.requireCurrentUser());
     }
 
     @PostMapping("/events")

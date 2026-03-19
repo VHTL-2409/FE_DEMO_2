@@ -143,7 +143,7 @@
           © 2024 Bộ công cụ bảo mật ExamPortal. Bảo lưu mọi quyền.
           <br>
           Cần hỗ trợ?
-          <button type="button" class="text-primary hover:underline">Liên hệ hỗ trợ</button>
+          <button type="button" @click="openSupport" class="text-primary hover:underline">Liên hệ hỗ trợ</button>
         </footer>
       </div>
     </div>
@@ -152,6 +152,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useNotifications } from '../../composables/useNotifications'
 import { startAttempt } from '../../services/attemptService'
 import { getExamDetail } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
@@ -160,6 +161,7 @@ import StudentTopHeader from './StudentTopHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { openSupport } = useNotifications()
 const isDark = ref(false)
 const isStarting = ref(false)
 const isSyncing = ref(false)

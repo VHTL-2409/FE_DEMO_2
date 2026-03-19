@@ -1,4 +1,11 @@
-  import { apiRequest, unwrapApiData } from './apiClient'
+import { apiRequest, unwrapApiData } from './apiClient'
+
+export const updateDeviceStatus = async (attemptId, cameraOn, micOn) => {
+  await apiRequest(`/api/attempts/${attemptId}/monitoring/device-status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ cameraOn, micOn })
+  })
+}
 
 export const sendMonitoringEvent = async (attemptId, eventType, details = '') => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events`, {

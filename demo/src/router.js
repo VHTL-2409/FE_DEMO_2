@@ -7,6 +7,10 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/login' },
     { path: '/login', component: () => import('./components/login/LoginRoleSelection.vue'), meta: { guest: true } },
+    { path: '/forgot-password', component: () => import('./components/login/ForgotPassword.vue'), meta: { guest: true } },
+    { path: '/reset-password', component: () => import('./components/login/ResetPassword.vue'), meta: { guest: true } },
+    { path: '/verify-email', component: () => import('./components/login/VerifyEmail.vue'), meta: { guest: true } },
+    { path: '/verify-email-pending', component: () => import('./components/login/VerifyEmailPending.vue'), meta: { guest: true } },
     { path: '/register', component: () => import('./components/login/RegistrationRoleSelection.vue'), meta: { guest: true } },
     { path: '/select-role', component: () => import('./components/login/SelectRole.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/dashboard', component: () => import('./components/teacher/TeacherDashboardTopNav.vue'), meta: { requiresAuth: true } },
@@ -15,6 +19,7 @@ const router = createRouter({
     { path: '/teacher/exams/create', component: () => import('./components/teacher/TeacherCompleteExamCreationSyncedHeader.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/manual', component: () => import('./components/teacher/TeacherManualQuestionEntry.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/schedule', component: () => import('./components/teacher/TeacherExamScheduleCreate.vue'), meta: { requiresAuth: true } },
+    { path: '/teacher/exams/new-session', component: () => import('./components/teacher/TeacherExamNewSession.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/created-success', component: () => import('./components/teacher/TeacherExamCreatedSuccess.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/review', redirect: to => ({ path: '/teacher/exams/review/summary', query: to.query }), meta: { requiresAuth: true } },
     { path: '/teacher/exams/review/summary', component: () => import('./components/teacher/TeacherExamReviewSummary.vue'), meta: { requiresAuth: true } },

@@ -9,9 +9,39 @@
       </div>
       <div class="flex flex-1 justify-end gap-2 sm:gap-3 items-center">
         <slot name="rightActions" />
-        <button v-if="showNotifications" class="flex items-center justify-center rounded-xl size-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all duration-200" type="button">
-          <span class="material-symbols-outlined">notifications</span>
-        </button>
+        <div v-if="showNotifications" class="relative">
+          <button
+            type="button"
+            @click="showNotificationPanel = !showNotificationPanel"
+            class="flex items-center justify-center rounded-xl size-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all duration-200 relative"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span v-if="hasUnread" class="absolute -top-0.5 -right-0.5 size-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+          </button>
+          <div
+            v-if="showNotificationPanel"
+            class="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50"
+          >
+            <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <span class="font-bold text-slate-900 dark:text-white">Thông báo</span>
+              <button v-if="hasUnread" type="button" @click="markAllAsRead" class="text-xs text-primary hover:underline">Đánh dấu đã đọc</button>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+              <div v-if="!notifications.length" class="p-6 text-center text-slate-500 text-sm">Chưa có thông báo.</div>
+              <div
+                v-for="n in notifications"
+                :key="n.id"
+                @click="markAsRead(n.id)"
+                :class="n.read ? 'bg-transparent' : 'bg-primary/5'"
+                class="p-4 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              >
+                <p class="font-semibold text-slate-900 dark:text-white text-sm">{{ n.title }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ n.message }}</p>
+              </div>
+            </div>
+          </div>
+          <div v-if="showNotificationPanel" class="fixed inset-0 z-40" @click="showNotificationPanel = false" aria-hidden="true"></div>
+        </div>
         <button
           v-if="showSignOut"
           type="button"
@@ -52,6 +82,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearAuthSession, fetchMyProfile } from '../../services/authService'
+import { useNotifications } from '../../composables/useNotifications'
+
+const { notifications, hasUnread, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+const showNotificationPanel = ref(false)
 
 defineProps({
   showSignOut: {

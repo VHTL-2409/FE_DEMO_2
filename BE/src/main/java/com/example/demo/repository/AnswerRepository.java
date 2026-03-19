@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
@@ -20,4 +21,25 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     @Modifying
     @Query("delete from Answer a where a.attempt.exam = :exam or a.question.exam = :exam")
     void deleteByExam(@Param("exam") Exam exam);
+
+    @Query("""
+            SELECT a FROM Answer a
+            JOIN FETCH a.question
+            WHERE a.attempt.exam = :exam
+            AND a.attempt.status IN ('SUBMITTED', 'AUTO_SUBMITTED')
+            """)
+    List<Answer> findByExamSubmittedAttempts(@Param("exam") Exam exam);
+
+    @Query("""
+            SELECT a FROM Answer a
+            JOIN FETCH a.question
+            WHERE a.attempt.exam = :exam
+            AND a.attempt.status IN ('SUBMITTED', 'AUTO_SUBMITTED')
+            AND a.attempt.startedAt >= :sessionFrom
+            AND a.attempt.startedAt <= :sessionTo
+            """)
+    List<Answer> findByExamSubmittedAttemptsInSession(
+            @Param("exam") Exam exam,
+            @Param("sessionFrom") LocalDateTime sessionFrom,
+            @Param("sessionTo") LocalDateTime sessionTo);
 }

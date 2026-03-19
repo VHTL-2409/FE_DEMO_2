@@ -49,16 +49,22 @@
           </div>
 
           <label class="relative group border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-12 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
-            <input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" type="file" accept=".csv,.xlsx" @change="onFileChange" />
+            <input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
             <div class="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
               <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
             </div>
             <h4 class="text-lg font-semibold mb-1">Nhấp để tải lên hoặc kéo thả</h4>
             <p class="text-slate-500 dark:text-slate-400 text-sm">{{ FILE_FORMAT_DESC }}</p>
-            <a :href="getTemplateDownloadUrl()" download class="mt-2 text-primary hover:underline text-sm font-semibold flex items-center gap-1">
-              <span class="material-symbols-outlined text-lg">download</span>
-              Tải mẫu CSV
-            </a>
+            <div class="mt-2 flex flex-wrap gap-3">
+              <a :href="getTemplateDownloadUrl('csv')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-lg">download</span>
+                Mẫu CSV
+              </a>
+              <a :href="getTemplateDownloadUrl('xlsx')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-lg">download</span>
+                Mẫu Excel
+              </a>
+            </div>
             <p v-if="fileName" class="text-primary text-sm font-semibold mt-3">{{ fileName }}</p>
             <p v-if="selectedFile" class="text-xs text-slate-500 mt-1">Dung lượng: {{ fileSizeLabel }}</p>
           </label>
@@ -243,11 +249,11 @@ const onFileChange = (event) => {
 
   if (!file) return
 
-  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '']
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '']
   const ext = (file.name || '').toLowerCase().slice(-5)
-  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx')
+  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx') || ext.endsWith('.pdf') || ext.endsWith('.docx')
   if (!validType) {
-    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV hoặc XLSX.')
+    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV, XLSX, PDF hoặc Word.')
     selectedFile.value = null
     fileName.value = ''
     return
@@ -270,7 +276,7 @@ const goNext = async () => {
   }
 
   if (!selectedFile.value) {
-    toast.error('Vui lòng chọn tệp CSV hoặc XLSX trước khi tiếp tục.')
+    toast.error('Vui lòng chọn tệp (CSV, XLSX, PDF hoặc Word) trước khi tiếp tục.')
     return
   }
 

@@ -38,12 +38,15 @@ public class DuplicateIpDetectionService {
             return;
         }
 
+        var exam = attempt.getExam();
         List<ExamAttempt> counterparts = examAttemptRepository.findDuplicateIpCounterparts(
-                attempt.getExam(),
+                exam,
                 normalizedIp,
                 attempt.getId(),
                 attempt.getStudent().getId(),
-                ACTIVE_STATUSES);
+                ACTIVE_STATUSES,
+                exam.getStartTime(),
+                exam.getEndTime());
 
         for (ExamAttempt counterpart : counterparts) {
             String pairSignature = buildPairSignature(attempt, counterpart, normalizedIp);

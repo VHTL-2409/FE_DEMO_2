@@ -30,10 +30,40 @@
             </RouterLink>
           </nav>
         </div>
-        <div class="flex items-center gap-2 sm:gap-3">
-          <button class="p-2.5 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all duration-200" type="button">
-            <span class="material-symbols-outlined text-xl">notifications</span>
-          </button>
+        <div class="flex items-center gap-2 sm:gap-3 relative">
+          <div class="relative">
+            <button
+              type="button"
+              @click="showNotifications = !showNotifications"
+              class="p-2.5 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all duration-200 relative"
+            >
+              <span class="material-symbols-outlined text-xl">notifications</span>
+              <span v-if="hasUnread" class="absolute -top-0.5 -right-0.5 size-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+            </button>
+            <div
+              v-if="showNotifications"
+              class="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50"
+            >
+              <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <span class="font-bold text-slate-900 dark:text-white">Thông báo</span>
+                <button v-if="hasUnread" type="button" @click="markAllAsRead" class="text-xs text-primary hover:underline">Đánh dấu đã đọc</button>
+              </div>
+              <div class="max-h-64 overflow-y-auto">
+                <div v-if="!notifications.length" class="p-6 text-center text-slate-500 text-sm">Chưa có thông báo.</div>
+                <div
+                  v-for="n in notifications"
+                  :key="n.id"
+                  @click="markAsRead(n.id)"
+                  :class="n.read ? 'bg-transparent' : 'bg-primary/5'"
+                  class="p-4 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                >
+                  <p class="font-semibold text-slate-900 dark:text-white text-sm">{{ n.title }}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ n.message }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="showNotifications" class="fixed inset-0 z-40" @click="showNotifications = false" aria-hidden="true"></div>
           <button
             type="button"
             @click="goToLogin"
@@ -57,6 +87,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { clearAuthSession, fetchMyProfile } from '../../services/authService'
+import { useNotifications } from '../../composables/useNotifications'
+
+const { notifications, hasUnread, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+const showNotifications = ref(false)
 
 const props = defineProps({
   activeSection: {

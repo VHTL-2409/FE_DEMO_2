@@ -140,15 +140,32 @@ const onSubmit = async () => {
   }
 
   isSubmitting.value = true
+  errorMessage.value = ''
 
   try {
-    await register({
+    const data = await register({
       username: username.value.trim(),
       email: email.value.trim(),
       password: password.value
     })
 
-    router.push('/select-role')
+    if (data?.verificationPending) {
+      errorMessage.value = ''
+      const token = data?.verificationUrl ? data.verificationUrl.replace(/^.*token=/, '') : ''
+      router.push({
+        path: '/verify-email-pending',
+        query: {
+          email: email.value.trim(),
+          emailSent: data?.emailSent ? 'true' : 'false',
+          token: token,
+          verificationUrl: data?.verificationUrl || ''
+        }
+      })
+    } else if (data?.token) {
+      router.push('/select-role')
+    } else {
+      router.push('/login')
+    }
   } catch (error) {
     if (error?.status === 409) {
       errorMessage.value = error?.payload?.message || 'Tài khoản hoặc email đã tồn tại.'

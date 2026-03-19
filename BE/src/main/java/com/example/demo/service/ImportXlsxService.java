@@ -14,10 +14,17 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.text.Normalizer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -29,6 +36,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ImportXlsxService {
@@ -52,7 +61,13 @@ public class ImportXlsxService {
         if ("csv".equals(extension)) {
             return importQuestionsFromCsv(exam, file);
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Only .csv and .xlsx files are supported");
+        if ("pdf".equals(extension)) {
+            return importQuestionsFromPdf(exam, file);
+        }
+        if ("docx".equals(extension)) {
+            return importQuestionsFromDocx(exam, file);
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF và DOCX");
     }
 
     public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
@@ -69,17 +84,29 @@ public class ImportXlsxService {
                     continue;
                 }
 
-                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question");
-                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona");
-                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb");
-                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc");
-                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond");
-                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer");
-                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points");
-                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty");
+                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question", "cauhoi", "noidung");
+                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona", "dapana");
+                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb", "dapanb");
+                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc", "dapanc");
+                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond", "dapand");
+                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer", "dapandung");
+                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points", "diem");
+                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty", "domkho");
 
-                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
-                        difficulty, rowIndex + 1);
+                if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
+                    try {
+                        ParsedQuestion pq = parseQuestionBlock(content, rowIndex + 1);
+                        if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
+                            addQuestionRow(questions, exam, pq.content, pq.optionA, pq.optionB, pq.optionC, pq.optionD,
+                                    pq.correctAnswer, "1.0", null, rowIndex + 1);
+                        }
+                    } catch (ApiException ignored) {
+                        // skip invalid Azota-style block
+                    }
+                } else {
+                    addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
+                            difficulty, rowIndex + 1);
+                }
             }
 
             analyzeDifficultyWithAi(questions);
@@ -129,6 +156,170 @@ public class ImportXlsxService {
         } catch (RuntimeException ex) {
             throw mapImportRuntimeException(ex, "Invalid csv template format");
         }
+    }
+
+    public int importQuestionsFromPdf(Exam exam, MultipartFile file) {
+        validateFile(file, "pdf");
+        try {
+            String text = extractTextFromPdf(file.getInputStream());
+            return importQuestionsFromText(exam, text);
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file PDF");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Định dạng PDF không hợp lệ hoặc file bị mã hóa");
+        }
+    }
+
+    public int importQuestionsFromDocx(Exam exam, MultipartFile file) {
+        validateFile(file, "docx");
+        try {
+            String text = extractTextFromDocx(file.getInputStream());
+            return importQuestionsFromText(exam, text);
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
+        }
+    }
+
+    private String extractTextFromPdf(InputStream is) throws IOException {
+        try (PDDocument document = Loader.loadPDF(new RandomAccessReadBuffer(is))) {
+            if (document.isEncrypted()) {
+                throw new IOException("PDF bị mã hóa, không thể đọc");
+            }
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setLineSeparator("\n");
+            return stripper.getText(document);
+        }
+    }
+
+    private String extractTextFromDocx(InputStream is) throws IOException {
+        try (XWPFDocument doc = new XWPFDocument(is);
+             XWPFWordExtractor extractor = new XWPFWordExtractor(doc)) {
+            return extractor.getText();
+        }
+    }
+
+    /**
+     * Parse questions from plain text (PDF/Word).
+     * Format: Câu N. hoặc N. hoặc N) + nội dung + A) B) C) D) + Đáp án: X
+     */
+    private int importQuestionsFromText(Exam exam, String rawText) {
+        if (rawText == null || rawText.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File trống hoặc không có nội dung");
+        }
+        String normalized = rawText.replace("\r\n", "\n").replace("\r", "\n");
+        List<Question> questions = new ArrayList<>();
+        List<String> blocks = splitQuestionBlocks(normalized);
+
+        for (int i = 0; i < blocks.size(); i++) {
+            String block = blocks.get(i).trim();
+            if (block.isBlank()) continue;
+
+            ParsedQuestion pq = parseQuestionBlock(block, i + 1);
+            if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
+                addQuestionRow(questions, exam, pq.content, pq.optionA, pq.optionB, pq.optionC, pq.optionD,
+                        pq.correctAnswer, "1.0", null, i + 1);
+            }
+        }
+
+        if (questions.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Không tìm thấy câu hỏi hợp lệ. Định dạng: Câu N. nội dung | A) B) C) D) | Đáp án: A");
+        }
+
+        analyzeDifficultyWithAi(questions);
+        saveImportedQuestions(questions);
+        return questions.size();
+    }
+
+    private List<String> splitQuestionBlocks(String text) {
+        List<String> blocks = new ArrayList<>();
+        Pattern startPattern = Pattern.compile("(?m)^(?:Câu\\s+)?(\\d+)[\\.\\)]\\s");
+        Matcher matcher = startPattern.matcher(text);
+        int lastStart = -1;
+        while (matcher.find()) {
+            if (lastStart >= 0) {
+                blocks.add(text.substring(lastStart, matcher.start()).trim());
+            }
+            lastStart = matcher.start();
+        }
+        if (lastStart >= 0) {
+            blocks.add(text.substring(lastStart).trim());
+        }
+        if (blocks.isEmpty()) {
+            blocks.add(text.trim());
+        }
+        return blocks;
+    }
+
+    private boolean isAzotaStyleBlock(String text) {
+        if (text == null || text.isBlank()) return false;
+        return text.matches("(?s).*(?:Câu|Bài|Question)\\s+\\d+[\\.\\)].*")
+                && (text.contains("A.") || text.contains("A)"))
+                && (text.contains("Đáp án") || text.contains("Answer") || text.contains("correct"));
+    }
+
+    private static class ParsedQuestion {
+        String content;
+        String optionA, optionB, optionC, optionD;
+        String correctAnswer;
+    }
+
+    private ParsedQuestion parseQuestionBlock(String block, int rowNumber) {
+        ParsedQuestion pq = new ParsedQuestion();
+        String[] lines = block.split("\n");
+        StringBuilder contentBuilder = new StringBuilder();
+        String optionA = "", optionB = "", optionC = "", optionD = "";
+        String correctAnswer = null;
+        Pattern questionStart = Pattern.compile("^(?:Câu\\s+)?\\d+[\\.\\)]\\s*(.*)$");
+        Pattern optPattern = Pattern.compile("^([A-Da-d])[\\.\\)]\\s*(.+)$");
+        Pattern answerPattern = Pattern.compile("(?i)(?:đáp\\s*án|answer|correct)\\s*[:=]?\\s*([A-Da-d])");
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isBlank()) continue;
+
+            Matcher qStart = questionStart.matcher(trimmed);
+            Matcher optMatcher = optPattern.matcher(trimmed);
+            Matcher answerMatcher = answerPattern.matcher(trimmed);
+
+            if (optMatcher.matches()) {
+                String letter = optMatcher.group(1).toUpperCase(Locale.ROOT);
+                String text = optMatcher.group(2).trim();
+                switch (letter) {
+                    case "A" -> optionA = text;
+                    case "B" -> optionB = text;
+                    case "C" -> optionC = text;
+                    case "D" -> optionD = text;
+                }
+            } else if (answerMatcher.find()) {
+                correctAnswer = answerMatcher.group(1).toUpperCase(Locale.ROOT);
+            } else if (qStart.matches()) {
+                String rest = qStart.group(1);
+                if (rest != null && !rest.isBlank()) {
+                    if (contentBuilder.length() > 0) contentBuilder.append(" ");
+                    contentBuilder.append(rest.trim());
+                }
+            } else {
+                if (contentBuilder.length() > 0) contentBuilder.append(" ");
+                contentBuilder.append(trimmed);
+            }
+        }
+
+        pq.content = contentBuilder.toString().trim();
+        if (pq.content.isEmpty()) return null;
+
+        pq.optionA = optionA;
+        pq.optionB = optionB;
+        pq.optionC = optionC;
+        pq.optionD = optionD;
+        pq.correctAnswer = correctAnswer;
+
+        if (pq.correctAnswer == null || !List.of("A", "B", "C", "D").contains(pq.correctAnswer)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Thiếu đáp án đúng (Đáp án: A/B/C/D) ở câu " + rowNumber);
+        }
+        return pq;
     }
 
     private void addQuestionRow(List<Question> questions,
@@ -308,12 +499,10 @@ public class ImportXlsxService {
             return "";
         }
         String normalized = originalFilename.toLowerCase(Locale.ROOT).trim();
-        if (normalized.endsWith(".xlsx")) {
-            return "xlsx";
-        }
-        if (normalized.endsWith(".csv")) {
-            return "csv";
-        }
+        if (normalized.endsWith(".xlsx")) return "xlsx";
+        if (normalized.endsWith(".csv")) return "csv";
+        if (normalized.endsWith(".pdf")) return "pdf";
+        if (normalized.endsWith(".docx")) return "docx";
         return "";
     }
 
@@ -368,7 +557,11 @@ public class ImportXlsxService {
         if (header == null) {
             return "";
         }
-        return header.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+        String s = Normalizer.normalize(header.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
+        return s;
     }
 
     private String normalizeCorrectAnswer(String correctAnswer) {

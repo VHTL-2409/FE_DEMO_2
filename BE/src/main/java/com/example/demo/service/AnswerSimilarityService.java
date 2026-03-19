@@ -28,11 +28,20 @@ public class AnswerSimilarityService {
 
     /**
      * Tìm các cặp thí sinh có đáp án tương đồng cao (có thể gian lận).
+     * Chỉ xét attempts trong đợt thi hiện tại (exam.startTime - exam.endTime).
      */
     public List<SimilarityPair> findSuspiciousPairs(Exam exam) {
-        List<ExamAttempt> submitted = examAttemptRepository.findByExam(exam).stream()
-                .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED || a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
-                .toList();
+        List<ExamAttempt> submitted;
+        if (exam.getStartTime() != null && exam.getEndTime() != null) {
+            submitted = examAttemptRepository.findByExamAndStartedAtBetween(
+                    exam, exam.getStartTime(), exam.getEndTime()).stream()
+                    .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED || a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
+                    .toList();
+        } else {
+            submitted = examAttemptRepository.findByExam(exam).stream()
+                    .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED || a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
+                    .toList();
+        }
 
         if (submitted.size() < 2) {
             return List.of();

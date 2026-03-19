@@ -23,4 +23,6 @@ public class AttemptSummaryResponse {
     private LocalDateTime submittedAt;
     private LocalDateTime deadlineAt;
     private Long remainingSeconds;
+    private Boolean cameraOn;
+    private Boolean micOn;
 }

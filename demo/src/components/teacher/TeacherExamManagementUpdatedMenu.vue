@@ -56,9 +56,9 @@
                         <span class="material-symbols-outlined">publish</span>
                         Tải tệp lên
                       </button>
-                      <a :href="getTemplateDownloadUrl()" download class="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary/100 px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors">
+                      <a :href="getTemplateDownloadUrl('xlsx')" download class="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary/100 px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors">
                         <span class="material-symbols-outlined">download</span>
-                        Tải mẫu
+                        Tải mẫu Excel
                       </a>
                     </div>
                   </div>

@@ -121,10 +121,14 @@
             <p class="text-xs text-slate-500 mt-4">Cập nhật gần nhất: {{ lastUpdatedLabel }}</p>
           </div>
 
-          <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button class="flex items-center justify-center gap-3 px-6 py-4 bg-primary text-white rounded-xl font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20" @click="goToMonitoring" type="button">
               <span class="material-symbols-outlined">monitoring</span>
               Đi đến giám sát trực tiếp
+            </button>
+            <button v-if="canEditExam" class="flex items-center justify-center gap-3 px-6 py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 transition-colors" @click="goToEdit" type="button">
+              <span class="material-symbols-outlined">edit</span>
+              Chỉnh sửa đề thi
             </button>
             <button class="flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="goCreateAnother" type="button">
               <span class="material-symbols-outlined">add_circle</span>
@@ -179,6 +183,11 @@ const endAtDate = computed(() => {
 const durationDisplay = computed(() => durationMinutes.value > 0 ? `${durationMinutes.value} phút` : '-')
 const startAtDisplay = computed(() => startAtDate.value ? startAtDate.value.toLocaleString() : '-')
 const endAtDisplay = computed(() => endAtDate.value ? endAtDate.value.toLocaleString() : '-')
+const canEditExam = computed(() => {
+  if (!startAtDate.value) return true
+  return nowMs.value < startAtDate.value.getTime()
+})
+
 const countdownLabel = computed(() => {
   if (!startAtDate.value) return '-'
 
@@ -198,16 +207,29 @@ const lastUpdatedLabel = computed(() => {
   return new Date(lastUpdatedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 })
 
-const joinedStudents = computed(() => attempts.value.map((attempt) => ({
-  id: attempt.id,
-  name: attempt.student || 'Không rõ',
-  status: attempt.status || 'IN_PROGRESS',
-  statusClass: attempt.status === 'SUBMITTED'
-    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  joinedAt: attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : '-',
-  score: attempt.score == null ? '-' : (Number(attempt.score) / 10).toFixed(1)
-})))
+const statusLabelMap = {
+  IN_PROGRESS: 'Đang làm bài',
+  SUBMITTED: 'Đã nộp',
+  AUTO_SUBMITTED: 'Đã nộp',
+  STOPPED: 'Đã dừng'
+}
+
+const joinedStudents = computed(() => attempts.value.map((attempt) => {
+  const statusKey = attempt.status || 'IN_PROGRESS'
+  const isSubmitted = statusKey === 'SUBMITTED' || statusKey === 'AUTO_SUBMITTED'
+  return {
+    id: attempt.id,
+    name: attempt.student || 'Không rõ',
+    status: statusLabelMap[statusKey] || statusKey,
+    statusClass: isSubmitted
+      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+      : statusKey === 'STOPPED'
+        ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    joinedAt: attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : '-',
+    score: attempt.score == null ? '-' : (Number(attempt.score) / 10).toFixed(1)
+  }
+}))
 
 const loadStudents = async ({ silent = false } = {}) => {
   if (!examId.value) return
@@ -239,11 +261,29 @@ const copyJoinCode = async () => {
 }
 
 const goToMonitoring = () => {
+  const meta = `Bắt đầu: ${startAtDisplay.value} • Kết thúc: ${endAtDisplay.value}`
   router.push({
     path: '/teacher/live-monitoring/session',
     query: {
       title: examTitle.value,
-      examId: examId.value
+      examId: examId.value,
+      code: route.query.code || '',
+      meta,
+      durationMinutes: durationMinutes.value || ''
+    }
+  })
+}
+
+const goToEdit = () => {
+  router.push({
+    path: '/teacher/exams/schedule',
+    query: {
+      examId: examId.value,
+      title: examTitle.value,
+      durationMinutes: durationMinutes.value,
+      startAt: route.query.startAt,
+      endAt: route.query.endAt,
+      mode: 'edit'
     }
   })
 }

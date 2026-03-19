@@ -79,9 +79,11 @@ export const register = async ({ username, email, password }) => {
     body: JSON.stringify({ username, email, password })
   })
 
-  const authData = unwrapApiData(response)
-  storeAuthSession(authData)
-  return authData
+  const data = unwrapApiData(response)
+  if (data?.token && !data?.verificationPending) {
+    storeAuthSession(data)
+  }
+  return data
 }
 
 export const assignRole = async (role) => {
@@ -162,6 +164,35 @@ export const changePassword = async ({ currentPassword, newPassword }) => {
   const response = await apiRequest('/api/auth/change-password', {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword })
+  })
+  return unwrapApiData(response)
+}
+
+export const forgotPassword = async ({ email }) => {
+  const response = await apiRequest('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  })
+  return unwrapApiData(response)
+}
+
+export const resetPassword = async ({ token, newPassword }) => {
+  const response = await apiRequest('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword })
+  })
+  return unwrapApiData(response)
+}
+
+export const verifyEmail = async (token) => {
+  const response = await apiRequest(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
+  return unwrapApiData(response)
+}
+
+export const resendVerification = async ({ email }) => {
+  const response = await apiRequest('/api/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email })
   })
   return unwrapApiData(response)
 }
