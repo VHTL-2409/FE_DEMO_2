@@ -17,6 +17,7 @@ services:
       context: ./BE
       dockerfile: Dockerfile
     environment:
+      TZ: Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
@@ -40,8 +41,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8082}
     ports:
-      # Dùng 80 khi không có Nginx host; đổi 8080:80 khi dùng Nginx reverse proxy
-      - "80:80"
+      - "8080:80"
     depends_on:
       - be
     restart: unless-stopped
