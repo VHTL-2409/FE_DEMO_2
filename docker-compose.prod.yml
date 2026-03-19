@@ -1,0 +1,50 @@
+# Production - chạy với: docker compose -f docker-compose.prod.yml up -d
+# Cần file .env.production với các biến: SPRING_DATASOURCE_PASSWORD, SECURITY_JWT_SECRET, ...
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: datn
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  be:
+    build:
+      context: ./BE
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
+      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:-ZGVtby1zZWNyZXQta2V5LWRlbW8tc2VjcmV0LWtleS1kZW1vLXNlY3JldC1rZXk=}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-}
+      APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL:-http://localhost}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80}
+      SPRING_JPA_SHOW_SQL: "false"
+    depends_on:
+      - db
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
+  fe:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8082}
+    ports:
+      # Dùng 80 khi không có Nginx host; đổi 8080:80 khi dùng Nginx reverse proxy
+      - "80:80"
+    depends_on:
+      - be
+    restart: unless-stopped
+
+volumes:
+  pgdata:

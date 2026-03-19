@@ -1,5 +1,8 @@
 /.claude
 /stitch
 .gitnexus
-.md
 docs/
+*.md
+
+# Production env (chứa mật khẩu, secret)
+.env
