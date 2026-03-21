@@ -203,7 +203,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, resendVerification } from '../../services/authService'
+import { login, resendVerification, getDashboardPathForUser } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
@@ -228,16 +228,6 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-const routeByRole = (roles = []) => {
-  const normalizedRoles = roles.map((role) => String(role || '').toUpperCase())
-  if (normalizedRoles.some(role => role === 'ROLE_TEACHER' || role === 'TEACHER')) {
-    router.push('/teacher/dashboard')
-    return
-  }
-
-  router.push('/student/dashboard')
-}
-
 const onSubmit = async () => {
   if (!username.value || !password.value) {
     toast.error('Please enter username and password.')
@@ -259,7 +249,7 @@ const onSubmit = async () => {
       return
     }
 
-    routeByRole(authData?.roles || [])
+    router.push(getDashboardPathForUser({ roles: authData?.roles || [] }))
   } catch (error) {
     if (error?.status === 403 && String(error?.payload?.message || '').includes('EMAIL_NOT_VERIFIED')) {
       emailNotVerified.value = true

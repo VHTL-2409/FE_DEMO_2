@@ -43,6 +43,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         ensureAttemptStatusConstraint();
         ensureExamMonitoringColumns();
+        ensureExamTimezoneColumn();
         ensureExamCodeForExistingExams();
         ensureEmailVerifiedColumn();
         ensureSingleRoleConstraint();
@@ -91,6 +92,7 @@ public class DataInitializer implements CommandLineRunner {
                 .startTime(LocalDateTime.now().minusDays(1))
                 .endTime(LocalDateTime.now().plusDays(7))
                 .durationMinutes(30)
+                .timezone("Asia/Ho_Chi_Minh")
                 .isActive(true)
                 .createdBy(teacher)
                 .build());
@@ -138,6 +140,11 @@ public class DataInitializer implements CommandLineRunner {
     private void ensureEmailVerifiedColumn() {
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE");
         jdbcTemplate.execute("UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL");
+    }
+
+    private void ensureExamTimezoneColumn() {
+        jdbcTemplate.execute("ALTER TABLE exams ADD COLUMN IF NOT EXISTS timezone VARCHAR(64)");
+        jdbcTemplate.execute("UPDATE exams SET timezone = 'Asia/Ho_Chi_Minh' WHERE timezone IS NULL OR timezone = ''");
     }
 
     private void ensureExamCodeForExistingExams() {

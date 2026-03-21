@@ -1,0 +1,131 @@
+/**
+ * Portal (học sinh / giáo viên): mượt, nhất quán, tôn trọng prefers-reduced-motion
+ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Nền ổn định, tránh giật ngang khi có scrollbar */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+/* Chuyển trang (App.vue — chỉ route /student/* và /teacher/*) */
+.portal-page-enter-active,
+.portal-page-leave-active {
+  transition:
+    opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.portal-page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-page-enter-active,
+  .portal-page-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+
+  .portal-page-enter-from,
+  .portal-page-leave-to {
+    transform: none !important;
+  }
+}
+
+/* Vùng nội dung chính — tách lớp paint nhẹ */
+.portal-route-root {
+  position: relative;
+  min-height: 100%;
+  isolation: isolate;
+}
+
+/* Card / nút: ưu tiên transform + shadow thay vì transition-all */
+.portal-card-lift {
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s ease,
+    border-color 0.2s ease;
+  will-change: transform;
+}
+
+.portal-card-lift:hover {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-card-lift {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    will-change: auto;
+  }
+
+  .portal-card-lift:hover {
+    transform: none;
+  }
+}
+
+/* Focus keyboard — dễ thấy hơn */
+.portal-focus:focus-visible {
+  outline: 2px solid rgb(79 70 229 / 0.55);
+  outline-offset: 2px;
+}
+
+/* Skeleton pulse nhẹ (dùng chung) */
+@keyframes portal-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.portal-skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    90deg,
+    rgb(241 245 249) 0%,
+    rgb(226 232 240) 50%,
+    rgb(241 245 249) 100%
+  );
+  background-size: 200% 100%;
+  animation: portal-shimmer 1.2s ease-in-out infinite;
+}
+
+.dark .portal-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 59) 0%,
+    rgb(51 65 85) 50%,
+    rgb(30 41 59) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-skeleton {
+    animation: none;
+    background: rgb(226 232 240);
+  }
+
+  .dark .portal-skeleton {
+    background: rgb(51 65 85);
+  }
+}

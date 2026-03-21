@@ -18,7 +18,7 @@
         <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
           <div class="lg:col-span-2 space-y-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="teacher-card p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-200">
+              <div class="teacher-card portal-card-lift p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">login</span>
                   <h2 class="text-xl font-bold">Thi qua mã</h2>
@@ -27,13 +27,13 @@
                 <button
                   type="button"
                   @click="goToExamJoin"
-                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200"
+                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 active:scale-[0.98] transition-[transform,background-color] duration-200 ease-out portal-focus"
                 >
                   Đi đến thi qua mã
                 </button>
               </div>
 
-              <div class="teacher-card p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-200">
+              <div class="teacher-card portal-card-lift p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">model_training</span>
                   <h2 class="text-xl font-bold">Tự luyện tập</h2>
@@ -42,14 +42,14 @@
                 <button
                   type="button"
                   @click="goToPractice"
-                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all duration-200"
+                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 active:scale-[0.98] shadow-lg shadow-primary/20 transition-[transform,background-color,box-shadow] duration-200 ease-out portal-focus"
                 >
                   Đi đến luyện tập
                 </button>
               </div>
             </div>
 
-            <div class="teacher-card p-6 rounded-2xl shadow-soft">
+            <div class="teacher-card portal-card-lift p-6 rounded-2xl shadow-soft">
               <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">history</span>
@@ -68,7 +68,7 @@
                 <button
                   type="button"
                   @click="goToStudyHistoryTab('exam')"
-                  class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 hover:-translate-y-0.5 transition-all"
+                  class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 portal-card-lift transition-[border-color,transform,box-shadow] duration-200 ease-out portal-focus"
                 >
                   <p class="text-sm text-slate-500">Tab lịch sử</p>
                   <p class="text-base font-bold mt-1">Bài thi</p>
@@ -77,7 +77,7 @@
                 <button
                   type="button"
                   @click="goToStudyHistoryTab('practice')"
-                  class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 hover:-translate-y-0.5 transition-all"
+                  class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 portal-card-lift transition-[border-color,transform,box-shadow] duration-200 ease-out portal-focus"
                 >
                   <p class="text-sm text-slate-500">Tab lịch sử</p>
                   <p class="text-base font-bold mt-1">Luyện tập</p>
@@ -87,7 +87,7 @@
           </div>
 
           <div class="lg:col-span-1">
-            <div class="teacher-card flex flex-col h-full">
+            <div class="teacher-card portal-card-lift flex flex-col h-full">
               <div class="p-6 border-b border-primary/10">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined text-primary text-3xl">insights</span>
@@ -96,25 +96,31 @@
               </div>
 
               <div class="p-0 overflow-y-auto max-h-[520px]">
-                <p v-if="isLoadingAttempts" class="p-4 text-sm text-slate-500">Đang tải lịch sử bài thi...</p>
+                <template v-if="isLoadingAttempts">
+                  <div class="p-4 space-y-3" aria-hidden="true">
+                    <div class="h-16 portal-skeleton" />
+                    <div class="h-16 portal-skeleton" />
+                    <div class="h-16 portal-skeleton" />
+                  </div>
+                </template>
                 <p v-else-if="!historyItems.length" class="p-4 text-sm text-slate-500">Chưa có lượt làm bài nào.</p>
-
-                <div
-                  v-for="item in historyItems"
-                  v-else
-                  :key="item.attemptId"
-                  @click="goToExamResult(item)"
-                  class="p-4 border-b border-primary/5 hover:bg-background-light dark:hover:bg-background-dark transition-colors cursor-pointer"
-                >
-                  <div class="flex justify-between items-start mb-1">
-                    <p class="font-bold text-slate-800 dark:text-slate-200">{{ item.title }}</p>
-                    <span class="text-primary font-bold">{{ item.score }} / 10</span>
+                <template v-else>
+                  <div
+                    v-for="item in historyItems"
+                    :key="item.attemptId"
+                    @click="goToExamResult(item)"
+                    class="p-4 border-b border-primary/5 hover:bg-background-light dark:hover:bg-background-dark transition-colors duration-150 cursor-pointer"
+                  >
+                    <div class="flex justify-between items-start mb-1">
+                      <p class="font-bold text-slate-800 dark:text-slate-200">{{ item.title }}</p>
+                      <span class="text-primary font-bold">{{ item.score }} / 10</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500">
+                      <span>{{ item.date }}</span>
+                      <span>{{ item.grade }}</span>
+                    </div>
                   </div>
-                  <div class="flex justify-between text-xs text-slate-500">
-                    <span>{{ item.date }}</span>
-                    <span>{{ item.grade }}</span>
-                  </div>
-                </div>
+                </template>
               </div>
             </div>
           </div>

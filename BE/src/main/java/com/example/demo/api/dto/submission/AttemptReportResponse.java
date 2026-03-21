@@ -1,10 +1,11 @@
 package com.example.demo.api.dto.submission;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -18,9 +19,12 @@ public class AttemptReportResponse {
     private Double score;
     private Integer riskScore;
     private Boolean suspicious;
-    private LocalDateTime startedAt;
-    private LocalDateTime submittedAt;
-    private LocalDateTime deadlineAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime startedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime submittedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime deadlineAt;
     private Long remainingSeconds;
     private Integer answeredCount;
     private Long correctCount;

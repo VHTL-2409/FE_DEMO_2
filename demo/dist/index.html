@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demo Vue</title>
+    <title>EduExam - Hệ thống thi trực tuyến</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script>
       tailwind.config = {
@@ -11,9 +11,31 @@
         theme: {
           extend: {
             colors: {
-              primary: '#221a7f',
-              'background-light': '#f6f6f8',
-              'background-dark': '#131220'
+              primary: {
+                DEFAULT: '#4f46e5',
+                50: '#eef2ff',
+                100: '#e0e7ff',
+                200: '#c7d2fe',
+                300: '#a5b4fc',
+                400: '#818cf8',
+                500: '#6366f1',
+                600: '#4f46e5',
+                700: '#4338ca',
+                800: '#3730a3',
+                900: '#312e81'
+              },
+              'background-light': '#f8fafc',
+              'background-dark': '#0f172a'
+            },
+            boxShadow: {
+              'soft': '0 2px 15px -3px rgb(0 0 0 / 0.07), 0 10px 20px -2px rgb(0 0 0 / 0.04)',
+              'card': '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
+              'card-hover': '0 10px 40px -10px rgb(79 70 229 / 0.2), 0 4px 6px -2px rgb(0 0 0 / 0.05)',
+              'glow': '0 0 40px -10px rgb(79 70 229 / 0.4)'
+            },
+            borderRadius: {
+              '2xl': '1rem',
+              '3xl': '1.5rem'
             }
           }
         }
@@ -21,10 +43,11 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-BTTxGxuJ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BAhpbVi2.css">
+    <script type="module" crossorigin src="/assets/index-DR2f_UUj.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BHDte-dC.css">
   </head>
-  <body>
+  <body class="antialiased text-slate-900 dark:text-slate-100">
     <div id="app"></div>
+    <script>window.global = window;</script>
   </body>
 </html>

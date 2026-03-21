@@ -86,4 +86,16 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             Pageable pageable);
 
     List<ExamAttempt> findByStatus(AttemptStatus status);
+
+    @Query(value = """
+            SELECT TO_CHAR(started_at, 'YYYY-MM-DD') AS day, COUNT(*) AS cnt
+            FROM exam_attempts
+            WHERE started_at >= :from
+            GROUP BY TO_CHAR(started_at, 'YYYY-MM-DD')
+            ORDER BY MIN(started_at) ASC
+            """, nativeQuery = true)
+    List<Object[]> countAttemptsGroupedByDaySince(@Param("from") LocalDateTime from);
+
+    @Query("SELECT a.exam.id, COUNT(a) FROM ExamAttempt a WHERE a.exam.id IN :ids GROUP BY a.exam.id")
+    List<Object[]> countAttemptsGroupedByExamIds(@Param("ids") List<Long> ids);
 }

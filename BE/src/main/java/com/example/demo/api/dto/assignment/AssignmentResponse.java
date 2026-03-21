@@ -1,10 +1,11 @@
 package com.example.demo.api.dto.assignment;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Builder
@@ -13,11 +14,14 @@ public class AssignmentResponse {
     private Long id;
     private Long examId;
     private String title;
-    private LocalDateTime openAt;
-    private LocalDateTime closeAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime openAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime closeAt;
     private Integer maxAttempts;
     private Boolean allowReviewAfterSubmit;
     private Boolean isPublished;
     private String createdBy;
-    private LocalDateTime createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime createdAt;
 }

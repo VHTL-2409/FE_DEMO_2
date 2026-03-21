@@ -12,6 +12,10 @@ import java.util.List;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
+    @Modifying
+    @Query("DELETE FROM AuditLog a WHERE a.attempt IN :attempts")
+    void deleteByAttemptIn(@Param("attempts") List<ExamAttempt> attempts);
+
     List<AuditLog> findByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
     List<AuditLog> findByAttemptIdOrderByCreatedAtDesc(Long attemptId);

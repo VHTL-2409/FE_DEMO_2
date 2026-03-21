@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getStoredToken, invalidateSession, validateSession } from './services/authService'
+import { getStoredToken, invalidateSession, validateSession, getDashboardPathForUser, isAdminRole } from './services/authService'
 import { toastService } from './services/toastService'
 
 const router = createRouter({
@@ -13,6 +13,31 @@ const router = createRouter({
     { path: '/verify-email-pending', component: () => import('./components/login/VerifyEmailPending.vue'), meta: { guest: true } },
     { path: '/register', component: () => import('./components/login/RegistrationRoleSelection.vue'), meta: { guest: true } },
     { path: '/select-role', component: () => import('./components/login/SelectRole.vue'), meta: { requiresAuth: true } },
+    {
+      path: '/admin',
+      component: () => import('./components/admin/AdminLayout.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
+      children: [
+        { path: '', redirect: '/admin/dashboard' },
+        { path: 'dashboard', component: () => import('./components/admin/AdminSiteDashboard.vue') },
+        {
+          path: 'students',
+          component: () => import('./components/admin/AdminUserManagement.vue'),
+          props: { variant: 'students' }
+        },
+        {
+          path: 'teachers',
+          component: () => import('./components/admin/AdminUserManagement.vue'),
+          props: { variant: 'teachers' }
+        },
+        {
+          path: 'admins',
+          component: () => import('./components/admin/AdminUserManagement.vue'),
+          props: { variant: 'admins' }
+        },
+        { path: 'exams', component: () => import('./components/admin/AdminExamManagement.vue') }
+      ]
+    },
     { path: '/teacher/dashboard', component: () => import('./components/teacher/TeacherDashboardTopNav.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams', component: () => import('./components/teacher/TeacherExamManagementUpdatedMenu.vue'), meta: { requiresAuth: true } },
     { path: '/teacher/exams/list', component: () => import('./components/teacher/TeacherExamListMenu.vue'), meta: { requiresAuth: true } },
@@ -41,15 +66,6 @@ const router = createRouter({
   ]
 })
 
-const getDashboardByRole = (user) => {
-  const roles = user?.roles || []
-  if (!roles.length) return '/select-role'
-  if (roles.some(r => r === 'ROLE_TEACHER' || r === 'TEACHER')) {
-    return '/teacher/dashboard'
-  }
-  return '/student/dashboard'
-}
-
 router.beforeEach(async (to, from, next) => {
   const token = getStoredToken()
 
@@ -59,11 +75,12 @@ router.beforeEach(async (to, from, next) => {
 
     const cachedUser = await validateSession()
     if (cachedUser) {
-      return next(getDashboardByRole(cachedUser))
+      return next(getDashboardPathForUser(cachedUser))
     }
 
     invalidateSession()
-    return next()  }
+    return next()
+  }
 
   // Trang yêu cầu đăng nhập: kiểm tra token
   if (to.meta.requiresAuth) {
@@ -84,7 +101,11 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (cachedUser.roles?.length && to.path === '/select-role') {
-      return next(getDashboardByRole(cachedUser))
+      return next(getDashboardPathForUser(cachedUser))
+    }
+
+    if (to.meta.adminOnly && !cachedUser.roles?.some(isAdminRole)) {
+      return next(getDashboardPathForUser(cachedUser))
     }
 
     return next()

@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.api.dto.assignment.AssignmentRequest;
 import com.example.demo.api.dto.assignment.AssignmentResponse;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.DateTimeUtils;
 import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.User;
@@ -90,17 +91,18 @@ public class AssignmentService {
     }
 
     private AssignmentResponse toResponse(Assignment assignment) {
+        String tz = assignment.getExam() != null ? assignment.getExam().getTimezone() : null;
         return AssignmentResponse.builder()
             .id(assignment.getId())
             .examId(assignment.getExam().getId())
             .title(assignment.getTitle())
-            .openAt(assignment.getOpenAt())
-            .closeAt(assignment.getCloseAt())
+            .openAt(DateTimeUtils.toOffset(assignment.getOpenAt(), tz))
+            .closeAt(DateTimeUtils.toOffset(assignment.getCloseAt(), tz))
             .maxAttempts(assignment.getMaxAttempts())
             .allowReviewAfterSubmit(assignment.getAllowReviewAfterSubmit())
             .isPublished(assignment.getIsPublished())
             .createdBy(assignment.getCreatedBy() == null ? null : assignment.getCreatedBy().getUsername())
-            .createdAt(assignment.getCreatedAt())
+            .createdAt(DateTimeUtils.toOffset(assignment.getCreatedAt(), tz))
             .build();
     }
 }

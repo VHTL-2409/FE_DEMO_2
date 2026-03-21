@@ -13,6 +13,7 @@ import com.example.demo.api.dto.submission.StartAttemptResponse;
 import com.example.demo.api.dto.submission.SubmitAttemptRequest;
 import com.example.demo.api.dto.submission.SubmitAttemptResponse;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.DateTimeUtils;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
@@ -54,8 +55,8 @@ public class SubmissionService {
 
     @Transactional
     public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
-        LocalDateTime now = LocalDateTime.now();
-        examService.validateExamAvailability(exam, now);
+        LocalDateTime nowInExamZone = LocalDateTime.now(DateTimeUtils.toZoneId(exam.getTimezone()));
+        examService.validateExamAvailability(exam, nowInExamZone);
 
         ExamAttempt existing = examAttemptRepository
                 .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.IN_PROGRESS)
@@ -141,7 +142,7 @@ public class SubmissionService {
             autoSubmitFromDraft(attempt, now);
             return DraftSaveResponse.builder()
                     .attemptId(attempt.getId())
-                    .savedAt(now)
+                    .savedAt(DateTimeUtils.toOffset(now, attempt.getExam().getTimezone()))
                     .answeredCount(answerRepository.findByAttempt(attempt).size())
                     .remainingSeconds(0L)
                     .build();
@@ -160,7 +161,7 @@ public class SubmissionService {
 
         return DraftSaveResponse.builder()
                 .attemptId(attempt.getId())
-                .savedAt(now)
+                .savedAt(DateTimeUtils.toOffset(now, attempt.getExam().getTimezone()))
                 .answeredCount(answeredCount)
                 .remainingSeconds(remainingSeconds)
                 .build();
@@ -180,7 +181,7 @@ public class SubmissionService {
         return DraftAnswersResponse.builder()
                 .attemptId(attempt.getId())
                 .status(attempt.getStatus().name())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), attempt.getExam().getTimezone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .answers(answers)
                 .build();
@@ -193,6 +194,7 @@ public class SubmissionService {
         int answeredCount = answerRepository.findByAttempt(attempt).size();
         int totalQuestions = questionRepository.findByExam(attempt.getExam()).size();
 
+        String tz = attempt.getExam().getTimezone();
         return AttemptDetailResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -201,9 +203,9 @@ public class SubmissionService {
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(attempt.getStartedAt())
-                .submittedAt(attempt.getSubmittedAt())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .examTitle(attempt.getExam().getTitle())
                 .answeredCount(answeredCount)
@@ -230,6 +232,7 @@ public class SubmissionService {
                         .build())
                 .toList();
 
+        String tz = attempt.getExam().getTimezone();
         return AttemptReportResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -238,9 +241,9 @@ public class SubmissionService {
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(attempt.getStartedAt())
-                .submittedAt(attempt.getSubmittedAt())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .answeredCount(answers.size())
                 .correctCount(correctCount)
@@ -326,6 +329,7 @@ public class SubmissionService {
 
     public AttemptSummaryResponse toSummary(ExamAttempt attempt) {
         boolean isPractice = attempt.getExam().getCreatedBy().getId().equals(attempt.getStudent().getId());
+        String tz = attempt.getExam().getTimezone();
         return AttemptSummaryResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -336,9 +340,9 @@ public class SubmissionService {
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(attempt.getStartedAt())
-                .submittedAt(attempt.getSubmittedAt())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .cameraOn(attempt.getCameraOn())
                 .micOn(attempt.getMicOn())
@@ -378,24 +382,26 @@ public class SubmissionService {
     }
 
     private StartAttemptResponse toStartResponse(ExamAttempt attempt) {
+        String tz = attempt.getExam().getTimezone();
         return StartAttemptResponse.builder()
                 .attemptId(attempt.getId())
                 .examId(attempt.getExam().getId())
-                .startedAt(attempt.getStartedAt())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .status(attempt.getStatus().name())
                 .build();
     }
 
     private SubmitAttemptResponse toSubmitResponse(ExamAttempt attempt) {
+        String tz = attempt.getExam().getTimezone();
         return SubmitAttemptResponse.builder()
                 .attemptId(attempt.getId())
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .submittedAt(attempt.getSubmittedAt())
-                .deadlineAt(submissionHelper.deadlineAt(attempt))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .status(attempt.getStatus().name())
                 .build();

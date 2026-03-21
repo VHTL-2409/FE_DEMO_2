@@ -32,7 +32,8 @@ public class User {
     @Builder.Default
     private boolean emailVerified = true;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    /** LAZY + JOIN FETCH ở repository khi cần roles — tránh load roles mọi lúc */
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),

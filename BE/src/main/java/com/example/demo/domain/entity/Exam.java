@@ -36,6 +36,9 @@ public class Exam {
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes;
 
+    @Column(name = "timezone", length = 64)
+    private String timezone;
+
     @Column(name = "is_active")
     private Boolean isActive;
 

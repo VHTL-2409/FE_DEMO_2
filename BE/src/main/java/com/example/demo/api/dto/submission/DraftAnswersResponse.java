@@ -1,10 +1,11 @@
 package com.example.demo.api.dto.submission;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -13,7 +14,8 @@ import java.util.List;
 public class DraftAnswersResponse {
     private Long attemptId;
     private String status;
-    private LocalDateTime deadlineAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    private OffsetDateTime deadlineAt;
     private Long remainingSeconds;
     private List<DraftAnswerItem> answers;
 }

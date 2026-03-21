@@ -1,5 +1,14 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
+/** Múi giờ của máy giáo viên tạo đề thi (từ trình duyệt) */
+export const getBrowserTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
+  } catch {
+    return 'Asia/Ho_Chi_Minh'
+  }
+}
+
 const toLocalDateTimeOrNull = (value) => {
   if (!value) return null
   const date = new Date(value)
@@ -35,6 +44,7 @@ export const createExam = async ({
   durationMinutes = 60,
   startTime = null,
   endTime = null,
+  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -58,6 +68,7 @@ export const createExam = async ({
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
+      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -84,6 +95,7 @@ export const updateExam = async (examId, {
   durationMinutes,
   startTime = null,
   endTime = null,
+  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -107,6 +119,7 @@ export const updateExam = async (examId, {
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
+      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -160,13 +173,14 @@ export const deleteExam = async (examId) => {
   })
 }
 
-export const createNewSession = async (examId, { startTime, endTime, durationMinutes }) => {
+export const createNewSession = async (examId, { startTime, endTime, durationMinutes, timezone = null }) => {
   const payload = await apiRequest(`/api/exams/${examId}/sessions`, {
     method: 'POST',
     body: JSON.stringify({
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      durationMinutes: durationMinutes || null
+      durationMinutes: durationMinutes || null,
+      timezone: timezone || getBrowserTimezone()
     })
   })
   return unwrapApiData(payload)

@@ -10,6 +10,37 @@ const normalizeAuthUser = (authData) => ({
   roles: Array.isArray(authData?.roles) ? authData.roles : []
 })
 
+/** Chuẩn hóa tên role từ API (ADMIN, ROLE_ADMIN, ...) */
+export const normalizeRole = (role) => String(role || '').trim().toUpperCase()
+
+export const isAdminRole = (role) => {
+  const r = normalizeRole(role)
+  return r === 'ROLE_ADMIN' || r === 'ADMIN'
+}
+
+export const isTeacherRole = (role) => {
+  const r = normalizeRole(role)
+  return r === 'ROLE_TEACHER' || r === 'TEACHER'
+}
+
+export const isStudentRole = (role) => {
+  const r = normalizeRole(role)
+  return r === 'ROLE_STUDENT' || r === 'STUDENT'
+}
+
+/**
+ * Sau đăng nhập / khi cần redirect theo vai trò.
+ * Admin → /admin/dashboard, Giáo viên → /teacher/dashboard, còn lại → /student/dashboard.
+ * Không có role → /select-role.
+ */
+export const getDashboardPathForUser = (user) => {
+  const roles = user?.roles || []
+  if (!roles.length) return '/select-role'
+  if (roles.some(isAdminRole)) return '/admin/dashboard'
+  if (roles.some(isTeacherRole)) return '/teacher/dashboard'
+  return '/student/dashboard'
+}
+
 export const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY)
 
 export const getStoredUser = () => {

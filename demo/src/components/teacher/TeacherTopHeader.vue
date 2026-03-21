@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-50 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+  <header class="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm supports-[backdrop-filter]:bg-white/75 supports-[backdrop-filter]:dark:bg-slate-900/80">
     <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center gap-6 lg:gap-10">
@@ -106,7 +106,7 @@ const displayName = computed(() => profile.value?.username || 'Giáo viên')
 const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const navClass = (section) => {
   if (props.activeSection === section) {
-    return 'text-primary bg-primary/10'
+    return 'text-primary bg-primary/10 ring-1 ring-primary/20 shadow-sm'
   }
   return 'text-slate-600 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800'
 }

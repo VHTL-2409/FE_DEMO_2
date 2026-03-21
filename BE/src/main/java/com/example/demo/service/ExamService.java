@@ -29,6 +29,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.demo.common.DateTimeUtils;
+
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -63,6 +65,8 @@ public class ExamService {
                 .description(request.getDescription())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .timezone(request.getTimezone() != null && !request.getTimezone().isBlank()
+                        ? request.getTimezone() : "Asia/Ho_Chi_Minh")
                 .durationMinutes(request.getDurationMinutes())
                 .isActive(request.getIsActive() == null ? Boolean.TRUE : request.getIsActive())
                 .createdBy(teacher)
@@ -255,7 +259,7 @@ public class ExamService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
 
         Exam accessibleExam = requireAccessibleExam(exam.getId(), actor);
-        validateExamJoinable(accessibleExam, LocalDateTime.now());
+        validateExamJoinable(accessibleExam, LocalDateTime.now(DateTimeUtils.toZoneId(accessibleExam.getTimezone())));
         return toResponse(accessibleExam);
     }
 
@@ -265,8 +269,8 @@ public class ExamService {
 
         Exam exam = requireManageableExam(examId, actor);
 
-        LocalDateTime now = LocalDateTime.now();
-        if (exam.getStartTime() != null && !now.isBefore(exam.getStartTime())) {
+        LocalDateTime nowInExamZone = LocalDateTime.now(DateTimeUtils.toZoneId(exam.getTimezone()));
+        if (exam.getStartTime() != null && !nowInExamZone.isBefore(exam.getStartTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Không thể chỉnh sửa đề thi đã bắt đầu. Chỉ cho phép sửa đề thi chưa đến thời gian bắt đầu.");
         }
@@ -277,6 +281,9 @@ public class ExamService {
         exam.setDescription(request.getDescription());
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
+        if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
+            exam.setTimezone(request.getTimezone());
+        }
         exam.setDurationMinutes(request.getDurationMinutes());
         exam.setIsActive(request.getIsActive() == null ? exam.getIsActive() : request.getIsActive());
         if (request.getMonitorTabSwitch() != null) {
@@ -381,6 +388,9 @@ public class ExamService {
 
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
+        if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
+            exam.setTimezone(request.getTimezone());
+        }
         exam.setDurationMinutes(duration);
         exam.setIsActive(true);
         examRepository.save(exam);
@@ -448,26 +458,26 @@ public class ExamService {
         return exam;
     }
 
-    public void validateExamAvailability(Exam exam, LocalDateTime now) {
+    public void validateExamAvailability(Exam exam, LocalDateTime nowInExamZone) {
         if (Boolean.FALSE.equals(exam.getIsActive())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam is not active");
         }
 
-        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
+        if (exam.getStartTime() != null && nowInExamZone.isBefore(exam.getStartTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has not started yet");
         }
 
-        if (exam.getEndTime() != null && !now.isBefore(exam.getEndTime())) {
+        if (exam.getEndTime() != null && !nowInExamZone.isBefore(exam.getEndTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
         }
     }
 
-    public void validateExamJoinable(Exam exam, LocalDateTime now) {
+    public void validateExamJoinable(Exam exam, LocalDateTime nowInExamZone) {
         if (Boolean.FALSE.equals(exam.getIsActive())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam is not active");
         }
 
-        if (exam.getEndTime() != null && !now.isBefore(exam.getEndTime())) {
+        if (exam.getEndTime() != null && !nowInExamZone.isBefore(exam.getEndTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
         }
     }
@@ -502,8 +512,9 @@ public class ExamService {
                 .code(exam.getCode())
                 .title(exam.getTitle())
                 .description(exam.getDescription())
-                .startTime(exam.getStartTime())
-                .endTime(exam.getEndTime())
+                .startTime(DateTimeUtils.toOffset(exam.getStartTime(), exam.getTimezone()))
+                .endTime(DateTimeUtils.toOffset(exam.getEndTime(), exam.getTimezone()))
+                .timezone(exam.getTimezone() != null ? exam.getTimezone() : "Asia/Ho_Chi_Minh")
                 .durationMinutes(exam.getDurationMinutes())
                 .isActive(exam.getIsActive())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())

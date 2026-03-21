@@ -23,7 +23,7 @@ public class CurrentUserService {
         if (authentication == null || authentication.getName() == null) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
-        return userRepository.findByUsername(authentication.getName())
+        return userRepository.findByUsernameWithRoles(authentication.getName())
             .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-sm">
+  <div class="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-sm supports-[backdrop-filter]:bg-white/80 supports-[backdrop-filter]:dark:bg-slate-900/85">
     <header class="flex items-center justify-between whitespace-nowrap px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
       <div class="flex items-center gap-3">
         <div class="size-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/25">
@@ -68,9 +68,9 @@
         :key="item.key"
         :to="item.path"
         :class="isMenuActive(item.key)
-          ? 'bg-primary/10 text-primary font-semibold'
+          ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm'
           : 'text-slate-600 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800'"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-[color,background-color,box-shadow,transform] duration-200 ease-out portal-focus"
       >
         {{ item.label }}
       </RouterLink>

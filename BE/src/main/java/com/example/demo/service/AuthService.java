@@ -100,7 +100,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
-        User user = userRepository.findByUsername(request.getUsername())
+        User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
         if (!user.isEmailVerified()) {
