@@ -11,5 +11,6 @@ ENV TZ=Asia/Ho_Chi_Minh
 RUN ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8082
-ENTRYPOINT ["java","-Duser.timezone=Asia/Ho_Chi_Minh","-jar","/app/app.jar"]
+# JAVA_TOOL_OPTIONS (từ docker-compose) áp dụng trước khi khởi động JVM
+ENTRYPOINT ["sh","-c","exec java -Duser.timezone=Asia/Ho_Chi_Minh -jar /app/app.jar"]
 

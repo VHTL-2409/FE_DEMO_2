@@ -91,32 +91,6 @@
                 </div>
               </div>
             </div>
-
-            <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fade-up-delay">
-              <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">gavel</span>
-                Quy định phòng thi
-              </h2>
-              <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <li class="flex items-start gap-3">
-                  <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Chuyển tab hoặc cửa sổ sẽ bị tính là vi phạm và có thể bị hủy kết quả.</p>
-                </li>
-                <li class="flex items-start gap-3">
-                  <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Camera và micro phải luôn bật trong suốt thời gian làm bài.</p>
-                </li>
-                <li class="flex items-start gap-3">
-                  <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Không được để tài liệu, sách hoặc ghi chú không cho phép trên bàn làm bài.</p>
-                </li>
-                <li class="flex items-start gap-3">
-                  <span class="material-symbols-outlined text-primary text-lg">error</span>
-                  <p class="text-sm text-slate-600 dark:text-slate-300">Hãy đảm bảo bạn ở một mình trong không gian yên tĩnh và đủ ánh sáng.</p>
-                </li>
-              </ul>
-            </div>
-
             <div class="flex flex-col items-center gap-6 py-8 border-t border-primary/10 dark:border-primary/20 animate-fade-up-delay">
               <div class="text-center">
                 <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 uppercase tracking-widest font-bold">Thời gian đến lúc bắt đầu</p>

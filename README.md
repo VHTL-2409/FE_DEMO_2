@@ -1,40 +1,138 @@
-Docker Desktop.
+# FE_DEMO — Hướng dẫn từ đầu
 
-docker compose up --build
-
--http://localhost:8080`
--http://localhost:8082`
--http://localhost:8082/actuator/health`
-
-Run local(without Docker)
-Backend
-PostgreSQL chạy ở `localhost:5432`, DB `datn`
-
-cd BE
-mvn spring-boot:run
-
-
-Frontend
-
-cd demo
-npm ci
-npm run dev
-
-
-Seed accounts
-- `admin / 123456`
-- `teacher1 / 123456`
-- `student1 / 123456`
+Monorepo gồm **backend Spring Boot** (`BE/`), **frontend Vue + Vite** (`demo/`), **PostgreSQL**. Bạn có thể chạy bằng **Docker** (đơn giản nhất) hoặc cài **JDK / Node / Postgres** trên máy.
 
 ---
 
-GitNexus (Code Intelligence cho AI)
-- `npx gitnexus analyze` — index codebase, tạo knowledge graph
-- `npx gitnexus setup` — cấu hình MCP cho Cursor/Claude Code
-- Xem [docs/GITNEXUS_SETUP.md](docs/GITNEXUS_SETUP.md)
+## Bước 0 — Chuẩn bị
 
-Triển khai quy mô lớn (nhiều bài thi × 1000 thí sinh)
-- Xem [docs/SCALING_GUIDE.md](docs/SCALING_GUIDE.md)
-- Chạy với profile `scale`: `mvn spring-boot:run -Dspring.profiles.active=scale`
+| Công cụ | Phiên bản gợi ý | Dùng khi |
+|---------|-----------------|----------|
+| **Git** | bất kỳ | Clone repo |
+| **Docker Desktop** (Windows/macOS) hoặc **Docker Engine** (Linux) | mới nhất | Chạy full stack bằng Compose |
+| **JDK 17** + **Maven** | 17 | Chạy backend không Docker |
+| **Node.js** | 20 LTS | Chạy frontend dev server |
+| **PostgreSQL** | 15+ | Backend cần DB `datn` khi không dùng Docker |
 
+---
 
+## Bước 1 — Lấy mã nguồn
+
+```bash
+git clone <URL-repo-của-bạn>.git
+cd FE_DEMO
+```
+
+---
+
+## Bước 2 — Chạy bằng Docker (khuyến nghị)
+
+### 2.1 Khởi động
+
+Tại thư mục gốc `FE_DEMO`:
+
+```bash
+docker compose up -d --build
+```
+
+Lần đầu sẽ build image (vài phút).
+
+### 2.2 Kiểm tra
+
+| Địa chỉ | Mô tả |
+|---------|--------|
+| http://localhost:8080 | Giao diện web (Nginx phục vụ bản build Vue) |
+| http://localhost:8082/api/health | API health (JSON) |
+
+### 2.3 Dừng
+
+```bash
+docker compose down
+```
+
+Dữ liệu Postgres nằm trong volume `pgdata` — `down` không xóa volume; chỉ xóa DB khi `docker compose down -v` (cẩn thận).
+
+---
+
+## Bước 3 — Chạy local (không Docker)
+
+Dùng khi bạn muốn sửa code với hot-reload (Vite) và debug backend.
+
+### 3.1 PostgreSQL
+
+Tạo database tên **`datn`**, user/password khớp file cấu hình (mặc định trong `BE` thường là user `postgres`, mật khẩu trong `BE/.env` hoặc `application.properties`).
+
+Ví dụ tạo nhanh (Linux/macOS, đã cài `psql`):
+
+```bash
+createdb datn
+# hoặc: psql -U postgres -c "CREATE DATABASE datn;"
+```
+
+### 3.2 Backend
+
+```bash
+cd BE
+# Tùy chọn: copy BE/.env.example thành .env rồi chỉnh Postgres
+mvn spring-boot:run
+```
+
+Backend mặc định: **http://localhost:8082**
+
+### 3.3 Frontend
+
+Terminal mới:
+
+```bash
+cd demo
+npm ci
+npm run dev
+```
+
+Frontend dev: thường **http://localhost:5173** (Vite).  
+Đảm bảo backend cho phép CORS origin dev (đã cấu trong `application.properties` / `WebCorsConfig` cho `localhost:5173`).
+
+---
+
+## Bước 4 — Tài khoản demo (seed tự tạo khi backend chạy)
+
+Sau khi backend kết nối DB thành công, `DataInitializer` tạo sẵn (nếu chưa tồn tại):
+
+| Username | Password | Vai trò |
+|----------|----------|---------|
+| admin | 123456 | ADMIN |
+| teacher1 | 123456 | TEACHER |
+| student1 | 123456 | STUDENT |
+
+Đổi mật khẩu ngay trên môi trường thật (production).
+
+---
+
+## Bước 5 — Deploy lên VPS (production)
+
+Hướng dẫn chi tiết: **[DEPLOY_VPS.md](DEPLOY_VPS.md)**  
+File compose production: **`docker-compose.prod.yml`** + file **`.env`** ở thư mục gốc.
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+---
+
+## Cấu trúc thư mục (rút gọn)
+
+```
+FE_DEMO/
+├── BE/                 # Spring Boot API
+├── demo/               # Vue 3 + Vite
+├── docker-compose.yml       # Dev / local Docker
+├── docker-compose.prod.yml  # Production
+└── DEPLOY_VPS.md            # Deploy VPS từng bước
+```
+
+---
+
+## Tài liệu thêm
+
+- **GitNexus:** [docs/GITNEXUS_SETUP.md](docs/GITNEXUS_SETUP.md)
+- **Scaling:** [docs/SCALING_GUIDE.md](docs/SCALING_GUIDE.md)

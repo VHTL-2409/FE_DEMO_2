@@ -8,6 +8,14 @@ services:
       POSTGRES_DB: datn
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
+    # Giảm RAM mặc định của Postgres trên VPS nhỏ (tùy chỉnh thêm nếu cần)
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c max_connections=40
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -18,6 +26,10 @@ services:
       dockerfile: Dockerfile
     environment:
       TZ: Asia/Ho_Chi_Minh
+      # JVM: heap ~70% của mem_limit container (đổi trong .env: JAVA_TOOL_OPTIONS=...)
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseStringDeduplication"
+      HIKARI_MAX_POOL: ${HIKARI_MAX_POOL:-6}
+      HIKARI_MIN_IDLE: ${HIKARI_MIN_IDLE:-1}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
@@ -32,8 +44,10 @@ services:
       - db
     ports:
       - "8082:8082"
+    # Trần RAM cho container BE — JVM + native; chỉnh 512m–768m nếu VPS rất nhỏ
+    mem_limit: ${BE_MEM_LIMIT:-768m}
     restart: unless-stopped
-
+    
   fe:
     build:
       context: ./demo
