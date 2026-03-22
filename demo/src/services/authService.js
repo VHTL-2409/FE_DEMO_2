@@ -18,6 +18,12 @@ export const isAdminRole = (role) => {
   return r === 'ROLE_ADMIN' || r === 'ADMIN'
 }
 
+/** Đọc từ object user (roles từ API / localStorage): có phải admin không */
+export const userHasAdminRole = (user) => (user?.roles ?? []).some(isAdminRole)
+
+/** Trả 'ADMIN' nếu user có quyền admin, ngược lại null (log/UI) */
+export const getAdminRoleFromUser = (user) => (userHasAdminRole(user) ? 'ADMIN' : null)
+
 export const isTeacherRole = (role) => {
   const r = normalizeRole(role)
   return r === 'ROLE_TEACHER' || r === 'TEACHER'
@@ -36,7 +42,7 @@ export const isStudentRole = (role) => {
 export const getDashboardPathForUser = (user) => {
   const roles = user?.roles || []
   if (!roles.length) return '/select-role'
-  if (roles.some(isAdminRole)) return '/admin/dashboard'
+  if (userHasAdminRole(user)) return '/admin/dashboard'
   if (roles.some(isTeacherRole)) return '/teacher/dashboard'
   return '/student/dashboard'
 }
@@ -68,6 +74,68 @@ const isUserCacheFresh = () => {
   const ts = getStoredUserTimestamp()
   if (!ts) return false
   return Date.now() - ts < USER_CACHE_TTL_MS
+}
+
+/** Role/username từ GET /api/me (User + roles trong DB) — dùng chung cho validateSession và sync */
+const persistUserFromMeResponse = (data) => {
+  const user = {
+    username: data?.username || '',
+    roles: Array.isArray(data?.roles) ? data.roles : []
+  }
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+  setStoredUserTimestamp()
+  return user
+}
+
+const fetchMeUserAndPersist = async () => {
+  const data = await apiRequest('/api/me')
+  return persistUserFromMeResponse(data)
+}
+
+/**
+ * Luôn gọi API /api/me để lấy role đúng theo database, cập nhật localStorage.
+ * Không xóa session khi lỗi mạng (trả null); chỉ clear khi 401/403.
+ */
+export const syncCurrentUserFromDatabase = async () => {
+  const token = getStoredToken()
+  if (!token) return null
+  try {
+    return await fetchMeUserAndPersist()
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 404 && String(error?.payload?.message || '').includes('Student profile not found')) {
+        return getStoredUser()
+      }
+      if (error.status === 401 || error.status === 403) {
+        clearAuthSession()
+        return null
+      }
+    }
+    return null
+  }
+}
+
+/**
+ * Sau đăng nhập / khi cần điều hướng theo role thật trong DB: sync /api/me rồi router.push.
+ * `authFromLogin`: fallback khi sync lỗi (dùng payload login).
+ */
+export const redirectToSiteByDatabaseRole = async (router, authFromLogin = null) => {
+  let user = await syncCurrentUserFromDatabase()
+  if (!user && authFromLogin) {
+    user = normalizeAuthUser(authFromLogin)
+  }
+  if (!user) {
+    user = getStoredUser()
+  }
+  if (!user?.username) {
+    await router.push('/login')
+    return
+  }
+  if (!user.roles?.length) {
+    await router.push('/select-role')
+    return
+  }
+  await router.push(getDashboardPathForUser(user))
 }
 
 export const storeAuthSession = (authData) => {
@@ -150,14 +218,7 @@ export const validateSession = async () => {
   }
 
   try {
-    const data = await apiRequest('/api/me')
-    const user = {
-      username: data?.username || '',
-      roles: Array.isArray(data?.roles) ? data.roles : []
-    }
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
-    setStoredUserTimestamp()
-    return user
+    return await fetchMeUserAndPersist()
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404 && String(error?.payload?.message || '').includes('Student profile not found')) {

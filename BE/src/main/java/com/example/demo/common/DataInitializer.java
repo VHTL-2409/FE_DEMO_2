@@ -5,6 +5,7 @@ import com.example.demo.repository.ExamRepository;
 import com.example.demo.repository.QuestionRepository;
 import com.example.demo.repository.RoleRepository;
 import com.example.demo.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +25,12 @@ public class DataInitializer implements CommandLineRunner {
     private final QuestionRepository questionRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
+
+    @Value("${demo.bootstrap.admin.username:admin}")
+    private String bootstrapAdminUsername;
+
+    @Value("${demo.bootstrap.admin.password:123456}")
+    private String bootstrapAdminPassword;
 
     public DataInitializer(RoleRepository roleRepository,
                            UserRepository userRepository,
@@ -59,11 +66,11 @@ public class DataInitializer implements CommandLineRunner {
         ensureRoleByUsernamePrefix(teacherRole, studentRole);
         cleanupProfilesByRole();
 
-        userRepository.findByUsername("admin")
+        userRepository.findByUsername(bootstrapAdminUsername)
             .orElseGet(() -> userRepository.save(User.builder()
-                .username("admin")
-                .email("admin@demo.local")
-                .password(passwordEncoder.encode("123456"))
+                .username(bootstrapAdminUsername)
+                .email(bootstrapAdminUsername + "@demo.local")
+                .password(passwordEncoder.encode(bootstrapAdminPassword))
                 .roles(Set.of(adminRole))
                 .build()));
 

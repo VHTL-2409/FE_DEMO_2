@@ -18,12 +18,12 @@
               EduExam System
             </h2>
           </div>
-          <button
-            type="button"
+          <RouterLink
+            to="/help-center"
             class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors"
           >
             <span class="truncate">Help Center</span>
-          </button>
+          </RouterLink>
         </header>
 
         <main
@@ -203,7 +203,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, resendVerification, getDashboardPathForUser } from '../../services/authService'
+import { login, resendVerification, redirectToSiteByDatabaseRole } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
@@ -244,12 +244,7 @@ const onSubmit = async () => {
       password: password.value
     })
 
-    if (!authData?.roles?.length) {
-      router.push('/select-role')
-      return
-    }
-
-    router.push(getDashboardPathForUser({ roles: authData?.roles || [] }))
+    await redirectToSiteByDatabaseRole(router, authData)
   } catch (error) {
     if (error?.status === 403 && String(error?.payload?.message || '').includes('EMAIL_NOT_VERIFIED')) {
       emailNotVerified.value = true

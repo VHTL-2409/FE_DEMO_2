@@ -64,7 +64,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { assignRole } from '../../services/authService'
+import { assignRole, redirectToSiteByDatabaseRole } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
@@ -80,12 +80,8 @@ const selectRole = async (role) => {
   isSubmitting.value = true
 
   try {
-    const roles = await assignRole(role)
-    if (roles.some(r => r === 'ROLE_TEACHER' || r === 'TEACHER')) {
-      router.push('/teacher/dashboard')
-      return
-    }
-    router.push('/student/dashboard')
+    await assignRole(role)
+    await redirectToSiteByDatabaseRole(router)
   } catch (error) {
     errorMessage.value = 'Không thể cập nhật role. Vui lòng thử lại.'
     toast.error(errorMessage.value)

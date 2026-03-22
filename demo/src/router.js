@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getStoredToken, invalidateSession, validateSession, getDashboardPathForUser, isAdminRole } from './services/authService'
+import { getStoredToken, invalidateSession, validateSession, getDashboardPathForUser, userHasAdminRole } from './services/authService'
 import { toastService } from './services/toastService'
 
 const router = createRouter({
@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/verify-email', component: () => import('./components/login/VerifyEmail.vue'), meta: { guest: true } },
     { path: '/verify-email-pending', component: () => import('./components/login/VerifyEmailPending.vue'), meta: { guest: true } },
     { path: '/register', component: () => import('./components/login/RegistrationRoleSelection.vue'), meta: { guest: true } },
+    { path: '/help-center', component: () => import('./components/help/HelpCenter.vue') },
     { path: '/select-role', component: () => import('./components/login/SelectRole.vue'), meta: { requiresAuth: true } },
     {
       path: '/admin',
@@ -104,7 +105,7 @@ router.beforeEach(async (to, from, next) => {
       return next(getDashboardPathForUser(cachedUser))
     }
 
-    if (to.meta.adminOnly && !cachedUser.roles?.some(isAdminRole)) {
+    if (to.meta.adminOnly && !userHasAdminRole(cachedUser)) {
       return next(getDashboardPathForUser(cachedUser))
     }
 
