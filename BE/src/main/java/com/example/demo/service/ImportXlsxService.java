@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
+import com.example.demo.domain.entity.QuestionType;
 import com.example.demo.repository.QuestionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,25 +55,74 @@ public class ImportXlsxService {
     }
 
     public int importQuestions(Exam exam, MultipartFile file) {
+        return importQuestions(exam, file, null);
+    }
+
+    /**
+     * @param maxQuestions if non-null, only the first {@code maxQuestions} parsed questions are persisted (file order).
+     */
+    public int importQuestions(Exam exam, MultipartFile file, Integer maxQuestions) {
+        List<Question> questions = parseQuestions(exam, file);
+        return persistImportedQuestions(questions, maxQuestions);
+    }
+
+    /**
+     * Parses the file without persisting. Same branching as import — use for preview/count.
+     */
+    public List<Question> parseQuestions(Exam exam, MultipartFile file) {
         String extension = getFileExtension(file);
         if ("xlsx".equals(extension)) {
-            return importQuestionsFromXlsx(exam, file);
+            validateFile(file, "xlsx");
+            return parseQuestionsFromXlsx(exam, file);
         }
         if ("csv".equals(extension)) {
-            return importQuestionsFromCsv(exam, file);
+            validateFile(file, "csv");
+            return parseQuestionsFromCsv(exam, file);
         }
         if ("pdf".equals(extension)) {
-            return importQuestionsFromPdf(exam, file);
+            validateFile(file, "pdf");
+            try {
+                String text = extractTextFromPdf(file.getInputStream());
+                return parseQuestionsFromText(exam, text);
+            } catch (IOException ex) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file PDF");
+            } catch (RuntimeException ex) {
+                throw mapImportRuntimeException(ex, "Định dạng PDF không hợp lệ hoặc file bị mã hóa");
+            }
         }
         if ("docx".equals(extension)) {
-            return importQuestionsFromDocx(exam, file);
+            validateFile(file, "docx");
+            try {
+                String text = extractTextFromDocx(file.getInputStream());
+                return parseQuestionsFromText(exam, text);
+            } catch (IOException ex) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
+            } catch (RuntimeException ex) {
+                throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
+            }
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF và DOCX");
     }
 
-    public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
-        validateFile(file, "xlsx");
+    public int countQuestions(MultipartFile file) {
+        Exam previewExam = Exam.builder()
+                .title("preview")
+                .durationMinutes(1)
+                .build();
+        return parseQuestions(previewExam, file).size();
+    }
 
+    public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
+        return importQuestionsFromXlsx(exam, file, null);
+    }
+
+    public int importQuestionsFromXlsx(Exam exam, MultipartFile file, Integer maxQuestions) {
+        validateFile(file, "xlsx");
+        List<Question> questions = parseQuestionsFromXlsx(exam, file);
+        return persistImportedQuestions(questions, maxQuestions);
+    }
+
+    private List<Question> parseQuestionsFromXlsx(Exam exam, MultipartFile file) {
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             Sheet sheet = workbook.getSheetAt(0);
             List<Question> questions = new ArrayList<>();
@@ -109,9 +159,7 @@ public class ImportXlsxService {
                 }
             }
 
-            analyzeDifficultyWithAi(questions);
-            saveImportedQuestions(questions);
-            return questions.size();
+            return questions;
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read xlsx file");
         } catch (RuntimeException ex) {
@@ -119,9 +167,7 @@ public class ImportXlsxService {
         }
     }
 
-    public int importQuestionsFromCsv(Exam exam, MultipartFile file) {
-        validateFile(file, "csv");
-
+    private List<Question> parseQuestionsFromCsv(Exam exam, MultipartFile file) {
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
              CSVParser parser = CSVFormat.DEFAULT.builder().setTrim(true).setIgnoreEmptyLines(false).get().parse(reader)) {
             List<CSVRecord> records = parser.getRecords();
@@ -148,9 +194,7 @@ public class ImportXlsxService {
                         difficulty, rowNumber);
             }
 
-            analyzeDifficultyWithAi(questions);
-            saveImportedQuestions(questions);
-            return questions.size();
+            return questions;
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read csv file");
         } catch (RuntimeException ex) {
@@ -158,28 +202,27 @@ public class ImportXlsxService {
         }
     }
 
-    public int importQuestionsFromPdf(Exam exam, MultipartFile file) {
-        validateFile(file, "pdf");
-        try {
-            String text = extractTextFromPdf(file.getInputStream());
-            return importQuestionsFromText(exam, text);
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file PDF");
-        } catch (RuntimeException ex) {
-            throw mapImportRuntimeException(ex, "Định dạng PDF không hợp lệ hoặc file bị mã hóa");
+    private int persistImportedQuestions(List<Question> questions, Integer maxQuestions) {
+        if (questions.isEmpty()) {
+            if (maxQuestions != null && maxQuestions > 0) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "questionCount không hợp lệ: không có câu hỏi hợp lệ trong tệp.");
+            }
+            return 0;
         }
-    }
-
-    public int importQuestionsFromDocx(Exam exam, MultipartFile file) {
-        validateFile(file, "docx");
-        try {
-            String text = extractTextFromDocx(file.getInputStream());
-            return importQuestionsFromText(exam, text);
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
-        } catch (RuntimeException ex) {
-            throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
+        if (maxQuestions != null) {
+            if (maxQuestions < 1) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "questionCount phải từ 1 trở lên.");
+            }
+            if (maxQuestions > questions.size()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "questionCount (" + maxQuestions + ") vượt quá số câu hợp lệ trong tệp (" + questions.size() + ").");
+            }
+            questions = new ArrayList<>(questions.subList(0, maxQuestions));
         }
+        analyzeDifficultyWithAi(questions);
+        saveImportedQuestions(questions);
+        return questions.size();
     }
 
     private String extractTextFromPdf(InputStream is) throws IOException {
@@ -204,7 +247,7 @@ public class ImportXlsxService {
      * Parse questions from plain text (PDF/Word).
      * Format: Câu N. hoặc N. hoặc N) + nội dung + A) B) C) D) + Đáp án: X
      */
-    private int importQuestionsFromText(Exam exam, String rawText) {
+    private List<Question> parseQuestionsFromText(Exam exam, String rawText) {
         if (rawText == null || rawText.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File trống hoặc không có nội dung");
         }
@@ -228,9 +271,7 @@ public class ImportXlsxService {
                     "Không tìm thấy câu hỏi hợp lệ. Định dạng: Câu N. nội dung | A) B) C) D) | Đáp án: A");
         }
 
-        analyzeDifficultyWithAi(questions);
-        saveImportedQuestions(questions);
-        return questions.size();
+        return questions;
     }
 
     private List<String> splitQuestionBlocks(String text) {
@@ -360,6 +401,7 @@ public class ImportXlsxService {
         Question question = Question.builder()
                 .exam(exam)
                 .content(content)
+                .type(QuestionType.SINGLE_CHOICE)
                 .scoreWeight(scoreWeight)
                 .options(optionsJson)
                 .correctAnswer(normalizedCorrectAnswer)

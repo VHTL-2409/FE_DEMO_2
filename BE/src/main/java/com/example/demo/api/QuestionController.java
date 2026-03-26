@@ -1,6 +1,7 @@
 package com.example.demo.api;
 
 import com.example.demo.api.dto.ApiResponse;
+import com.example.demo.api.dto.question.FilePreviewResponse;
 import com.example.demo.api.dto.question.ImportQuestionsResponse;
 import com.example.demo.api.dto.question.QuestionRequest;
 import com.example.demo.api.dto.question.QuestionResponse;
@@ -75,19 +76,28 @@ public class QuestionController {
         return ApiResponse.success(null, "Xóa câu hỏi thành công");
     }
 
+    @PostMapping(value = "/api/questions/file-preview", consumes = "multipart/form-data")
+    public ApiResponse<FilePreviewResponse> previewFile(@RequestParam("file") MultipartFile file) {
+        currentUserService.requireCurrentUser();
+        int total = importXlsxService.countQuestions(file);
+        return ApiResponse.success(new FilePreviewResponse(total));
+    }
+
     @PostMapping("/api/exams/{examId}/questions/import")
     public ApiResponse<ImportQuestionsResponse> importFile(@PathVariable Long examId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "questionCount", required = false) Integer questionCount) {
         Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
-        int count = importXlsxService.importQuestions(exam, file);
+        int count = importXlsxService.importQuestions(exam, file, questionCount);
         return ApiResponse.success(new ImportQuestionsResponse(examId, count));
     }
 
     @PostMapping("/api/exams/{examId}/questions/import-xlsx")
     public ApiResponse<ImportQuestionsResponse> importXlsx(@PathVariable Long examId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "questionCount", required = false) Integer questionCount) {
         Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
-        int count = importXlsxService.importQuestionsFromXlsx(exam, file);
+        int count = importXlsxService.importQuestionsFromXlsx(exam, file, questionCount);
         return ApiResponse.success(new ImportQuestionsResponse(examId, count));
     }
 

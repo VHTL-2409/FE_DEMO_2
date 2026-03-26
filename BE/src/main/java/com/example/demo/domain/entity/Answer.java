@@ -24,7 +24,7 @@ public class Answer {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @Column(name = "selected_answer", nullable = false, length = 20)
+    @Column(name = "selected_answer", nullable = false, columnDefinition = "TEXT")
     private String selectedAnswer;
 
     @Column(name = "correct", nullable = false)

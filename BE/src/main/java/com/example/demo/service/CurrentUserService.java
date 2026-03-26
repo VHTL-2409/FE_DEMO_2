@@ -30,4 +30,34 @@ public class CurrentUserService {
     public boolean hasRole(User user, RoleName roleName) {
         return user.getRoles().stream().anyMatch(role -> role.getName() == roleName);
     }
+
+    public boolean isTeacherOrAdmin(User user) {
+        return hasRole(user, RoleName.TEACHER) || hasRole(user, RoleName.ADMIN);
+    }
+
+    public void requireTeacherOrAdmin(User user) {
+        if (!isTeacherOrAdmin(user)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or admin access required");
+        }
+    }
+
+    public boolean isStudentOrAdmin(User user) {
+        return hasRole(user, RoleName.STUDENT) || hasRole(user, RoleName.ADMIN);
+    }
+
+    public void requireStudentOrAdmin(User user) {
+        if (!isStudentOrAdmin(user)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Student or admin access required");
+        }
+    }
+
+    public boolean isAdmin(User user) {
+        return hasRole(user, RoleName.ADMIN);
+    }
+
+    public void requireAdmin(User user) {
+        if (!isAdmin(user)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+    }
 }

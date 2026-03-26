@@ -1,21 +1,19 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
-    <div class="layout-container flex h-full grow flex-col">
-      <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+      <StudentTopHeader class="shrink-0" />
 
-      <main class="teacher-page-shell max-w-5xl">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+      <main class="teacher-page-shell relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <div class="staff-page-wrap relative min-h-0 flex-1 flex-col gap-4">
+          <PageHeader
+            class="shrink-0 animate-fade-up"
+            eyebrow="Student"
+            title="Lịch sử / Kết quả"
+            subtitle="Xem lại các phiên thi và luyện tập đã hoàn thành."
+          />
 
-        <div class="relative space-y-8">
-          <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-up">
-            <div class="space-y-1">
-              <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Lịch sử/Kết quả</h1>
-              <p class="text-slate-500 dark:text-slate-400">Theo dõi lại kết quả bài thi và các phiên luyện tập của bạn.</p>
-            </div>
-          </div>
-
-          <div class="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-px animate-fade-up-delay">
+          <div class="flex shrink-0 gap-4 border-b border-slate-200 pb-px animate-fade-up-delay dark:border-slate-800">
             <button
               type="button"
               @click="setTab('exam')"
@@ -37,26 +35,40 @@
           </div>
 
 
-          <div class="teacher-card overflow-hidden shadow-sm animate-fade-up-delay">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
+          <div class="staff-table-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] animate-fade-up-delay">
+            <div class="portal-scrollbar min-h-0 flex-1 overflow-auto">
+              <table class="staff-table min-w-[720px] text-left">
                 <thead>
-                  <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Bài</th>
-                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày làm</th>
-                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm</th>
-                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Thời gian làm bài</th>
+                  <tr>
+                    <th>Bài</th>
+                    <th>Ngày làm</th>
+                    <th>Điểm</th>
+                    <th class="text-right">Thời gian làm bài</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                  <tr v-if="isLoading" class="text-sm text-slate-500">
-                    <td colspan="4" class="px-6 py-8 text-center">Đang tải lịch sử...</td>
+                <tbody>
+                  <tr v-if="isLoading">
+                    <td colspan="4" class="py-6 space-y-3" aria-busy="true">
+                      <SkeletonLoader variant="table-row" />
+                      <SkeletonLoader variant="table-row" />
+                      <SkeletonLoader variant="table-row" />
+                    </td>
                   </tr>
-                  <tr v-else-if="!sessions.length" class="text-sm text-slate-500">
-                    <td colspan="4" class="px-6 py-8 text-center">{{ emptyMessage }}</td>
+                  <tr v-else-if="!sessions.length">
+                    <td colspan="4" class="px-2 py-4">
+                      <EmptyState
+                        icon="history"
+                        :title="emptyMessage"
+                        description="Tham gia bài thi hoặc luyện tập để xem tại đây."
+                        action-label="Về Dashboard"
+                        dense
+                        fill
+                        @action="goDashboard"
+                      />
+                    </td>
                   </tr>
-                  <tr v-for="session in sessions" :key="session.attemptId" @click="goToExamResult(session)" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer hover:-translate-y-0.5">
-                    <td class="px-6 py-5">
+                  <tr v-for="session in sessions" :key="session.attemptId" class="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40" @click="goToExamResult(session)">
+                    <td class="py-5">
                       <div class="flex items-center gap-3">
                         <div :class="session.iconClass" class="h-10 w-10 rounded-lg flex items-center justify-center">
                           <span class="material-symbols-outlined">{{ session.icon }}</span>
@@ -70,13 +82,13 @@
                         {{ session.score }} / 10
                       </div>
                     </td>
-                    <td class="px-6 py-5 text-right text-slate-600 dark:text-slate-400 font-medium">{{ session.timeTaken }}</td>
+                    <td class="py-5 text-right text-slate-600 dark:text-slate-400 font-medium">{{ session.timeTaken }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200/90 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
               <span class="text-sm text-slate-500 dark:text-slate-400">Hiển thị {{ allSessions.length }} phiên</span>
               <div class="flex items-center gap-2">
                 <button
@@ -101,10 +113,7 @@
           </div>
         </div>
       </main>
-
-      <footer class="mt-auto px-6 md:px-20 lg:px-40 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
-        <p class="text-slate-500 dark:text-slate-400 text-sm">© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
-      </footer>
+      </div>
     </div>
   </div>
 </template>
@@ -115,6 +124,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import PageHeader from '../shared/PageHeader.vue'
+import SkeletonLoader from '../shared/SkeletonLoader.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -196,6 +208,10 @@ const setTab = (tab) => {
   })
 }
 
+const goDashboard = () => {
+  router.push('/student/dashboard')
+}
+
 const goToExamResult = (session) => {
   router.push({
     path: '/student/exam-result',
@@ -206,16 +222,20 @@ const goToExamResult = (session) => {
   })
 }
 
-onMounted(async () => {
+const loadAttempts = async () => {
   isLoading.value = true
-
   try {
-    attempts.value = await listMyAttempts({ type: activeTab.value })
+    // Backend trả về tất cả khi không truyền type; lọc theo tab trên client
+    attempts.value = await listMyAttempts()
   } catch (error) {
     attempts.value = []
     toast.error('Không thể tải lịch sử tự học.')
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(() => {
+  loadAttempts()
 })
 </script>

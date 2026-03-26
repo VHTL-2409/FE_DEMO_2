@@ -12,5 +12,9 @@ public enum AuditAction {
     /** Hệ thống phát hiện IP trùng */
     SYSTEM_DUPLICATE_IP,
     /** Hệ thống phát hiện thay đổi IP trong phiên */
-    SYSTEM_IP_CHANGE
+    SYSTEM_IP_CHANGE,
+    /** Hệ thống tự gửi cảnh báo vì risk cao */
+    SYSTEM_RISK_WARNING,
+    /** Hệ thống tự tạm dừng phiên vì risk critical */
+    SYSTEM_ATTEMPT_PAUSE
 }

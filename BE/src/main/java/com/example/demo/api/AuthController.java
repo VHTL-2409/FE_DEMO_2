@@ -12,7 +12,7 @@ import com.example.demo.domain.entity.User;
 import com.example.demo.service.AuthService;
 import com.example.demo.service.CurrentUserService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -85,13 +85,8 @@ public class AuthController {
     }
 
     @GetMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<Map<String, Object>>> users() {
-        User current = currentUserService.requireCurrentUser();
-        boolean isAdmin = current.getRoles().stream()
-                .anyMatch(role -> role.getName().name().equals("ADMIN"));
-        if (!isAdmin) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
         List<Map<String, Object>> users = authService.listUsers().stream()
                 .map(this::toUserMap)
                 .toList();

@@ -4,19 +4,24 @@ import com.example.demo.api.dto.monitoring.AuditLogItem;
 import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
+import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.AttemptStatus;
+import com.example.demo.domain.entity.ExamEvent;
 import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.FraudSignal;
 import com.example.demo.domain.entity.MonitoringEvent;
 import com.example.demo.domain.entity.MonitoringEventType;
-import com.example.demo.domain.entity.RiskSnapshot;
+import com.example.demo.domain.entity.RiskLevel;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.entity.AuditLog;
 import com.example.demo.repository.AuditLogRepository;
+import com.example.demo.repository.ExamEventRepository;
 import com.example.demo.repository.ExamAttemptRepository;
+import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.repository.MonitoringEventRepository;
-import com.example.demo.repository.RiskSnapshotRepository;
+import com.example.demo.repository.RiskScoreLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +38,10 @@ public class MonitoringService {
 
     private final ExamAttemptRepository examAttemptRepository;
     private final MonitoringEventRepository monitoringEventRepository;
-    private final RiskSnapshotRepository riskSnapshotRepository;
-    private final RiskScoringService riskScoringService;
+    private final ExamEventRepository examEventRepository;
+    private final FraudSignalRepository fraudSignalRepository;
+    private final RiskScoreLogRepository riskScoreLogRepository;
+    private final ExamEventService examEventService;
     private final RealtimeNotificationService realtimeNotificationService;
     private final AuditLogService auditLogService;
     private final AuditLogRepository auditLogRepository;
@@ -64,17 +71,20 @@ public class MonitoringService {
                     .attemptId(attempt.getId())
                     .riskScore(attempt.getRiskScore())
                     .suspicious(attempt.getSuspicious())
+                    .riskLevel(attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : RiskLevel.CLEAN.name())
                     .status(attempt.getStatus().name())
                     .build();
         }
 
         enforceMonitoringRateLimit(attempt);
-        return applyEvent(attempt, eventType, request.getDetails());
+        RiskScoreResponse riskResponse = examEventService.recordLegacyEvent(attempt, eventType.name(), request.getDetails());
+        return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
     @Transactional
     public MonitoringEventResponse addSystemEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
-        return applyEvent(attempt, eventType, details);
+        RiskScoreResponse riskResponse = examEventService.recordLegacyEvent(attempt, eventType.name(), details);
+        return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
     @Transactional
@@ -90,14 +100,9 @@ public class MonitoringService {
 
         realtimeNotificationService.notifyTeacherWarning(attempt, warningMessage);
         auditLogService.logTeacherWarning(attempt, actor, warningMessage);
+        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
 
-        return MonitoringEventResponse.builder()
-                .attemptId(attempt.getId())
-                .riskScore(attempt.getRiskScore())
-                .suspicious(attempt.getSuspicious())
-                .status(attempt.getStatus().name())
-                .message(warningMessage)
-                .build();
+        return toMonitoringEventResponse(attempt, riskResponse, warningMessage);
     }
 
     @Transactional
@@ -122,14 +127,8 @@ public class MonitoringService {
 
         realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
         auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
-
-        return MonitoringEventResponse.builder()
-                .attemptId(attempt.getId())
-                .riskScore(attempt.getRiskScore())
-                .suspicious(attempt.getSuspicious())
-                .status(attempt.getStatus().name())
-                .message(invalidateMessage)
-                .build();
+        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
+        return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
     }
 
     public List<MonitoringTimelineItem> timeline(Long attemptId, User actor) {
@@ -138,27 +137,39 @@ public class MonitoringService {
 
         ensureCanAccessAttempt(attempt, actor);
 
-        List<MonitoringTimelineItem> eventRows = monitoringEventRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+        List<MonitoringTimelineItem> eventRows = examEventRepository.findByAttemptOrderByCreatedAtAsc(attempt)
                 .stream()
-                .map(event -> MonitoringTimelineItem.builder()
-                        .type("MONITORING_EVENT")
-                        .at(event.getCreatedAt())
-                        .eventType(event.getEventType().name())
-                        .details(event.getDetails())
-                        .build())
+                .map(this::toExamEventTimelineItem)
                 .toList();
 
-        List<MonitoringTimelineItem> riskRows = riskSnapshotRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+        if (eventRows.isEmpty()) {
+            eventRows = monitoringEventRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+                    .stream()
+                    .map(this::toLegacyEventTimelineItem)
+                    .toList();
+        }
+
+        List<MonitoringTimelineItem> signalRows = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+                .stream()
+                .map(this::toFraudSignalTimelineItem)
+                .toList();
+
+        List<MonitoringTimelineItem> riskRows = riskScoreLogRepository.findByAttemptOrderByCreatedAtAsc(attempt)
                 .stream()
                 .map(snapshot -> MonitoringTimelineItem.builder()
-                        .type("RISK_SNAPSHOT")
+                        .type("MONITORING_EVENT")
                         .at(snapshot.getCreatedAt())
-                        .riskScore(snapshot.getRiskScore())
-                        .suspicious(snapshot.getSuspicious())
+                        .eventType("RISK_SCORE")
+                        .riskScore(snapshot.getScore())
+                        .suspicious(snapshot.getLevel().isSuspicious())
+                        .riskLevel(snapshot.getLevel().name())
+                        .details(snapshot.getActionTaken().name())
+                        .breakdown(parseBreakdown(snapshot.getBreakdown()))
                         .build())
                 .toList();
 
-        return java.util.stream.Stream.concat(eventRows.stream(), riskRows.stream())
+        return java.util.stream.Stream.of(eventRows, signalRows, riskRows)
+                .flatMap(List::stream)
                 .sorted(Comparator.comparing(MonitoringTimelineItem::getAt))
                 .toList();
     }
@@ -177,6 +188,7 @@ public class MonitoringService {
         attempt.setCameraOn(cameraOn);
         attempt.setMicOn(micOn);
         attempt.setDeviceCheckedAt(LocalDateTime.now());
+        attempt.setLastHeartbeatAt(LocalDateTime.now());
         examAttemptRepository.save(attempt);
     }
 
@@ -197,44 +209,6 @@ public class MonitoringService {
                 .actorUsername(log.getActorUsername())
                 .details(log.getDetails())
                 .createdAt(log.getCreatedAt())
-                .build();
-    }
-
-    private MonitoringEventResponse applyEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
-        LocalDateTime now = LocalDateTime.now();
-        int currentRisk = attempt.getRiskScore() + riskScoringService.calculateDynamicScore(attempt, eventType, now);
-
-        MonitoringEvent event = MonitoringEvent.builder()
-                .attempt(attempt)
-                .eventType(eventType)
-                .details(details)
-                .createdAt(now)
-                .build();
-        monitoringEventRepository.save(event);
-
-        boolean suspicious = riskScoringService.isSuspicious(currentRisk);
-
-        attempt.setRiskScore(currentRisk);
-        attempt.setSuspicious(suspicious);
-        examAttemptRepository.save(attempt);
-
-        riskSnapshotRepository.save(
-                RiskSnapshot.builder()
-                        .attempt(attempt)
-                        .riskScore(currentRisk)
-                        .suspicious(suspicious)
-                        .createdAt(now)
-                        .build());
-
-        if (suspicious) {
-            realtimeNotificationService.notifySuspicious(attempt);
-        }
-
-        return MonitoringEventResponse.builder()
-                .attemptId(attempt.getId())
-                .riskScore(attempt.getRiskScore())
-                .suspicious(attempt.getSuspicious())
-                .status(attempt.getStatus().name())
                 .build();
     }
 
@@ -263,7 +237,69 @@ public class MonitoringService {
             case PRINT_SCREEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorPrintScreen());
             case RAPID_QUESTION_SWITCH -> Boolean.TRUE.equals(attempt.getExam().getMonitorRapidQuestionSwitch());
             case MULTI_MONITOR -> Boolean.TRUE.equals(attempt.getExam().getMonitorMultiMonitor());
+            case HEARTBEAT_STALE, DEVICE_FINGERPRINT_CHANGED -> true;
         };
+    }
+
+    private MonitoringEventResponse toMonitoringEventResponse(
+            ExamAttempt attempt,
+            RiskScoreResponse riskResponse,
+            String message
+    ) {
+        return MonitoringEventResponse.builder()
+                .attemptId(attempt.getId())
+                .riskScore(riskResponse != null ? riskResponse.getScore() : attempt.getRiskScore())
+                .suspicious(riskResponse != null ? riskResponse.getSuspicious() : attempt.getSuspicious())
+                .riskLevel(riskResponse != null ? riskResponse.getLevel()
+                        : (attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : RiskLevel.CLEAN.name()))
+                .status(attempt.getStatus().name())
+                .message(message)
+                .actionTaken(riskResponse != null ? riskResponse.getActionTaken() : null)
+                .breakdown(riskResponse != null ? riskResponse.getBreakdown() : null)
+                .build();
+    }
+
+    private MonitoringTimelineItem toLegacyEventTimelineItem(MonitoringEvent event) {
+        return MonitoringTimelineItem.builder()
+                .type("MONITORING_EVENT")
+                .at(event.getCreatedAt())
+                .eventType(event.getEventType().name())
+                .details(event.getDetails())
+                .build();
+    }
+
+    private MonitoringTimelineItem toExamEventTimelineItem(ExamEvent event) {
+        return MonitoringTimelineItem.builder()
+                .type("EXAM_EVENT")
+                .at(event.getCreatedAt())
+                .eventType(event.getEventType())
+                .severity(event.getSeverity() != null ? event.getSeverity().name() : null)
+                .evidence(event.getEventData())
+                .build();
+    }
+
+    private MonitoringTimelineItem toFraudSignalTimelineItem(FraudSignal signal) {
+        return MonitoringTimelineItem.builder()
+                .type("FRAUD_SIGNAL")
+                .at(signal.getCreatedAt())
+                .eventType(signal.getSignalType())
+                .severity(signal.getSeverity().name())
+                .confidence(signal.getConfidence())
+                .evidence(signal.getEvidence())
+                .details(signal.getSignalType())
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.Map<String, Integer> parseBreakdown(String breakdownJson) {
+        if (breakdownJson == null || breakdownJson.isBlank()) {
+            return java.util.Map.of();
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(breakdownJson, java.util.Map.class);
+        } catch (Exception ignored) {
+            return java.util.Map.of();
+        }
     }
 
     private void ensureCanAccessAttempt(ExamAttempt attempt, User actor) {

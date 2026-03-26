@@ -5,6 +5,7 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
+import com.example.demo.domain.entity.QuestionType;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.QuestionRepository;
 import org.springframework.http.HttpStatus;
@@ -23,10 +24,14 @@ public class SubmissionHelper {
 
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
+    private final QuestionPayloadHelper questionPayloadHelper;
 
-    public SubmissionHelper(QuestionRepository questionRepository, AnswerRepository answerRepository) {
+    public SubmissionHelper(QuestionRepository questionRepository,
+                            AnswerRepository answerRepository,
+                            QuestionPayloadHelper questionPayloadHelper) {
         this.questionRepository = questionRepository;
         this.answerRepository = answerRepository;
+        this.questionPayloadHelper = questionPayloadHelper;
     }
 
     public void validateAttemptTime(ExamAttempt attempt) {
@@ -55,8 +60,9 @@ public class SubmissionHelper {
                         "Duplicate answer for question: " + input.getQuestionId());
             }
 
-            String selected = input.getSelectedAnswer().trim();
-            boolean correct = question.getCorrectAnswer().equalsIgnoreCase(selected);
+            QuestionType type = question.getType() == null ? QuestionType.SINGLE_CHOICE : question.getType();
+            String selected = questionPayloadHelper.normalizeSubmittedAnswer(input.getSelectedAnswer(), type);
+            boolean correct = questionPayloadHelper.isAnswerCorrect(question, selected);
 
             Answer answer = Answer.builder()
                     .attempt(attempt)

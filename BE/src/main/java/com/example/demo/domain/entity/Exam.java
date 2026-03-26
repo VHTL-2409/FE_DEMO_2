@@ -84,4 +84,10 @@ public class Exam {
 
     @Column(name = "require_camera_mic")
     private Boolean requireCameraMic;
+
+    /**
+     * System-generated practice exams (student-owned). Formal exams created by teachers are false.
+     */
+    @Column(name = "is_practice")
+    private Boolean practice;
 }

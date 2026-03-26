@@ -3,6 +3,10 @@
 .gitnexus
 docs/
 *.md
+./deloy
+./loadtest
+.cursor/
+
 
 # Production env (chứa mật khẩu, secret)
 .env

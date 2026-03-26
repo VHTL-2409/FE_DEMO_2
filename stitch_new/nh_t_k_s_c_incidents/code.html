@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-container": "#fff6f3",
+              "surface": "#fcf8ff",
+              "tertiary-container": "#b65700",
+              "secondary-container": "#e0e2ef",
+              "on-surface": "#1b1b23",
+              "on-primary-fixed": "#07006c",
+              "primary": "#4343d5",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#e1e0ff",
+              "surface-container-highest": "#e4e1ed",
+              "secondary": "#5b5e69",
+              "inverse-surface": "#302f39",
+              "tertiary": "#904400",
+              "surface-tint": "#4849da",
+              "on-primary-container": "#faf7ff",
+              "surface-container": "#efecf9",
+              "on-tertiary-fixed": "#321300",
+              "on-background": "#1b1b23",
+              "secondary-fixed-dim": "#c3c6d2",
+              "on-surface-variant": "#464555",
+              "background": "#fcf8ff",
+              "surface-variant": "#e4e1ed",
+              "on-secondary-fixed": "#181b24",
+              "on-primary": "#ffffff",
+              "surface-container-low": "#f5f2fe",
+              "inverse-primary": "#c1c1ff",
+              "surface-container-high": "#e9e6f3",
+              "outline-variant": "#c7c4d7",
+              "tertiary-fixed": "#ffdbc8",
+              "on-primary-fixed-variant": "#2e2bc2",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f2effb",
+              "secondary-fixed": "#e0e2ef",
+              "primary-fixed-dim": "#c1c1ff",
+              "on-error-container": "#93000a",
+              "tertiary-fixed-dim": "#ffb689",
+              "on-tertiary-fixed-variant": "#743500",
+              "outline": "#767586",
+              "on-secondary-fixed-variant": "#434751",
+              "primary-container": "#5d5fef",
+              "on-tertiary": "#ffffff",
+              "on-secondary-container": "#61646f",
+              "error": "#ba1a1a",
+              "surface-bright": "#fcf8ff",
+              "surface-dim": "#dbd8e5",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-fixed">
+<div class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar (Shared Component) -->
+<aside class="hidden md:flex h-screen w-64 flex-col py-6 px-4 bg-[#fcf8ff] dark:bg-slate-950 transition-all duration-300 ease-in-out">
+<div class="mb-10 px-2">
+<h1 class="font-headline font-black text-[#5D5FEF] text-2xl tracking-tight">Exam Manager</h1>
+<p class="text-xs text-slate-500 font-medium">Post-Exam Analysis</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] font-['Inter'] font-medium text-sm transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Summary</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#e9e6f3] dark:bg-[#5D5FEF]/20 text-[#5D5FEF] dark:text-[#c1c1ff] font-bold rounded-lg font-['Inter'] text-sm transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="gavel" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] font-['Inter'] font-medium text-sm transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Detailed Reports</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-outline-variant/20">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] font-['Inter'] font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] font-['Inter'] font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+<button class="mt-4 w-full bg-primary-container text-on-primary-container py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/10 hover:opacity-90 transition-opacity">
+                    Export All Data
+                </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar (Shared Component) -->
+<header class="w-full top-0 z-50 flex justify-between items-center px-8 py-4 bg-[#f5f2fe] dark:bg-slate-900 transition-colors duration-200">
+<div class="flex items-center gap-4">
+<span class="font-headline font-bold text-lg tracking-tight text-[#5D5FEF]">Faculty Portal</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden sm:block">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-lowest border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-primary/40 transition-all" placeholder="Tìm kiếm học sinh..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 rounded-full hover:bg-[#e9e6f3] text-slate-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-[#e9e6f3] text-slate-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 ring-2 ring-primary-fixed">
+<img alt="Professor Profile" data-alt="professional portrait of a faculty member with a friendly smile, neutral office background, soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCX3-ymyXl9082kI8FLGEITsFz5WXNl5oGR2oHe8d2Pa_hDFbTA7AZAmhQQ8xCN57yVYn9tMw6MSFOhDpA3XxO5SapnZOdd-gLaStEk7uLvV78ERFJ--4rhGGeCjya4nMp7GahAp5boAvdTviEY8RORr37QKh_8G5bQoTGNtWm_c_mPYCmbneNZT0t4LplAPu-4JeFo7tY5J-8mXCuqOShYJluq5ssW36aZyDGPY-Zevh8sQtYXotx0NeTWO-cszSOAMaUptmMJ6I79"/>
+</div>
+</div>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto px-8 py-8 no-scrollbar">
+<!-- Page Title -->
+<div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight mb-2">Nhật ký sự cố &amp; Vi phạm</h2>
+<p class="text-on-surface-variant font-medium">Danh sách các hoạt động bất thường được ghi nhận trong kỳ thi học kỳ II</p>
+</div>
+<!-- Filters -->
+<div class="flex flex-wrap gap-3">
+<div class="flex bg-surface-container-high p-1 rounded-xl">
+<button class="px-4 py-2 rounded-lg bg-surface-container-lowest shadow-sm text-sm font-bold text-primary transition-all">Tất cả</button>
+<button class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-lowest/50 transition-all">Nghiêm trọng</button>
+<button class="px-4 py-2 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-lowest/50 transition-all">Cảnh báo</button>
+</div>
+<select class="bg-surface-container-low border-none rounded-xl text-sm font-medium text-on-surface-variant focus:ring-primary/20 px-4 py-2.5">
+<option>Tất cả loại vi phạm</option>
+<option>Chuyển tab</option>
+<option>Không nhận diện khuôn mặt</option>
+<option>Tiếng ồn bất thường</option>
+</select>
+</div>
+</div>
+<!-- Bento Grid Layout for Statistics (Secondary Content) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="md:col-span-2 bg-primary-container p-6 rounded-3xl text-white relative overflow-hidden flex flex-col justify-between h-48">
+<div class="z-10">
+<p class="text-white/80 font-medium text-sm mb-1">Tổng sự cố</p>
+<h3 class="text-5xl font-black font-headline">128</h3>
+</div>
+<div class="z-10 flex items-center gap-2 text-sm font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-md">
+<span class="material-symbols-outlined text-sm" data-icon="trending_down">trending_down</span>
+                            12% so với kỳ trước
+                        </div>
+<!-- Abstract glow effect -->
+<div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-3xl flex flex-col justify-between h-48">
+<div>
+<div class="w-10 h-10 rounded-xl bg-error-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-error" data-icon="report">report</span>
+</div>
+<p class="text-on-surface-variant font-medium text-sm">Nghiêm trọng</p>
+</div>
+<h3 class="text-3xl font-black font-headline text-on-surface">24</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-3xl flex flex-col justify-between h-48">
+<div>
+<div class="w-10 h-10 rounded-xl bg-tertiary-fixed flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-tertiary" data-icon="warning">warning</span>
+</div>
+<p class="text-on-surface-variant font-medium text-sm">Cảnh báo</p>
+</div>
+<h3 class="text-3xl font-black font-headline text-on-surface">104</h3>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="bg-surface-container-low rounded-[2rem] overflow-hidden">
+<div class="p-4 overflow-x-auto">
+<table class="w-full text-left border-separate border-spacing-y-3">
+<thead>
+<tr class="text-on-surface-variant text-xs font-bold uppercase tracking-widest">
+<th class="px-6 py-4">Thời gian</th>
+<th class="px-6 py-4">Học sinh</th>
+<th class="px-6 py-4">Loại vi phạm</th>
+<th class="px-6 py-4">Mức độ</th>
+<th class="px-6 py-4 text-right">Thao tác</th>
+</tr>
+</thead>
+<tbody>
+<!-- Table Row 1 -->
+<tr class="bg-surface-container-lowest group hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+<td class="px-6 py-5 first:rounded-l-2xl">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">14:20:05</span>
+<span class="text-xs text-on-surface-variant">25 May 2024</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full overflow-hidden bg-primary-fixed flex-shrink-0">
+<img alt="Student" data-alt="close up headshot of a young male student in a casual hoodie looking focused, natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIa8jVzSUIPRwZIFl_qU06idBUhuCpXb8H2Cp1Xg8l-7wLEsI8rjXWy-b7BUcTrdqinFQLgMVv7IVz3xi_a4AKAi-c5aFxf3wKNYWxA6Mr6gMc2z00YYhgCsaw3Om3Xnii-21Cwd71qDoXy0ZaWYTVILmmCFQp83jzapz6UECyiXhrIfQR4NhdWXfVtEb-TDauHjCSgvrGRdRhNvX9JcbYvhN4tPdkn3KKjz2lT8CxT7D8ORMEcWhqo9vL22EQGZuFxLvWC8j6IHN8"/>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Nguyễn Văn An</span>
+<span class="text-xs text-on-surface-variant">ID: 2024001</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="tab">tab</span>
+<span class="font-medium">Chuyển tab ứng dụng</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-error-container text-on-error-container text-[10px] font-black uppercase tracking-wider">Nghiêm trọng</span>
+</td>
+<td class="px-6 py-5 last:rounded-r-2xl text-right">
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all">Chi tiết</button>
+</td>
+</tr>
+<!-- Table Row 2 -->
+<tr class="bg-surface-container-lowest group hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+<td class="px-6 py-5 first:rounded-l-2xl">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">14:15:12</span>
+<span class="text-xs text-on-surface-variant">25 May 2024</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full overflow-hidden bg-primary-fixed flex-shrink-0">
+<img alt="Student" data-alt="portrait of a young female student wearing glasses, smiling gently, soft indoor academic environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpRDkhKoabBT6_ewo1m6bqqdyDr9Z1pD6GMncFp20UBiNPIyO2pkEN3EGBJ4MrRHJiI0bZTuLA8tvcq9GhSw7RaKPcMhAVG1poRnOx0gsbItSv_EfyyVn0xRXGJQMwROCxdqlvtkPT6GcSe3EDlhVDiOMLHYnXFGUTv8MnpfyTt59FbNUf1Ydcq73Ft8qPzrc8DBumTBtCZCmccLh7HM5HzOzxb3y8za4C02yktvVc47ho45BU1xubzh-2g37EJXZ32Z3FVKI1xY3J"/>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Trần Thị Bích</span>
+<span class="text-xs text-on-surface-variant">ID: 2024005</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="face">face</span>
+<span class="font-medium">Không nhận diện khuôn mặt</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black uppercase tracking-wider">Cảnh báo</span>
+</td>
+<td class="px-6 py-5 last:rounded-r-2xl text-right">
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all">Chi tiết</button>
+</td>
+</tr>
+<!-- Table Row 3 -->
+<tr class="bg-surface-container-lowest group hover:scale-[1.01] transition-transform duration-200 cursor-pointer">
+<td class="px-6 py-5 first:rounded-l-2xl">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">14:02:30</span>
+<span class="text-xs text-on-surface-variant">25 May 2024</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full overflow-hidden bg-primary-fixed flex-shrink-0">
+<img alt="Student" data-alt="profile photo of a diverse college student, simple background, professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQH642ODwDtToWvc9G0dDPFSv2CcyJemVFBvZbuTMQyb5vTcv4QGzRGtmO4I0BOINLypAHAvgoZWSxqrCYibRIB-Fj8PErTDqioRan4HGnXl1qLxUY4NcVawyXLA-DoImWuwSu6O79Xhou76A_N4r2MxlCSksjIfVYTH23tzhCR4l2F-cvpFuGi7rZ9MzHyNByEjJcrVKwWwrRUQatoCUPB-tw7b93xPR9wo-L85u7cCy2QHlXY7cyJVeOjCpj4qBlWu2vcyF_Xp7k"/>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Lê Hoàng Nam</span>
+<span class="text-xs text-on-surface-variant">ID: 2024012</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="volume_up">volume_up</span>
+<span class="font-medium">Tiếng ồn nền vượt ngưỡng</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black uppercase tracking-wider">Cảnh báo</span>
+</td>
+<td class="px-6 py-5 last:rounded-r-2xl text-right">
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all">Chi tiết</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Drawer (Detail Section) -->
+<aside class="hidden lg:flex w-96 bg-surface-container-lowest border-l border-outline-variant/10 flex-col overflow-y-auto no-scrollbar shadow-2xl shadow-primary/5">
+<div class="p-8">
+<div class="flex items-center justify-between mb-8">
+<h3 class="font-headline font-bold text-xl text-on-surface">Chi tiết vi phạm</h3>
+<button class="p-2 hover:bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined text-outline" data-icon="close">close</span>
+</button>
+</div>
+<!-- Student Quick Info -->
+<div class="bg-surface-container-low p-6 rounded-3xl mb-8 flex flex-col items-center text-center">
+<div class="h-20 w-20 rounded-full overflow-hidden ring-4 ring-primary-fixed mb-4">
+<img alt="Selected Student" data-alt="student portrait focused for analysis dashboard, neutral lighting, high detail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFpsC54D14qZUqrPvPykZZR5DoqMbW_oApGpG5yuMOoy_CEFk11fVVpuQ5smhtc_SfHnysJoZZCrV2PprvZLqx6dB-g_XFoYkYkgzvCwBLSlIbQDG36d8L7bpncZ5RcjDEri21jZPHhjO8uI9fKjTc_mgrSLEBc-SZQuKdnYDyHcbHrFv8sCyCqj1JljKFn2oaETbTtibWYC1b1GtCnPL07N8DsucpBDTFxvDNV3ayYkZCrA_Uc4DJbGCmY8C9st3hU1f6mHeXdkor"/>
+</div>
+<h4 class="font-headline font-bold text-lg text-on-surface">Nguyễn Văn An</h4>
+<p class="text-sm text-on-surface-variant mb-4">Lớp: Công nghệ thông tin K12</p>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-error/10 text-error text-[10px] font-bold rounded-full">8 LỖI VI PHẠM</span>
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full">ĐANG XEM XÉT</span>
+</div>
+</div>
+<!-- Incident Evidence Placeholder -->
+<div class="mb-8">
+<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">Ảnh minh chứng (AI Capture)</p>
+<div class="aspect-video bg-surface-container rounded-2xl overflow-hidden relative group">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="computer vision screenshot showing student monitoring with red bounding boxes around suspicious activity, proctoring software interface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEVta3tXkXeMYXCLsJ0wJEVNcWk_GsQpoMZ-iuWp76oaFmr-g-QsmyWKRtbcovxQn9l7Ng6pjGAqnuY2ENwQXKakDtlgP-nyEsG2o5N1JkII2lquOG4lrHpi93I1-AYmfW0pBN_w6pDXwNrrB3Er3F3xT-vhI-KzGyjk2MpzQAuj4fZwmboFkLKFwRFwNPGCezFbDbiQhVD4RS0Y4FJ_IfZ48erAEkwQMwUVM1qmaTpinMzjXyGlahlja_hhJfij0U63nbQ3bKYyAn"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/60 to-transparent flex items-end p-4">
+<span class="text-white text-xs font-medium">Capture ID: #IMG_88219 - 14:20:05</span>
+</div>
+</div>
+</div>
+<!-- Incident Timeline -->
+<div>
+<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">Dòng thời gian sự cố</p>
+<div class="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-outline-variant/30">
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-error flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-white text-[14px]" data-icon="tab">tab</span>
+</div>
+<p class="text-sm font-bold text-on-surface">Chuyển sang trình duyệt khác</p>
+<p class="text-xs text-on-surface-variant">14:20:05 • Duy trì trong 12 giây</p>
+</div>
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-tertiary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-white text-[14px]" data-icon="face">face</span>
+</div>
+<p class="text-sm font-bold text-on-surface">Khuôn mặt không khớp</p>
+<p class="text-xs text-on-surface-variant">14:18:40 • Người thứ 2 xuất hiện</p>
+</div>
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-white text-[14px]" data-icon="login">login</span>
+</div>
+<p class="text-sm font-bold text-on-surface">Bắt đầu bài thi</p>
+<p class="text-xs text-on-surface-variant">13:30:00 • Thiết bị: MacBook Pro</p>
+</div>
+</div>
+</div>
+<div class="mt-10 flex flex-col gap-3">
+<button class="w-full bg-primary-container text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[0.98] transition-transform">
+                        Xác nhận vi phạm
+                    </button>
+<button class="w-full bg-surface-container-high text-on-surface py-4 rounded-2xl font-bold text-sm hover:bg-surface-container-highest transition-colors">
+                        Bỏ qua cảnh báo
+                    </button>
+</div>
+</div>
+</aside>
+</div>
+<!-- BottomNavBar (Shared Component - Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 md:hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-t-3xl shadow-[0_-24px_48px_-12px_rgba(67,67,213,0.08)]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-[10px] uppercase tracking-widest font-bold mt-1">Summary</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#5D5FEF] text-white rounded-2xl p-3 mb-2 transform -translate-y-2 scale-110" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem" style="font-variation-settings: 'FILL' 1;">report_problem</span>
+<span class="font-['Inter'] text-[10px] uppercase tracking-widest font-bold mt-1">Incidents</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-['Inter'] text-[10px] uppercase tracking-widest font-bold mt-1">Reports</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,64 @@
+<template>
+  <button
+    :type="type"
+    :disabled="disabled || loading"
+    :class="buttonClass"
+    class="inline-flex items-center justify-center gap-2 rounded-xl font-semibold tracking-[-0.01em] transition-[transform,background-color,box-shadow,opacity,border-color,color] duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 portal-focus"
+    @click="$emit('click', $event)"
+  >
+    <span
+      v-if="loading"
+      class="material-symbols-outlined text-lg animate-spin shrink-0"
+      aria-hidden="true"
+    >
+      progress_activity
+    </span>
+    <slot />
+  </button>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'primary',
+    validator: (v) => ['primary', 'secondary', 'danger', 'ghost'].includes(v)
+  },
+  size: {
+    type: String,
+    default: 'md',
+    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+  },
+  loading: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
+  type: { type: String, default: 'button' }
+})
+
+defineEmits(['click'])
+
+const sizeClass = computed(() => {
+  const map = {
+    sm: 'px-3 py-1.5 text-sm min-h-[2rem]',
+    md: 'px-5 py-2.5 text-sm min-h-[2.75rem]',
+    lg: 'px-6 py-3 text-base min-h-[3rem]'
+  }
+  return map[props.size] || map.md
+})
+
+const variantClass = computed(() => {
+  switch (props.variant) {
+    case 'secondary':
+      return 'border border-slate-200/80 bg-white text-slate-700 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.18)] hover:border-primary/25 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-600/80 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-primary/35 dark:hover:bg-slate-700'
+    case 'danger':
+      return 'border border-rose-500/20 bg-[linear-gradient(135deg,#ef4444_0%,#dc2626_100%)] text-white shadow-[0_16px_32px_-22px_rgba(220,38,38,0.5)] hover:bg-[linear-gradient(135deg,#f43f5e_0%,#dc2626_100%)]'
+    case 'ghost':
+      return 'border border-transparent bg-transparent text-primary hover:bg-primary/8 hover:text-primary/90'
+    default:
+      return 'border border-primary/20 bg-[linear-gradient(135deg,#6366f1_0%,#4f46e5_58%,#4338ca_100%)] text-white shadow-[0_18px_36px_-22px_rgba(79,70,229,0.48)] hover:shadow-[0_22px_42px_-24px_rgba(79,70,229,0.55)]'
+  }
+})
+
+const buttonClass = computed(() => [sizeClass.value, variantClass.value])
+</script>

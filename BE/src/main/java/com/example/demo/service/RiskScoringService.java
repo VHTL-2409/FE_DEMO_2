@@ -1,157 +1,311 @@
 package com.example.demo.service;
 
-import com.example.demo.domain.entity.ExamAttempt;
-import com.example.demo.domain.entity.Exam;
+import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.domain.entity.AttemptStatus;
-import com.example.demo.domain.entity.MonitoringEventType;
-import com.example.demo.domain.entity.MonitoringEvent;
-import com.example.demo.repository.MonitoringEventRepository;
+import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.FraudSignal;
+import com.example.demo.domain.entity.RiskActionType;
+import com.example.demo.domain.entity.RiskLevel;
+import com.example.demo.domain.entity.RiskScoreLog;
+import com.example.demo.domain.entity.SignalSeverity;
+import com.example.demo.repository.ExamAttemptRepository;
+import com.example.demo.repository.FraudSignalRepository;
+import com.example.demo.repository.RiskScoreLogRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class RiskScoringService {
 
-    private final MonitoringEventRepository monitoringEventRepository;
+    private final FraudSignalRepository fraudSignalRepository;
+    private final RiskScoreLogRepository riskScoreLogRepository;
+    private final ExamAttemptRepository examAttemptRepository;
+    private final RealtimeNotificationService realtimeNotificationService;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
-    @Value("${demo.risk.tab-switch:1}")
-    private int tabSwitchBase;
+    @Value("${demo.risk.level.suspicious-min:31}")
+    private int suspiciousMin;
 
-    @Value("${demo.risk.blur:5}")
-    private int blurBase;
+    @Value("${demo.risk.level.high-risk-min:61}")
+    private int highRiskMin;
 
-    @Value("${demo.risk.exit-fullscreen:2}")
-    private int exitFullscreenBase;
+    @Value("${demo.risk.level.critical-min:81}")
+    private int criticalMin;
 
-    @Value("${demo.risk.fast-submit:3}")
-    private int fastSubmitBase;
+    @Value("${demo.risk.snapshots.interval-seconds:60}")
+    private long snapshotIntervalSeconds;
 
-    @Value("${demo.risk.duplicate-ip:5}")
-    private int duplicateIpBase;
+    @Value("${demo.risk.snapshots.min-delta:5}")
+    private int snapshotMinDelta;
 
-    @Value("${demo.risk.copy-paste:2}")
-    private int copyPasteBase;
+    @Value("${demo.risk.weight.tab-switch:0.5}")
+    private double tabSwitchWeight;
 
-    @Value("${demo.risk.idle-time:1}")
-    private int idleTimeBase;
+    @Value("${demo.risk.cap.tab-switch:30}")
+    private int tabSwitchCap;
 
-    @Value("${demo.risk.devtools-open:3}")
-    private int devToolsOpenBase;
+    @Value("${demo.risk.weight.window-blur:0.4}")
+    private double blurWeight;
 
-    @Value("${demo.risk.right-click:2}")
-    private int rightClickBase;
+    @Value("${demo.risk.cap.window-blur:25}")
+    private int blurCap;
 
-    @Value("${demo.risk.print-screen:4}")
-    private int printScreenBase;
+    @Value("${demo.risk.weight.exit-fullscreen:0.75}")
+    private double exitFullscreenWeight;
 
-    @Value("${demo.risk.rapid-question-switch:2}")
-    private int rapidQuestionSwitchBase;
+    @Value("${demo.risk.cap.exit-fullscreen:40}")
+    private int exitFullscreenCap;
 
-    @Value("${demo.risk.multi-monitor:3}")
-    private int multiMonitorBase;
+    @Value("${demo.risk.weight.copy-paste:0.8}")
+    private double copyPasteWeight;
 
-    @Value("${demo.risk.threshold:5}")
-    private int threshold;
+    @Value("${demo.risk.cap.copy-paste:40}")
+    private int copyPasteCap;
 
-    @Value("${demo.risk.compound.multiplier:2}")
-    private double compoundMultiplier;
+    @Value("${demo.risk.weight.idle-time:0.3}")
+    private double idleTimeWeight;
 
-    @Value("${demo.risk.compound.reset-minutes:1}")
-    private long compoundResetMinutes;
+    @Value("${demo.risk.cap.idle-time:20}")
+    private int idleTimeCap;
 
-    @Value("${demo.risk.burst.window-seconds:3}")
-    private long burstWindowSeconds;
+    @Value("${demo.risk.weight.devtools-open:0.9}")
+    private double devToolsWeight;
 
-    @Value("${demo.risk.burst.threshold:6}")
-    private long burstThreshold;
+    @Value("${demo.risk.cap.devtools-open:60}")
+    private int devToolsCap;
 
-    @Value("${demo.risk.burst.multiplier:2}")
-    private double burstMultiplier;
+    @Value("${demo.risk.weight.right-click:0.35}")
+    private double rightClickWeight;
 
-    @Value("${demo.risk.progress.fast-submit.early-multiplier:2}")
-    private double fastSubmitEarlyMultiplier;
+    @Value("${demo.risk.cap.right-click:15}")
+    private int rightClickCap;
 
-    public int calculateDynamicScore(ExamAttempt attempt, MonitoringEventType eventType, LocalDateTime now) {
-        int baseScore = getBaseScore(eventType);
+    @Value("${demo.risk.weight.print-screen:0.85}")
+    private double printScreenWeight;
 
-        long previousOccurrences = monitoringEventRepository.countByAttemptAndEventType(attempt, eventType);
+    @Value("${demo.risk.cap.print-screen:45}")
+    private int printScreenCap;
 
-        // Reset compounding if the last same-type event is far in the past
-        long effectiveOccurrences = previousOccurrences;
-        MonitoringEvent lastSameType = monitoringEventRepository
-                .findTop1ByAttemptAndEventTypeOrderByCreatedAtDesc(attempt, eventType);
-        if (lastSameType != null && lastSameType.getCreatedAt() != null && compoundResetMinutes > 0) {
-            long minutesSinceLast = Duration.between(lastSameType.getCreatedAt(), now).toMinutes();
-            if (minutesSinceLast >= compoundResetMinutes) {
-                effectiveOccurrences = 0;
-            }
+    @Value("${demo.risk.weight.rapid-question-switch:0.6}")
+    private double rapidQuestionSwitchWeight;
+
+    @Value("${demo.risk.cap.rapid-question-switch:30}")
+    private int rapidQuestionSwitchCap;
+
+    @Value("${demo.risk.weight.multi-monitor:0.85}")
+    private double multiMonitorWeight;
+
+    @Value("${demo.risk.cap.multi-monitor:45}")
+    private int multiMonitorCap;
+
+    @Value("${demo.risk.weight.duplicate-ip:0.7}")
+    private double duplicateIpWeight;
+
+    @Value("${demo.risk.cap.duplicate-ip:45}")
+    private int duplicateIpCap;
+
+    @Value("${demo.risk.weight.time-anomaly:0.65}")
+    private double timeAnomalyWeight;
+
+    @Value("${demo.risk.cap.time-anomaly:40}")
+    private int timeAnomalyCap;
+
+    @Value("${demo.risk.weight.heartbeat-stale:0.7}")
+    private double heartbeatStaleWeight;
+
+    @Value("${demo.risk.cap.heartbeat-stale:35}")
+    private int heartbeatStaleCap;
+
+    @Value("${demo.risk.weight.device-fingerprint-changed:0.95}")
+    private double deviceFingerprintWeight;
+
+    @Value("${demo.risk.cap.device-fingerprint-changed:70}")
+    private int deviceFingerprintCap;
+
+    @Value("${demo.risk.weight.default:0.5}")
+    private double defaultWeight;
+
+    @Value("${demo.risk.cap.default:25}")
+    private int defaultCap;
+
+    @Transactional
+    public RiskScoreResponse recomputeRisk(ExamAttempt attempt) {
+        LocalDateTime now = LocalDateTime.now();
+        List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
+        Map<String, Integer> breakdown = new LinkedHashMap<>();
+        for (FraudSignal signal : signals) {
+            SignalScoreConfig config = signalConfig(signal.getSignalType(), signal.getSeverity());
+            int existing = breakdown.getOrDefault(config.key(), 0);
+            int contribution = (int) Math.round(signal.getSeverity().baseScore() * signal.getConfidence() * config.weight());
+            int next = Math.min(config.cap(), existing + Math.max(contribution, 0));
+            breakdown.put(config.key(), next);
         }
 
-        double compound = Math.pow(Math.max(compoundMultiplier, 1.0), effectiveOccurrences);
+        int score = Math.min(100, breakdown.values().stream().mapToInt(Integer::intValue).sum());
+        RiskLevel level = resolveLevel(score);
+        RiskScoreLog previousLog = riskScoreLogRepository.findTop1ByAttemptOrderByCreatedAtDesc(attempt);
+        RiskLevel previousLevel = previousLog != null ? previousLog.getLevel() : RiskLevel.CLEAN;
+        RiskActionType actionTaken = applyAutomatedAction(attempt, level, previousLevel);
 
-        // Burst detection: many events in a short window => amplify
-        double burst = 1.0;
-        if (burstWindowSeconds > 0 && burstThreshold > 0 && burstMultiplier > 1.0) {
-            LocalDateTime cutoff = now.minusSeconds(burstWindowSeconds);
-            long recentEvents = monitoringEventRepository.countByAttemptAndCreatedAtAfter(attempt, cutoff);
-            if (recentEvents >= burstThreshold) {
-                long over = recentEvents - burstThreshold + 1;
-                burst = Math.pow(burstMultiplier, over);
-            }
+        attempt.setRiskScore(score);
+        attempt.setRiskLevel(level);
+        attempt.setSuspicious(level.isSuspicious());
+        examAttemptRepository.save(attempt);
+
+        if (shouldPersistSnapshot(previousLog, score, level, actionTaken, now)) {
+            riskScoreLogRepository.save(RiskScoreLog.builder()
+                    .attempt(attempt)
+                    .student(attempt.getStudent())
+                    .score(score)
+                    .level(level)
+                    .breakdown(writeJson(breakdown))
+                    .actionTaken(actionTaken)
+                    .createdAt(now)
+                    .build());
         }
 
-        // Context-aware adjustments
-        double context = 1.0;
-        if (eventType == MonitoringEventType.FAST_SUBMIT) {
-            context *= fastSubmitContextFactor(attempt, now);
+        if (level.isSuspicious() || actionTaken != RiskActionType.NONE) {
+            realtimeNotificationService.notifyRiskUpdated(attempt, level, breakdown, actionTaken);
         }
 
-        double total = baseScore * compound * burst * context;
-        return (int) Math.max(0, Math.round(total));
+        return toResponse(attempt, score, level, breakdown, actionTaken, now);
     }
 
-    private int getBaseScore(MonitoringEventType eventType) {
-        return switch (eventType) {
-            case TAB_SWITCH -> tabSwitchBase;
-            case BLUR -> blurBase;
-            case EXIT_FULLSCREEN -> exitFullscreenBase;
-            case FAST_SUBMIT -> fastSubmitBase;
-            case DUPLICATE_IP -> duplicateIpBase;
-            case COPY_PASTE -> copyPasteBase;
-            case IDLE_TIME -> idleTimeBase;
-            case DEVTOOLS_OPEN -> devToolsOpenBase;
-            case RIGHT_CLICK -> rightClickBase;
-            case PRINT_SCREEN -> printScreenBase;
-            case RAPID_QUESTION_SWITCH -> rapidQuestionSwitchBase;
-            case MULTI_MONITOR -> multiMonitorBase;
-        };
+    public RiskLevel resolveLevel(int score) {
+        if (score >= criticalMin) {
+            return RiskLevel.CRITICAL;
+        }
+        if (score >= highRiskMin) {
+            return RiskLevel.HIGH_RISK;
+        }
+        if (score >= suspiciousMin) {
+            return RiskLevel.SUSPICIOUS;
+        }
+        return RiskLevel.CLEAN;
     }
 
     public boolean isSuspicious(int riskScore) {
-        return riskScore >= threshold;
+        return resolveLevel(riskScore).isSuspicious();
     }
 
-    private double fastSubmitContextFactor(ExamAttempt attempt, LocalDateTime now) {
-        Exam exam = attempt.getExam();
-        Integer durationMinutes = (exam == null) ? null : exam.getDurationMinutes();
-        long durationSeconds = Math.max(60L, (durationMinutes == null ? 60L : durationMinutes) * 60L);
-
-        LocalDateTime startedAt = attempt.getStartedAt();
-        if (startedAt == null) {
-            return 1.0;
+    private RiskActionType applyAutomatedAction(ExamAttempt attempt, RiskLevel level, RiskLevel previousLevel) {
+        if (level == RiskLevel.CRITICAL && attempt.getStatus() == AttemptStatus.IN_PROGRESS) {
+            attempt.setStatus(AttemptStatus.PAUSED);
+            auditLogService.logSystemAttemptPaused(attempt, "Risk score reached critical threshold");
+            realtimeNotificationService.notifyAttemptPaused(attempt,
+                    "Phiên thi đang được tạm dừng để giám thị kiểm tra.");
+            return RiskActionType.ATTEMPT_PAUSED;
         }
 
-        long elapsed = Math.max(0L, Duration.between(startedAt, now).toSeconds());
-        double progress = Math.min(1.0, (double) elapsed / (double) durationSeconds);
+        if (level == RiskLevel.HIGH_RISK && previousLevel.ordinal() < RiskLevel.HIGH_RISK.ordinal()) {
+            auditLogService.logSystemRiskWarning(attempt, "Risk score reached high-risk threshold");
+            realtimeNotificationService.notifySystemWarning(attempt,
+                    "Hệ thống phát hiện rủi ro cao. Vui lòng tiếp tục làm bài đúng quy định.");
+            return RiskActionType.WARNING_SENT;
+        }
 
-        // Earlier submit => more suspicious. progress=0 => multiplier ~
-        // earlyMultiplier, progress=1 => 1.0
-        double early = Math.max(1.0, fastSubmitEarlyMultiplier);
-        return 1.0 + (early - 1.0) * (1.0 - progress);
+        if (level == RiskLevel.SUSPICIOUS && previousLevel == RiskLevel.CLEAN) {
+            return RiskActionType.REVIEW_REQUIRED;
+        }
+
+        return RiskActionType.NONE;
+    }
+
+    private boolean shouldPersistSnapshot(
+            RiskScoreLog previousLog,
+            int score,
+            RiskLevel level,
+            RiskActionType actionTaken,
+            LocalDateTime now
+    ) {
+        if (previousLog == null) {
+            return true;
+        }
+        if (actionTaken != RiskActionType.NONE) {
+            return true;
+        }
+        if (previousLog.getLevel() != level) {
+            return true;
+        }
+        if (Math.abs(previousLog.getScore() - score) >= snapshotMinDelta) {
+            return true;
+        }
+        return Duration.between(previousLog.getCreatedAt(), now).toSeconds() >= Math.max(snapshotIntervalSeconds, 1);
+    }
+
+    private RiskScoreResponse toResponse(
+            ExamAttempt attempt,
+            int score,
+            RiskLevel level,
+            Map<String, Integer> breakdown,
+            RiskActionType actionTaken,
+            LocalDateTime now
+    ) {
+        List<RiskScoreResponse.LatestSignalItem> latestSignals = fraudSignalRepository
+                .findTop20ByAttemptOrderByCreatedAtDesc(attempt)
+                .stream()
+                .limit(5)
+                .map(signal -> RiskScoreResponse.LatestSignalItem.builder()
+                        .signalType(signal.getSignalType())
+                        .confidence(signal.getConfidence())
+                        .severity(signal.getSeverity().name())
+                        .evidence(signal.getEvidence())
+                        .createdAt(signal.getCreatedAt())
+                        .build())
+                .toList();
+        return RiskScoreResponse.builder()
+                .attemptId(attempt.getId())
+                .score(score)
+                .level(level.name())
+                .suspicious(level.isSuspicious())
+                .actionTaken(actionTaken.name())
+                .breakdown(breakdown)
+                .latestSignals(latestSignals)
+                .updatedAt(now)
+                .build();
+    }
+
+    private SignalScoreConfig signalConfig(String signalType, SignalSeverity severity) {
+        String normalized = signalType == null ? "UNKNOWN_SIGNAL" : signalType.trim().toUpperCase();
+        return switch (normalized) {
+            case "TAB_SWITCH" -> new SignalScoreConfig("TAB_SWITCH", tabSwitchWeight, tabSwitchCap);
+            case "WINDOW_BLUR", "BLUR" -> new SignalScoreConfig("WINDOW_BLUR", blurWeight, blurCap);
+            case "EXIT_FULLSCREEN" -> new SignalScoreConfig("EXIT_FULLSCREEN", exitFullscreenWeight, exitFullscreenCap);
+            case "COPY_PASTE" -> new SignalScoreConfig("COPY_PASTE", copyPasteWeight, copyPasteCap);
+            case "IDLE_TIME" -> new SignalScoreConfig("IDLE_TIME", idleTimeWeight, idleTimeCap);
+            case "DEVTOOLS_OPEN" -> new SignalScoreConfig("DEVTOOLS_OPEN", devToolsWeight, devToolsCap);
+            case "RIGHT_CLICK" -> new SignalScoreConfig("RIGHT_CLICK", rightClickWeight, rightClickCap);
+            case "PRINT_SCREEN" -> new SignalScoreConfig("PRINT_SCREEN", printScreenWeight, printScreenCap);
+            case "RAPID_QUESTION_SWITCH" -> new SignalScoreConfig("RAPID_QUESTION_SWITCH", rapidQuestionSwitchWeight, rapidQuestionSwitchCap);
+            case "MULTI_MONITOR" -> new SignalScoreConfig("MULTI_MONITOR", multiMonitorWeight, multiMonitorCap);
+            case "DUPLICATE_IP" -> new SignalScoreConfig("DUPLICATE_IP", duplicateIpWeight, duplicateIpCap);
+            case "TIME_ANOMALY", "FAST_SUBMIT" -> new SignalScoreConfig("TIME_ANOMALY", timeAnomalyWeight, timeAnomalyCap);
+            case "HEARTBEAT_STALE" -> new SignalScoreConfig("HEARTBEAT_STALE", heartbeatStaleWeight, heartbeatStaleCap);
+            case "DEVICE_FINGERPRINT_CHANGED" -> new SignalScoreConfig("DEVICE_FINGERPRINT_CHANGED", deviceFingerprintWeight, deviceFingerprintCap);
+            default -> new SignalScoreConfig(normalized, defaultWeight, defaultCap + severity.baseScore());
+        };
+    }
+
+    private String writeJson(Map<String, Integer> value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to serialize risk breakdown", ex);
+        }
+    }
+
+    private record SignalScoreConfig(String key, double weight, int cap) {
     }
 }

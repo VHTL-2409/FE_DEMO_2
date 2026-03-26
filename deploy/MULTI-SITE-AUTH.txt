@@ -1,0 +1,53 @@
+Đa site (nhiều domain / subdomain) + phân quyền — FE_DEMO
+========================================================
+
+A) Nhiều link (domain) cùng một bản build, cùng backend
+-------------------------------------------------------
+  Một app Vue + một API: mỗi "site" là một tên trỏ về cùng IP VPS.
+
+  1. DNS: mỗi domain/subdomain — bản ghi A → cùng IP (vd. exam.a.com, exam.b.com).
+
+  2. Nginx: mỗi server_name một khối server { ... } hoặc một server_name nhiều tên:
+       server_name exam.a.com exam.b.com;
+     Cùng proxy_pass tới 127.0.0.1:8080 và 8082.
+
+  3. Backend — CORS (bắt buộc cho trình duyệt):
+     Trong .env production (thư mục gốc):
+       APP_CORS_ALLOWED_ORIGINS=https://exam.a.com,https://exam.b.com,https://www.exam.a.com
+     (phân tách dấu phẩy, không khoảng thừa)
+
+  4. Frontend — build-time:
+       VITE_API_BASE_URL=https://exam.a.com
+     Mỗi domain muốn "đúng API trên chính domain đó" cần **một bản build riêng**
+     hoặc dùng **một domain chính** cho API (reverse proxy cùng host).
+
+     Cách đơn giản: mọi người dùng cùng URL public (một domain chính); các domain khác
+     redirect 301 về domain chính (Nginx).
+
+  5. Cookie / JWT: lưu ý SameSite; cùng site API và UI (cùng eTLD+1) ít rắc rối hơn.
+
+
+B) Phân quyền — đã tối ưu phía giao diện (Vue Router)
+----------------------------------------------------
+  - /admin/* : chỉ ADMIN (meta adminOnly + backend @PreAuthorize trên Admin API).
+  - /teacher/* : ADMIN hoặc TEACHER — chặn học sinh vào nhầm.
+  - /student/* : chỉ STUDENT — chặn giáo viên/admin vào giao diện thi học sinh.
+
+  Logic trong demo/src/router.js và authService.js (userHasTeacherAccess, userHasStudentAccess).
+
+  Backend vẫn phải kiểm tra quyền từng API (đã có trên AdminController; các API khác
+  kiểm tra trong service/controller — không tin tưởng chỉ frontend).
+
+
+C) Kiểm tra nhanh sau khi thêm domain
+--------------------------------------
+  - nslookup domain_mới → đúng IP VPS
+  - curl -I https://domain_mới/ (hoặc http) → 200/301
+  - Đăng nhập từ domain mới — nếu lỗi CORS, bổ sung origin vào APP_CORS_ALLOWED_ORIGINS
+    và restart container be (không cần build lại fe nếu chỉ sửa CORS backend).
+
+
+Tài liệu liên quan
+------------------
+  deploy/REVERSE-PROXY.txt
+  .env.example (APP_CORS_ALLOWED_ORIGINS)

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hồ sơ học sinh - EduExam</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "primary-container": "#4f46e5",
+                        "surface-tint": "#4d44e3",
+                        "surface-container": "#eceef0",
+                        "inverse-primary": "#c3c0ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-bright": "#f7f9fb",
+                        "on-primary-container": "#dad7ff",
+                        "on-secondary-container": "#454386",
+                        "secondary": "#58579b",
+                        "on-primary-fixed": "#0f0069",
+                        "primary": "#3525cd",
+                        "outline-variant": "#c7c4d8",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-surface-variant": "#464555",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e3e5",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-container": "#a44100",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary-container": "#ffd2be",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed": "#140f54",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "inverse-surface": "#2d3133",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "secondary-container": "#b6b4ff",
+                        "tertiary": "#7e3000",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline": "#777587",
+                        "secondary-fixed": "#e2dfff",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191c1e",
+                        "on-error": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Be Vietnam Pro"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Be Vietnam Pro"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface selection:bg-primary-fixed">
+<!-- Top AppBar -->
+<header class="bg-slate-50 dark:bg-slate-900 flex justify-between items-center px-6 py-4 w-full fixed top-0 z-50">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400">menu</span>
+<h1 class="font-['Be_Vietnam_Pro'] tracking-tight text-xl font-bold text-indigo-600 dark:text-indigo-400">EduExam</h1>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-primary-fixed">
+<img alt="Student Profile Avatar" data-alt="Close up portrait of a young male student with a kind expression and professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSdiVUa7sjhdozFp381yyF3ep8d_AKXsCtUyTD4J7UDPb0hVUXP_ed9bJIHs2LRlecQ0pPT_htDL9yVkdpJrkk0XbospCcDHdHzHjNj2Wo1DiG_iQ2W9aW_bOWll6iZwtQyxD5UziNTusNeIL0a56YlBEq1K0TxsmD2JwQbrZnqUn-TCAHZ8C-6d4P9B12tInfKZ0epuuRrClZ5SqJKuXaH-o3W4_6kz7zqVE2mHYNWvE3PqhW1Tc5xYrrfn1Qq3eP6fcipCGfrbQI"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-md mx-auto">
+<!-- Success State Toast -->
+<div class="mb-8 flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-lg">
+<span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="text-sm font-medium text-emerald-800 dark:text-emerald-200">Thông tin cá nhân đã được cập nhật thành công!</p>
+</div>
+<!-- Hero: Profile Header -->
+<section class="flex flex-col items-center mb-10">
+<div class="relative group">
+<div class="w-32 h-32 rounded-xl overflow-hidden bg-surface-container-lowest shadow-lg ring-4 ring-white dark:ring-slate-800">
+<img class="w-full h-full object-cover" data-alt="Frontal portrait of a male student in a bright studio setting with soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqzXcCyVnz6M2i9a7gH1k8Lc0AjMR4LSwZCrAPCJigAQhrMlCmyl3_wfeTbBJC2tk_XQRboC2HXRYytU75L_YwknRkcXEF7MZW-vc78NU8JI6LAo71XQrEMMONytMCReP5sxWk8NSztYS0bXqdXQlaJ5XDsM3CV_0P7zTwrpRBN8jogbmkz6Js3oNh3SORmnc683xXloC5vA2iiAS9ZLdoIW_sdkL0dXkBDNJx2zxHEMcuFltDy20tBwX3K_SX-vxt9_wWX5CvrhGI"/>
+</div>
+<button class="absolute -bottom-2 -right-2 w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">photo_camera</span>
+</button>
+</div>
+<div class="mt-4 text-center">
+<h2 class="text-2xl font-bold headline-sm tracking-tight text-on-surface">Nguyễn Minh Quân</h2>
+<p class="text-sm text-outline font-medium uppercase tracking-widest mt-1">Mã học sinh: EDU202409</p>
+</div>
+</section>
+<!-- Information Form -->
+<section class="space-y-6">
+<div class="space-y-2">
+<label class="text-[0.75rem] font-bold text-outline uppercase tracking-wider ml-1">Họ và tên</label>
+<input class="w-full h-14 px-4 bg-surface-container-lowest border-none rounded-lg text-on-surface focus:ring-2 focus:ring-primary/20 transition-all text-base font-medium" type="text" value="Nguyễn Minh Quân"/>
+</div>
+<div class="space-y-2">
+<label class="text-[0.75rem] font-bold text-outline uppercase tracking-wider ml-1">Email</label>
+<input class="w-full h-14 px-4 bg-surface-container-lowest border-none rounded-lg text-on-surface focus:ring-2 focus:ring-primary/20 transition-all text-base font-medium" type="email" value="quan.nguyen@student.edu.vn"/>
+</div>
+<div class="space-y-2">
+<label class="text-[0.75rem] font-bold text-outline uppercase tracking-wider ml-1">Số điện thoại</label>
+<input class="w-full h-14 px-4 bg-surface-container-lowest border-none rounded-lg text-on-surface focus:ring-2 focus:ring-primary/20 transition-all text-base font-medium" type="tel" value="098 123 4567"/>
+</div>
+<!-- Settings Group -->
+<div class="pt-4 space-y-4">
+<button class="w-full h-16 px-6 bg-surface-container-low hover:bg-surface-container-high transition-colors rounded-lg flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">lock_reset</span>
+<span class="font-semibold text-on-surface">Đổi mật khẩu</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<div class="w-full h-16 px-6 bg-surface-container-low rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-outline">dark_mode</span>
+<span class="font-semibold text-on-surface">Chế độ tối</span>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Primary Action -->
+<button class="w-full h-14 mt-8 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+<span>Lưu thay đổi</span>
+<span class="material-symbols-outlined text-sm">save</span>
+</button>
+</section>
+<!-- Danger Zone (Implicit) -->
+<section class="mt-12 text-center">
+<button class="text-error font-semibold text-sm hover:underline decoration-2 underline-offset-4">
+                Đăng xuất khỏi tài khoản
+            </button>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-[0_-20px_40px_rgba(25,28,30,0.06)] border-t border-slate-200/10 dark:border-slate-800/10 rounded-t-[2rem]">
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-indigo-500 dark:hover:text-indigo-300 transition-all active:scale-90">
+<span class="material-symbols-outlined mb-1">auto_stories</span>
+<span class="font-['Be_Vietnam_Pro'] text-[10px] font-medium uppercase tracking-wider">Library</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-indigo-500 dark:hover:text-indigo-300 transition-all active:scale-90">
+<span class="material-symbols-outlined mb-1">quiz</span>
+<span class="font-['Be_Vietnam_Pro'] text-[10px] font-medium uppercase tracking-wider">Exams</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-indigo-500 dark:hover:text-indigo-300 transition-all active:scale-90">
+<span class="material-symbols-outlined mb-1">leaderboard</span>
+<span class="font-['Be_Vietnam_Pro'] text-[10px] font-medium uppercase tracking-wider">Progress</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 rounded-2xl px-5 py-2 active:scale-90 transition-all">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-['Be_Vietnam_Pro'] text-[10px] font-bold uppercase tracking-wider">Profile</span>
+</div>
+</nav>
+</body></html>

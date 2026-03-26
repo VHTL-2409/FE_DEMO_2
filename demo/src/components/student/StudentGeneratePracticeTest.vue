@@ -1,101 +1,188 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
-    <div class="layout-container flex h-full grow flex-col">
-      <StudentTopHeader />
+  <div class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+        <StudentTopHeader class="shrink-0" />
 
-      <main class="relative max-w-4xl mx-auto px-4 py-10 overflow-hidden w-full">
-        <div class="relative mb-10 animate-fade-up">
-          <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo bài luyện tập mới</h2>
-          <p class="mt-2 text-slate-600 dark:text-slate-400">Tải tệp CSV/XLSX chứa câu hỏi, chọn thời lượng và bắt đầu luyện tập.</p>
-        </div>
+        <main class="teacher-page-shell relative flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5">
+          <div class="staff-page-wrap min-h-0 flex-1 overflow-x-hidden">
+          <PageHeader
+            class="shrink-0 animate-fade-up [&_.teacher-page-title]:text-[clamp(1.05rem,2.2vw,1.5rem)]"
+            eyebrow="Practice"
+            title="Tạo bài luyện tập (Nhập tệp)"
+            subtitle="Tải tệp, chọn số câu và thời lượng để luyện trong một luồng gọn."
+          />
 
-        <div class="relative space-y-6 animate-fade-up-delay">
-          <section class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
-            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">upload_file</span>
-              Tải tệp câu hỏi
-            </h3>
-            <label class="block border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
-              <input class="hidden" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
-              <span class="material-symbols-outlined text-primary text-4xl mb-3">cloud_upload</span>
-              <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nhấp để chọn tệp CSV, XLSX, PDF hoặc Word</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ FILE_FORMAT_DESC }}</p>
-              <div class="mt-2 flex flex-wrap gap-3">
-                <a :href="getTemplateDownloadUrl('csv')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">Mẫu CSV</a>
-                <a :href="getTemplateDownloadUrl('xlsx')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">Mẫu Excel</a>
+          <div class="mb-2 shrink-0 animate-fade-up">
+            <div class="flex flex-wrap items-center justify-start gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:gap-3 sm:text-xs md:gap-5">
+              <div class="flex items-center gap-2.5">
+                <span class="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white shadow-sm">1</span>
+                <span class="text-slate-900">Tệp &amp; số câu</span>
               </div>
-              <p v-if="selectedFile" class="text-primary font-semibold mt-3">{{ selectedFile.name }}</p>
-            </label>
-          </section>
+              <span class="hidden h-px w-8 shrink-0 bg-slate-200 sm:block" aria-hidden="true"></span>
+              <div class="flex items-center gap-2.5">
+                <span class="flex size-8 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-500">2</span>
+                <span class="text-slate-600">Thời lượng &amp; bắt đầu</span>
+              </div>
+            </div>
+          </div>
 
-          <section class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
-            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">schedule</span>
-              Thời lượng làm bài
-            </h3>
-            <div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Chọn thời gian tối đa để hoàn thành bài. Hết giờ sẽ tự động nộp bài.</p>
-                <div class="flex flex-wrap gap-2">
+          <div class="relative flex min-h-0 flex-1 flex-col gap-2 animate-fade-up-delay sm:gap-3">
+            <div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-2 overflow-x-hidden sm:gap-3">
+              <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4 lg:min-h-0">
+                <section class="staff-surface flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
+                  <div class="mb-2 flex shrink-0 items-center gap-2 border-b border-slate-100 pb-2">
+                    <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">upload_file</span>
+                    <h3 class="text-sm font-bold leading-snug sm:text-base">Tải tệp câu hỏi</h3>
+                  </div>
+
+                  <div class="flex min-h-0 flex-1 flex-col">
+                    <label class="group relative flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 p-2 transition-all hover:border-primary/50 hover:bg-primary/5 sm:p-3">
+                      <input class="absolute inset-0 h-full w-full cursor-pointer opacity-0" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
+                      <div class="mb-1.5 rounded-full bg-primary/10 p-2 transition-transform group-hover:scale-105 sm:p-2.5">
+                        <span class="material-symbols-outlined text-2xl text-primary sm:text-3xl">cloud_upload</span>
+                      </div>
+                      <h4 class="mb-0.5 text-center text-xs font-semibold sm:text-sm">Chọn hoặc kéo thả tệp</h4>
+                      <p class="line-clamp-2 px-1 text-center text-[10px] leading-snug text-slate-500 sm:text-[11px]">{{ FILE_FORMAT_DESC }}</p>
+                      <div class="mt-1.5 flex flex-wrap justify-center gap-2 text-[10px] sm:mt-2 sm:text-[11px]">
+                        <a :href="getTemplateDownloadUrl('csv')" download class="flex items-center gap-0.5 font-semibold text-primary hover:underline">
+                          <span class="material-symbols-outlined text-sm">download</span>
+                          CSV
+                        </a>
+                        <a :href="getTemplateDownloadUrl('xlsx')" download class="flex items-center gap-0.5 font-semibold text-primary hover:underline">
+                          <span class="material-symbols-outlined text-sm">download</span>
+                          Excel
+                        </a>
+                      </div>
+                      <p v-if="fileName" class="mt-2 max-w-full truncate px-1 text-center text-xs font-semibold text-primary">{{ fileName }}</p>
+                      <p v-if="selectedFile" class="text-[11px] text-slate-500">Dung lượng: {{ fileSizeLabel }}</p>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="staff-surface flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
+                  <div class="mb-2 flex shrink-0 items-center gap-2 border-b border-slate-100 pb-2">
+                    <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">analytics</span>
+                    <h3 class="text-sm font-bold leading-snug sm:text-base">Số câu trong tệp</h3>
+                  </div>
+
+                  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-100 bg-slate-50/90">
+                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2.5 portal-scrollbar sm:p-3">
+                      <div
+                        v-if="!selectedFile"
+                        class="flex h-full min-h-[5.5rem] flex-col items-center justify-center gap-1.5 px-2 text-center text-slate-400"
+                      >
+                        <span class="material-symbols-outlined text-2xl opacity-50 sm:text-3xl">summarize</span>
+                        <p class="text-[11px] font-medium leading-snug text-slate-500 sm:text-xs">Chưa có tệp</p>
+                        <p class="max-w-[14rem] text-[10px] leading-snug text-slate-400 sm:text-[11px]">Tải tệp bên trái để xem số câu hợp lệ.</p>
+                      </div>
+
+                      <div v-else-if="previewLoading" class="flex h-full min-h-[6rem] flex-col items-center justify-center gap-2">
+                        <span class="material-symbols-outlined animate-pulse text-2xl text-primary sm:text-3xl">hourglass_top</span>
+                        <p class="text-xs text-slate-600">Đang đọc tệp…</p>
+                      </div>
+
+                      <div v-else-if="previewError" class="flex min-h-[6rem] items-center justify-center px-1">
+                        <p class="text-center text-xs text-red-600">{{ previewError }}</p>
+                      </div>
+
+                      <div v-else-if="totalParsed !== null && totalParsed > 0">
+                        <div class="flex flex-col items-center text-center">
+                          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Hợp lệ</p>
+                          <p class="mt-0.5 text-2xl font-black tabular-nums leading-none tracking-tight text-primary sm:text-3xl">{{ totalParsed }}</p>
+                        </div>
+                        <div class="mt-2 border-t border-slate-200 pt-2">
+                          <label class="block text-center text-[11px] font-semibold text-slate-700 sm:text-xs">Số câu đưa vào bài (1–{{ totalParsed }})</label>
+                          <input
+                            v-model.number="questionCountToImport"
+                            type="number"
+                            min="1"
+                            :max="totalParsed"
+                            class="mx-auto mt-1.5 block w-full max-w-[11rem] rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center text-sm font-bold tabular-nums outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary sm:max-w-[12rem] sm:py-2.5 sm:text-base"
+                          />
+                        </div>
+                      </div>
+
+                      <div v-else-if="totalParsed === 0" class="flex min-h-[6rem] items-center justify-center">
+                        <p class="text-center text-xs text-amber-700">Không có câu hợp lệ.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <section class="staff-surface shrink-0 rounded-2xl p-3 sm:p-4">
+                <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">schedule</span>
+                  <h3 class="text-sm font-bold leading-snug sm:text-base">Thời lượng làm bài</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <button
                     v-for="opt in durationOptions"
                     :key="opt.value"
                     type="button"
                     :class="durationMinutes === opt.value
-                      ? 'bg-primary text-white border-primary shadow-md'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10'"
-                    class="px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all"
+                      ? 'border-primary bg-primary text-white shadow-md'
+                      : 'border-slate-200 bg-white hover:border-primary/50 hover:bg-primary/5'"
+                    class="min-w-[4.75rem] rounded-xl border px-3 py-2 text-sm font-semibold transition-all sm:min-w-[5rem] sm:px-4 sm:py-2.5"
                     @click="durationMinutes = opt.value"
                   >
                     {{ opt.label }}
                   </button>
+                  <span class="hidden h-5 w-px shrink-0 bg-slate-200 sm:block" aria-hidden="true"></span>
+                  <span class="text-xs font-medium text-slate-500 shrink-0">Khác:</span>
+                  <input
+                    v-model.number="durationMinutes"
+                    type="number"
+                    min="5"
+                    max="240"
+                    class="w-20 shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-sm font-semibold tabular-nums outline-none focus:border-transparent focus:ring-2 focus:ring-primary sm:w-24 sm:px-3"
+                  />
+                  <span class="text-sm text-slate-500 shrink-0">phút</span>
                 </div>
-              <div class="mt-3 flex items-center gap-2">
-                <span class="text-sm text-slate-500 dark:text-slate-400">Hoặc nhập:</span>
-                <input
-                  v-model.number="durationMinutes"
-                  type="number"
-                  min="5"
-                  max="240"
-                  class="w-24 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center"
-                />
-                <span class="text-sm text-slate-500 dark:text-slate-400">phút</span>
+              </section>
+            </div>
+
+            <div class="mx-auto flex w-full max-w-6xl shrink-0 flex-col gap-2 border-t border-slate-200/80 pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:pt-3.5">
+              <div class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:justify-end sm:gap-3">
+                <button
+                  class="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto sm:min-w-[9rem]"
+                  type="button"
+                  @click="goBack"
+                >
+                  Quay lại
+                </button>
+                <button
+                  :disabled="isCreating"
+                  class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[9rem]"
+                  type="button"
+                  @click="startPractice"
+                >
+                  <template v-if="!isCreating">
+                    Tạo &amp; bắt đầu
+                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+                  </template>
+                  <template v-else>Đang xử lý…</template>
+                </button>
               </div>
             </div>
-          </section>
-
-          <div class="flex items-center justify-end gap-4 pt-2">
-            <button
-              class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
-              type="button"
-              @click="goBack"
-            >
-              Quay lại
-            </button>
-            <button
-              :disabled="isCreating"
-              class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-              type="button"
-              @click="startPractice"
-            >
-              {{ isCreating ? 'Đang tạo...' : 'Tạo & bắt đầu' }}
-              <span class="material-symbols-outlined text-lg">arrow_forward</span>
-            </button>
           </div>
-        </div>
-      </main>
-
+          </div>
+        </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { startAttempt } from '../../services/attemptService'
 import { createPracticeFromFile } from '../../services/examService'
-import { FILE_FORMAT_DESC, getTemplateDownloadUrl } from '../../services/questionService'
+import { FILE_FORMAT_DESC, getTemplateDownloadUrl, previewImportFile } from '../../services/questionService'
 import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import PageHeader from '../shared/PageHeader.vue'
 
 const durationOptions = [
   { value: 15, label: '15 phút' },
@@ -107,15 +194,29 @@ const durationOptions = [
 ]
 
 const router = useRouter()
-const isDark = ref(false)
 const selectedFile = ref(null)
+const fileName = ref('')
 const durationMinutes = ref(30)
 const isCreating = ref(false)
 const toast = useToast()
+const previewLoading = ref(false)
+const totalParsed = ref(null)
+const previewError = ref('')
+const questionCountToImport = ref(1)
 
-const onFileChange = (e) => {
+const fileSizeLabel = computed(() => {
+  if (!selectedFile.value) return ''
+  const sizeInMb = selectedFile.value.size / (1024 * 1024)
+  return `${sizeInMb.toFixed(2)} MB`
+})
+
+const onFileChange = async (e) => {
   const file = e?.target?.files?.[0] || null
   selectedFile.value = file
+  fileName.value = file?.name || ''
+  totalParsed.value = null
+  previewError.value = ''
+  questionCountToImport.value = 1
 
   if (!file) return
 
@@ -125,11 +226,34 @@ const onFileChange = (e) => {
   if (!validType) {
     toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV, XLSX, PDF hoặc Word.')
     selectedFile.value = null
+    fileName.value = ''
     return
   }
   if (file.size > 10 * 1024 * 1024) {
     toast.error('Dung lượng tệp vượt quá 10MB.')
     selectedFile.value = null
+    fileName.value = ''
+    return
+  }
+
+  previewLoading.value = true
+  try {
+    const r = await previewImportFile(file)
+    const n = Number(r?.totalQuestions ?? 0)
+    totalParsed.value = n
+    if (n <= 0) {
+      previewError.value = 'Không tìm thấy câu hỏi hợp lệ trong tệp.'
+      toast.error(previewError.value)
+    } else {
+      questionCountToImport.value = n <= 50 ? n : 50
+    }
+  } catch (err) {
+    previewError.value = err?.message || 'Không đọc được tệp.'
+    toast.error(previewError.value)
+    selectedFile.value = null
+    fileName.value = ''
+  } finally {
+    previewLoading.value = false
   }
 }
 
@@ -138,6 +262,16 @@ const goBack = () => router.push('/student/dashboard')
 const startPractice = async () => {
   if (!selectedFile.value) {
     toast.error('Vui lòng chọn tệp (CSV, XLSX, PDF hoặc Word) chứa câu hỏi.')
+    return
+  }
+  if (totalParsed.value == null || totalParsed.value <= 0) {
+    toast.error('Vui lòng chọn tệp có ít nhất một câu hỏi hợp lệ, hoặc đợi hệ thống đếm xong.')
+    return
+  }
+
+  const k = Math.max(1, Math.min(totalParsed.value, Math.floor(Number(questionCountToImport.value) || 0)))
+  if (k < 1 || k > totalParsed.value) {
+    toast.error(`Số câu phải từ 1 đến ${totalParsed.value}.`)
     return
   }
 
@@ -149,7 +283,7 @@ const startPractice = async () => {
 
   isCreating.value = true
   try {
-    const practiceExam = await createPracticeFromFile(selectedFile.value, duration)
+    const practiceExam = await createPracticeFromFile(selectedFile.value, duration, k)
 
     const attempt = await startAttempt(practiceExam.id)
 
@@ -172,12 +306,3 @@ const startPractice = async () => {
   }
 }
 </script>
-
-<style scoped>
-.animate-fade-up { animation: fadeUp 0.5s ease-out; }
-.animate-fade-up-delay { animation: fadeUp 0.65s ease-out; }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>

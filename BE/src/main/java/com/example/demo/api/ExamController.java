@@ -9,6 +9,7 @@ import com.example.demo.service.AnswerSimilarityService;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,20 +42,26 @@ public class ExamController {
 
     @GetMapping("/practice-options")
     public ApiResponse<java.util.Map<String, Object>> practiceOptions() {
+        var user = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(user);
         return ApiResponse.success(examService.getPracticeOptions());
     }
 
     @PostMapping("/practice")
     public ApiResponse<ExamResponse> createPractice(@RequestBody(required = false) @Valid PracticeExamRequest request) {
-        return ApiResponse.success(examService.generatePracticeExam(currentUserService.requireCurrentUser(), request));
+        var user = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(user);
+        return ApiResponse.success(examService.generatePracticeExam(user, request));
     }
 
     @PostMapping(value = "/practice-from-file", consumes = "multipart/form-data")
     public ApiResponse<ExamResponse> createPracticeFromFile(
             @RequestPart("file") MultipartFile file,
-            @RequestParam(value = "durationMinutes", defaultValue = "30") int durationMinutes) {
-        return ApiResponse.success(examService.createPracticeExamFromFile(
-                currentUserService.requireCurrentUser(), file, durationMinutes));
+            @RequestParam(value = "durationMinutes", defaultValue = "30") int durationMinutes,
+            @RequestParam(value = "questionCount", required = false) Integer questionCount) {
+        var user = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(user);
+        return ApiResponse.success(examService.createPracticeExamFromFile(user, file, durationMinutes, questionCount));
     }
 
     @GetMapping("/{examId}")
@@ -90,12 +97,14 @@ public class ExamController {
     }
 
     @GetMapping("/{examId}/answer-similarity")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<AnswerSimilarityService.SimilarityPair>> answerSimilarity(@PathVariable Long examId) {
         var exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
         return ApiResponse.success(answerSimilarityService.findSuspiciousPairs(exam));
     }
 
     @GetMapping("/{examId}/question-wrong-stats")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<com.example.demo.api.dto.exam.QuestionWrongStatsItem>> questionWrongStats(@PathVariable Long examId) {
         return ApiResponse.success(examService.getQuestionWrongStats(examId, currentUserService.requireCurrentUser()));
     }

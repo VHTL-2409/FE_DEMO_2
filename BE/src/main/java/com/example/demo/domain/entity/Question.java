@@ -28,14 +28,35 @@ public class Question {
     @Column(name = "score_weight", nullable = false)
     private Double scoreWeight;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", length = 32)
+    private QuestionType type = QuestionType.SINGLE_CHOICE;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String options;
 
-    @Column(name = "correct_answer", nullable = false, length = 20)
+    @Column(name = "correct_answer", columnDefinition = "TEXT", nullable = false)
     private String correctAnswer;
 
     /** Độ khó: EASY, MEDIUM, HARD. Có thể do AI phân tích hoặc nhập từ file. */
     @Column(name = "difficulty", length = 20)
     private String difficulty;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private String metadata;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "attachments", columnDefinition = "jsonb")
+    private String attachments;
+
+    @PrePersist
+    @PreUpdate
+    private void applyDefaults() {
+        if (type == null) {
+            type = QuestionType.SINGLE_CHOICE;
+        }
+    }
 }

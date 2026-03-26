@@ -1,6 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
-    <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
+  <div
+    class="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-primary-50/40 p-4 portal-scrollbar dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20"
+  >
+    <div
+      class="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white/95 p-8 shadow-soft backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95"
+    >
       <div class="text-center mb-8">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-outlined text-primary text-3xl">lock_reset</span>
@@ -9,26 +13,23 @@
         <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">Nhập email đăng ký để nhận link đặt lại mật khẩu qua Gmail</p>
       </div>
 
-      <form v-if="!emailSent" @submit.prevent="onSubmit" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-          <input
+      <form v-if="!emailSent" class="space-y-4" @submit.prevent="onSubmit">
+        <BaseField label="Email" v-slot="{ inputId, hintId, errorId }">
+          <BaseInput
+            :id="inputId"
             v-model="email"
             type="email"
             required
+            autocomplete="email"
             placeholder="your-email@gmail.com"
-            class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+            :hint-id="hintId"
+            :error-id="errorId"
           />
-        </div>
+        </BaseField>
 
-        <button
-          type="submit"
-          :disabled="isSubmitting"
-          class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          <span v-if="isSubmitting" class="inline-block size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        <BaseButton type="submit" class="w-full" size="lg" :loading="isSubmitting">
           {{ isSubmitting ? 'Đang gửi...' : 'Gửi link đặt lại mật khẩu' }}
-        </button>
+        </BaseButton>
       </form>
 
       <div v-else class="space-y-4">
@@ -45,16 +46,15 @@
             Đã gửi email. Vui lòng kiểm tra hộp thư (kể cả thư mục spam).
           </p>
         </div>
-        <button
-          type="button"
-          @click="emailSent = false; resetUrl = ''"
-          class="w-full py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
+        <BaseButton variant="secondary" type="button" class="w-full" @click="onSendAnother">
           Gửi lại email khác
-        </button>
+        </BaseButton>
       </div>
 
-      <RouterLink to="/login" class="mt-6 block text-center text-sm text-primary hover:underline">
+      <RouterLink
+        to="/login"
+        class="mt-6 block text-center text-sm font-semibold text-primary hover:underline portal-focus rounded-lg"
+      >
         ← Quay lại đăng nhập
       </RouterLink>
     </div>
@@ -63,11 +63,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { forgotPassword } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
+import BaseButton from '../shared/BaseButton.vue'
+import BaseField from '../shared/BaseField.vue'
+import BaseInput from '../shared/BaseInput.vue'
 
-const router = useRouter()
 const toast = useToast()
 const email = ref('')
 const isSubmitting = ref(false)
@@ -78,6 +79,11 @@ const fullResetUrl = computed(() => {
   const path = resetUrl.value.startsWith('/') ? resetUrl.value : '/' + resetUrl.value
   return typeof window !== 'undefined' ? window.location.origin + path : path
 })
+
+const onSendAnother = () => {
+  emailSent.value = false
+  resetUrl.value = ''
+}
 
 const onSubmit = async () => {
   isSubmitting.value = true

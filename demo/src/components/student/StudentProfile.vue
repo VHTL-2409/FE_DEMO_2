@@ -1,31 +1,42 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
-    <div class="layout-container flex h-full grow flex-col">
-      <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+        <StudentTopHeader class="shrink-0" />
 
-      <main class="teacher-page-shell w-full">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+        <main class="teacher-page-shell relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          <div class="portal-scrollbar relative flex min-h-0 flex-1 flex-col space-y-5 overflow-y-auto md:space-y-6">
+          <PageHeader
+            eyebrow="Student Profile"
+            title="Hồ sơ sinh viên"
+            subtitle="Theo dõi thông tin cá nhân và cập nhật tài khoản trong một không gian rõ ràng hơn."
+          >
+            <template #actions>
+              <BaseButton variant="ghost" @click="goToDashboard">
+                Quay lại trang chủ
+              </BaseButton>
+            </template>
+          </PageHeader>
 
-        <div class="relative space-y-8">
-          <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-fade-up">
-            <div>
-              <h1 class="text-3xl font-black tracking-tight">Hồ sơ sinh viên</h1>
-              <p class="text-slate-500 dark:text-slate-400 mt-1">Thông tin tài khoản và thống kê học tập của bạn.</p>
-            </div>
-            <button
-              @click="goToDashboard"
-              class="px-5 py-2.5 rounded-xl border border-primary/20 bg-primary/10 text-primary font-bold hover:bg-primary/20 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
-              type="button"
-            >
-              Quay lại trang chủ
-            </button>
-          </header>
+          <div v-if="isLoading" class="animate-fade-up-delay" aria-busy="true">
+            <BaseCard padding="lg" class="w-full rounded-[1.75rem]">
+              <div class="flex flex-col md:flex-row gap-8 items-start">
+                <div class="flex flex-col items-center mx-auto md:mx-0">
+                  <SkeletonLoader variant="avatar" size="6rem" />
+                  <div class="mt-4 w-40 space-y-2">
+                    <div class="h-5 portal-skeleton rounded-md w-full" />
+                    <div class="h-3 portal-skeleton rounded-md w-2/3 mx-auto" />
+                  </div>
+                </div>
+                <div class="flex-1 space-y-3 w-full">
+                  <SkeletonLoader variant="text" :lines="6" />
+                </div>
+              </div>
+            </BaseCard>
+          </div>
 
-          <p v-if="isLoading" class="text-sm text-slate-500">Đang tải hồ sơ...</p>
-
-          <section class="grid grid-cols-1 gap-6 animate-fade-up-delay">
-            <div class="teacher-card p-8 w-full">
+          <section v-else class="grid grid-cols-1 gap-6 animate-fade-up-delay">
+            <BaseCard padding="lg" class="w-full">
               <div class="flex flex-col items-center text-center">
                 <div class="size-24 rounded-full border-4 border-primary/20 bg-primary/10 flex items-center justify-center text-3xl font-black text-primary overflow-hidden">
                   <img v-if="profileAvatarUrl && formatField(profileAvatarUrl) !== 'Chưa điền'" :src="profileAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
@@ -66,32 +77,20 @@
                   <span class="text-slate-500">Số điện thoại</span>
                   <span class="font-semibold">{{ formatField(profilePhone) }}</span>
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-500">Avatar URL</span>
-                  <span class="font-semibold break-all text-right max-w-[60%]">{{ formatField(profileAvatarUrl) }}</span>
-                </div>
               </div>
 
               <div class="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  class="px-4 py-2 rounded-lg border border-primary/20 bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-all"
-                  @click="toggleEditProfile"
-                >
+                <BaseButton size="sm" variant="ghost" @click="toggleEditProfile">
                   {{ isEditingProfile ? 'Đóng chỉnh sửa' : 'Chỉnh sửa thông tin' }}
-                </button>
-                <button
-                  type="button"
-                  class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold hover:border-primary/40 hover:text-primary transition-all"
-                  @click="toggleChangePassword"
-                >
+                </BaseButton>
+                <BaseButton size="sm" variant="secondary" @click="toggleChangePassword">
                   {{ isChangingPassword ? 'Đóng đổi mật khẩu' : 'Đổi mật khẩu' }}
-                </button>
+                </BaseButton>
               </div>
 
-            </div>
+            </BaseCard>
           </section>
-        </div>
+          </div>
 
         <div v-if="isEditingProfile" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="student-profile-edit-title" @click.self="toggleEditProfile">
           <div class="modal-content w-full max-w-2xl">
@@ -241,10 +240,7 @@
           </div>
         </div>
       </main>
-
-      <footer class="mt-auto px-6 md:px-20 lg:px-40 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
-        <p class="text-slate-500 dark:text-slate-400 text-sm">© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
-      </footer>
+      </div>
     </div>
   </div>
 </template>
@@ -256,6 +252,10 @@ import { changePassword, fetchStudentProfile, updateSharedProfile, uploadAvatar 
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import BaseCard from '../shared/BaseCard.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import PageHeader from '../shared/PageHeader.vue'
+import SkeletonLoader from '../shared/SkeletonLoader.vue'
 
 const isDark = ref(false)
 const router = useRouter()

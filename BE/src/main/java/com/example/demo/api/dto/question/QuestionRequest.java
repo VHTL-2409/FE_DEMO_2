@@ -11,11 +11,20 @@ import lombok.Setter;
 public class QuestionRequest {
     @NotBlank
     private String content;
+
+    private String type;
+
     @NotNull
     @Positive
     private Double scoreWeight;
-    @NotBlank
+
     private String options;
-    @NotBlank
+
     private String correctAnswer;
+
+    private String difficulty;
+
+    private String metadata;
+
+    private String attachments;
 }

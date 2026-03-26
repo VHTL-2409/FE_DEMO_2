@@ -44,6 +44,7 @@ public class ExamService {
     private static final String EXAM_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int EXAM_CODE_LENGTH = 8;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String PRACTICE_EXAM_TITLE_PREFIX = "Luyện Tập - ";
 
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
@@ -54,9 +55,11 @@ public class ExamService {
     private final RiskSnapshotRepository riskSnapshotRepository;
     private final AuditLogRepository auditLogRepository;
     private final ImportXlsxService importXlsxService;
+    private final CurrentUserService currentUserService;
 
     @Transactional
     public ExamResponse createExam(ExamRequest request, User teacher) {
+        currentUserService.requireTeacherOrAdmin(teacher);
         validateExamRequest(request);
 
         Exam exam = Exam.builder()
@@ -83,6 +86,7 @@ public class ExamService {
                 .monitorRapidQuestionSwitch(Boolean.TRUE.equals(request.getMonitorRapidQuestionSwitch()) || request.getMonitorRapidQuestionSwitch() == null)
                 .monitorMultiMonitor(Boolean.TRUE.equals(request.getMonitorMultiMonitor()) || request.getMonitorMultiMonitor() == null)
                 .requireCameraMic(Boolean.TRUE.equals(request.getRequireCameraMic()) || request.getRequireCameraMic() == null)
+                .practice(false)
                 .build();
         return toResponse(examRepository.save(exam));
     }
@@ -115,7 +119,8 @@ public class ExamService {
     }
 
     @Transactional
-    public ExamResponse createPracticeExamFromFile(User student, MultipartFile file, int durationMinutes) {
+    public ExamResponse createPracticeExamFromFile(User student, MultipartFile file, int durationMinutes,
+            Integer questionCount) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Vui lòng chọn tệp CSV hoặc XLSX chứa câu hỏi.");
         }
@@ -128,10 +133,11 @@ public class ExamService {
                 .durationMinutes(dur)
                 .isActive(true)
                 .createdBy(student)
+                .practice(true)
                 .build();
         practiceExam = examRepository.save(practiceExam);
 
-        int count = importXlsxService.importQuestions(practiceExam, file);
+        int count = importXlsxService.importQuestions(practiceExam, file, questionCount);
         if (count <= 0) {
             examRepository.delete(practiceExam);
             throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -160,6 +166,7 @@ public class ExamService {
                 .durationMinutes(durationMinutes)
                 .isActive(true)
                 .createdBy(student)
+                .practice(true)
                 .build();
         practiceExam = examRepository.save(practiceExam);
 
@@ -168,9 +175,13 @@ public class ExamService {
             Question newQ = Question.builder()
                     .exam(practiceExam)
                     .content(q.getContent())
+                    .type(q.getType())
                     .scoreWeight(q.getScoreWeight())
                     .options(q.getOptions())
                     .correctAnswer(q.getCorrectAnswer())
+                    .difficulty(q.getDifficulty())
+                    .metadata(q.getMetadata())
+                    .attachments(q.getAttachments())
                     .build();
             questionRepository.save(newQ);
         }
@@ -189,6 +200,7 @@ public class ExamService {
 
     @Transactional(readOnly = true)
     public List<QuestionWrongStatsItem> getQuestionWrongStats(Long examId, User actor) {
+        currentUserService.requireTeacherOrAdmin(actor);
         Exam exam = requireManageableExam(examId, actor);
         List<Answer> answers;
         if (exam.getStartTime() != null && exam.getEndTime() != null) {
@@ -360,6 +372,7 @@ public class ExamService {
      */
     @Transactional
     public ExamResponse createNewSession(Long examId, NewSessionRequest request, User actor) {
+        currentUserService.requireTeacherOrAdmin(actor);
         if (request.getStartTime() == null || request.getEndTime() == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Thời gian bắt đầu và kết thúc là bắt buộc.");
         }
@@ -423,18 +436,40 @@ public class ExamService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
     }
 
+    @Transactional(readOnly = true)
     public Exam requireManageableExam(Long examId, User actor) {
         Exam exam = requireExam(examId);
         boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
         if (isAdmin) {
             return exam;
         }
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        if (isTeacher) {
+            if (!exam.getCreatedBy().getId().equals(actor.getId())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this exam");
+            }
+            return exam;
+        }
         if (!exam.getCreatedBy().getId().equals(actor.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this exam");
+        }
+        if (!isStudentPracticeExam(exam)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this exam");
         }
         return exam;
     }
 
+    /**
+     * Practice exams generated for students ({@code practice == true}) or legacy rows with the standard title prefix.
+     */
+    public boolean isStudentPracticeExam(Exam exam) {
+        if (Boolean.TRUE.equals(exam.getPractice())) {
+            return true;
+        }
+        return exam.getTitle() != null && exam.getTitle().startsWith(PRACTICE_EXAM_TITLE_PREFIX);
+    }
+
+    @Transactional(readOnly = true)
     public Exam requireAccessibleExam(Long examId, User actor) {
         Exam exam = requireExam(examId);
         boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
@@ -450,9 +485,14 @@ public class ExamService {
             return exam;
         }
 
+        // Own exam (e.g. practice created by student): avoid loading creator.roles when not needed
+        if (exam.getCreatedBy().getId().equals(actor.getId())) {
+            return exam;
+        }
+
         boolean creatorIsTeacher = exam.getCreatedBy().getRoles().stream()
                 .anyMatch(role -> role.getName() == RoleName.TEACHER || role.getName() == RoleName.ADMIN);
-        if (!(creatorIsTeacher || exam.getCreatedBy().getId().equals(actor.getId()))) {
+        if (!creatorIsTeacher) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this exam");
         }
         return exam;

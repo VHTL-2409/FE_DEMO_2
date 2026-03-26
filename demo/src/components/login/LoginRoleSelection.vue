@@ -1,48 +1,43 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen"
+    class="portal-viewport bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
   >
-    <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
-      <div class="layout-container flex h-full grow flex-col">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden bg-slate-950/[0.015]">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
         <header
-          class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-10 py-3 sticky top-0 z-50"
+          class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-white/60 bg-white/72 px-6 py-3 backdrop-blur-xl md:px-10"
         >
           <div class="flex items-center gap-4 text-primary dark:text-slate-100">
             <div class="size-8 flex items-center justify-center bg-primary text-white rounded-lg">
               <span class="material-symbols-outlined">menu_book</span>
             </div>
             <h2
-              class="text-primary dark:text-slate-100 text-lg font-bold leading-tight tracking-[-0.015em]"
+              class="text-lg font-extrabold leading-tight tracking-[-0.02em] text-primary dark:text-slate-100"
             >
               EduExam System
             </h2>
           </div>
-          <RouterLink
-            to="/help-center"
-            class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors"
-          >
-            <span class="truncate">Help Center</span>
+          <RouterLink to="/help-center" custom v-slot="{ navigate }">
+            <BaseButton size="sm" class="min-w-[7rem]" @click="navigate">Help Center</BaseButton>
           </RouterLink>
         </header>
 
         <main
-          class="flex-1 relative flex items-center justify-center p-4 md:p-8 lg:p-12 bg-gradient-to-br from-slate-50 via-white to-primary-50/50 dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20 overflow-hidden"
+          class="relative flex flex-1 items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-primary-50/60 p-4 dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20 md:p-8 lg:p-12"
         >
-          <div class="pointer-events-none absolute -top-20 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
           <div
-            class="w-full max-w-[1000px] grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-slate-900/80 backdrop-blur-sm rounded-2xl overflow-hidden shadow-xl border border-slate-200/80 dark:border-slate-800/80 animate-fade-up"
+            class="portal-glass-panel grid w-full max-w-[1040px] grid-cols-1 overflow-hidden rounded-[2rem] animate-fade-up lg:grid-cols-2"
           >
-            <div class="p-8 md:p-12 flex flex-col justify-center">
+            <div class="flex flex-col justify-center p-8 md:p-12">
               <div class="mb-8">
                 <h1
-                  class="text-slate-900 dark:text-slate-100 text-3xl font-black leading-tight tracking-tight mb-2 text-center"
+                  class="mb-2 text-center text-[2.4rem] font-black leading-[1.02] tracking-[-0.035em] text-slate-900 dark:text-slate-100 sm:text-[2.7rem]"
                 >
                   Đăng nhập
                 </h1>
-                <p class="text-slate-500 dark:text-slate-400 text-base font-normal text-center">
-                  Đăng nhập để truy cập hệ thống thi trực tuyến
+                <p class="mx-auto mt-3 max-w-md text-center text-[0.96rem] leading-7 text-slate-500 dark:text-slate-400">
+                  Truy cập hệ thống để tạo đề thi, quản lý kỳ thi hoặc tham gia làm bài trong một trải nghiệm nhất quán và an toàn.
                 </p>
               </div>
 
@@ -50,18 +45,24 @@
               <div v-if="emailNotVerified" class="mb-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                 <p class="text-amber-800 dark:text-amber-200 text-sm font-medium mb-2">Email chưa được xác minh. Vui lòng kiểm tra hộp thư hoặc gửi lại link xác minh.</p>
                 <div class="flex gap-2">
-                  <input
+                  <BaseInput
                     v-model="resendEmail"
                     type="email"
                     placeholder="Email đăng ký"
-                    class="flex-1 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm"
+                    input-class="flex-1 min-w-0 border-amber-200 dark:border-amber-700 py-2 text-sm"
                   />
                   <button
                     type="button"
+                    class="portal-focus inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="isResending"
                     @click="onResendVerification"
-                    class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-60"
                   >
+                    <span
+                      v-if="isResending"
+                      class="material-symbols-outlined animate-spin text-lg"
+                      aria-hidden="true"
+                      >progress_activity</span
+                    >
                     {{ isResending ? 'Đang gửi...' : 'Gửi lại' }}
                   </button>
                 </div>
@@ -74,45 +75,67 @@
               </div>
 
               <form class="space-y-5 animate-fade-up-delay" @submit.prevent="onSubmit">
-                <div class="flex flex-col gap-2">
-                  <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Username</label>
-                  <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      >person</span
-                    >
-                    <input
-                      v-model="username"
-                      class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                      placeholder="Enter your username"
-                      type="text"
-                    />
-                  </div>
-                </div>
+                <BaseField label="Username">
+                  <template #default="{ inputId, hintId, errorId }">
+                    <div class="relative">
+                      <span
+                        class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
+                        aria-hidden="true"
+                        >person</span
+                      >
+                      <BaseInput
+                        :id="inputId"
+                        v-model="username"
+                        autocomplete="username"
+                        placeholder="Enter your username"
+                        input-class="pl-10"
+                        :hint-id="hintId"
+                        :error-id="errorId"
+                      />
+                    </div>
+                  </template>
+                </BaseField>
 
-                <div class="flex flex-col gap-2">
-                  <div class="flex justify-between items-center">
-                    <label class="text-slate-700 dark:text-slate-300 text-sm font-medium">Password</label>
-                    <RouterLink to="/forgot-password" class="text-primary text-xs font-bold hover:underline">Quên mật khẩu?</RouterLink>
-                  </div>
-                  <div class="relative flex items-center">
-                    <span class="material-symbols-outlined absolute left-3 text-slate-400">lock</span>
-                    <input
-                      v-model="password"
-                      class="w-full pl-10 pr-12 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                      placeholder="Enter your password"
-                      :type="showPassword ? 'text' : 'password'"
-                    />
-                    <button
-                      type="button"
-                      class="absolute right-3 text-slate-400 hover:text-primary transition-colors"
-                      @click="showPassword = !showPassword"
+                <BaseField label="Password">
+                  <template #labelTrailing>
+                    <RouterLink
+                      to="/forgot-password"
+                      class="rounded text-xs font-bold text-primary hover:underline portal-focus"
                     >
-                      <span class="material-symbols-outlined">
-                        {{ showPassword ? 'visibility_off' : 'visibility' }}
-                      </span>
-                    </button>
-                  </div>
-                </div>
+                      Quên mật khẩu?
+                    </RouterLink>
+                  </template>
+                  <template #default="{ inputId, hintId, errorId }">
+                    <div class="relative flex items-center">
+                      <span
+                        class="material-symbols-outlined pointer-events-none absolute left-3 z-[1] text-slate-400"
+                        aria-hidden="true"
+                        >lock</span
+                      >
+                      <BaseInput
+                        :id="inputId"
+                        v-model="password"
+                        :type="showPassword ? 'text' : 'password'"
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        input-class="pl-10 pr-12"
+                        :hint-id="hintId"
+                        :error-id="errorId"
+                      />
+                      <button
+                        type="button"
+                        class="absolute right-2 inline-flex size-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700"
+                        :aria-pressed="showPassword"
+                        :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+                        @click="showPassword = !showPassword"
+                      >
+                        <span class="material-symbols-outlined text-xl" aria-hidden="true">
+                          {{ showPassword ? 'visibility_off' : 'visibility' }}
+                        </span>
+                      </button>
+                    </div>
+                  </template>
+                </BaseField>
 
                 <div class="flex items-center gap-2">
                   <input
@@ -127,18 +150,14 @@
                 </div>
 
 
-                <button
-                  type="submit"
-                  :disabled="isSubmitting"
-                  class="w-full py-3 px-4 bg-primary text-white rounded-lg font-bold text-base hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 shadow-lg shadow-primary/20 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                >
+                <BaseButton type="submit" size="lg" class="w-full text-[0.98rem]" :loading="isSubmitting">
                   <span>{{ isSubmitting ? 'Signing In...' : 'Sign In' }}</span>
-                  <span class="material-symbols-outlined text-sm">login</span>
-                </button>
+                  <span class="material-symbols-outlined text-lg" aria-hidden="true">login</span>
+                </BaseButton>
               </form>
 
               <div class="mt-8 text-center animate-fade-in">
-                <p class="text-slate-500 dark:text-slate-400 text-sm">
+                <p class="text-[0.94rem] text-slate-500 dark:text-slate-400">
                   Don't have an account?
                   <button
                     type="button"
@@ -151,8 +170,8 @@
               </div>
             </div>
 
-            <div class="hidden lg:flex relative bg-gradient-to-br from-primary to-primary-800 flex-col justify-center items-center p-12 overflow-hidden">
-              <div class="absolute inset-0 opacity-10 pointer-events-none grid grid-cols-4 gap-8 p-12">
+            <div class="portal-mesh-surface relative hidden flex-col justify-center overflow-hidden p-12 lg:flex">
+              <div class="pointer-events-none absolute inset-0 grid grid-cols-4 gap-8 p-12 opacity-[0.12]">
                 <span class="material-symbols-outlined text-8xl text-white">calculate</span>
                 <span class="material-symbols-outlined text-8xl text-white">science</span>
                 <span class="material-symbols-outlined text-8xl text-white">history_edu</span>
@@ -162,9 +181,9 @@
                 <span class="material-symbols-outlined text-8xl text-white">terminal</span>
                 <span class="material-symbols-outlined text-8xl text-white">psychology</span>
               </div>
-              <div class="relative z-10 text-center text-white max-w-sm">
+              <div class="relative z-10 max-w-sm text-center text-white">
                 <div
-                  class="size-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white/30 shadow-xl"
+                  class="mx-auto mb-8 flex size-20 items-center justify-center rounded-[1.4rem] border border-white/25 bg-white/16 shadow-[0_24px_54px_-26px_rgba(15,23,42,0.55)] backdrop-blur-sm"
                 >
                   <span class="material-symbols-outlined text-4xl text-white">school</span>
                 </div>
@@ -173,11 +192,11 @@
                   Hệ thống thi trực tuyến
                 </p>
                 <div class="mt-12 grid grid-cols-2 gap-4">
-                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                  <div class="rounded-2xl border border-white/16 bg-white/10 p-4 backdrop-blur-sm">
                     <p class="text-2xl font-bold">CSV</p>
                     <p class="text-xs text-white/60 uppercase tracking-widest">Import đề thi</p>
                   </div>
-                  <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                  <div class="rounded-2xl border border-white/16 bg-white/10 p-4 backdrop-blur-sm">
                     <p class="text-2xl font-bold">Live</p>
                     <p class="text-xs text-white/60 uppercase tracking-widest">Giám sát</p>
                   </div>
@@ -186,15 +205,6 @@
             </div>
           </div>
         </main>
-
-        <footer class="p-6 text-center text-slate-500 dark:text-slate-400 text-xs">
-          <div class="flex justify-center gap-6 mb-4">
-            <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
-            <a class="hover:text-primary transition-colors" href="#">Support</a>
-          </div>
-          <p>© 2024 EduExam Online Examination System. All rights reserved.</p>
-        </footer>
       </div>
     </div>
   </div>
@@ -205,6 +215,9 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login, resendVerification, redirectToSiteByDatabaseRole } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
+import BaseButton from '../shared/BaseButton.vue'
+import BaseField from '../shared/BaseField.vue'
+import BaseInput from '../shared/BaseInput.vue'
 
 const router = useRouter()
 
@@ -287,13 +300,6 @@ const onResendVerification = async () => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
-.font-display {
-  font-family: 'Inter', sans-serif;
-}
-
 @keyframes fadeUp {
   from {
     opacity: 0;

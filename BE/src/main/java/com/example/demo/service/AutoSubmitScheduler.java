@@ -27,7 +27,9 @@ public class AutoSubmitScheduler {
     @Scheduled(fixedRate = 60000) // mỗi phút
     @Transactional
     public void autoSubmitExpiredAttempts() {
-        List<ExamAttempt> inProgress = examAttemptRepository.findByStatus(AttemptStatus.IN_PROGRESS);
+        List<ExamAttempt> inProgress = new java.util.ArrayList<>();
+        inProgress.addAll(examAttemptRepository.findByStatus(AttemptStatus.IN_PROGRESS));
+        inProgress.addAll(examAttemptRepository.findByStatus(AttemptStatus.PAUSED));
         LocalDateTime now = LocalDateTime.now();
         int count = 0;
         for (ExamAttempt attempt : inProgress) {

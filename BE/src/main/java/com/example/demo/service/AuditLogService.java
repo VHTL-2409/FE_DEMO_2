@@ -63,4 +63,26 @@ public class AuditLogService {
                 .createdAt(LocalDateTime.now())
                 .build());
     }
+
+    @Transactional
+    public void logSystemRiskWarning(ExamAttempt attempt, String details) {
+        auditLogRepository.save(AuditLog.builder()
+                .attempt(attempt)
+                .action(AuditAction.SYSTEM_RISK_WARNING)
+                .actorUsername(null)
+                .details(details != null ? details : "")
+                .createdAt(LocalDateTime.now())
+                .build());
+    }
+
+    @Transactional
+    public void logSystemAttemptPaused(ExamAttempt attempt, String details) {
+        auditLogRepository.save(AuditLog.builder()
+                .attempt(attempt)
+                .action(AuditAction.SYSTEM_ATTEMPT_PAUSE)
+                .actorUsername(null)
+                .details(details != null ? details : "")
+                .createdAt(LocalDateTime.now())
+                .build());
+    }
 }

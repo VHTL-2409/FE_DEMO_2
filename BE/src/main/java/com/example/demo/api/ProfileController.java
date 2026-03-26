@@ -9,6 +9,7 @@ import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ProfileService;
 import com.example.demo.service.UserRoleService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -78,12 +79,14 @@ public class ProfileController {
     }
 
     @GetMapping("/profile/student")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public ProfileResponse studentProfile() {
         User user = currentUserService.requireCurrentUser();
         return profileService.getStudentProfile(user);
     }
 
     @GetMapping("/profile/teacher")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ProfileResponse teacherProfile() {
         User user = currentUserService.requireCurrentUser();
         return profileService.getTeacherProfile(user);

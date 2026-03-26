@@ -1,53 +1,52 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen"
+    class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
   >
-    <div class="layout-container flex h-full grow flex-col">
-      <StudentTopHeader />
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+        <StudentTopHeader class="shrink-0" />
 
-      <main class="teacher-page-shell max-w-3xl">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+        <main class="teacher-page-shell relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          <div class="portal-scrollbar relative flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <PageHeader
+              class="animate-fade-up"
+              eyebrow="Student"
+              title="Thi qua mã"
+              subtitle="Nhập mã đề hoặc tiêu đề để vào phòng chờ trước khi bắt đầu làm bài."
+            />
 
-        <section class="relative flex flex-col gap-2 animate-fade-up mb-8">
-          <h1 class="text-3xl md:text-4xl font-black tracking-tight text-primary dark:text-slate-100">Thi qua mã</h1>
-          <p class="text-slate-600 dark:text-slate-400 text-lg">Nhập mã hoặc tiêu đề để vào đúng phòng thi của bạn.</p>
-        </section>
+            <BaseCard class="animate-fade-up-delay" hoverable>
+              <div class="mb-4 flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary" aria-hidden="true">login</span>
+                <h2 class="teacher-section-title text-slate-900 dark:text-slate-100">Vào phòng thi</h2>
+              </div>
 
-        <div class="teacher-card p-6 animate-fade-up-delay">
-          <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-primary text-3xl">login</span>
-            <h2 class="text-xl font-bold">Vào phòng thi</h2>
+              <div class="flex flex-col items-end gap-4 md:flex-row">
+                <BaseField
+                  class="w-full flex-1"
+                  label="Mã / Code / Tiêu đề bài thi"
+                  for-id="exam-code-input"
+                  v-slot="{ inputId, hintId, errorId }"
+                >
+                  <BaseInput
+                    :id="inputId"
+                    v-model="examCode"
+                    autocomplete="off"
+                    placeholder="Ví dụ: ABCD 1234"
+                    input-class="border-primary/25 bg-background-light dark:bg-background-dark"
+                    :hint-id="hintId"
+                    :error-id="errorId"
+                  />
+                </BaseField>
+                <BaseButton class="w-full shrink-0 md:w-auto" :loading="isJoining" @click="goToWaitingRoom">
+                  Vào phòng
+                </BaseButton>
+              </div>
+            </BaseCard>
           </div>
-
-          <div class="flex flex-col md:flex-row items-end gap-4">
-            <div class="flex flex-col flex-1 w-full">
-              <label class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Mã / Code / Tiêu đề bài thi</label>
-              <input
-                v-model="examCode"
-                class="w-full rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                placeholder="Ví dụ: ABCD 1234"
-                type="text"
-              />
-            </div>
-            <button
-              :disabled="isJoining"
-              @click="goToWaitingRoom"
-              class="w-full md:w-auto px-8 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-              type="button"
-            >
-              {{ isJoining ? 'Đang vào...' : 'Vào phòng' }}
-            </button>
-          </div>
-
-          <p class="mt-3 text-xs text-slate-500">Vui lòng đảm bảo kết nối internet ổn định trước khi vào phòng thi.</p>
-        </div>
-      </main>
-
-      <footer class="bg-white dark:bg-background-dark border-t border-primary/10 py-6 px-10 text-center text-slate-500 text-sm">
-        <p>© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
-      </footer>
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -58,6 +57,11 @@ import { useRouter } from 'vue-router'
 import { joinExamByCode } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import BaseCard from '../shared/BaseCard.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import BaseField from '../shared/BaseField.vue'
+import BaseInput from '../shared/BaseInput.vue'
+import PageHeader from '../shared/PageHeader.vue'
 
 const router = useRouter()
 const isDark = ref(false)

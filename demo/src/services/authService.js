@@ -21,6 +21,20 @@ export const isAdminRole = (role) => {
 /** Đọc từ object user (roles từ API / localStorage): có phải admin không */
 export const userHasAdminRole = (user) => (user?.roles ?? []).some(isAdminRole)
 
+/** Admin hoặc giáo viên — khu vực /teacher/* */
+export const userHasTeacherAccess = (user) => {
+  if (!user) return false
+  if (userHasAdminRole(user)) return true
+  return (user.roles ?? []).some(isTeacherRole)
+}
+
+/** Chỉ học sinh — khu vực /student/* */
+export const userHasStudentAccess = (user) => (user?.roles ?? []).some(isStudentRole)
+
+/** Học sinh hoặc admin (xem trước / kiểm tra khu vực học sinh) */
+export const userCanAccessStudentArea = (user) =>
+  userHasAdminRole(user) || userHasStudentAccess(user)
+
 /** Trả 'ADMIN' nếu user có quyền admin, ngược lại null (log/UI) */
 export const getAdminRoleFromUser = (user) => (userHasAdminRole(user) ? 'ADMIN' : null)
 

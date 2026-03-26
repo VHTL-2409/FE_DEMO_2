@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ApiResponse.error("You do not have permission to access this resource"));
+                ApiResponse.error("Bạn không có quyền truy cập tài nguyên này"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

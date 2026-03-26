@@ -1,12 +1,12 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen"
+    class="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
   >
-    <div class="layout-container flex h-full grow flex-col">
-      <TeacherTopHeader active-section="exam" />
+    <div class="layout-container flex min-h-0 flex-1 grow flex-col overflow-hidden">
+      <TeacherTopHeader class="shrink-0" active-section="exam" />
 
-      <main class="teacher-page-shell max-w-[1200px]">
+      <main class="teacher-page-shell portal-scrollbar max-w-[1200px] min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/10 blur-3xl animate-float-slow"></div>
         <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
         <div class="flex flex-col gap-2 mb-6 animate-fade-up">
@@ -97,7 +97,7 @@
         </section>
       </main>
 
-      <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-8 px-10 text-center">
+      <footer class="mt-auto shrink-0 border-t border-slate-200 py-6 px-6 text-center dark:border-slate-800 sm:px-10">
         <p class="text-slate-500 text-sm">© 2023 Exam Manager Pro. Đã đăng ký bản quyền.</p>
       </footer>
     </div>

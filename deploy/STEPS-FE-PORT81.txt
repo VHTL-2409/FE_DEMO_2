@@ -1,0 +1,31 @@
+Cấu hình FE liên quan cổng 81 — checklist
+========================================
+
+Trường hợp A — Nginx trên VPS + SSL cổng 444 (khuyến nghị)
+----------------------------------------------------------
+1. Trong .env (thư mục gốc repo):
+   DOCKER_FE_PUBLISH=127.0.0.1:8080
+   DOCKER_BE_PUBLISH=127.0.0.1:8082
+
+2. Cài file nginx-host-81-444.conf.example lên /etc/nginx/sites-available/, bật site, reload nginx.
+
+3. Cổng 81: chỉ redirect HTTP -> HTTPS:444. Người dùng vào app qua https://DOMAIN:444 (FE + API qua reverse proxy).
+
+4. APP_FRONTEND_BASE_URL / APP_CORS_ALLOWED_ORIGINS / VITE_API_BASE_URL dùng https://DOMAIN:444 (không dùng :81 cho URL chính sau khi đã redirect).
+
+
+Trường hợp B — Không có Nginx host, Docker mở thẳng FE cổng 81
+---------------------------------------------------------------
+1. Trong .env:
+   DOCKER_FE_PUBLISH=81
+   DOCKER_BE_PUBLISH=444   (hoặc cổng API bạn chọn)
+
+2. APP_FRONTEND_BASE_URL=http://IP_HOẶC_DOMAIN:81
+   APP_CORS_ALLOWED_ORIGINS=http://IP_HOẶC_DOMAIN:81
+   VITE_API_BASE_URL=http://IP_HOẶC_DOMAIN:<CỔNG_API>
+
+3. Build lại image fe sau khi sửa VITE_*:
+   docker compose -f docker-compose.prod.yml --env-file .env build --no-cache fe
+   docker compose -f docker-compose.prod.yml --env-file .env up -d
+
+4. Firewall: mở TCP 81 (và cổng API).

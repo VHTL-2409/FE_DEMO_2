@@ -48,6 +48,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureQuestionSchemaCompatibility();
         ensureAttemptStatusConstraint();
         ensureExamMonitoringColumns();
         ensureExamTimezoneColumn();
@@ -107,6 +108,7 @@ public class DataInitializer implements CommandLineRunner {
             questionRepository.save(Question.builder()
                 .exam(exam)
                 .content("Java is ...?")
+                .type(QuestionType.SINGLE_CHOICE)
                 .scoreWeight(1.0)
                 .options("[{\"id\":\"A\",\"text\":\"Programming language\"},{\"id\":\"B\",\"text\":\"Database\"},{\"id\":\"C\",\"text\":\"OS\"},{\"id\":\"D\",\"text\":\"Browser\"}]")
                 .correctAnswer("A")
@@ -115,6 +117,7 @@ public class DataInitializer implements CommandLineRunner {
             questionRepository.save(Question.builder()
                 .exam(exam)
                 .content("Which keyword creates class instance?")
+                .type(QuestionType.SINGLE_CHOICE)
                 .scoreWeight(1.0)
                 .options("[{\"id\":\"A\",\"text\":\"this\"},{\"id\":\"B\",\"text\":\"new\"},{\"id\":\"C\",\"text\":\"class\"},{\"id\":\"D\",\"text\":\"extends\"}]")
                 .correctAnswer("B")
@@ -140,8 +143,18 @@ public class DataInitializer implements CommandLineRunner {
         jdbcTemplate.execute("""
             ALTER TABLE exam_attempts
             ADD CONSTRAINT exam_attempts_status_check
-            CHECK (status IN ('IN_PROGRESS', 'SUBMITTED', 'AUTO_SUBMITTED', 'STOPPED'))
+            CHECK (status IN ('IN_PROGRESS', 'PAUSED', 'SUBMITTED', 'AUTO_SUBMITTED', 'STOPPED'))
             """);
+    }
+
+    private void ensureQuestionSchemaCompatibility() {
+        jdbcTemplate.execute("ALTER TABLE questions ADD COLUMN IF NOT EXISTS type VARCHAR(32)");
+        jdbcTemplate.execute("ALTER TABLE questions ADD COLUMN IF NOT EXISTS metadata JSONB");
+        jdbcTemplate.execute("ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachments JSONB");
+        jdbcTemplate.execute("UPDATE questions SET type = 'SINGLE_CHOICE' WHERE type IS NULL OR BTRIM(type) = ''");
+        jdbcTemplate.execute("ALTER TABLE questions ALTER COLUMN type SET DEFAULT 'SINGLE_CHOICE'");
+        jdbcTemplate.execute("ALTER TABLE questions ALTER COLUMN correct_answer TYPE TEXT");
+        jdbcTemplate.execute("ALTER TABLE answers ALTER COLUMN selected_answer TYPE TEXT");
     }
 
     private void ensureEmailVerifiedColumn() {

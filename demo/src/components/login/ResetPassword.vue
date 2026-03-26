@@ -1,6 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
-    <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
+  <div
+    class="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-primary-50/40 p-4 portal-scrollbar dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20"
+  >
+    <div
+      class="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white/95 p-8 shadow-soft backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95"
+    >
       <div class="text-center mb-8">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-outlined text-primary text-3xl">key</span>
@@ -14,43 +18,56 @@
           Thiếu token. Vui lòng mở link từ email hoặc trang quên mật khẩu.
         </div>
 
-        <div v-else>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu mới</label>
-            <input
+        <div v-else class="space-y-4">
+          <BaseField label="Mật khẩu mới" v-slot="{ inputId, hintId, errorId }">
+            <BaseInput
+              :id="inputId"
               v-model="newPassword"
               type="password"
               required
               minlength="6"
+              autocomplete="new-password"
               placeholder="Ít nhất 6 ký tự"
-              class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              :hint-id="hintId"
+              :error-id="errorId"
             />
-          </div>
+          </BaseField>
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Xác nhận mật khẩu</label>
-            <input
+          <BaseField
+            label="Xác nhận mật khẩu"
+            :error="confirmPassword && newPassword !== confirmPassword ? 'Mật khẩu không khớp' : ''"
+            v-slot="{ inputId, hintId, errorId }"
+          >
+            <BaseInput
+              :id="inputId"
               v-model="confirmPassword"
               type="password"
               required
               minlength="6"
+              autocomplete="new-password"
               placeholder="Nhập lại mật khẩu"
-              class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              :invalid="!!(confirmPassword && newPassword !== confirmPassword)"
+              :hint-id="hintId"
+              :error-id="errorId"
             />
-            <p v-if="confirmPassword && newPassword !== confirmPassword" class="text-rose-600 text-xs mt-1">Mật khẩu không khớp</p>
-          </div>
+          </BaseField>
 
-          <button
+          <BaseButton
             type="submit"
-            :disabled="isSubmitting || newPassword !== confirmPassword || newPassword.length < 6"
-            class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-4"
+            class="mt-2 w-full"
+            size="lg"
+            :loading="isSubmitting"
+            :disabled="newPassword !== confirmPassword || newPassword.length < 6"
           >
             {{ isSubmitting ? 'Đang xử lý...' : 'Đặt lại mật khẩu' }}
-          </button>
+          </BaseButton>
         </div>
       </form>
 
-      <RouterLink to="/login" class="mt-6 block text-center text-sm text-primary hover:underline">
+      <RouterLink
+        to="/login"
+        class="mt-6 block text-center text-sm font-semibold text-primary hover:underline portal-focus rounded-lg"
+      >
         ← Quay lại đăng nhập
       </RouterLink>
     </div>
@@ -62,6 +79,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { resetPassword } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
+import BaseButton from '../shared/BaseButton.vue'
+import BaseField from '../shared/BaseField.vue'
+import BaseInput from '../shared/BaseInput.vue'
 
 const route = useRoute()
 const router = useRouter()

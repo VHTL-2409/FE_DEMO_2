@@ -1,17 +1,20 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 transition-colors duration-200 min-h-screen">
-    <TeacherTopHeader active-section="exam" />
+  <div
+    :class="isDark ? 'dark' : 'light'"
+    class="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background-light font-display text-slate-900 transition-colors duration-200 dark:bg-background-dark dark:text-slate-100"
+  >
+    <TeacherTopHeader class="shrink-0" active-section="exam" />
 
-    <main class="relative max-w-4xl mx-auto px-4 py-10 overflow-hidden">
-      <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-      <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-
-      <div class="relative mb-6 animate-fade-up">
-        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Tạo đề thi mới (Nhập tệp)</h2>
-        <p class="mt-2 text-slate-600 dark:text-slate-400 text-lg">Bước 1: Nhập tiêu đề và tải tệp. Bước 2: Cấu hình lịch thi.</p>
+    <main class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        class="portal-scrollbar mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-2 pt-4 sm:px-5 sm:pt-5"
+      >
+      <div class="relative mb-5 animate-fade-up">
+        <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Tạo đề thi mới (Nhập tệp)</h2>
+        <p class="mt-1.5 text-base text-slate-600 dark:text-slate-400 sm:text-lg">Bước 1: Nhập tiêu đề và tải tệp. Bước 2: Cấu hình lịch thi.</p>
       </div>
 
-      <div class="mb-10 animate-fade-up">
+      <div class="mb-6 animate-fade-up">
         <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <template v-for="(step, index) in steps" :key="step">
             <div class="flex items-center gap-3">
@@ -28,32 +31,32 @@
         </div>
       </div>
 
-      <div class="relative space-y-8 animate-fade-up-delay">
-        <section v-if="stepIndex === 2" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
-          <div class="flex items-center gap-2 mb-6">
+      <div class="relative space-y-5 animate-fade-up-delay pb-4">
+        <section v-if="stepIndex === 2" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-soft dark:border-slate-700/80 dark:bg-slate-900 sm:p-6">
+          <div class="mb-4 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">info</span>
             <h3 class="text-lg font-bold">Thông tin chung</h3>
           </div>
           <div class="space-y-2">
             <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Tiêu đề đề thi</label>
-            <input v-model="examTitle" class="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" placeholder="VD: Kiểm tra giữa kỳ Giải tích nâng cao Q3" type="text" />
+            <input v-model="examTitle" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800" placeholder="VD: Kiểm tra giữa kỳ Giải tích nâng cao Q3" type="text" />
           </div>
         </section>
 
-        <section v-if="stepIndex === 2" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
-          <div class="flex items-center justify-between mb-6">
+        <section v-if="stepIndex === 2" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-soft dark:border-slate-700/80 dark:bg-slate-900 sm:p-6">
+          <div class="mb-2 flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">upload_file</span>
               <h3 class="text-lg font-bold">Tải nội dung đề thi</h3>
             </div>
           </div>
 
-          <label class="relative group border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-12 flex flex-col items-center justify-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer">
+          <label class="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 p-6 transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 dark:border-slate-600 sm:p-8 md:p-10">
             <input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
-            <div class="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-              <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
+            <div class="mb-3 rounded-full bg-primary/10 p-3 transition-transform group-hover:scale-110 sm:p-4">
+              <span class="material-symbols-outlined text-3xl text-primary sm:text-4xl">cloud_upload</span>
             </div>
-            <h4 class="text-lg font-semibold mb-1">Nhấp để tải lên hoặc kéo thả</h4>
+            <h4 class="mb-1 text-base font-semibold sm:text-lg">Nhấp để tải lên hoặc kéo thả</h4>
             <p class="text-slate-500 dark:text-slate-400 text-sm">{{ FILE_FORMAT_DESC }}</p>
             <div class="mt-2 flex flex-wrap gap-3">
               <a :href="getTemplateDownloadUrl('csv')" download class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">
@@ -70,8 +73,8 @@
           </label>
         </section>
 
-        <section v-if="stepIndex === 3" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-soft">
-          <div class="flex items-center gap-2 mb-6">
+        <section v-if="stepIndex === 3" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-soft dark:border-slate-700/80 dark:bg-slate-900 sm:p-6">
+          <div class="mb-4 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">shield</span>
             <h3 class="text-lg font-bold">Cấu hình giám sát</h3>
           </div>
@@ -182,22 +185,47 @@
             </label>
           </div>
         </section>
+      </div>
+      </div>
 
-        <div class="flex items-center justify-between gap-4 pt-6">
-          <div class="text-xs text-slate-500 dark:text-slate-400">{{ FILE_FORMAT_DESC }}</div>
-          <div class="flex items-center gap-4">
-            <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">Hủy bản nháp</button>
-            <button v-if="stepIndex === 2" :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="goNext">
+      <footer
+        class="shrink-0 border-t border-slate-200/90 bg-white/95 px-4 py-3 shadow-[0_-4px_24px_-12px_rgba(15,23,42,0.12)] dark:border-slate-700/90 dark:bg-slate-900/95 sm:px-5"
+      >
+        <div class="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <p class="max-w-full text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 sm:max-w-[min(100%,28rem)]">
+            {{ FILE_FORMAT_DESC }}
+          </p>
+          <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+            <button
+              class="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800 sm:w-auto sm:min-w-[9rem]"
+              type="button"
+              @click="goBack"
+            >
+              Hủy bản nháp
+            </button>
+            <button
+              v-if="stepIndex === 2"
+              :disabled="isSubmitting"
+              class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/25 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[11rem]"
+              type="button"
+              @click="goNext"
+            >
               {{ isSubmitting ? 'Đang xử lý...' : 'Tiếp theo' }}
               <span class="material-symbols-outlined text-lg">arrow_forward</span>
             </button>
-            <button v-else :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="confirmMonitoring">
+            <button
+              v-else
+              :disabled="isSubmitting"
+              class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/25 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[11rem]"
+              type="button"
+              @click="confirmMonitoring"
+            >
               {{ isSubmitting ? 'Đang lưu...' : 'Tiếp tục lập lịch' }}
               <span class="material-symbols-outlined text-lg">arrow_forward</span>
             </button>
           </div>
         </div>
-      </div>
+      </footer>
     </main>
   </div>
 </template>
@@ -373,7 +401,7 @@ const confirmMonitoring = async () => {
 
 <style scoped>
 .font-display {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans, system-ui, sans-serif);
 }
 
 @keyframes fadeUp {

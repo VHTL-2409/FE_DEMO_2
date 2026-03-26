@@ -29,6 +29,19 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     Optional<ExamAttempt> findByIdAndStudent(Long id, User student);
 
+    /**
+     * Loads attempt with exam, exam creator, and student — required when
+     * {@code spring.jpa.open-in-view=false} and code reads {@code exam.getCreatedBy()} etc.
+     */
+    @Query("""
+            SELECT DISTINCT ea FROM ExamAttempt ea
+            LEFT JOIN FETCH ea.exam e
+            LEFT JOIN FETCH e.createdBy
+            LEFT JOIN FETCH ea.student
+            WHERE ea.id = :id
+            """)
+    Optional<ExamAttempt> findByIdWithExamAndUsers(@Param("id") Long id);
+
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);
 
     @Query("""

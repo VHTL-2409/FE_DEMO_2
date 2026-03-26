@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Báo cáo chi tiết: Nguyễn Minh Hoàng - Faculty Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-container": "#fff6f3",
+              "surface": "#fcf8ff",
+              "tertiary-container": "#b65700",
+              "secondary-container": "#e0e2ef",
+              "on-surface": "#1b1b23",
+              "on-primary-fixed": "#07006c",
+              "primary": "#4343d5",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#e1e0ff",
+              "surface-container-highest": "#e4e1ed",
+              "secondary": "#5b5e69",
+              "inverse-surface": "#302f39",
+              "tertiary": "#904400",
+              "surface-tint": "#4849da",
+              "on-primary-container": "#faf7ff",
+              "surface-container": "#efecf9",
+              "on-tertiary-fixed": "#321300",
+              "on-background": "#1b1b23",
+              "secondary-fixed-dim": "#c3c6d2",
+              "on-surface-variant": "#464555",
+              "background": "#fcf8ff",
+              "surface-variant": "#e4e1ed",
+              "on-secondary-fixed": "#181b24",
+              "on-primary": "#ffffff",
+              "surface-container-low": "#f5f2fe",
+              "inverse-primary": "#c1c1ff",
+              "surface-container-high": "#e9e6f3",
+              "outline-variant": "#c7c4d7",
+              "tertiary-fixed": "#ffdbc8",
+              "on-primary-fixed-variant": "#2e2bc2",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f2effb",
+              "secondary-fixed": "#e0e2ef",
+              "primary-fixed-dim": "#c1c1ff",
+              "on-error-container": "#93000a",
+              "tertiary-fixed-dim": "#ffb689",
+              "on-tertiary-fixed-variant": "#743500",
+              "outline": "#767586",
+              "on-secondary-fixed-variant": "#434751",
+              "primary-container": "#5d5fef",
+              "on-tertiary": "#ffffff",
+              "on-secondary-container": "#61646f",
+              "error": "#ba1a1a",
+              "surface-bright": "#fcf8ff",
+              "surface-dim": "#dbd8e5",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #fcf8ff; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="text-on-surface overflow-hidden">
+<!-- TopNavBar -->
+<header class="w-full top-0 z-50 flex justify-between items-center px-8 py-4 w-full bg-[#f5f2fe] dark:bg-slate-900 transition-colors duration-200">
+<div class="flex items-center gap-4">
+<span class="text-xl font-extrabold text-[#5D5FEF] dark:text-[#c1c1ff] font-['Manrope'] tracking-tight">Faculty Portal</span>
+</div>
+<div class="hidden md:flex items-center gap-8 font-['Manrope'] font-bold text-lg tracking-tight">
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#5D5FEF] hover:bg-[#e9e6f3] px-3 py-1 rounded-lg transition-all" href="#">Summary</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#5D5FEF] hover:bg-[#e9e6f3] px-3 py-1 rounded-lg transition-all" href="#">Incidents</a>
+<a class="text-[#5D5FEF] border-b-2 border-[#5D5FEF] pb-1" href="#">Detailed Reports</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-[#e9e6f3] text-slate-600 material-symbols-outlined transition-transform active:scale-95" data-icon="notifications">notifications</button>
+<button class="p-2 rounded-full hover:bg-[#e9e6f3] text-slate-600 material-symbols-outlined transition-transform active:scale-95" data-icon="help_outline">help_outline</button>
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden border-2 border-white">
+<img alt="Professor Profile" class="w-full h-full object-cover" data-alt="professional portrait of a university professor in a bright modern office setting, soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrshP8G00BtfT6yYH8Hxi1ntxEyC7kCxvhDEehjqLEm8uCuBVtms5V6BZg_BBXC6O9UO31p3x1_765oxTpBUwKcOgGs66phrR7lyMs7UGfaOCqk3lalOZ-qlLh0Hfz14n_iZwwUMHKpP5chLwdBwihQ-3pEoCEOa9qaSuX_UU5bpMtYJjhpng9jiS_IkQ6MOsIbo26S2E2b2HbFOcywddly_YIg7AxQLeEx5Cq9Ghj9OLKwlbiIUpRWxAJ3JXeUcJnpFCKk8knw7L8"/>
+</div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-76px)]">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full py-6 px-4 w-64 bg-[#fcf8ff] dark:bg-slate-950 transition-all duration-300 ease-in-out">
+<div class="mb-10 px-2">
+<h2 class="font-['Manrope'] font-black text-[#5D5FEF] text-xl">Exam Manager</h2>
+<p class="text-xs text-slate-500 font-['Inter'] font-medium">Post-Exam Analysis</p>
+</div>
+<nav class="flex-grow space-y-2">
+<a class="flex items-center gap-3 p-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] rounded-lg font-['Inter'] font-medium text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                    Summary
+                </a>
+<a class="flex items-center gap-3 p-3 text-slate-500 dark:text-slate-400 hover:bg-[#f5f2fe] rounded-lg font-['Inter'] font-medium text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+                    Incidents
+                </a>
+<a class="flex items-center gap-3 p-3 bg-[#e9e6f3] dark:bg-[#5D5FEF]/20 text-[#5D5FEF] dark:text-[#c1c1ff] font-bold rounded-lg font-['Inter'] text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                    Detailed Reports
+                </a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-outline-variant/20">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 mb-4 transition-transform active:scale-95">
+                    Export All Data
+                </button>
+<a class="flex items-center gap-3 p-3 text-slate-500 hover:bg-[#f5f2fe] rounded-lg font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 p-3 text-slate-500 hover:bg-[#f5f2fe] rounded-lg font-['Inter'] text-sm text-error" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                    Logout
+                </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto bg-surface p-8 no-scrollbar">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<nav class="flex items-center gap-2 text-sm text-secondary mb-2 font-medium">
+<span>Reports</span>
+<span class="material-symbols-outlined text-xs" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary">Final Exam CS101</span>
+</nav>
+<h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Báo cáo chi tiết: Nguyễn Minh Hoàng</h1>
+<div class="flex items-center gap-4 mt-4">
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-bold uppercase tracking-wider">ID: ST-2024091</span>
+<span class="flex items-center gap-1 text-sm text-secondary font-medium">
+<span class="material-symbols-outlined text-base" data-icon="schedule">schedule</span>
+                            Đã nộp: 14:45, 12 Oct 2024
+                        </span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface rounded-xl font-bold transition-all hover:bg-surface-container-highest">
+                        In báo cáo
+                    </button>
+<button class="px-6 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-bold shadow-lg shadow-primary/10 hover:opacity-90 transition-all">
+                        Gửi phản hồi
+                    </button>
+</div>
+</div>
+<!-- Custom Tab Navigation -->
+<div class="flex gap-8 mb-8 border-b border-outline-variant/10">
+<button class="pb-4 text-primary font-bold border-b-2 border-primary transition-all flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+                    Tổng quan
+                </button>
+<button class="pb-4 text-secondary hover:text-primary font-medium transition-all flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+                    Hiệu suất theo câu
+                </button>
+<button class="pb-4 text-secondary hover:text-primary font-medium transition-all flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="timeline">timeline</span>
+                    Dòng thời gian
+                </button>
+</div>
+<!-- Bento Grid - Overview -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<!-- Score Glass Card -->
+<div class="md:col-span-2 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl relative overflow-hidden shadow-2xl shadow-primary/20 flex flex-col justify-between min-h-[240px]">
+<div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+<div class="relative z-10">
+<p class="text-white/80 font-medium uppercase tracking-widest text-xs mb-2">Điểm số cuối cùng</p>
+<h2 class="text-white font-headline text-7xl font-black">9.2<span class="text-2xl font-bold text-white/60">/10</span></h2>
+</div>
+<div class="relative z-10 flex items-center gap-6">
+<div class="bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl">
+<p class="text-[10px] text-white/70 font-bold uppercase">Xếp hạng</p>
+<p class="text-xl text-white font-black">#04/45</p>
+</div>
+<div class="bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl">
+<p class="text-[10px] text-white/70 font-bold uppercase">Phần trăm</p>
+<p class="text-xl text-white font-black">Top 8%</p>
+</div>
+</div>
+</div>
+<!-- Time Card -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl flex flex-col justify-center border border-outline-variant/10">
+<div class="w-12 h-12 bg-secondary-container rounded-2xl flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="timer">timer</span>
+</div>
+<p class="text-secondary font-bold text-[10px] uppercase tracking-widest mb-1">Thời gian làm bài</p>
+<p class="text-on-surface text-3xl font-black font-headline">42:15</p>
+<p class="text-xs text-secondary mt-2">Nhanh hơn 12 phút so với TB</p>
+</div>
+<!-- Accuracy Card -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl flex flex-col justify-center border border-outline-variant/10">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-2xl flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-tertiary" data-icon="track_changes">track_changes</span>
+</div>
+<p class="text-secondary font-bold text-[10px] uppercase tracking-widest mb-1">Độ chính xác</p>
+<p class="text-on-surface text-3xl font-black font-headline">92.5%</p>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-4">
+<div class="bg-primary h-full rounded-full" style="width: 92.5%"></div>
+</div>
+</div>
+</div>
+<!-- Question Grid Section -->
+<div class="bg-surface-container-low p-8 rounded-3xl mb-8">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-xl font-bold">Phân tích câu hỏi</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-green-500"></div>
+<span class="text-xs font-medium text-secondary">Đúng (37)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-error"></div>
+<span class="text-xs font-medium text-secondary">Sai (2)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-slate-300"></div>
+<span class="text-xs font-medium text-secondary">Chưa làm (1)</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3">
+<!-- Iterative rendering of 40 questions mockup -->
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">01</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">02</div>
+<div class="aspect-square bg-error-container text-error font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">03</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">04</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">05</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">06</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">07</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">08</div>
+<div class="aspect-square bg-slate-200 text-slate-500 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">09</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">10</div>
+<!-- Row 2 -->
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">11</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">12</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">13</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">14</div>
+<div class="aspect-square bg-error-container text-error font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">15</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">16</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">17</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">18</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">19</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl cursor-pointer hover:scale-105 transition-transform">20</div>
+<!-- Remaining placeholders for visual context -->
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">...</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">...</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">...</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">37</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">38</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">39</div>
+<div class="aspect-square bg-green-100 text-green-700 font-bold flex items-center justify-center rounded-xl">40</div>
+</div>
+</div>
+<!-- Timeline Visualization Section -->
+<div class="bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/10">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="font-headline text-xl font-bold">Dòng thời gian tương tác</h3>
+<p class="text-sm text-secondary">Phân tích hành vi làm bài của học sinh</p>
+</div>
+</div>
+<div class="relative pt-8 pb-4">
+<!-- Timeline Base Line -->
+<div class="absolute left-0 right-0 h-1 bg-surface-container-high rounded-full top-[50%] -translate-y-[50%]"></div>
+<!-- Progress Bar -->
+<div class="absolute left-0 h-1 bg-primary rounded-full top-[50%] -translate-y-[50%]" style="width: 75%"></div>
+<!-- Events -->
+<div class="relative flex justify-between px-4">
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-primary ring-4 ring-primary-fixed mb-2"></div>
+<span class="text-[10px] font-bold text-secondary uppercase">Bắt đầu</span>
+<span class="text-xs font-semibold">14:00</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-3 h-3 rounded-full bg-primary mb-2"></div>
+<span class="text-[10px] font-bold text-secondary uppercase">Câu 10</span>
+<span class="text-xs font-semibold">14:08</span>
+</div>
+<div class="flex flex-col items-center relative">
+<div class="absolute -top-12 px-3 py-1 bg-error text-white text-[10px] font-bold rounded-lg whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-8 after:border-transparent after:border-t-error">Rời khỏi màn hình!</div>
+<div class="w-4 h-4 rounded-full bg-error ring-4 ring-error-container mb-2"></div>
+<span class="text-[10px] font-bold text-error uppercase">Cảnh báo</span>
+<span class="text-xs font-semibold">14:15</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-3 h-3 rounded-full bg-primary mb-2"></div>
+<span class="text-[10px] font-bold text-secondary uppercase">Câu 25</span>
+<span class="text-xs font-semibold">14:28</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-surface-variant mb-2"></div>
+<span class="text-[10px] font-bold text-secondary uppercase">Nộp bài</span>
+<span class="text-xs font-semibold">14:45</span>
+</div>
+</div>
+</div>
+<div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="bg-surface-container-low p-5 rounded-2xl">
+<h4 class="text-sm font-bold mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="insights">insights</span>
+                            Tốc độ trả lời
+                        </h4>
+<div class="flex items-end gap-2 h-24 px-2">
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[40%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[60%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[30%]"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[90%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[50%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[45%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[70%]"></div>
+</div>
+<div class="flex justify-between mt-2 px-1 text-[10px] text-secondary font-bold uppercase">
+<span>Q1-5</span>
+<span>Q6-10</span>
+<span>Q11-15</span>
+<span>Q16-20</span>
+<span>Q21-25</span>
+<span>Q26-30</span>
+<span>Q31-40</span>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<blockquote class="border-l-4 border-primary pl-6 py-2">
+<p class="text-on-surface-variant italic leading-relaxed">
+                                "Học sinh có dấu hiệu tăng tốc độ làm bài đột ngột từ câu 16-20 sau khi nhận cảnh báo hệ thống. Tuy nhiên, tỷ lệ chính xác vẫn được duy trì ở mức cao, cho thấy kiến thức vững chắc."
+                            </p>
+<footer class="mt-3 text-xs font-bold text-primary">— Hệ thống phân tích AI</footer>
+</blockquote>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 bg-white/70 backdrop-blur-xl rounded-t-3xl shadow-[0_-24px_48px_-12px_rgba(67,67,213,0.08)]">
+<a class="flex flex-col items-center justify-center text-slate-400 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Summary</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Incidents</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#5D5FEF] text-white rounded-2xl p-3 mb-2 transform -translate-y-2 scale-110 shadow-lg shadow-primary/30" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="text-[10px] uppercase tracking-widest font-bold mt-1">Reports</span>
+</a>
+</nav>
+</body></html>

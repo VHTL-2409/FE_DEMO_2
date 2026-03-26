@@ -1,29 +1,35 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
-    <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
-      <div class="layout-container flex h-full grow flex-col">
-        <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 antialiased dark:bg-background-dark dark:text-slate-100">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+        <StudentTopHeader class="shrink-0" />
 
-        <main class="relative flex flex-1 justify-center py-8 overflow-hidden">
-          <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-
-          <div class="layout-content-container relative flex flex-col max-w-[1000px] flex-1 px-4 md:px-10">
-            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 animate-fade-up">
-              <div class="flex flex-col gap-2">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold w-fit">
+        <main class="teacher-page-shell relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="portal-scrollbar relative flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div class="relative flex w-full flex-1 flex-col px-4 pb-6 md:px-6 md:pb-8">
+            <div class="mb-5 flex animate-fade-up flex-col justify-between gap-3 md:mb-6 md:flex-row md:items-end md:gap-4">
+              <div class="flex min-w-0 flex-1 flex-col gap-2">
+                <div
+                  class="inline-flex w-fit items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                >
                   <span class="size-2 rounded-full bg-green-500"></span>
                   ĐÃ HOÀN THÀNH BÀI THI
                 </div>
-                <h1 class="text-slate-900 dark:text-slate-100 text-3xl md:text-4xl font-black leading-tight tracking-tight">{{ examTitle }}</h1>
-                <p class="text-slate-500 dark:text-slate-400 text-base font-normal">{{ attemptedAt }}</p>
+                <PageHeader class="!mb-0" eyebrow="Kết quả" :title="examTitle" :subtitle="attemptedAt" />
               </div>
             </div>
 
-            <p v-if="isLoading" class="mb-6 text-sm text-slate-500">Đang tải báo cáo kết quả...</p>
+            <div v-if="isLoading" class="mb-10 animate-fade-up-delay space-y-4" aria-busy="true">
+              <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                <SkeletonLoader variant="card" />
+                <SkeletonLoader variant="card" />
+                <SkeletonLoader variant="card" />
+              </div>
+              <SkeletonLoader variant="card" />
+            </div>
 
-            <div class="grid gap-4 mb-10 animate-fade-up-delay [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-              <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div v-else class="mb-6 grid animate-fade-up-delay gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] md:mb-8">
+              <BaseCard hoverable class="flex flex-col gap-2 !shadow-sm">
                 <p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Tổng điểm</p>
                 <div class="flex items-baseline gap-2">
                   <p class="text-slate-900 dark:text-slate-100 text-3xl font-bold">{{ scoreTen }} / 10</p>
@@ -31,25 +37,25 @@
                 <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div class="bg-primary h-full rounded-full" :style="{ width: `${scorePercent}%` }"></div>
                 </div>
-              </div>
+              </BaseCard>
 
-              <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+              <BaseCard hoverable class="flex flex-col gap-2 !shadow-sm">
                 <p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Thời gian làm bài</p>
                 <p class="text-slate-900 dark:text-slate-100 text-3xl font-bold">{{ timeTaken }}</p>
-              </div>
+              </BaseCard>
 
-              <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+              <BaseCard hoverable class="flex flex-col gap-2 !shadow-sm">
                 <p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Thứ tự xếp hạng</p>
                 <p class="text-slate-900 dark:text-slate-100 text-3xl font-bold">{{ rankOrder }}</p>
-              </div>
+              </BaseCard>
             </div>
 
-            <div class="mb-10 animate-fade-up-delay">
-              <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold mb-6">Phân tích kết quả</h2>
-              <div class="grid grid-cols-1 gap-6">
-                <div class="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div v-if="!isLoading" class="mb-6 animate-fade-up-delay md:mb-8">
+              <h2 class="teacher-section-title mb-4 text-slate-900 dark:text-slate-100">Phân tích kết quả</h2>
+              <div class="grid grid-cols-1 gap-4 md:gap-5">
+                <BaseCard padding="lg" class="!shadow-sm">
                   <p class="text-slate-900 dark:text-slate-100 text-base font-semibold mb-6">Phân bố câu trả lời</p>
-                  <div class="grid grid-cols-3 gap-8 items-end h-48 px-4">
+                  <div class="grid h-48 grid-cols-3 items-end gap-4 px-4 md:gap-6">
                     <div class="flex flex-col items-center gap-3 h-full justify-end">
                       <div class="bg-green-500/20 border-t-4 border-green-500 w-full rounded-t-lg" :style="{ height: `${Math.max(8, correctRatio)}%` }"></div>
                       <p class="text-slate-600 dark:text-slate-400 text-xs font-bold uppercase">Đúng</p>
@@ -66,13 +72,13 @@
                       <span class="text-slate-500 font-bold">{{ skippedCount }}</span>
                     </div>
                   </div>
-                </div>
+                </BaseCard>
               </div>
             </div>
 
-            <div class="mb-10 animate-fade-up-delay">
-              <div class="flex items-center justify-between mb-6">
-                <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold">Xem lại câu hỏi</h2>
+            <div v-if="!isLoading" class="mb-6 animate-fade-up-delay md:mb-8">
+              <div class="mb-4 flex items-center justify-between md:mb-5">
+                <h2 class="teacher-section-title text-slate-900 dark:text-slate-100">Xem lại câu hỏi</h2>
                 <div class="flex gap-2">
                   <span class="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
                     <span class="material-symbols-outlined text-sm">check_circle</span> Đúng
@@ -83,7 +89,14 @@
                 </div>
               </div>
 
-              <p v-if="!reviewAnswers.length" class="text-sm text-slate-500">Không có dữ liệu câu hỏi.</p>
+              <EmptyState
+                v-if="!reviewAnswers.length"
+                icon="quiz"
+                title="Không có dữ liệu câu hỏi"
+                description="Báo cáo chưa có chi tiết từng câu hoặc dữ liệu chưa được tải đầy đủ."
+                dense
+                fill
+              />
 
               <div v-else class="flex flex-col gap-4">
                 <div
@@ -107,10 +120,10 @@
                         :key="`${item.questionId}-${option.id}`"
                         class="flex items-center justify-between p-4 rounded-lg border"
                         :class="[
-                          option.normalizedId === item.correctId
+                          isCorrectOption(item, option)
                             ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50'
                             : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800',
-                          option.normalizedId === item.selectedId && option.normalizedId !== item.correctId
+                          isSelectedOption(item, option) && !isCorrectOption(item, option)
                             ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50'
                             : ''
                         ]"
@@ -118,9 +131,9 @@
                         <div class="flex items-center gap-3">
                           <span
                             class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold"
-                            :class="option.normalizedId === item.correctId
+                            :class="isCorrectOption(item, option)
                               ? 'bg-green-500 text-white'
-                              : option.normalizedId === item.selectedId && option.normalizedId !== item.correctId
+                              : isSelectedOption(item, option) && !isCorrectOption(item, option)
                                 ? 'bg-red-500 text-white'
                                 : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'"
                           >
@@ -131,15 +144,15 @@
 
                         <div class="flex items-center gap-2">
                           <span
-                            v-if="option.normalizedId === item.selectedId"
+                            v-if="isSelectedOption(item, option)"
                             class="inline-flex items-center gap-1 text-[10px] font-bold uppercase"
-                            :class="option.normalizedId === item.correctId ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+                            :class="isCorrectOption(item, option) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
                           >
-                            <span class="material-symbols-outlined text-sm">{{ option.normalizedId === item.correctId ? 'check_circle' : 'cancel' }}</span>
-                            {{ option.normalizedId === item.correctId ? 'Đúng' : 'Sai' }}
+                            <span class="material-symbols-outlined text-sm">{{ isCorrectOption(item, option) ? 'check_circle' : 'cancel' }}</span>
+                            {{ isCorrectOption(item, option) ? 'Đúng' : 'Sai' }}
                           </span>
                           <span
-                            v-if="option.normalizedId === item.correctId && option.normalizedId !== item.selectedId"
+                            v-if="isCorrectOption(item, option) && !isSelectedOption(item, option)"
                             class="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-green-600 dark:text-green-400"
                           >
                             <span class="material-symbols-outlined text-sm">check_circle</span>
@@ -151,31 +164,24 @@
 
                     <div v-else class="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3">
                       <p class="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 mb-1">Câu trả lời đã chọn</p>
-                      <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ item.selectedAnswer }}</p>
-                      <p class="mt-2 text-xs text-slate-500">Đúng: {{ item.correctAnswer || '-' }}</p>
+                      <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ item.selectedAnswerLabel }}</p>
+                      <p class="mt-2 text-xs text-slate-500">Đúng: {{ item.correctAnswerLabel || '-' }}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="bg-primary/5 rounded-xl p-8 flex flex-col items-center justify-center gap-4 border border-primary/10 mb-8">
-              <p class="text-slate-600 dark:text-slate-400 text-center font-medium">Cần trao đổi kết quả này với giảng viên của bạn?</p>
-              <button
-                type="button"
-                @click="openTeacherContact"
-                class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-              >
+            <BaseCard v-if="!isLoading" class="mb-6 flex flex-col items-center justify-center gap-4 border-primary/20 bg-primary/5 text-center md:mb-8">
+              <p class="text-slate-600 dark:text-slate-400 font-medium">Cần trao đổi kết quả này với giảng viên của bạn?</p>
+              <BaseButton size="lg" @click="openTeacherContact">
                 <span class="material-symbols-outlined text-xl">mail</span>
                 Liên hệ giảng viên
-              </button>
-            </div>
+              </BaseButton>
+            </BaseCard>
+          </div>
           </div>
         </main>
-
-        <footer class="border-t border-slate-200 dark:border-slate-800 py-10 px-10 text-center">
-          <p class="text-slate-400 dark:text-slate-600 text-sm">© 2026 Cổng học tập sinh viên. Bảo lưu mọi quyền.</p>
-        </footer>
       </div>
     </div>
   </div>
@@ -188,6 +194,11 @@ import { getAttemptDetail, getAttemptReport } from '../../services/attemptServic
 import { useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import BaseCard from '../shared/BaseCard.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import PageHeader from '../shared/PageHeader.vue'
+import SkeletonLoader from '../shared/SkeletonLoader.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const route = useRoute()
 const { openTeacherContact } = useNotifications()
@@ -283,19 +294,58 @@ const parseOptions = (optionsJson) => {
   return []
 }
 
+const parseAnswerValue = (value) => {
+  if (value == null || value === '') return null
+  if (typeof value !== 'string') return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+const normalizeAnswerIds = (value) => {
+  const parsed = parseAnswerValue(value)
+  if (Array.isArray(parsed)) {
+    return parsed.map((item) => normalizeOptionId(item)).filter(Boolean)
+  }
+  if (parsed && typeof parsed === 'object') {
+    return Object.values(parsed).map((item) => normalizeOptionId(item)).filter(Boolean)
+  }
+  if (typeof parsed === 'string') {
+    return [normalizeOptionId(parsed)].filter(Boolean)
+  }
+  return []
+}
+
+const formatAnswerValue = (value) => {
+  const parsed = parseAnswerValue(value)
+  if (Array.isArray(parsed)) return parsed.join(', ')
+  if (parsed && typeof parsed === 'object') {
+    return Object.entries(parsed).map(([left, right]) => `${left} -> ${right}`).join('; ')
+  }
+  return String(parsed || 'Không trả lời')
+}
+
+const isSelectedOption = (item, option) => item.selectedIds.includes(option.normalizedId)
+const isCorrectOption = (item, option) => item.correctIds.includes(option.normalizedId)
+
 const reviewAnswers = computed(() => (report.value?.answers || []).map((item, index) => {
   const options = parseOptions(item.options)
-  const selectedId = normalizeOptionId(item.selectedAnswer)
-  const correctId = normalizeOptionId(item.correctAnswer)
+  const selectedIds = normalizeAnswerIds(item.selectedAnswer)
+  const correctIds = normalizeAnswerIds(item.correctAnswer)
 
   return {
     questionId: item.questionId,
     question: item.question || `Câu hỏi #${item.questionId}`,
+    questionType: item.questionType || 'SINGLE_CHOICE',
     selectedAnswer: item.selectedAnswer || 'Không trả lời',
     correctAnswer: item.correctAnswer || '',
+    selectedAnswerLabel: formatAnswerValue(item.selectedAnswer),
+    correctAnswerLabel: formatAnswerValue(item.correctAnswer),
     options,
-    selectedId,
-    correctId,
+    selectedIds,
+    correctIds,
     correct: Boolean(item.correct),
     scoreWeight: Number(item.scoreWeight || 0),
     index: index + 1

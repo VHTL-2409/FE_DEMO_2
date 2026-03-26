@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduExam - Bảng điều khiển Giáo viên</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface": "#1b1b23",
+              "tertiary-fixed": "#ffdbc8",
+              "surface-variant": "#e4e1ed",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-fixed-variant": "#743500",
+              "background": "#fcf8ff",
+              "tertiary-fixed-dim": "#ffb689",
+              "tertiary": "#904400",
+              "primary-fixed": "#e1e0ff",
+              "error": "#ba1a1a",
+              "outline-variant": "#c7c4d7",
+              "surface-container-high": "#e9e6f3",
+              "primary": "#4343d5",
+              "on-primary": "#ffffff",
+              "error-container": "#ffdad6",
+              "on-tertiary-container": "#fff6f3",
+              "on-secondary-fixed-variant": "#434751",
+              "surface-bright": "#fcf8ff",
+              "inverse-on-surface": "#f2effb",
+              "on-secondary-container": "#61646f",
+              "surface-container-highest": "#e4e1ed",
+              "on-secondary-fixed": "#181b24",
+              "secondary-container": "#e0e2ef",
+              "on-secondary": "#ffffff",
+              "on-background": "#1b1b23",
+              "on-error-container": "#93000a",
+              "surface-tint": "#4849da",
+              "on-tertiary-fixed": "#321300",
+              "surface-container-low": "#f5f2fe",
+              "surface-dim": "#dbd8e5",
+              "tertiary-container": "#b65700",
+              "secondary-fixed": "#e0e2ef",
+              "primary-fixed-dim": "#c1c1ff",
+              "on-primary-container": "#faf7ff",
+              "surface-container": "#efecf9",
+              "surface": "#fcf8ff",
+              "on-primary-fixed-variant": "#2e2bc2",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#c3c6d2",
+              "inverse-primary": "#c1c1ff",
+              "secondary": "#5b5e69",
+              "on-primary-fixed": "#07006c",
+              "on-error": "#ffffff",
+              "primary-container": "#5d5fef",
+              "on-surface-variant": "#464555",
+              "outline": "#767586",
+              "inverse-surface": "#302f39"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-effect {
+        background: rgba(252, 248, 255, 0.7);
+        backdrop-filter: blur(20px);
+      }
+      .tonal-shift-no-borders {
+        border: none !important;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, .font-headline {
+        font-family: 'Manrope', sans-serif;
+      }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex">
+<!-- SideNavBar Anchor -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-none bg-[#e9e6f3] flex flex-col py-6 px-4 z-50">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<div>
+<h1 class="text-2xl font-black text-[#5D5FEF] tracking-tighter">EduExam</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Hệ thống quản lý thi</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active: Bảng điều khiển -->
+<a class="flex items-center gap-3 px-4 py-3 bg-white text-[#5D5FEF] rounded-xl shadow-sm transition-all duration-300 font-manrope text-sm font-semibold tracking-tight active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Bảng điều khiển</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">quiz</span>
+<span>Kỳ thi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>Lịch sử</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span>Báo cáo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Người dùng</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-slate-200/50 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span>Hồ sơ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#5D5FEF] hover:bg-[#f5f2fe] rounded-xl transition-all font-manrope text-sm font-semibold tracking-tight" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Cài đặt</span>
+</a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 flex-1 min-h-screen relative">
+<!-- TopNavBar Anchor -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 glass-effect flex justify-between items-center h-16 px-8">
+<div class="flex items-center flex-1">
+<div class="relative w-96 group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Tìm kiếm kỳ thi, sinh viên..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-slate-600 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="text-slate-600 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-sm font-bold text-on-surface">Giáo viên</p>
+<p class="text-[10px] text-slate-500 font-medium">Khoa CNTT</p>
+</div>
+<img alt="Avatar giáo viên" class="w-10 h-10 rounded-full border-2 border-primary-fixed" data-alt="professional portrait of a friendly male university professor with glasses and a warm smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqOm8wAAKOzpikMW_90cfBUGEoRsxnLloaoP3BhAan34cGOh3am2yemT1-yvkG8G7UTjJCgI9FhHhpXn4ybSfD8OpfNXpilqKrpJvdsYBD4TxBzUHsHfaYyeuRtMui3LMyhI1VNdLbhAFo4RW_xzlaHJ9RHGC_zY2ey39UkvXziM7Eldv_D1YJVQDtJTgouR_YS-jbCyUwIWfoXrYvT--fs2U5vY00rZZIbTWbwvRJTbbqzIVAFq3hCk9sZdjzPVo8b8aFTw6SHox2"/>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="pt-24 pb-12 px-8 max-w-[1440px] mx-auto space-y-8">
+<!-- PageHeader -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div class="space-y-1">
+<nav class="flex items-center gap-2 text-xs font-medium text-slate-500 mb-2">
+<span>Trang chủ</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary">Bảng điều khiển</span>
+</nav>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight font-headline">Bảng điều khiển</h2>
+<p class="text-on-surface-variant font-medium">Chào mừng trở lại, hôm nay có <span class="text-primary font-bold">3 ca thi</span> cần giám sát.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-xl flex items-center gap-2 hover:bg-surface-container-highest transition-all active:scale-95">
+<span class="material-symbols-outlined">live_tv</span>
+                        Mở phiên giám sát
+                    </button>
+<button class="px-6 py-3 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined">add_circle</span>
+                        Tạo đề thi mới
+                    </button>
+</div>
+</section>
+<!-- KPI Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- KPI 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-primary-fixed/30 transition-colors duration-500">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-surface-container-low rounded-xl text-primary group-hover:bg-white transition-colors">
+<span class="material-symbols-outlined">copy_all</span>
+</div>
+<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">+12% tháng này</span>
+</div>
+<div>
+<p class="text-sm font-medium text-slate-500">Tổng số kỳ thi</p>
+<h3 class="text-3xl font-extrabold font-headline">124</h3>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-primary-fixed/30 transition-colors duration-500">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-surface-container-low rounded-xl text-primary group-hover:bg-white transition-colors">
+<span class="material-symbols-outlined">group</span>
+</div>
+<span class="text-xs font-bold text-primary bg-primary-fixed px-2 py-1 rounded-full">3.8k hoạt động</span>
+</div>
+<div>
+<p class="text-sm font-medium text-slate-500">Tổng số sinh viên</p>
+<h3 class="text-3xl font-extrabold font-headline">3,852</h3>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-primary-fixed/30 transition-colors duration-500">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-surface-container-low rounded-xl text-primary group-hover:bg-white transition-colors">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Khá giỏi</span>
+</div>
+<div>
+<p class="text-sm font-medium text-slate-500">Điểm trung bình</p>
+<h3 class="text-3xl font-extrabold font-headline">7.8</h3>
+</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between border-2 border-primary/20 bg-primary/5 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="p-3 bg-primary text-white rounded-xl">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">live_tv</span>
+</div>
+<a class="text-xs font-bold text-primary hover:underline" href="#">Xem chi tiết</a>
+</div>
+<div class="relative z-10">
+<p class="text-sm font-medium text-slate-500">Trạng thái giám sát</p>
+<h3 class="text-3xl font-extrabold font-headline flex items-center gap-2">
+                            3 <span class="text-sm font-bold text-slate-400">phòng mở</span>
+</h3>
+</div>
+</div>
+</section>
+<!-- Charts & Actions Grid -->
+<section class="grid grid-cols-12 gap-6">
+<!-- Performance Chart -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest p-8 rounded-xl relative">
+<div class="flex justify-between items-center mb-10">
+<div>
+<h4 class="text-xl font-extrabold font-headline">Hiệu suất 7 ngày qua</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+<span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Live data • Cập nhật 1 phút trước</span>
+</div>
+</div>
+<select class="bg-surface-container-low border-none rounded-lg text-xs font-bold px-4 py-2 focus:ring-primary/20">
+<option>Số lượng sinh viên</option>
+<option>Tỷ lệ hoàn thành</option>
+</select>
+</div>
+<!-- Chart Placeholder with Editorial Aesthetic -->
+<div class="h-64 flex items-end justify-between gap-4 px-4 relative">
+<!-- Background Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none opacity-20">
+<div class="border-b border-slate-300 w-full"></div>
+<div class="border-b border-slate-300 w-full"></div>
+<div class="border-b border-slate-300 w-full"></div>
+<div class="border-b border-slate-300 w-full"></div>
+</div>
+<!-- Chart Bars -->
+<div class="flex-1 bg-primary/10 rounded-t-lg h-[40%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">420</div>
+</div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[65%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">680</div>
+</div>
+<div class="flex-1 bg-primary/40 rounded-t-lg h-[55%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">590</div>
+</div>
+<div class="flex-1 bg-primary/60 rounded-t-lg h-[85%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">920</div>
+</div>
+<div class="flex-1 bg-primary/80 rounded-t-lg h-[70%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">750</div>
+</div>
+<div class="flex-1 bg-primary-container rounded-t-lg h-[95%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">1050</div>
+</div>
+<div class="flex-1 bg-primary-fixed-dim rounded-t-lg h-[60%] relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">620</div>
+</div>
+</div>
+<div class="flex justify-between mt-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+<span>Thứ 2</span><span>Thứ 3</span><span>Thứ 4</span><span>Thứ 5</span><span>Thứ 6</span><span>Thứ 7</span><span>Chủ Nhật</span>
+</div>
+</div>
+<!-- Quick Actions & Schedule -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Quick Actions Card -->
+<div class="bg-primary text-white p-8 rounded-xl shadow-xl shadow-primary/20 relative overflow-hidden">
+<div class="absolute right-0 bottom-0 opacity-10">
+<span class="material-symbols-outlined text-9xl">bolt</span>
+</div>
+<h4 class="text-xl font-bold font-headline mb-6 relative z-10">Hành động nhanh</h4>
+<div class="space-y-3 relative z-10">
+<button class="w-full py-3 px-4 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-3 transition-colors font-bold text-sm">
+<span class="material-symbols-outlined">database</span>
+                                Kho câu hỏi
+                            </button>
+<button class="w-full py-3 px-4 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-3 transition-colors font-bold text-sm">
+<span class="material-symbols-outlined">calendar_today</span>
+                                Lịch thi cử
+                            </button>
+<button class="w-full py-3 px-4 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-3 transition-colors font-bold text-sm">
+<span class="material-symbols-outlined">send</span>
+                                Gửi tin nhắn
+                            </button>
+</div>
+</div>
+<!-- 7-Day Calendar Widget -->
+<div class="bg-surface-container-low p-6 rounded-xl">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-bold text-on-surface">Lịch tuần tới</h4>
+<button class="text-primary material-symbols-outlined">chevron_right</button>
+</div>
+<div class="space-y-4">
+<div class="flex gap-4">
+<div class="w-12 h-14 bg-white rounded-xl flex flex-col items-center justify-center border-b-2 border-primary shadow-sm">
+<span class="text-[10px] font-bold text-slate-400 uppercase">T2</span>
+<span class="text-lg font-black text-on-surface">14</span>
+</div>
+<div class="flex-1 py-1">
+<p class="text-sm font-bold">Giải tích 1</p>
+<p class="text-xs text-slate-500">08:00 - 10:00 • Phòng A2</p>
+</div>
+</div>
+<div class="flex gap-4 opacity-60">
+<div class="w-12 h-14 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm">
+<span class="text-[10px] font-bold text-slate-400 uppercase">T3</span>
+<span class="text-lg font-black text-on-surface">15</span>
+</div>
+<div class="flex-1 py-1">
+<p class="text-sm font-bold">Không có lịch</p>
+<p class="text-xs text-slate-400">---</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-12 h-14 bg-white rounded-xl flex flex-col items-center justify-center border-b-2 border-primary shadow-sm">
+<span class="text-[10px] font-bold text-slate-400 uppercase">T4</span>
+<span class="text-lg font-black text-on-surface">16</span>
+</div>
+<div class="flex-1 py-1">
+<p class="text-sm font-bold">Lập trình Java</p>
+<p class="text-xs text-slate-500">13:30 - 15:30 • Phòng Lab 1</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Exams Table -->
+<section class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<div class="p-8 flex justify-between items-center bg-white">
+<div>
+<h4 class="text-2xl font-extrabold font-headline">Kỳ thi gần đây</h4>
+<p class="text-sm text-slate-500 font-medium">Dữ liệu được cập nhật theo thời gian thực</p>
+</div>
+<button class="px-4 py-2 text-primary font-bold text-sm hover:bg-primary/5 rounded-lg transition-colors">Xem tất cả</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container-low">
+<tr>
+<th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Tên kỳ thi</th>
+<th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Ngày tạo</th>
+<th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Số thí sinh</th>
+<th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Trạng thái</th>
+<th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Thao tác</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100">
+<!-- Highlighted Row -->
+<tr class="bg-primary/5 group transition-colors animate-pulse-once">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">description</span>
+</div>
+<span class="font-bold text-on-surface">Kiểm tra giữa kỳ - Cấu trúc dữ liệu</span>
+</div>
+</td>
+<td class="px-8 py-5 text-sm text-slate-500 font-medium">Hôm nay, 10:45</td>
+<td class="px-8 py-5">
+<div class="flex -space-x-2">
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" data-alt="student avatar portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtsrA3hjKpPqrCBWO5LOrPw_YI5CJ1IJa-L5VFGxcmuj7GRl3jcFLj22mAFIP20hIIqJkbBWA21HlJOavIYia_dFiA-0459uMSRt-XS5ZrWbbyk35j3ZkOGHg818NTaWApvSdLU9bRbpnXgaLIWsetZUTBLWGUpZA6C4dyKqQ73rbqv_8dagMWC3SvfX8kE0Zl5OvXgg2h2xhM_0OwKO_5mF9uaCIvKQMuIyQa9fo-AcOrzoIBPIjOZygID-gFCKBSs1jy4mmSOJW2"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" data-alt="student avatar portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAtwlWWPQc0NGLsU6gC5N3b8YUjZdqQXoAr1_7SAOIrA8vGOQr6kcygDk4v6AwfOYQp38m3cAPHlq7RR8OpENRaSeraXpG_SaaMHSbs-PP2KAKLu6rVVs1nQLSM16gjyrSTuKe9SnylEaHuljFQHQYk41FVQjfjp2EkYy_ZmbOKQkvi2vMNOh4hxp72kCC_GJg9Esv1O_yA6rCkVhxm181BKr4STYGkFLpJXXWThHV8Tzx1Ow6crW44vpSe9EifkJ8LRCdGkK6Ympk"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" data-alt="student avatar portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASiRtVgkJ26coYCKvepu2EIDuoiepGth1VP7Eosk5Twh3-b6ZhOkDLdID9UnMOCAw96e7aPthHH4_xhv6pPApReGoD8dJbPabXXlL30uVGyCBTrzdQb-Dl4woCcyGrRwkl0XBos1BWzwb6PIC91Fj7AAw56tsF6YwKMsSd3vQOVqYqBVIOJcnCy1_GJJnSQnXRtE1B36BQP2oH-CT8FvoLb7khf34Jh-b-C_dITWbgs-WpeRendN2DkL1itTRW1AQdiDFptOsyzjcs"/>
+<div class="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px] font-bold">+152</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-tighter">Đang thi</span>
+</td>
+<td class="px-8 py-5">
+<button class="material-symbols-outlined text-slate-400 hover:text-primary transition-colors">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-slate-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">description</span>
+</div>
+<span class="font-bold text-on-surface">Lập trình Python Cơ bản</span>
+</div>
+</td>
+<td class="px-8 py-5 text-sm text-slate-500 font-medium">12 Tháng 10, 2023</td>
+<td class="px-8 py-5 text-sm font-bold text-on-surface">240 thí sinh</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-tighter">Hoàn thành</span>
+</td>
+<td class="px-8 py-5">
+<button class="material-symbols-outlined text-slate-400 hover:text-primary transition-colors">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-slate-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">description</span>
+</div>
+<span class="font-bold text-on-surface">Đồ án cuối kỳ - Thiết kế UI/UX</span>
+</div>
+</td>
+<td class="px-8 py-5 text-sm text-slate-500 font-medium">10 Tháng 10, 2023</td>
+<td class="px-8 py-5 text-sm font-bold text-on-surface">45 thí sinh</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-full uppercase tracking-tighter">Bản nháp</span>
+</td>
+<td class="px-8 py-5">
+<button class="material-symbols-outlined text-slate-400 hover:text-primary transition-colors">more_horiz</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Loading States & Empty states Examples (Demonstration Only) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-50 pointer-events-none">
+<!-- Skeleton State Example -->
+<div class="bg-surface-container-low p-8 rounded-xl space-y-4">
+<p class="text-xs font-bold uppercase tracking-widest mb-4">Mẫu Trạng thái đang tải (Skeleton)</p>
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 bg-slate-200 rounded-full animate-pulse"></div>
+<div class="space-y-2 flex-1">
+<div class="h-4 bg-slate-200 rounded-full w-3/4 animate-pulse"></div>
+<div class="h-3 bg-slate-200 rounded-full w-1/2 animate-pulse"></div>
+</div>
+</div>
+<div class="h-32 bg-slate-200 rounded-xl animate-pulse"></div>
+</div>
+<!-- Empty State Example -->
+<div class="bg-white p-8 rounded-xl flex flex-col items-center justify-center text-center space-y-4">
+<p class="text-xs font-bold uppercase tracking-widest mb-4">Mẫu Trạng thái trống (Empty)</p>
+<div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-slate-300 text-4xl">folder_off</span>
+</div>
+<h5 class="font-bold">Không có dữ liệu</h5>
+<p class="text-xs text-slate-500">Bạn chưa tạo đề thi nào cho học kỳ này.</p>
+<button class="px-4 py-2 bg-primary text-white font-bold rounded-lg text-xs">Tạo đề thi ngay</button>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Hidden on Dashboard based on Logic) -->
+<!-- The FAB is suppressed because this is a complex dashboard and we already have a primary CTA in the header area -->
+</body></html>

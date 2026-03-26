@@ -1,0 +1,40 @@
+Không truy cập được domain / IP sau khi docker compose up
+============================================================
+
+1) Ping không chứng minh web hoạt động
+   - Nhiều VPS chặn ICMP — ping domain có thể "Request timed out" dù web vẫn chạy.
+   - Dùng: curl -v http://IP:8080  hoặc trình duyệt mở http://IP:8080
+
+2) Docker chỉ bind 127.0.0.1 — không vào được từ internet
+   - Nếu trong .env có: DOCKER_FE_PUBLISH=127.0.0.1:8080 thì chỉ máy VPS truy cập được.
+   - Cách A — Có Nginx host: giữ 127.0.0.1, bật Nginx listen :81 và :444, mở firewall 81,444.
+   - Cách B — Không Nginx: XÓA hoặc comment DOCKER_FE_PUBLISH / DOCKER_BE_PUBLISH trong .env,
+     chạy lại: docker compose -f docker-compose.prod.yml --env-file .env up -d
+     (mặc định mới: FE :8080, BE :8082 trên mọi interface).
+
+3) Firewall / Security group
+   - UFW: sudo ufw allow 8080,8082/tcp  (hoặc 81,444 nếu chỉ mở Nginx)
+   - Cloud (AWS/Azure/GCP): mở inbound cùng các cổng đó.
+
+4) DNS
+   - nslookup your-domain.com phải trả về đúng IP VPS.
+
+5) Kiểm tra trên VPS
+   - docker ps — container fe, be phải Up
+   - ss -tlnp | grep -E '8080|8082|81|444' — có LISTEN trên 0.0.0.0 hoặc *
+
+6) Nginx host + Docker
+   - Nginx phải proxy_pass tới 127.0.0.1:8080 (FE) và 127.0.0.1:8082 (BE).
+   - sudo nginx -t && sudo systemctl reload nginx
+
+7) "Không thể cung cấp kết nối an toàn" / "phản hồi không hợp lệ" (Chrome/Edge)
+   - Nguyên nhân thường gặp: gõ https:// trong khi server chỉ bật HTTP (không SSL) trên cổng đó.
+   - Docker FE trên :8080 là HTTP thuần — phải dùng:
+        http://test1.nexquoteapp.com:8080
+     KHÔNG dùng https://...:8080 (trình duyệt sẽ handshake TLS, server trả HTTP → lỗi).
+   - https://test1.nexquoteapp.com (cổng 443 mặc định): chỉ chạy khi đã cài Nginx/Certbot
+     listen 443 ssl và proxy đúng. Nếu chưa có gì trên 443 → lỗi hoặc site khác.
+   - Nếu trước đó từng bật HSTS, trình duyệt có thể ép HTTPS — thử cửa sổ ẩn danh / máy khác,
+     hoặc xóa HSTS (Chrome: chrome://net-internals/#hsts → Delete domain).
+   - Muốn HTTPS chuẩn: cấu hình Nginx trên host (443 hoặc 444) + Let's Encrypt, proxy
+     tới 127.0.0.1:8080 và 127.0.0.1:8082 — xem deploy/nginx-host-81-444.conf.example

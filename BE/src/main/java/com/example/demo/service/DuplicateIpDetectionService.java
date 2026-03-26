@@ -18,7 +18,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DuplicateIpDetectionService {
 
-    private static final List<AttemptStatus> ACTIVE_STATUSES = List.of(AttemptStatus.IN_PROGRESS, AttemptStatus.STOPPED);
+    private static final List<AttemptStatus> ACTIVE_STATUSES = List.of(
+            AttemptStatus.IN_PROGRESS,
+            AttemptStatus.PAUSED);
 
     private final ExamAttemptRepository examAttemptRepository;
     private final MonitoringEventRepository monitoringEventRepository;

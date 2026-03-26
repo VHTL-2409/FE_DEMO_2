@@ -18,6 +18,7 @@ import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.RiskLevel;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.entity.MonitoringEventType;
@@ -34,6 +35,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -53,6 +55,9 @@ public class SubmissionService {
     private final AuditLogService auditLogService;
     private final MonitoringService monitoringService;
 
+    @Value("${demo.monitoring.integrity-check.cooldown-seconds:45}")
+    private long integrityCheckCooldownSeconds;
+
     @Transactional
     public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
         LocalDateTime nowInExamZone = LocalDateTime.now(DateTimeUtils.toZoneId(exam.getTimezone()));
@@ -61,6 +66,11 @@ public class SubmissionService {
         ExamAttempt existing = examAttemptRepository
                 .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.IN_PROGRESS)
                 .orElse(null);
+        if (existing == null) {
+            existing = examAttemptRepository
+                    .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.PAUSED)
+                    .orElse(null);
+        }
         if (existing != null) {
             enforceIpConsistency(existing, normalizeClientIp(clientIp));
             return toStartResponse(existing);
@@ -76,8 +86,13 @@ public class SubmissionService {
                         .status(AttemptStatus.IN_PROGRESS)
                         .score(0.0)
                         .riskScore(0)
+                        .riskLevel(RiskLevel.CLEAN)
                         .suspicious(false)
                         .clientIp(normalizedIp)
+                        .sessionTokenVersion(1)
+                        .fullscreenRequired(true)
+                        .lastHeartbeatAt(LocalDateTime.now())
+                        .lastIntegrityCheckAt(LocalDateTime.now())
                         .build());
 
         duplicateIpDetectionService.detect(saved);
@@ -96,6 +111,9 @@ public class SubmissionService {
 
         if (attempt.getStatus() == AttemptStatus.STOPPED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt has been suspended by proctor");
+        }
+        if (attempt.getStatus() == AttemptStatus.PAUSED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt is paused pending proctor review");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -130,6 +148,10 @@ public class SubmissionService {
         ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
+        if (attempt.getStatus() == AttemptStatus.PAUSED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is paused pending proctor review");
+        }
+
         if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
         }
@@ -152,7 +174,10 @@ public class SubmissionService {
         enforceIpConsistency(attempt, normalizedIp);
 
         submissionHelper.saveAnswers(attempt, answers);
-        duplicateIpDetectionService.detect(attempt);
+        if (shouldRunIntegrityCheck(attempt, now)) {
+            duplicateIpDetectionService.detect(attempt);
+            attempt.setLastIntegrityCheckAt(now);
+        }
 
         int answeredCount = answerRepository.findByAttempt(attempt).size();
         long remainingSeconds = submissionHelper.remainingSeconds(attempt);
@@ -167,6 +192,7 @@ public class SubmissionService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public DraftAnswersResponse getDraftAnswers(Long attemptId, User student) {
         ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
@@ -187,6 +213,7 @@ public class SubmissionService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public AttemptDetailResponse getAttemptDetail(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
         ensureCanViewAttempt(attempt, actor);
@@ -213,6 +240,7 @@ public class SubmissionService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public AttemptReportResponse getAttemptReport(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
         ensureCanViewAttempt(attempt, actor);
@@ -224,11 +252,13 @@ public class SubmissionService {
                 .map(answer -> AttemptReportAnswerItem.builder()
                         .questionId(answer.getQuestion().getId())
                         .question(answer.getQuestion().getContent())
+                        .questionType(answer.getQuestion().getType() == null ? "SINGLE_CHOICE" : answer.getQuestion().getType().name())
                         .options(answer.getQuestion().getOptions())
                         .selectedAnswer(answer.getSelectedAnswer())
                         .correctAnswer(answer.getQuestion().getCorrectAnswer())
                         .correct(answer.getCorrect())
                         .scoreWeight(answer.getQuestion().getScoreWeight())
+                        .metadata(answer.getQuestion().getMetadata())
                         .build())
                 .toList();
 
@@ -256,6 +286,26 @@ public class SubmissionService {
     }
 
     /**
+     * Phải chạy trong một transaction: open-in-view=false nên lazy Exam/User không thể đọc sau khi trả list về controller.
+     */
+    @Transactional(readOnly = true)
+    public List<AttemptSummaryResponse> listAttemptSummariesForStudent(User student) {
+        return examAttemptRepository.findByStudent(student).stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    /**
+     * Giáo viên / admin xem danh sách lượt làm theo đề — cùng lý do {@link #listAttemptSummariesForStudent}.
+     */
+    @Transactional(readOnly = true)
+    public List<AttemptSummaryResponse> listAttemptSummariesForExam(Exam exam) {
+        return listByExam(exam).stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    /**
      * Danh sách attempts của đợt thi hiện tại (theo exam.startTime, exam.endTime).
      * Khi tạo đợt thi mới, chỉ lấy attempts trong khoảng thời gian đó, không lấy dữ liệu cũ.
      */
@@ -267,6 +317,7 @@ public class SubmissionService {
         return examAttemptRepository.findByExam(exam);
     }
 
+    @Transactional(readOnly = true)
     public AttemptFilterResponse listByExamFiltered(Exam exam,
             String status,
             Boolean suspicious,
@@ -312,7 +363,7 @@ public class SubmissionService {
     }
 
     public ExamAttempt requireAttempt(Long attemptId) {
-        return examAttemptRepository.findById(attemptId)
+        return examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
     }
 
@@ -349,6 +400,7 @@ public class SubmissionService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public byte[] exportExamAttemptsCsv(Exam exam) {
         List<ExamAttempt> attempts = listByExam(exam);
         StringBuilder csv = new StringBuilder();
@@ -464,6 +516,13 @@ public class SubmissionService {
         realtimeNotificationService.notifyAttemptStopped(attempt,
                 "Phát hiện thay đổi địa chỉ IP trong khi làm bài. Bài thi đã bị đình chỉ.");
         throw new ApiException(HttpStatus.BAD_REQUEST, "IP changed during attempt. Attempt has been suspended");
+    }
+
+    private boolean shouldRunIntegrityCheck(ExamAttempt attempt, LocalDateTime now) {
+        if (attempt.getLastIntegrityCheckAt() == null) {
+            return true;
+        }
+        return attempt.getLastIntegrityCheckAt().isBefore(now.minusSeconds(Math.max(integrityCheckCooldownSeconds, 1)));
     }
 
     private boolean hasRole(User user, RoleName roleName) {

@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 
 const DEFAULT_DURATION = 4500
-const MAX_TOASTS = 5
+const MAX_TOASTS = 3
 let idCounter = 0
 
 const state = reactive({

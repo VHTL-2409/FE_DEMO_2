@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Getter
 @Builder
@@ -16,4 +17,9 @@ public class MonitoringTimelineItem {
     private String details;
     private Integer riskScore;
     private Boolean suspicious;
+    private String severity;
+    private Double confidence;
+    private String riskLevel;
+    private String evidence;
+    private Map<String, Integer> breakdown;
 }

@@ -3,16 +3,13 @@
     <div class="layout-container flex h-full grow flex-col">
       <TeacherTopHeader active-section="monitoring" />
 
-      <main class="teacher-page-shell max-w-7xl">
-        <div class="pointer-events-none absolute -top-16 -left-20 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-16 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-
-        <div class="mb-8 relative animate-fade-up">
-          <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Chọn đề thi đang diễn ra</h1>
-          <p class="text-slate-500 dark:text-slate-400">Chỉ hiển thị các đề thi đang trong thời gian thi để giám sát theo thời gian thực.</p>
+      <main class="teacher-page-shell relative mx-auto max-w-7xl overflow-x-hidden">
+        <div class="relative mb-6 animate-fade-up">
+          <h1 class="mb-1.5 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">Chọn đề thi đang diễn ra</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 sm:text-base">Chỉ hiển thị các đề thi đang trong thời gian thi để giám sát theo thời gian thực.</p>
         </div>
 
-        <div class="relative flex flex-col md:flex-row gap-4 mb-8 animate-fade-up-delay">
+        <div class="relative mb-6 flex animate-fade-up-delay flex-col gap-3 md:flex-row md:gap-4">
           <div class="relative flex-1">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/50">search</span>
             <input v-model="search" class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="Tìm đề thi theo tiêu đề hoặc mã..." type="text" />
@@ -20,13 +17,23 @@
         </div>
 
 
-        <div class="relative grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-up-delay">
-          <div v-if="isLoading" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
-            Đang tải danh sách đề thi...
+        <div class="relative grid grid-cols-1 gap-4 animate-fade-up-delay md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+          <div v-if="isLoading" class="col-span-full rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800">
+            <span class="material-symbols-outlined mb-2 inline-block animate-spin text-xl text-primary">progress_activity</span>
+            <p>Đang tải danh sách đề thi…</p>
           </div>
 
-          <div v-else-if="!filteredExams.length" class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
-            Không có đề thi nào đang diễn ra.
+          <div v-else-if="!filteredExams.length" class="col-span-full">
+            <EmptyState
+              class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40"
+              icon="monitoring"
+              title="Không có đề thi đang diễn ra"
+              description="Hiện không có kỳ thi nào trong khung giờ. Thử tìm kiếm khác hoặc quay lại sau; bạn cũng có thể tạo đề mới từ ngân hàng đề."
+              action-label="Mở ngân hàng đề"
+              dense
+              fill
+              @action="goToExamBank"
+            />
           </div>
 
           <div v-for="exam in filteredExams" :key="exam.id" :class="exam.cardBorder" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-primary/5 flex flex-col group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-l-4">
@@ -97,6 +104,7 @@ import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import TeacherTopHeader from './TeacherTopHeader.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const router = useRouter()
 const isDark = ref(false)

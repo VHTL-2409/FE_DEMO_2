@@ -21,9 +21,10 @@ public class EmailService {
         this.mailSender = Optional.ofNullable(mailSender);
         boolean hasCreds = mailUser != null && !mailUser.isBlank();
         if (mailSender == null || !hasCreds) {
-            log.info("Email: chưa cấu hình. Đặt SPRING_MAIL_USERNAME và SPRING_MAIL_PASSWORD trong .env (Gmail App Password) rồi chạy run-with-mail.ps1");
+            // English log: avoids mojibake on Windows consoles that are not UTF-8
+            log.info("Email: not configured. Set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD in .env (Gmail App Password), then run run-with-mail.ps1");
         } else {
-            log.info("Email: đã cấu hình ({}), sẵn sàng gửi thư.", mailUser);
+            log.info("Email: configured ({}), ready to send.", mailUser);
         }
     }
 

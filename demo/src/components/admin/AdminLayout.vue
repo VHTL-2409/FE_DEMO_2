@@ -1,59 +1,67 @@
 <template>
-  <div class="admin-shell min-h-screen text-slate-100 font-sans selection:bg-teal-500/30">
-    <div class="fixed inset-0 pointer-events-none overflow-hidden">
-      <div class="absolute inset-0 bg-[#070b12]" />
-      <div
-        class="absolute inset-0 opacity-[0.35]"
-        style="
-          background-image:
-            linear-gradient(rgba(45, 212, 191, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(45, 212, 191, 0.06) 1px, transparent 1px);
-          background-size: 48px 48px;
-        "
-      />
-      <div class="absolute -top-32 -right-32 w-[520px] h-[520px] rounded-full bg-teal-500/10 blur-[100px]" />
-      <div class="absolute bottom-0 left-1/4 w-[420px] h-[420px] rounded-full bg-cyan-600/10 blur-[90px]" />
-    </div>
+  <div class="admin-shell staff-shell-surface dark flex h-dvh max-h-dvh min-h-0 w-full flex-1 flex-col overflow-hidden text-slate-100 selection:bg-indigo-500/20">
+    <header class="staff-topbar sticky top-0 z-50 shrink-0">
+      <div class="w-full px-4 sm:px-6 lg:px-10">
+        <div class="flex min-h-[4.6rem] flex-col justify-center gap-3 py-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="staff-brand-mark flex size-11 items-center justify-center rounded-2xl text-sm font-black text-white">
+                A
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-[1.08rem] font-black tracking-[-0.03em] text-slate-900 dark:text-white">EduExam Admin</p>
+                <p class="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  Control plane · users · exams · analytics
+                </p>
+              </div>
+            </div>
 
-    <div class="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-16">
-      <header class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
-        <div>
-          <p class="text-teal-400/90 text-xs font-semibold tracking-[0.25em] uppercase mb-2">Control plane</p>
-          <h1 class="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-            EduExam Admin
-          </h1>
-        </div>
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
-          <nav class="flex flex-wrap items-center gap-1 sm:gap-2">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <div class="staff-user-pill hidden items-center gap-3 rounded-xl px-3 py-2 sm:flex">
+                <div class="text-right">
+                  <p class="text-sm font-bold text-slate-900 dark:text-white">Quản trị viên</p>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    Internal staff
+                  </p>
+                </div>
+                <div class="staff-brand-mark flex size-10 items-center justify-center rounded-2xl text-sm font-black text-white">A</div>
+              </div>
+              <button
+                type="button"
+                class="staff-action-btn staff-action-btn-neutral gap-2"
+                @click="logout"
+              >
+                <span class="material-symbols-outlined text-lg">logout</span>
+                <span class="hidden sm:inline">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+
+          <nav class="staff-nav-scroller -mx-1 flex items-center gap-2 overflow-x-auto px-1">
             <RouterLink
               v-for="link in navLinks"
               :key="link.to"
               :to="link.to"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
-              active-class="!border-teal-500/35 !bg-teal-500/10 !text-teal-200"
+              class="staff-nav-link rounded-xl px-3 py-2 text-sm font-semibold"
+              active-class="is-active"
             >
-              <span class="material-symbols-outlined text-[18px]">{{ link.icon }}</span>
-              {{ link.label }}
+              <span class="inline-flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">{{ link.icon }}</span>
+                {{ link.label }}
+              </span>
             </RouterLink>
           </nav>
-          <button
-            type="button"
-            @click="logout"
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-300 hover:bg-teal-500/25 text-sm font-semibold sm:ml-2"
-          >
-            <span class="material-symbols-outlined text-lg">logout</span>
-            Đăng xuất
-          </button>
         </div>
-      </header>
+      </div>
+    </header>
 
+    <div class="admin-route-host relative z-10 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden px-4 py-5 sm:px-6 md:py-6 lg:px-10">
       <RouterView />
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { clearAuthSession } from '../../services/authService'
 
@@ -72,17 +80,10 @@ const logout = () => {
   router.push('/login')
 }
 
-onMounted(() => {
-  document.documentElement.classList.add('dark')
-})
-
-onUnmounted(() => {
-  document.documentElement.classList.remove('dark')
-})
 </script>
 
 <style scoped>
 .admin-shell {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 </style>

@@ -5,36 +5,40 @@ import com.example.demo.api.dto.question.QuestionResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Question;
+import com.example.demo.domain.entity.QuestionType;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.QuestionRepository;
+import com.example.demo.service.helper.QuestionPayloadHelper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class QuestionService {
 
-    private static final Pattern OPTION_ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
-
     private final QuestionRepository questionRepository;
+    private final QuestionPayloadHelper questionPayloadHelper;
 
-    public QuestionService(QuestionRepository questionRepository) {
+    public QuestionService(QuestionRepository questionRepository, QuestionPayloadHelper questionPayloadHelper) {
         this.questionRepository = questionRepository;
+        this.questionPayloadHelper = questionPayloadHelper;
     }
 
     public QuestionResponse createQuestion(Exam exam, QuestionRequest request) {
-        validateQuestionRequest(request);
+        QuestionPayload payload = validateQuestionRequest(request);
 
         Question question = Question.builder()
             .exam(exam)
-            .content(request.getContent())
-            .scoreWeight(request.getScoreWeight())
-            .options(request.getOptions())
-            .correctAnswer(request.getCorrectAnswer().trim())
+            .content(payload.content())
+            .type(payload.type())
+            .scoreWeight(payload.scoreWeight())
+            .options(payload.options())
+            .correctAnswer(payload.correctAnswer())
+            .difficulty(payload.difficulty())
+            .metadata(payload.metadata())
+            .attachments(payload.attachments())
             .build();
         return toResponse(questionRepository.save(question), true);
     }
@@ -49,11 +53,15 @@ public class QuestionService {
         Question question = requireQuestion(questionId);
         ensureQuestionBelongsToExam(question, examId);
         ensureCanManageQuestion(question, actor);
-        validateQuestionRequest(request);
-        question.setContent(request.getContent());
-        question.setScoreWeight(request.getScoreWeight());
-        question.setOptions(request.getOptions());
-        question.setCorrectAnswer(request.getCorrectAnswer().trim());
+        QuestionPayload payload = validateQuestionRequest(request);
+        question.setContent(payload.content());
+        question.setType(payload.type());
+        question.setScoreWeight(payload.scoreWeight());
+        question.setOptions(payload.options());
+        question.setCorrectAnswer(payload.correctAnswer());
+        question.setDifficulty(payload.difficulty());
+        question.setMetadata(payload.metadata());
+        question.setAttachments(payload.attachments());
         return toResponse(questionRepository.save(question), true);
     }
 
@@ -89,33 +97,31 @@ public class QuestionService {
         }
     }
 
-    private void validateQuestionRequest(QuestionRequest request) {
-        String optionsJson = request.getOptions();
-        if (optionsJson == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "options must be valid JSON array");
+    private QuestionPayload validateQuestionRequest(QuestionRequest request) {
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "content is required");
         }
 
-        String trimmed = optionsJson.trim();
-        if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "options must be valid JSON array");
-        }
+        QuestionType type = questionPayloadHelper.resolveType(request.getType());
+        String options = questionPayloadHelper.normalizeOptions(request.getOptions(), type);
+        String correctAnswer = questionPayloadHelper.normalizeCorrectAnswer(request.getCorrectAnswer(), type);
+        questionPayloadHelper.validateCorrectAnswerAgainstOptions(type, options, correctAnswer);
+        String metadata = questionPayloadHelper.normalizeMetadata(request.getMetadata());
+        String attachments = questionPayloadHelper.normalizeAttachments(request.getAttachments());
+        String difficulty = request.getDifficulty() == null || request.getDifficulty().isBlank()
+                ? null
+                : request.getDifficulty().trim().toUpperCase();
 
-        Matcher matcher = OPTION_ID_PATTERN.matcher(trimmed);
-        List<String> optionIds = new java.util.ArrayList<>();
-        while (matcher.find()) {
-            optionIds.add(matcher.group(1));
-        }
-
-        if (optionIds.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "options must contain at least one option id");
-        }
-
-        String correctAnswer = request.getCorrectAnswer().trim();
-        boolean answerExists = optionIds.stream().anyMatch(id -> id.equalsIgnoreCase(correctAnswer));
-
-        if (!answerExists) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "correctAnswer must match an option id");
-        }
+        return new QuestionPayload(
+                request.getContent().trim(),
+                type,
+                request.getScoreWeight(),
+                options,
+                correctAnswer,
+                difficulty,
+                metadata,
+                attachments
+        );
     }
 
     private QuestionResponse toResponse(Question question, boolean includeCorrectAnswer) {
@@ -123,10 +129,25 @@ public class QuestionService {
             .id(question.getId())
             .examId(question.getExam().getId())
             .content(question.getContent())
+            .type((question.getType() == null ? QuestionType.SINGLE_CHOICE : question.getType()).name())
             .scoreWeight(question.getScoreWeight())
             .options(question.getOptions())
             .correctAnswer(includeCorrectAnswer ? question.getCorrectAnswer() : null)
             .difficulty(question.getDifficulty())
+            .metadata(question.getMetadata())
+            .attachments(question.getAttachments())
             .build();
+    }
+
+    private record QuestionPayload(
+            String content,
+            QuestionType type,
+            Double scoreWeight,
+            String options,
+            String correctAnswer,
+            String difficulty,
+            String metadata,
+            String attachments
+    ) {
     }
 }

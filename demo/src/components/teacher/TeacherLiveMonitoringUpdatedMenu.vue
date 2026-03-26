@@ -3,12 +3,9 @@
     <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
       <TeacherTopHeader active-section="monitoring" />
 
-      <main class="teacher-page-shell max-w-[1440px]">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-indigo-500/20 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-violet-500/15 blur-3xl animate-float-delay"></div>
-
+      <main class="teacher-page-shell relative mx-auto max-w-[1440px] overflow-x-hidden">
         <!-- Hero header -->
-        <div class="relative flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6 animate-fade-up">
+        <div class="relative flex flex-col md:flex-row md:items-end justify-between mb-5 gap-4 animate-fade-up">
           <div>
             <nav class="flex text-sm text-slate-500 dark:text-slate-400 mb-3 gap-2 items-center">
               <span class="material-symbols-outlined text-sm">monitoring</span>
@@ -151,6 +148,27 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
+                <tr v-if="isSyncing && !attempts.length">
+                  <td colspan="5" class="px-6 py-12 text-center">
+                    <span class="material-symbols-outlined mb-2 inline-block animate-spin text-2xl text-indigo-500">progress_activity</span>
+                    <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Đang tải danh sách thí sinh…</p>
+                  </td>
+                </tr>
+                <tr v-else-if="!visibleStudents.length">
+                  <td colspan="5" class="px-4 py-10 sm:px-6">
+                    <div
+                      class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-900/40"
+                    >
+                      <span class="material-symbols-outlined mb-2 text-4xl text-slate-300 dark:text-slate-600">groups</span>
+                      <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {{ attempts.length ? 'Không có thí sinh phù hợp bộ lọc.' : 'Chưa có thí sinh nào trong phiên này.' }}
+                      </p>
+                      <p class="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+                        Khi có lượt làm bài, danh sách sẽ cập nhật tự động (Realtime hoặc làm mới định kỳ).
+                      </p>
+                    </div>
+                  </td>
+                </tr>
                 <tr v-for="student in visibleStudents" :key="student.id" :class="student.rowClass" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                   <td class="px-4 sm:px-6 py-3 sm:py-4">
                     <div class="flex items-center gap-4">

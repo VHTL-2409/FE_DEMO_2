@@ -1,0 +1,81 @@
+# =============================================================================
+# Nginx host — HTTPS cổng 443 (KHÔNG cần ghi :443 trên URL)
+# =============================================================================
+# Truy cập: https://test1.nexquoteapp.com  (và http://... sẽ redirect sang HTTPS)
+#
+# Sao chép: sudo cp nginx-host-80-443.conf.example /etc/nginx/sites-available/test1.nexquoteapp.com
+# Bật site:  sudo ln -sf /etc/nginx/sites-available/test1.nexquoteapp.com /etc/nginx/sites-enabled/
+# Kiểm tra: sudo nginx -t && sudo systemctl reload nginx
+#
+# Điều kiện: cổng 80 và 443 trên VPS CHƯA bị app khác chiếm (hoặc gộp server_name).
+#
+# Docker (.env): chỉ bind localhost
+#   DOCKER_FE_PUBLISH=127.0.0.1:8080
+#   DOCKER_BE_PUBLISH=127.0.0.1:8082
+#
+# .env URL (không có cổng):
+#   APP_FRONTEND_BASE_URL=https://test1.nexquoteapp.com
+#   APP_CORS_ALLOWED_ORIGINS=https://test1.nexquoteapp.com
+#   VITE_API_BASE_URL=https://test1.nexquoteapp.com
+#
+# Firewall: sudo ufw allow 80,443/tcp && sudo ufw reload
+#
+# SSL: sudo certbot --nginx -d test1.nexquoteapp.com
+# (certbot thường chỉnh file này; giữ các khối proxy_pass tới 127.0.0.1:8080 / 8082)
+# =============================================================================
+
+# HTTP :80 — chuyển sang HTTPS :443 (URL không cần ghi cổng)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name test1.nexquoteapp.com;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS :443
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name test1.nexquoteapp.com;
+
+    ssl_certificate /etc/letsencrypt/live/test1.nexquoteapp.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/test1.nexquoteapp.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -27,6 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,6 +51,7 @@ public class SubmissionController {
     @PostMapping("/exams/{examId}/attempts/start")
     public ApiResponse<StartAttemptResponse> start(@PathVariable Long examId, HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
         Exam exam = examService.requireAccessibleExam(examId, student);
         return ApiResponse.success(submissionService.startAttempt(exam, student, ClientIpResolver.resolveClientIp(request)));
     }
@@ -58,6 +60,7 @@ public class SubmissionController {
     public ApiResponse<SubmitAttemptResponse> submit(@PathVariable Long attemptId,
             @Valid @RequestBody SubmitAttemptRequest request) {
         User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
         return ApiResponse.success(submissionService.submitAttempt(attemptId, student, request), "Nộp bài thành công");
     }
 
@@ -66,6 +69,7 @@ public class SubmissionController {
             @RequestBody @NotEmpty List<@Valid AnswerInput> answers,
             HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
         return ApiResponse.success(submissionService.saveDraftAnswers(
                 attemptId,
                 student,
@@ -76,6 +80,7 @@ public class SubmissionController {
     @GetMapping("/attempts/{attemptId}/draft-answers")
     public ApiResponse<DraftAnswersResponse> getDraft(@PathVariable Long attemptId) {
         User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
         return ApiResponse.success(submissionService.getDraftAnswers(attemptId, student));
     }
 
@@ -94,10 +99,8 @@ public class SubmissionController {
     @GetMapping("/attempts/my")
     public ApiResponse<List<AttemptSummaryResponse>> myAttempts(@RequestParam(required = false) String type) {
         User student = currentUserService.requireCurrentUser();
-        List<AttemptSummaryResponse> summaries = submissionService.listByStudent(student)
-                .stream()
-                .map(submissionService::toSummary)
-                .toList();
+        currentUserService.requireStudentOrAdmin(student);
+        List<AttemptSummaryResponse> summaries = submissionService.listAttemptSummariesForStudent(student);
 
         if (type == null || type.isBlank()) {
             return ApiResponse.success(summaries);
@@ -119,11 +122,11 @@ public class SubmissionController {
     public ApiResponse<List<AttemptSummaryResponse>> byExam(@PathVariable Long examId) {
         User actor = currentUserService.requireCurrentUser();
         Exam exam = examService.requireManageableExam(examId, actor);
-        return ApiResponse
-                .success(submissionService.listByExam(exam).stream().map(submissionService::toSummary).toList());
+        return ApiResponse.success(submissionService.listAttemptSummariesForExam(exam));
     }
 
     @GetMapping("/exams/{examId}/attempts/filter")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<AttemptFilterResponse> byExamFiltered(@PathVariable Long examId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean suspicious,
@@ -151,6 +154,7 @@ public class SubmissionController {
     }
 
     @GetMapping("/exams/{examId}/attempts/report/export")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<byte[]> exportExamAttemptReport(@PathVariable Long examId,
             @RequestParam(defaultValue = "csv") String format) {
         if (!"csv".equalsIgnoreCase(format)) {

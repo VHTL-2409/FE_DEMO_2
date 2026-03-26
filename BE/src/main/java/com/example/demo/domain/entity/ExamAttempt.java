@@ -42,6 +42,10 @@ public class ExamAttempt {
     @Column(name = "risk_score", nullable = false)
     private Integer riskScore;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "risk_level", length = 20)
+    private RiskLevel riskLevel;
+
     @Column(name = "suspicious", nullable = false)
     private Boolean suspicious;
 
@@ -56,4 +60,19 @@ public class ExamAttempt {
 
     @Column(name = "device_checked_at")
     private LocalDateTime deviceCheckedAt;
+
+    @Column(name = "last_heartbeat_at")
+    private LocalDateTime lastHeartbeatAt;
+
+    @Column(name = "device_fingerprint", length = 128)
+    private String deviceFingerprint;
+
+    @Column(name = "session_token_version")
+    private Integer sessionTokenVersion;
+
+    @Column(name = "fullscreen_required")
+    private Boolean fullscreenRequired;
+
+    @Column(name = "last_integrity_check_at")
+    private LocalDateTime lastIntegrityCheckAt;
 }

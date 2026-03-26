@@ -1,55 +1,50 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen"
+    class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
   >
-    <div class="layout-container flex h-full grow flex-col">
-      <StudentTopHeader />
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+      <StudentTopHeader class="shrink-0" />
 
-      <main class="teacher-page-shell max-w-6xl">
-        <div class="pointer-events-none absolute -top-16 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-        <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
+      <main class="teacher-page-shell flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+        <PageHeader
+          class="animate-fade-up text-primary dark:[&_.teacher-page-title]:text-slate-100"
+          eyebrow="Student Workspace"
+          title="Khu vực học sinh"
+          subtitle="Đi nhanh tới kỳ thi, luyện tập và lịch sử học tập trong một màn hình gọn gàng hơn."
+        />
 
-        <section class="relative flex flex-col gap-2 animate-fade-up mb-8">
-          <h1 class="text-3xl md:text-4xl font-black tracking-tight text-primary dark:text-slate-100">Dashboard sinh viên</h1>
-          <p class="text-slate-600 dark:text-slate-400 text-lg">Chọn nhanh khu vực bạn cần: thi qua mã, luyện tập hoặc xem kết quả.</p>
-        </section>
-
-        <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up-delay">
-          <div class="lg:col-span-2 space-y-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="teacher-card portal-card-lift p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover">
+        <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 animate-fade-up-delay lg:min-h-0 lg:items-stretch">
+          <div class="lg:col-span-2 space-y-4 lg:space-y-6 min-h-0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+              <div class="staff-surface portal-card-lift rounded-[1.75rem] p-6 flex flex-col gap-4">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">login</span>
                   <h2 class="text-xl font-bold">Thi qua mã</h2>
                 </div>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Nhập mã/tiêu đề bài thi để vào phòng chờ và bắt đầu làm bài.</p>
-                <button
-                  type="button"
+                <BaseButton
+                  class="mt-auto w-full md:w-auto"
+                  size="lg"
                   @click="goToExamJoin"
-                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 active:scale-[0.98] transition-[transform,background-color] duration-200 ease-out portal-focus"
                 >
                   Đi đến thi qua mã
-                </button>
+                </BaseButton>
               </div>
 
-              <div class="teacher-card portal-card-lift p-6 flex flex-col gap-4 rounded-2xl shadow-soft hover:shadow-card-hover">
+              <div class="staff-surface portal-card-lift rounded-[1.75rem] p-6 flex flex-col gap-4">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">model_training</span>
                   <h2 class="text-xl font-bold">Tự luyện tập</h2>
                 </div>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Tạo đề luyện tập nhanh từ ngân hàng câu hỏi và làm bài ngay.</p>
-                <button
-                  type="button"
-                  @click="goToPractice"
-                  class="mt-auto w-full md:w-auto px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 active:scale-[0.98] shadow-lg shadow-primary/20 transition-[transform,background-color,box-shadow] duration-200 ease-out portal-focus"
-                >
+                <BaseButton class="mt-auto w-full shadow-lg shadow-primary/20 md:w-auto" size="lg" @click="goToPractice">
                   Đi đến luyện tập
-                </button>
+                </BaseButton>
               </div>
             </div>
 
-            <div class="teacher-card portal-card-lift p-6 rounded-2xl shadow-soft">
+            <div class="staff-surface portal-card-lift rounded-[1.75rem] p-6">
               <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined p-2.5 bg-primary/10 text-primary rounded-xl text-2xl">history</span>
@@ -70,8 +65,7 @@
                   @click="goToStudyHistoryTab('exam')"
                   class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 portal-card-lift transition-[border-color,transform,box-shadow] duration-200 ease-out portal-focus"
                 >
-                  <p class="text-sm text-slate-500">Tab lịch sử</p>
-                  <p class="text-base font-bold mt-1">Bài thi</p>
+                  <p class="text-base font-bold">Bài thi</p>
                 </button>
 
                 <button
@@ -79,31 +73,39 @@
                   @click="goToStudyHistoryTab('practice')"
                   class="p-4 rounded-xl border border-primary/15 bg-background-light dark:bg-background-dark text-left hover:border-primary/40 portal-card-lift transition-[border-color,transform,box-shadow] duration-200 ease-out portal-focus"
                 >
-                  <p class="text-sm text-slate-500">Tab lịch sử</p>
-                  <p class="text-base font-bold mt-1">Luyện tập</p>
+                  <p class="text-base font-bold">Luyện tập</p>
                 </button>
               </div>
             </div>
           </div>
 
-          <div class="lg:col-span-1">
-            <div class="teacher-card portal-card-lift flex flex-col h-full">
-              <div class="p-6 border-b border-primary/10">
+          <div class="lg:col-span-1 flex min-h-0 flex-col lg:min-h-[min(36vh,320px)]">
+            <div class="staff-surface portal-card-lift flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem]">
+              <div class="shrink-0 p-6 border-b border-primary/10">
                 <div class="flex items-center gap-3">
                   <span class="material-symbols-outlined text-primary text-3xl">insights</span>
                   <h2 class="text-xl font-bold">Hoạt động gần đây</h2>
                 </div>
               </div>
 
-              <div class="p-0 overflow-y-auto max-h-[520px]">
+              <div class="min-h-0 flex-1 p-0">
                 <template v-if="isLoadingAttempts">
-                  <div class="p-4 space-y-3" aria-hidden="true">
-                    <div class="h-16 portal-skeleton" />
-                    <div class="h-16 portal-skeleton" />
-                    <div class="h-16 portal-skeleton" />
+                  <div class="p-4 space-y-4" aria-busy="true" aria-label="Đang tải lịch sử">
+                    <SkeletonLoader variant="table-row" />
+                    <SkeletonLoader variant="table-row" />
+                    <SkeletonLoader variant="table-row" />
+                    <SkeletonLoader variant="table-row" />
                   </div>
                 </template>
-                <p v-else-if="!historyItems.length" class="p-4 text-sm text-slate-500">Chưa có lượt làm bài nào.</p>
+                <EmptyState
+                  v-else-if="!historyItems.length"
+                  icon="edit_note"
+                  title="Chưa có hoạt động gần đây"
+                  description="Chưa có lượt thi hoặc luyện tập."
+                  action-label="Tìm bài thi"
+                  class="py-6"
+                  @action="goToExamJoin"
+                />
                 <template v-else>
                   <div
                     v-for="item in historyItems"
@@ -125,11 +127,9 @@
             </div>
           </div>
         </div>
+        </div>
       </main>
-
-      <footer class="bg-white dark:bg-background-dark border-t border-primary/10 py-6 px-10 text-center text-slate-500 text-sm">
-        <p>© 2026 Hệ thống thi trực tuyến ExamPortal. Bảo lưu mọi quyền.</p>
-      </footer>
+      </div>
     </div>
   </div>
 </template>
@@ -140,6 +140,10 @@ import { useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import EmptyState from '../shared/EmptyState.vue'
+import PageHeader from '../shared/PageHeader.vue'
+import SkeletonLoader from '../shared/SkeletonLoader.vue'
 
 const router = useRouter()
 const isDark = ref(false)

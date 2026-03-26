@@ -156,10 +156,13 @@ export const createPracticeExam = async ({ questionCount = 20, durationMinutes =
   return unwrapApiData(payload)
 }
 
-export const createPracticeFromFile = async (file, durationMinutes = 30) => {
+export const createPracticeFromFile = async (file, durationMinutes = 30, questionCount = null) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('durationMinutes', String(durationMinutes))
+  if (questionCount != null && questionCount !== '') {
+    formData.append('questionCount', String(questionCount))
+  }
   const payload = await apiRequest('/api/exams/practice-from-file', {
     method: 'POST',
     body: formData

@@ -1,18 +1,10 @@
 <template>
-  <div>
-    <header class="mb-8">
-      <p class="text-teal-400/90 text-xs font-semibold tracking-[0.25em] uppercase mb-2">{{ sectionEyebrow }}</p>
-      <h2 class="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-        {{ sectionTitle }}
-      </h2>
-      <p class="mt-2 text-slate-500 text-sm max-w-xl">
-        Danh sách tài khoản theo vai trò — email đăng nhập và thông tin hồ sơ (nếu có).
-      </p>
-    </header>
+  <div class="staff-page-wrap min-h-0 flex-1 gap-6 pb-2">
+    <PageHeader :eyebrow="sectionEyebrow" :title="sectionTitle" :subtitle="sectionSubtitle" />
 
     <div
       v-if="showSearch"
-      class="mb-4 flex flex-col sm:flex-row gap-3 sm:items-center"
+      class="staff-surface rounded-[1.5rem] p-4 sm:p-5 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center"
     >
       <div class="relative flex-1 max-w-xl">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xl pointer-events-none">search</span>
@@ -20,14 +12,14 @@
           v-model="searchInput"
           type="search"
           placeholder="Tìm theo username, email, họ tên, hiển thị, SĐT…"
-          class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.04] text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+          class="staff-search-input w-full rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30"
           @keydown.enter.prevent="applySearch"
         />
       </div>
       <div class="flex gap-2">
         <button
           type="button"
-          class="px-4 py-2.5 rounded-xl bg-teal-500/20 border border-teal-500/35 text-teal-200 text-sm font-semibold hover:bg-teal-500/30"
+          class="staff-action-btn staff-action-btn-primary"
           @click="applySearch"
         >
           Tìm
@@ -35,7 +27,7 @@
         <button
           v-if="appliedQuery"
           type="button"
-          class="px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm hover:bg-white/5"
+          class="staff-action-btn staff-action-btn-neutral"
           @click="clearSearch"
         >
           Xóa bộ lọc
@@ -43,35 +35,35 @@
       </div>
     </div>
 
-    <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-white/[0.06]">
-        <p class="text-sm text-slate-400">
-          <span class="text-slate-200 font-semibold tabular-nums">{{ totalElements }}</span>
+    <div class="staff-table-panel rounded-[1.75rem]">
+      <div class="staff-toolbar">
+        <p class="staff-toolbar-meta">
+          <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ totalElements }}</span>
           tài khoản
           <span v-if="appliedQuery" class="text-slate-500"> · lọc: "{{ appliedQuery }}"</span>
         </p>
         <button
           type="button"
-          @click="load"
+          class="staff-action-btn staff-action-btn-neutral self-start disabled:opacity-50 sm:self-auto"
           :disabled="loading"
-          class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-semibold disabled:opacity-50 self-start sm:self-auto"
+          @click="load"
         >
           <span class="material-symbols-outlined text-lg" :class="{ 'animate-spin': loading }">refresh</span>
           Làm mới
         </button>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm min-w-[820px]">
+      <div class="min-h-0 flex-1 overflow-auto portal-scrollbar">
+        <table class="staff-table min-w-[820px]">
           <thead>
-            <tr class="border-b border-white/[0.06] text-slate-500 text-xs uppercase tracking-wide">
-              <th class="px-4 sm:px-6 py-3 font-semibold">#</th>
-              <th class="px-4 sm:px-6 py-3 font-semibold">Username</th>
-              <th class="px-4 sm:px-6 py-3 font-semibold">Email</th>
-              <th class="px-4 sm:px-6 py-3 font-semibold">Xác minh</th>
-              <th class="px-4 sm:px-6 py-3 font-semibold">Họ tên / hiển thị</th>
-              <th class="px-4 sm:px-6 py-3 font-semibold">Điện thoại</th>
-              <th v-if="showActions" class="px-4 sm:px-6 py-3 font-semibold text-right">Thao tác</th>
+            <tr>
+              <th>#</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Xác minh</th>
+              <th>Họ tên / hiển thị</th>
+              <th>Điện thoại</th>
+              <th v-if="showActions" class="text-right">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -91,25 +83,25 @@
                 :key="row.userId"
                 class="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
               >
-                <td class="px-4 sm:px-6 py-3 text-slate-500 tabular-nums">{{ page * size + idx + 1 }}</td>
-                <td class="px-4 sm:px-6 py-3 font-mono text-teal-200/90">{{ row.username }}</td>
-                <td class="px-4 sm:px-6 py-3 text-slate-300">{{ row.email }}</td>
-                <td class="px-4 sm:px-6 py-3">
+                <td class="text-slate-500 tabular-nums">{{ page * size + idx + 1 }}</td>
+                <td class="font-mono text-primary">{{ row.username }}</td>
+                <td class="text-slate-700 dark:text-slate-300">{{ row.email }}</td>
+                <td>
                   <span
-                    class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                    class="staff-status-chip"
                     :class="row.emailVerified ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-200'"
                   >
                     {{ row.emailVerified ? 'Đã xác minh' : 'Chưa' }}
                   </span>
                 </td>
-                <td class="px-4 sm:px-6 py-3 text-slate-300">
+                <td class="text-slate-700 dark:text-slate-300">
                   {{ displayName(row) }}
                 </td>
-                <td class="px-4 sm:px-6 py-3 text-slate-400">{{ row.phone || '—' }}</td>
-                <td v-if="showActions" class="px-4 sm:px-6 py-3 text-right whitespace-nowrap">
+                <td class="text-slate-500 dark:text-slate-400">{{ row.phone || '—' }}</td>
+                <td v-if="showActions" class="text-right whitespace-nowrap">
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-teal-300 hover:bg-white/10 mr-1"
+                    class="staff-action-btn staff-action-btn-primary mr-1"
                     @click="openDetail(row)"
                   >
                     <span class="material-symbols-outlined text-[16px]">visibility</span>
@@ -117,7 +109,7 @@
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-300/90 hover:bg-rose-500/10"
+                    class="staff-action-btn staff-action-btn-neutral text-rose-600 dark:text-rose-400"
                     @click="confirmDelete(row)"
                   >
                     <span class="material-symbols-outlined text-[16px]">delete</span>
@@ -132,16 +124,16 @@
 
       <div
         v-if="totalPages > 1"
-        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[0.06]"
+        class="staff-toolbar"
       >
-        <p class="text-xs text-slate-500">
-          Trang <span class="text-slate-300 font-semibold">{{ page + 1 }}</span> / {{ totalPages }}
+        <p class="staff-toolbar-meta">
+          Trang <span class="font-semibold text-slate-900 dark:text-slate-100">{{ page + 1 }}</span> / {{ totalPages }}
         </p>
         <div class="flex items-center gap-2">
           <button
             type="button"
             :disabled="page <= 0 || loading"
-            class="px-3 py-1.5 rounded-lg border border-white/10 text-sm disabled:opacity-40 hover:bg-white/5"
+            class="staff-action-btn staff-action-btn-neutral disabled:opacity-40"
             @click="goPage(page - 1)"
           >
             Trước
@@ -149,7 +141,7 @@
           <button
             type="button"
             :disabled="page >= totalPages - 1 || loading"
-            class="px-3 py-1.5 rounded-lg border border-white/10 text-sm disabled:opacity-40 hover:bg-white/5"
+            class="staff-action-btn staff-action-btn-neutral disabled:opacity-40"
             @click="goPage(page + 1)"
           >
             Sau
@@ -158,7 +150,7 @@
       </div>
     </div>
 
-    <p v-if="errorMsg" class="mt-4 text-rose-400 text-sm font-medium">{{ errorMsg }}</p>
+    <p v-if="errorMsg" class="shrink-0 text-sm font-medium text-rose-400">{{ errorMsg }}</p>
 
     <!-- Chi tiết -->
     <Teleport to="body">
@@ -168,53 +160,57 @@
         @click.self="closeDetail"
       >
         <div
-          class="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0c1220] shadow-2xl max-h-[90vh] overflow-y-auto"
+          class="admin-detail-dialog portal-scrollbar max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl"
           role="dialog"
           aria-modal="true"
         >
-          <div class="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-            <h3 class="text-lg font-bold text-white">Chi tiết tài khoản</h3>
-            <button type="button" class="p-1 rounded-lg text-slate-400 hover:bg-white/10" @click="closeDetail">
+          <div class="admin-detail-dialog__header flex items-center justify-between px-5 py-4">
+            <h3 class="text-lg font-bold text-slate-50">Chi tiết tài khoản</h3>
+            <button
+              type="button"
+              class="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+              @click="closeDetail"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div v-if="detailLoading" class="px-5 py-12 text-center text-slate-500">Đang tải…</div>
-          <div v-else-if="detail" class="px-5 py-5 space-y-4 text-sm">
+          <div v-if="detailLoading" class="px-5 py-12 text-center text-slate-400">Đang tải…</div>
+          <div v-else-if="detail" class="space-y-4 px-5 py-5 text-sm">
             <div v-if="detail.avatarUrl" class="flex justify-center">
-              <img :src="detail.avatarUrl" alt="" class="size-20 rounded-2xl object-cover border border-white/10" />
+              <img :src="detail.avatarUrl" alt="" class="size-20 rounded-2xl border border-slate-600/50 object-cover" />
             </div>
             <dl class="grid grid-cols-1 gap-3">
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">ID</dt>
-                <dd class="text-slate-200 font-mono">{{ detail.userId }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>ID</dt>
+                <dd class="font-mono text-slate-100">{{ detail.userId }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Username</dt>
-                <dd class="text-teal-200 font-mono">{{ detail.username }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Username</dt>
+                <dd class="font-mono text-indigo-300">{{ detail.username }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Email</dt>
-                <dd class="text-slate-200 break-all">{{ detail.email }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Email</dt>
+                <dd class="break-all text-slate-100">{{ detail.email }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Xác minh email</dt>
-                <dd class="text-slate-200">{{ detail.emailVerified ? 'Đã xác minh' : 'Chưa' }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Xác minh email</dt>
+                <dd class="text-slate-100">{{ detail.emailVerified ? 'Đã xác minh' : 'Chưa' }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Họ tên</dt>
-                <dd class="text-slate-200">{{ detail.fullName || '—' }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Họ tên</dt>
+                <dd class="text-slate-100">{{ detail.fullName || '—' }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Tên hiển thị</dt>
-                <dd class="text-slate-200">{{ detail.displayName || '—' }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Tên hiển thị</dt>
+                <dd class="text-slate-100">{{ detail.displayName || '—' }}</dd>
               </div>
-              <div class="flex justify-between gap-4 border-b border-white/[0.05] pb-2">
-                <dt class="text-slate-500">Điện thoại</dt>
-                <dd class="text-slate-200">{{ detail.phone || '—' }}</dd>
+              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
+                <dt>Điện thoại</dt>
+                <dd class="text-slate-100">{{ detail.phone || '—' }}</dd>
               </div>
               <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">Ngày sinh</dt>
-                <dd class="text-slate-200">{{ formatDob(detail.dateOfBirth) }}</dd>
+                <dt>Ngày sinh</dt>
+                <dd class="text-slate-100">{{ formatDob(detail.dateOfBirth) }}</dd>
               </div>
             </dl>
           </div>
@@ -236,6 +232,7 @@ import {
   deleteAdminTeacher
 } from '../../services/adminService'
 import { useToast } from '../../composables/useToast'
+import PageHeader from '../shared/PageHeader.vue'
 
 const toast = useToast()
 
@@ -248,15 +245,25 @@ const props = defineProps({
 })
 
 const sectionEyebrow = computed(() => {
-  if (props.variant === 'students') return 'Students'
-  if (props.variant === 'teachers') return 'Teachers'
-  return 'Administrators'
+  if (props.variant === 'students') return 'Học sinh'
+  if (props.variant === 'teachers') return 'Giáo viên'
+  return 'Quản trị viên'
 })
 
 const sectionTitle = computed(() => {
   if (props.variant === 'students') return 'Quản lý học sinh'
   if (props.variant === 'teachers') return 'Quản lý giáo viên'
   return 'Quản lý tài khoản admin'
+})
+
+const sectionSubtitle = computed(() => {
+  if (props.variant === 'students') {
+    return 'Danh sách phân trang, tìm theo từ khóa, xem chi tiết và xóa khi cần.'
+  }
+  if (props.variant === 'teachers') {
+    return 'Theo dõi giáo viên đã đăng ký — tìm kiếm, chi tiết hồ sơ, gỡ tài khoản.'
+  }
+  return 'Chỉ xem danh sách quản trị viên; không có thao tác xóa từ màn này.'
 })
 
 const showSearch = computed(() => props.variant === 'students' || props.variant === 'teachers')

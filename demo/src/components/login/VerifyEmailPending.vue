@@ -1,6 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
-    <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
+  <div
+    class="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-primary-50/40 p-4 portal-scrollbar dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20"
+  >
+    <div
+      class="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white/95 p-8 shadow-soft backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95"
+    >
       <div class="text-center">
         <div class="size-14 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl">mail</span>
@@ -27,24 +31,32 @@
           </p>
           <RouterLink
             v-if="verificationToken"
+            v-slot="{ navigate }"
             :to="{ path: '/verify-email', query: { token: verificationToken } }"
-            class="inline-flex items-center gap-2 py-2 px-4 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors"
+            custom
           >
-            Xác minh ngay
-            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            <button
+              type="button"
+              class="portal-focus inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-700"
+              @click="navigate"
+            >
+              Xác minh ngay
+              <span class="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
+            </button>
           </RouterLink>
         </div>
 
         <div class="mt-6 space-y-3">
-          <button
+          <BaseButton
+            variant="secondary"
             type="button"
-            :disabled="isResending"
+            class="w-full border-2 border-primary text-primary hover:bg-primary/5"
+            :loading="isResending"
             @click="onResend"
-            class="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary text-primary rounded-lg font-bold hover:bg-primary/5 transition-colors disabled:opacity-60"
           >
-            <span class="material-symbols-outlined">{{ isResending ? 'hourglass_empty' : 'refresh' }}</span>
+            <span v-if="!isResending" class="material-symbols-outlined text-lg" aria-hidden="true">refresh</span>
             {{ isResending ? 'Đang gửi...' : 'Gửi lại email xác minh' }}
-          </button>
+          </BaseButton>
           <p v-if="resendMessage" class="text-sm" :class="resendSuccess ? 'text-green-600 dark:text-green-400' : 'text-rose-600 dark:text-rose-400'">
             {{ resendMessage }}
           </p>
@@ -52,15 +64,15 @@
             Chế độ demo: <RouterLink :to="{ path: '/verify-email', query: { token: resendToken } }" class="font-bold underline">Nhấp vào đây để xác minh</RouterLink>
           </p>
 
-          <RouterLink
-            to="/login"
-            class="block w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-colors text-center"
-          >
-            Đăng nhập
+          <RouterLink v-slot="{ navigate }" to="/login" custom>
+            <BaseButton class="w-full" size="lg" @click="navigate">Đăng nhập</BaseButton>
           </RouterLink>
         </div>
 
-        <RouterLink to="/login" class="mt-4 block text-center text-sm text-primary hover:underline">
+        <RouterLink
+          to="/login"
+          class="mt-4 block text-center text-sm font-semibold text-primary hover:underline portal-focus rounded-lg"
+        >
           ← Quay lại đăng nhập
         </RouterLink>
       </div>
@@ -72,6 +84,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { resendVerification } from '../../services/authService'
+import BaseButton from '../shared/BaseButton.vue'
 
 const route = useRoute()
 const email = ref(route.query.email || '')

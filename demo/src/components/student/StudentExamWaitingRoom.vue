@@ -1,24 +1,26 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
-    <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
-      <div class="layout-container flex h-full grow flex-col">
-        <StudentTopHeader />
+  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
+    <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
+      <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
+        <StudentTopHeader class="shrink-0" />
 
-        <main class="relative flex flex-1 justify-center py-8 px-4 overflow-hidden">
-          <div class="pointer-events-none absolute -top-20 -left-16 size-72 rounded-full bg-primary/15 blur-3xl animate-float-slow"></div>
-          <div class="pointer-events-none absolute -bottom-24 -right-12 size-80 rounded-full bg-primary/10 blur-3xl animate-float-delay"></div>
-
-          <div class="layout-content-container relative flex flex-col max-w-[960px] flex-1 gap-8">
-            <div class="flex flex-col gap-3 animate-fade-up">
-              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary w-fit text-sm font-semibold">
+        <main class="teacher-page-shell relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="portal-scrollbar relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 md:py-6">
+          <div class="relative flex w-full flex-1 flex-col gap-5 md:gap-6">
+            <div class="flex flex-col gap-2 animate-fade-up md:gap-3">
+              <div
+                class="inline-flex w-fit items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary"
+              >
                 <span class="relative flex h-2 w-2">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  <span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
                 </span>
                 Phòng chờ đang hoạt động
               </div>
-              <h1 class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Đang chờ bài thi bắt đầu</h1>
-              <p class="text-slate-600 dark:text-slate-400 text-lg font-normal leading-normal">Giám thị sẽ mở phiên thi trong giây lát. Vui lòng ở lại màn hình này và đảm bảo thiết bị đã sẵn sàng.</p>
+              <PageHeader
+                class="!mb-0 [&_.teacher-page-title]:text-slate-900 dark:[&_.teacher-page-title]:text-white"
+                title="Đang chờ bài thi bắt đầu"
+              />
               <div class="flex flex-wrap items-center gap-2 text-xs">
                 <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/70">
                   <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
@@ -28,9 +30,9 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-up-delay">
-              <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
+            <div class="grid grid-cols-1 gap-4 animate-fade-up-delay md:grid-cols-2 md:gap-5">
+              <BaseCard hoverable class="dark:bg-primary/5 border-primary/10 dark:border-primary/20">
+                <h2 class="teacher-section-title mb-3 text-slate-900 dark:text-white">
                   <span class="material-symbols-outlined text-primary">info</span>
                   Thông tin bài thi
                 </h2>
@@ -52,10 +54,10 @@
                     <p class="text-slate-900 dark:text-white text-sm font-semibold">{{ totalQuestions }} câu</p>
                   </div>
                 </div>
-              </div>
+              </BaseCard>
 
-              <div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 dark:border-primary/20 p-6 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-                <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight mb-4 flex items-center gap-2">
+              <BaseCard hoverable class="dark:bg-primary/5 border-primary/10 dark:border-primary/20">
+                <h2 class="teacher-section-title mb-3 text-slate-900 dark:text-white">
                   <span class="material-symbols-outlined text-primary">check_circle</span>
                   Kiểm tra hệ thống
                 </h2>
@@ -89,19 +91,27 @@
                     <span class="text-xs font-bold text-green-600 dark:text-green-400 uppercase">Ổn định</span>
                   </div>
                 </div>
-              </div>
+              </BaseCard>
             </div>
-            <div class="flex flex-col items-center gap-6 py-8 border-t border-primary/10 dark:border-primary/20 animate-fade-up-delay">
+            <div class="flex flex-col items-center gap-5 border-t border-primary/10 py-6 dark:border-primary/20 animate-fade-up-delay md:gap-6 md:py-7">
               <div class="text-center">
                 <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 uppercase tracking-widest font-bold">Thời gian đến lúc bắt đầu</p>
                 <div class="text-5xl font-black text-primary">{{ countdownLabel }}</div>
                 <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Bắt đầu lúc: {{ startAtDisplay }}</p>
               </div>
               <div class="w-full max-w-md space-y-4">
-                <button :disabled="isStarting || isCheckingDevices || !canStart" @click="goToExamInterface" class="w-full py-4 px-6 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed" type="button">
-                  <span class="material-symbols-outlined">play_arrow</span>
-                  {{ isStarting ? 'Đang bắt đầu...' : 'Bắt đầu làm bài' }}
-                </button>
+                <BaseButton
+                  class="w-full !min-h-[3.25rem] text-lg"
+                  size="lg"
+                  :disabled="isCheckingDevices || !canStart"
+                  :loading="isStarting"
+                  @click="goToExamInterface"
+                >
+                  <template v-if="!isStarting">
+                    <span class="material-symbols-outlined">play_arrow</span>
+                    Bắt đầu làm bài
+                  </template>
+                </BaseButton>
                 <p v-if="isEnded" class="text-center text-rose-600 text-sm italic">
                   Bài thi đã kết thúc.
                 </p>
@@ -111,13 +121,12 @@
               </div>
             </div>
           </div>
+          </div>
         </main>
 
-        <footer class="p-6 text-center text-slate-400 text-xs">
-          © 2024 Bộ công cụ bảo mật ExamPortal. Bảo lưu mọi quyền.
-          <br>
+        <footer class="shrink-0 border-t border-slate-200/80 px-6 py-2 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 md:px-20 lg:px-40">
           Cần hỗ trợ?
-          <button type="button" @click="openSupport" class="text-primary hover:underline">Liên hệ hỗ trợ</button>
+          <button type="button" class="text-primary font-semibold hover:underline" @click="openSupport">Liên hệ hỗ trợ</button>
         </footer>
       </div>
     </div>
@@ -132,6 +141,9 @@ import { getExamDetail } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import StudentTopHeader from './StudentTopHeader.vue'
+import BaseCard from '../shared/BaseCard.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import PageHeader from '../shared/PageHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
