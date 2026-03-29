@@ -1,7 +1,7 @@
 /* Design system - modern UI (kết hợp portal-ui.css cho học sinh / giáo viên) */
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
+  --primary: var(--edu-primary);
+  --primary-hover: var(--edu-primary-hover);
   --surface: #ffffff;
   --surface-hover: #f8fafc;
   --border: #e2e8f0;
@@ -19,6 +19,32 @@
 
 .font-display {
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+}
+
+/* Mockup stitch_new: nền lavender + accent — chỉ khi layout có .teacher-portal-stitch (khu giáo viên) */
+.teacher-portal-stitch {
+  --color-background-light: #fcf8ff;
+  --staff-primary: #5d5fef;
+  --staff-primary-soft: rgba(93, 95, 239, 0.1);
+  --staff-border: rgba(148, 145, 167, 0.16);
+  --staff-border-strong: rgba(93, 95, 239, 0.14);
+}
+
+.teacher-portal-stitch .teacher-page-shell {
+  background: linear-gradient(180deg, #fcf8ff 0%, #f5f2fe 52%, #efecf9 100%);
+}
+
+.dark .teacher-portal-stitch .teacher-page-shell {
+  background: linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.98) 100%);
+}
+
+.teacher-portal-stitch .font-display,
+.teacher-portal-stitch h1,
+.teacher-portal-stitch h2,
+.teacher-portal-stitch h3,
+.teacher-portal-stitch .staff-hero-title,
+.teacher-portal-stitch .teacher-page-title {
+  font-family: 'Manrope', 'Be Vietnam Pro', var(--font-sans, system-ui), sans-serif;
 }
 
 @keyframes teacherFadeUp {
@@ -93,6 +119,7 @@
   overflow-x: hidden;
   background: linear-gradient(180deg, rgb(248 250 252 / 0.98) 0%, rgb(255 255 255 / 0.97) 55%, rgb(241 245 249 / 0.95) 100%);
   /* Cuộn dọc đặt trên main (.overflow-y-auto); nội dung bên trong theo chiều cao tự nhiên */
+  /* Khu GV dùng .teacher-portal-stitch: gradient lavender trong block ở trên */
 }
 
 .dark .teacher-page-shell {

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+/* Chỉ bật dark: khi có class .dark trên tổ tiên — không theo hệ điều hành (học sinh/GV luôn sáng) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Core theme — Academic Amber / nâu cam (đồng bộ stitch academic_amber + hero SVG) */
+@theme {
+  --color-primary-50: #faf8f5;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #ea8c3c;
+  --color-primary-500: #b15f00;
+  --color-primary-600: #8d4b00;
+  --color-primary-700: #6e3900;
+  --color-primary-800: #552800;
+  --color-primary-900: #3d1a00;
+  --color-primary: #8d4b00;
+
+  --color-background-light: #f7f9fb;
+  --color-background-dark: #0b1220;
+
+  --shadow-soft:
+    0 12px 40px -30px rgb(25 28 30 / 0.06),
+    0 24px 48px -36px rgb(141 75 0 / 0.16);
+  --shadow-card:
+    0 16px 36px -30px rgb(25 28 30 / 0.06),
+    0 8px 22px -18px rgb(141 75 0 / 0.1);
+  --shadow-card-hover:
+    0 22px 54px -32px rgb(25 28 30 / 0.08),
+    0 18px 38px -24px rgb(141 75 0 / 0.18);
+  --shadow-glow: 0 0 48px -12px rgb(177 95 0 / 0.28);
+
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+}

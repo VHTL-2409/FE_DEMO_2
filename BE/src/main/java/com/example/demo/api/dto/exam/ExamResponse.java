@@ -24,6 +24,8 @@ public class ExamResponse {
     private Boolean isActive;
     private String createdBy;
     private Long questionCount;
+    /** Số thí sinh đã có ít nhất một lượt làm bài (distinct theo user) */
+    private Long participantCount;
     private Boolean monitorTabSwitch;
     private Boolean monitorBlur;
     private Boolean monitorExitFullscreen;

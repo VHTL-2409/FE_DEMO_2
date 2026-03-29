@@ -1,0 +1,64 @@
+{
+  "description": "Map thư mục stitch_new → route và component Vue (demo_2). Mỗi thư mục con = một màn: cặp tham chiếu chuẩn code.html + screen.png.",
+  "stitchAssets": {
+    "perFolder": ["code.html", "screen.png"],
+    "note": "screen.png — ảnh chụp màn đối chiếu UI (export từ công cụ thiết kế khi có). Trong repo có thể chỉ có code.html. Ảnh nhúng trong HTML mẫu (CDN) không dùng trực tiếp trong app; thay bằng CSS/SVG trong demo_2."
+  },
+  "designDocs": [
+    { "path": "stitch_new/scholar_ethos/DESIGN.md", "note": "Legacy — nếu còn trong repo" }
+  ],
+  "teacherDesignSystem": "Token chung trong code.html: primary #8d4b00, surface/background #faf9f5, sidebar #f4f4f0, outline-variant #dbc2b0, tertiary #006096, Noto Serif + Inter, .silk-press / .editorial-gradient cho CTA.",
+  "teacher": [
+    { "stitchFolder": "faculty_overview_dashboard", "route": "/teacher/dashboard", "component": "components/teacher/TeacherDashboardTopNav.vue", "note": "Portal GV — KPI, biểu đồ, bảng đề gần đây" },
+    { "stitchFolder": "examination_registry", "route": "/teacher/exams/list", "component": "components/teacher/TeacherExamListMenu.vue", "note": "Danh sách đề / đăng ký đề" },
+    { "stitchFolder": "exam_creation_center", "route": "/teacher/exams", "component": "components/teacher/TeacherExamManagementUpdatedMenu.vue", "note": "Hub tạo đề — Import + thủ công" },
+    { "stitchFolder": "exam_creation_center", "route": "/teacher/exams/create", "component": "components/teacher/TeacherCompleteExamCreationSyncedHeader.vue", "note": "Smart Import / wizard — cùng family creation center" },
+    { "stitchFolder": "exam_creation_center", "route": "/teacher/exams/created-success", "component": "components/teacher/TeacherExamCreatedSuccess.vue", "note": "Sau khi xuất bản đề — cùng nhóm creation center" },
+    { "stitchFolder": "create_new_session", "route": "/teacher/exams/new-session", "component": "components/teacher/TeacherExamNewSession.vue", "note": "Tạo phiên thi mới" },
+    { "stitchFolder": "schedule_exam_desktop", "route": "/teacher/exams/schedule", "component": "components/teacher/TeacherExamScheduleCreate.vue", "note": "Desktop lên lịch" },
+    { "stitchFolder": "schedule_new_exam_mobile", "route": "/teacher/exams/schedule", "component": "components/teacher/TeacherExamScheduleCreate.vue", "note": "Mobile — responsive trong cùng component" },
+    { "stitchFolder": "manual_question_entry_mcq", "route": "/teacher/exams/manual", "component": "components/teacher/TeacherManualQuestionEntry.vue", "note": "Nhập trắc nghiệm" },
+    { "stitchFolder": "manual_question_entry_essay", "route": "/teacher/exams/manual", "component": "components/teacher/TeacherManualQuestionEntry.vue", "note": "Nhập tự luận — cùng màn soạn thảo" },
+    { "stitchFolder": "live_session_selection", "route": "/teacher/live-monitoring", "component": "components/teacher/TeacherSelectExamUpdatedMenu.vue", "note": "Chọn phiên giám sát" },
+    { "stitchFolder": "live_session_selection_mobile", "route": "/teacher/live-monitoring", "component": "components/teacher/TeacherSelectExamUpdatedMenu.vue", "note": "Mobile" },
+    { "stitchFolder": "live_session_selection", "route": "/teacher/live-monitoring/session", "component": "components/teacher/TeacherLiveMonitoringUpdatedMenu.vue", "note": "Màn giám sát realtime sau khi chọn đề" },
+    { "stitchFolder": "incident_list_post_exam", "route": "/teacher/exams/review/incidents", "component": "components/teacher/TeacherIncidentReviewUpdatedMenu.vue", "note": "Danh sách sự cố sau thi" },
+    { "stitchFolder": "incident_violation_details", "route": "/teacher/live-monitoring/student-detail", "component": "components/teacher/StudentViolationDetailMonitoring.vue", "note": "Chi tiết vi phạm / theo dõi SV" },
+    { "stitchFolder": "individual_learning_report", "route": "/teacher/exams/review/student-report", "component": "components/teacher/TeacherStudentReportDetail.vue", "note": "Báo cáo học tập cá nhân" },
+    { "stitchFolder": "exam_results_detail", "route": "/teacher/exams/review/summary", "component": "components/teacher/TeacherExamReviewSummary.vue", "note": "Chi tiết / tổng hợp kết quả đề" },
+    { "stitchFolder": "result_details", "route": "/teacher/exams/review/summary", "component": "components/teacher/TeacherExamReviewSummary.vue", "note": "Biến thể tóm tắt kết quả" },
+    { "stitchFolder": "faculty_profile", "route": "/teacher/profile", "component": "components/teacher/TeacherProfile.vue", "note": "Hồ sơ giảng viên" },
+    { "stitchFolder": "help_center", "route": "/help-center", "component": "components/help/HelpCenter.vue", "note": "Trợ giúp — dùng chung portal" }
+  ],
+  "student": [
+    { "stitchFolder": "student_study_hub", "route": "/student/dashboard", "component": "components/student/StudentDashboardEnhancedNavigation.vue", "note": "Hub học tập desktop" },
+    { "stitchFolder": "student_hub_mobile", "route": "/student/dashboard", "component": "components/student/StudentDashboardEnhancedNavigation.vue", "note": "Mobile" },
+    { "stitchFolder": "join_exam_room", "route": "/student/exam-join", "component": "components/student/StudentExamJoinByCode.vue", "note": "Tham gia phòng thi" },
+    { "stitchFolder": "enter_exam_hall_mobile", "route": "/student/exam-join", "component": "components/student/StudentExamJoinByCode.vue", "note": "Mobile" },
+    { "stitchFolder": "online_waiting_room", "route": "/student/exam-waiting-room", "component": "components/student/StudentExamWaitingRoom.vue", "note": "Phòng chờ" },
+    { "stitchFolder": "ready_to_start_waiting_room", "route": "/student/exam-waiting-room", "component": "components/student/StudentExamWaitingRoom.vue", "note": "Sẵn sàng bắt đầu" },
+    { "stitchFolder": "taking_examination_focus_mode", "route": "/student/exam-interface", "component": "components/student/StudentExamInterface.vue", "note": "Làm bài focus" },
+    { "stitchFolder": "submission_successful", "route": "/student/submission-confirmation", "component": "components/student/StudentSubmissionConfirmation.vue", "note": "Nộp bài thành công" },
+    { "stitchFolder": "submission_successful_mobile", "route": "/student/submission-confirmation", "component": "components/student/StudentSubmissionConfirmation.vue", "note": "Mobile" },
+    { "stitchFolder": "result_details", "route": "/student/exam-result", "component": "components/student/StudentExamResultDetail.vue", "note": "Chi tiết điểm" },
+    { "stitchFolder": "exam_results_detail", "route": "/student/exam-result", "component": "components/student/StudentExamResultDetail.vue", "note": "Biến thể chi tiết" },
+    { "stitchFolder": "study_history", "route": "/student/study-history", "component": "components/student/StudentStudyHistory.vue", "note": "Lịch sử học" },
+    { "stitchFolder": "study_archives", "route": "/student/study-history", "component": "components/student/StudentStudyHistory.vue", "note": "Lưu trữ học tập" },
+    { "stitchFolder": "student_study_hub", "route": "/student/profile", "component": "components/student/StudentProfile.vue", "note": "Hồ sơ HS — cùng design system hub (sidebar #f4f4f0, outline #dbc2b0, editorial); không có folder riêng tên profile trong stitch_new" },
+    { "stitchFolder": "student_study_hub", "route": "/student/generate-practice-test", "component": "components/student/StudentGeneratePracticeTest.vue", "note": "Thẻ Self-Practice / kho đề trong student_study_hub/code.html — form tạo đề luyện trong app" },
+    { "stitchFolder": "help_center", "route": "/help-center", "component": "components/help/HelpCenter.vue", "note": "Trợ giúp — dùng chung portal (HS/GV)" },
+    { "stitchFolder": "member_registration", "route": "/register", "component": "components/login/RegistrationRoleSelection.vue", "note": "Đăng ký — điều chỉnh route theo router thực tế" },
+    { "stitchFolder": "welcome_back_login", "route": "/login", "component": "components/login/LoginRoleSelection.vue", "note": "Đăng nhập" },
+    { "stitchFolder": "recover_access", "route": "/forgot-password", "component": "components/login/ForgotPassword.vue", "note": "Khôi phục truy cập" }
+  ],
+  "admin": [
+    { "stitchFolder": "admin_dashboard_dark", "route": "/admin/dashboard", "component": "components/admin/AdminSiteDashboard.vue", "note": "Dashboard admin tối" },
+    { "stitchFolder": "system_oversight_dashboard_admin", "route": "/admin/dashboard", "component": "components/admin/AdminSiteDashboard.vue", "note": "Giám sát hệ thống" },
+    { "stitchFolder": "exam_management_admin_dark", "route": "/admin/exams", "component": "components/admin/AdminExamManagement.vue", "note": "Quản lý thi" },
+    { "stitchFolder": "examination_registry_admin_dark", "route": "/admin/exams", "component": "components/admin/AdminExamManagement.vue", "note": "Đăng ký thi (admin)" },
+    { "stitchFolder": "scholar_management_admin_dark", "route": "/admin/users", "component": "components/admin/AdminUserManagement.vue", "note": "Quản lý học viên / người dùng" },
+    { "stitchFolder": "user_management_admin_dark", "route": "/admin/users", "component": "components/admin/AdminUserManagement.vue", "note": "User management" },
+    { "stitchFolder": "user_directory_admin_dark", "route": "/admin/users", "component": "components/admin/AdminUserManagement.vue", "note": "Danh bạ người dùng" },
+    { "stitchFolder": "performance_oversight_admin_dark", "route": "/admin/dashboard", "component": "components/admin/AdminSiteDashboard.vue", "note": "Giám sát hiệu năng — có thể gộp dashboard" }
+  ]
+}

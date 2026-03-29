@@ -17,7 +17,7 @@
   background: rgba(15, 23, 42, 0.97);
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(79, 70, 229, 0.08);
+    0 0 0 1px var(--edu-primary-faint-border);
 }
 
 .admin-detail-dialog__header {

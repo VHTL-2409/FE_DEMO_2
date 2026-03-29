@@ -4,9 +4,9 @@
  */
 
 :root {
-  /* Đồng bộ với @theme primary indigo (tailwind.css) */
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
+  /* Đồng bộ @theme (tailwind.css) + --edu-* (design-tokens.css) */
+  --color-primary: var(--edu-primary);
+  --color-primary-hover: var(--edu-primary-hover);
   --color-primary-light: #e0e7ff;
   --color-primary-soft: #eef2ff;
   --color-danger: #dc2626;
@@ -15,7 +15,7 @@
   --color-warning: #f59e0b;
   --color-text: #1e293b;
   --color-text-secondary: #64748b;
-  --color-bg: #f8fafc;
+  --color-bg: var(--edu-bg-light);
   --color-surface: #ffffff;
   --color-surface-muted: #f8fafc;
   --color-border: #e2e8f0;
@@ -35,7 +35,7 @@
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 12px 32px -18px rgba(15, 23, 42, 0.2);
   --shadow-lg: 0 20px 54px -28px rgba(79, 70, 229, 0.24), 0 16px 30px -24px rgba(15, 23, 42, 0.18);
-  --shadow-focus: 0 0 0 4px rgba(79, 70, 229, 0.14);
+  --shadow-focus: 0 0 0 4px var(--edu-primary-ring);
 
   --duration-fast: 150ms;
   --duration-normal: 250ms;
@@ -55,7 +55,7 @@
 .dark {
   --color-text: #f1f5f9;
   --color-text-secondary: #94a3b8;
-  --color-bg: #0f172a;
+  --color-bg: var(--edu-bg-dark);
   --color-surface: #1e293b;
   --color-surface-muted: rgba(30, 41, 59, 0.88);
   --color-border: #334155;
@@ -85,7 +85,7 @@ body {
   font-family: var(--font-sans);
   line-height: 1.5;
   background:
-    linear-gradient(180deg, #f8fafc 0%, #f8fafc 100%);
+    linear-gradient(180deg, var(--edu-bg-light) 0%, var(--edu-bg-light) 100%);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

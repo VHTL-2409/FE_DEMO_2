@@ -1,0 +1,14 @@
+/**
+ * Brand tokens shared across portal-ui, staff-ui, teacher-ui.
+ * Keep hex values aligned with @theme in tailwind.css (primary-600, background-light/dark).
+ */
+:root {
+  --edu-primary: #4f46e5;
+  --edu-primary-hover: #4338ca;
+  --edu-primary-mid: #6366f1;
+  --edu-primary-soft: rgba(79, 70, 229, 0.08);
+  --edu-primary-ring: rgba(79, 70, 229, 0.14);
+  --edu-primary-faint-border: rgba(79, 70, 229, 0.08);
+  --edu-bg-light: #f8fafc;
+  --edu-bg-dark: #0f172a;
+}

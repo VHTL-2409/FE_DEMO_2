@@ -42,6 +42,12 @@ public class AdminController {
         return ApiResponse.success(adminDashboardService.getDashboardStats());
     }
 
+    @GetMapping("/ops/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Map<String, Object>> opsSummary() {
+        return ApiResponse.success(adminDashboardService.getOpsSummary());
+    }
+
     @GetMapping("/users/students")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AdminUserListPageResponse> listStudents(

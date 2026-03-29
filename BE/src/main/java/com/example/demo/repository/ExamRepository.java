@@ -27,4 +27,6 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     Optional<Exam> findFirstByCodeIgnoreCase(String code);
 
     Optional<Exam> findFirstByTitleContainingIgnoreCase(String title);
+    long countByIsActiveTrue();
+    long countByIsActiveFalse();
 }

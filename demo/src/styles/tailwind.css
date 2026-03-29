@@ -4,7 +4,7 @@
 /* Chỉ bật dark: khi có class .dark trên tổ tiên — không theo hệ điều hành (học sinh/GV luôn sáng) */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Align với primary indigo (trước đây trong index.html CDN) */
+/* Primary / nền: giữ trùng với design-tokens.css (--edu-*) khi đổi brand */
 @theme {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;

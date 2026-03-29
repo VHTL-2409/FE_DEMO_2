@@ -111,4 +111,10 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     @Query("SELECT a.exam.id, COUNT(a) FROM ExamAttempt a WHERE a.exam.id IN :ids GROUP BY a.exam.id")
     List<Object[]> countAttemptsGroupedByExamIds(@Param("ids") List<Long> ids);
+
+    @Query("SELECT COUNT(DISTINCT ea.student.id) FROM ExamAttempt ea WHERE ea.exam.id = :examId")
+    long countDistinctStudentsByExamId(@Param("examId") Long examId);
+
+    @Query("SELECT ea.exam.id, COUNT(DISTINCT ea.student.id) FROM ExamAttempt ea WHERE ea.exam.id IN :ids GROUP BY ea.exam.id")
+    List<Object[]> countDistinctStudentsGroupedByExamIds(@Param("ids") List<Long> ids);
 }

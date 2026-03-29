@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -56,6 +57,36 @@ public class AiAssistService {
     public Map<String, Object> analyzeBehavior(BehaviorAnalysisRequest request) {
         ensureEnabled();
         return postJson("/proctor/analyze/behavior", request);
+    }
+
+    public Map<String, Object> healthSummary() {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("enabled", enabled);
+        summary.put("baseUrl", baseUrl);
+
+        if (!enabled) {
+            summary.put("status", "DISABLED");
+            summary.put("message", "AI service đang tắt trong cấu hình backend.");
+            return summary;
+        }
+
+        try {
+            RestTemplate restTemplate = buildRestTemplate();
+            ResponseEntity<Map> response = restTemplate.exchange(baseUrl + "/health", HttpMethod.GET, HttpEntity.EMPTY, Map.class);
+            String status = response.getBody() != null && response.getBody().get("status") != null
+                    ? String.valueOf(response.getBody().get("status"))
+                    : (response.getStatusCode().is2xxSuccessful() ? "UP" : "DOWN");
+            summary.put("status", status);
+            summary.put("message", "UP".equalsIgnoreCase(status)
+                    ? "AI service sẵn sàng cho OCR và proctoring."
+                    : "AI service trả về trạng thái bất thường.");
+        } catch (Exception ex) {
+            summary.put("status", "DOWN");
+            summary.put("message", ex.getMessage() == null || ex.getMessage().isBlank()
+                    ? "Không thể kết nối AI service."
+                    : ex.getMessage());
+        }
+        return summary;
     }
 
     private Map<String, Object> postJson(String path, Object payload) {

@@ -1,0 +1,456 @@
+<template>
+  <div :class="isDark ? 'dark' : 'light'" class="flex h-full min-h-0 flex-1 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
+    <div class="layout-container flex min-h-0 flex-1 grow flex-col">
+    <TeacherTopHeader active-section="exam" />
+
+    <main class="teacher-stitch-main teacher-page-shell relative mx-auto w-full max-w-none min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4 sm:py-5 lg:px-5">
+
+      <header class="relative mb-8 w-full max-w-screen-2xl animate-fade-up">
+        <p class="portal-kicker mb-2">
+          <span class="text-slate-500 dark:text-slate-400">Quản lý học thuật</span>
+          <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
+          <span class="font-semibold text-[var(--role-primary)]">Lịch thi</span>
+        </p>
+        <h1 class="stitch-font-headline text-3xl font-bold tracking-tight text-amber-900 dark:text-amber-100 md:text-4xl">
+          {{ isEditMode ? 'Chỉnh sửa lịch thi' : 'Lên lịch & thiết lập đề' }}
+        </h1>
+        <p class="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{{ selectedExamTitle }}</p>
+      </header>
+
+      <div class="relative mb-5 w-full max-w-screen-2xl animate-fade-up">
+        <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <template v-for="(step, index) in steps" :key="step">
+            <div class="flex items-center gap-2">
+              <span
+                class="size-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold"
+                :class="index + 1 <= currentStep ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+              >
+                {{ index + 1 }}
+              </span>
+              <span :class="index + 1 === currentStep ? 'text-slate-900 dark:text-white' : ''">{{ step }}</span>
+            </div>
+            <span v-if="index < steps.length - 1" class="h-px w-4 bg-slate-200 dark:bg-slate-700"></span>
+          </template>
+        </div>
+      </div>
+
+      <section class="stitch-ambient-shadow relative w-full max-w-screen-2xl rounded-xl border border-[color:rgba(219,194,176,0.45)] bg-white p-5 shadow-sm animate-fade-up-delay transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 sm:p-6 md:p-8">
+        <div class="flex items-center gap-2 mb-6">
+          <span class="material-symbols-outlined text-primary">settings</span>
+          <h3 class="text-lg font-bold">Cấu hình thời gian</h3>
+        </div>
+
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/70 p-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">
+              <span class="material-symbols-outlined text-base">timer</span>
+              Thời lượng làm bài (phút)
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <input
+                v-model.number="timeLimit"
+                type="number"
+                min="5"
+                max="480"
+                class="w-24 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center font-bold"
+                @blur="clampTimeLimit"
+              />
+              <span class="text-slate-600 dark:text-slate-400">phút</span>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="opt in durationPresets"
+                  :key="opt"
+                  type="button"
+                  :class="timeLimit === opt ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'"
+                  class="px-3 py-1.5 text-xs font-semibold rounded border hover:bg-primary/10 dark:hover:bg-primary/10"
+                  @click="timeLimit = opt"
+                >
+                  {{ opt }}p
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span class="material-symbols-outlined text-base">schedule</span>
+              Bắt đầu
+            </div>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                v-model="startDate"
+                :min="minDateStr"
+                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
+                type="date"
+                @input="closePicker"
+                @change="closePicker"
+              />
+              <input
+                v-model="startClock"
+                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
+                type="time"
+                step="300"
+                @input="closePicker"
+                @change="closePicker"
+              />
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartNow">Bây giờ</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn15Minutes">+15 phút</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn30Minutes">+30 phút</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn1Hour">+1 giờ</button>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span class="material-symbols-outlined text-base">event_available</span>
+              Kết thúc
+            </div>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                v-model="endDate"
+                :min="startDate"
+                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
+                type="date"
+                @input="closePicker"
+                @change="closePicker"
+              />
+              <input
+                v-model="endClock"
+                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
+                type="time"
+                step="300"
+                @input="closePicker"
+                @change="closePicker"
+              />
+            </div>
+            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Các nút bên dưới tính từ thời gian bắt đầu đã chọn.</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20" type="button" @click="setEndByDuration">
+                Bắt đầu + {{ timeLimit }} phút
+              </button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(30)">+30 phút</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(60)">+1 giờ</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(90)">+1h30</button>
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(120)">+2 giờ</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+          <span class="font-semibold text-slate-700 dark:text-slate-200">Xem trước:</span>
+          <span v-if="previewLabel"> {{ previewLabel }}</span>
+          <span v-else> Hãy chọn thời gian bắt đầu và kết thúc.</span>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-5 sm:pt-6">
+          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200" type="button" @click="goBack">
+            Quay lại
+          </button>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button class="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button" @click="setEndByDuration">
+              Tự tính kết thúc
+            </button>
+            <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" type="button" @click="handleCreateAssignment">
+              {{ isSubmitting ? (isEditMode ? 'Đang lưu...' : 'Đang xuất bản...') : (isEditMode ? 'Lưu thay đổi' : 'Xuất bản đề thi') }}
+              <span class="material-symbols-outlined text-lg">{{ isEditMode ? 'save' : 'rocket_launch' }}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { createExamAssignment, listExamAssignments, updateExamAssignment } from '../../services/assignmentService'
+import { getExamDetail, updateExam } from '../../services/examService'
+import { useToast } from '../../composables/useToast'
+import { toastExamPublished } from '../../utils/teacherExamFeedback'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import TeacherTopHeader from './TeacherTopHeader.vue'
+
+const router = useRouter()
+const route = useRoute()
+const isDark = ref(false)
+const steps = ['Tạo', 'Nội dung', 'Lịch', 'Xong']
+const currentStep = 3
+const timeLimit = ref(Math.max(5, Math.min(480, Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)))
+const isSubmitting = ref(false)
+
+const durationPresets = [15, 30, 45, 60, 90, 120, 180]
+
+const toast = useToast()
+
+const minDateStr = computed(() => formatDatePart(new Date()))
+
+const formatDatePart = (date) => {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const formatTimePart = (date) => {
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+const now = new Date()
+const defaultEnd = new Date(now.getTime() + 60 * 60000)
+
+const startDate = ref(formatDatePart(now))
+const startClock = ref(formatTimePart(now))
+const endDate = ref(formatDatePart(defaultEnd))
+const endClock = ref(formatTimePart(defaultEnd))
+
+const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
+const isEditMode = computed(() => route.query.mode === 'edit')
+const selectedExamTitle = computed(() => route.query.title || 'Đề thi mới')
+
+const buildLocalDateTime = (datePart, timePart) => {
+  if (!datePart || !timePart) return ''
+  return `${datePart}T${timePart}:00`
+}
+
+const startAt = computed(() => buildLocalDateTime(startDate.value, startClock.value))
+const endAt = computed(() => buildLocalDateTime(endDate.value, endClock.value))
+const previewLabel = computed(() => {
+  const start = toDate(startAt.value)
+  const end = toDate(endAt.value)
+  if (!start || !end) return ''
+  if (end <= start) return 'Thời gian kết thúc đang sớm hơn thời gian bắt đầu.'
+  return `${start.toLocaleString()} → ${end.toLocaleString()}`
+})
+
+const toDate = (value) => {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const closePicker = (event) => {
+  const target = event?.target
+  if (!target) return
+  window.setTimeout(() => target.blur(), 0)
+}
+
+const setStartNow = () => {
+  const date = new Date()
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setStartIn15Minutes = () => {
+  const date = new Date(Date.now() + 15 * 60000)
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setStartIn30Minutes = () => {
+  const date = new Date(Date.now() + 30 * 60000)
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setStartIn1Hour = () => {
+  const date = new Date(Date.now() + 60 * 60000)
+  startDate.value = formatDatePart(date)
+  startClock.value = formatTimePart(date)
+}
+
+const setEndByDuration = () => {
+  const start = toDate(startAt.value)
+  if (!start) return
+  const date = new Date(start.getTime() + Number(timeLimit.value || 60) * 60000)
+  endDate.value = formatDatePart(date)
+  endClock.value = formatTimePart(date)
+}
+
+const clampTimeLimit = () => {
+  const val = Number(timeLimit.value)
+  if (Number.isNaN(val) || val < 5) timeLimit.value = 5
+  else if (val > 480) timeLimit.value = 480
+}
+
+const setEndAfterMinutes = (minutes) => {
+  const start = toDate(startAt.value)
+  if (!start) return
+  const date = new Date(start.getTime() + minutes * 60000)
+  endDate.value = formatDatePart(date)
+  endClock.value = formatTimePart(date)
+}
+
+const goBack = () => {
+  if (isEditMode.value) {
+    router.push('/teacher/exams/list')
+    return
+  }
+  const source = route.query.source
+  if (source === 'manual') {
+    router.push('/teacher/exams/manual')
+    return
+  }
+  router.push('/teacher/exams/create')
+}
+
+const handleCreateAssignment = async () => {
+  const duration = Math.max(5, Math.min(480, Number(timeLimit.value) || 60))
+  if (!examId.value) {
+    toast.error('Thiếu mã đề thi. Vui lòng tạo lại đề thi.')
+    return
+  }
+
+  if (!startAt.value || !endAt.value) {
+    toast.error('Vui lòng chọn cả ngày/giờ bắt đầu và kết thúc.')
+    return
+  }
+
+  const start = toDate(startAt.value)
+  const end = toDate(endAt.value)
+  if (!start || !end || end <= start) {
+    toast.error('Thời gian kết thúc phải sau thời gian bắt đầu.')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    const updatedExam = await updateExam(examId.value, {
+      title: selectedExamTitle.value,
+      description: '',
+      durationMinutes: duration,
+      startTime: startAt.value,
+      endTime: endAt.value,
+      isActive: true,
+      monitorTabSwitch: route.query.monitorTabSwitch === 'true',
+      monitorBlur: route.query.monitorBlur === 'true',
+      monitorExitFullscreen: route.query.monitorExitFullscreen === 'true',
+      monitorCopyPaste: route.query.monitorCopyPaste === 'true',
+      monitorIdleTime: route.query.monitorIdleTime === 'true',
+      monitorDevtools: route.query.monitorDevtools === 'true',
+      monitorDuplicateIp: route.query.monitorDuplicateIp === 'true',
+      monitorFastSubmit: route.query.monitorFastSubmit === 'true',
+      monitorRightClick: route.query.monitorRightClick !== 'false',
+      monitorPrintScreen: route.query.monitorPrintScreen !== 'false',
+      monitorRapidQuestionSwitch: route.query.monitorRapidQuestionSwitch !== 'false',
+      monitorMultiMonitor: route.query.monitorMultiMonitor !== 'false',
+      requireCameraMic: route.query.requireCameraMic === 'true'
+    })
+
+    const assignPayload = {
+      title: selectedExamTitle.value,
+      openAt: startAt.value,
+      closeAt: endAt.value,
+      maxAttempts: 1,
+      allowReviewAfterSubmit: true,
+      isPublished: true
+    }
+    if (isEditMode.value) {
+      const assignments = await listExamAssignments(examId.value)
+      if (assignments?.length > 0) {
+        await updateExamAssignment(examId.value, assignments[0].id, assignPayload)
+      } else {
+        await createExamAssignment(examId.value, assignPayload)
+      }
+    } else {
+      await createExamAssignment(examId.value, assignPayload)
+    }
+
+    toastExamPublished(toast, {
+      title: selectedExamTitle.value,
+      code: updatedExam?.code,
+      isUpdate: isEditMode.value
+    })
+    await router.push('/teacher/exams/list')
+  } catch (error) {
+    toast.error(isEditMode.value ? 'Không thể lưu thay đổi. Vui lòng thử lại.' : 'Không thể xuất bản đề thi. Vui lòng thử lại.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const loadExamForEdit = async () => {
+  if (!examId.value || !isEditMode.value) return
+  try {
+    const exam = await getExamDetail(examId.value)
+    if (!exam) return
+    if (exam.durationMinutes) {
+      timeLimit.value = Math.max(5, Math.min(480, exam.durationMinutes))
+    }
+    if (exam.startTime) {
+      const start = new Date(exam.startTime)
+      if (!Number.isNaN(start.getTime())) {
+        startDate.value = formatDatePart(start)
+        startClock.value = formatTimePart(start)
+      }
+    }
+    if (exam.endTime) {
+      const end = new Date(exam.endTime)
+      if (!Number.isNaN(end.getTime())) {
+        endDate.value = formatDatePart(end)
+        endClock.value = formatTimePart(end)
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+onMounted(loadExamForEdit)
+</script>
+
+<style scoped>
+.font-display {
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes floatDelay {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: floatDelay 8s ease-in-out infinite;
+}
+</style>

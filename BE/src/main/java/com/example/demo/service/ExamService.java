@@ -34,6 +34,7 @@ import com.example.demo.common.DateTimeUtils;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -96,8 +97,12 @@ public class ExamService {
         boolean isTeacher = currentUser.getRoles().stream().anyMatch(r -> r.getName() == RoleName.TEACHER || r.getName() == RoleName.ADMIN);
 
         if (isTeacher) {
-            return examRepository.findByCreatedById(currentUser.getId()).stream()
-                    .map(this::toResponse).toList();
+            List<Exam> exams = examRepository.findByCreatedById(currentUser.getId());
+            Map<Long, Long> participantByExam = participantCountsByExamIds(
+                    exams.stream().map(Exam::getId).toList());
+            return exams.stream()
+                    .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L)))
+                    .toList();
         }
 
         List<Exam> publishedExams = assignmentRepository.findDistinctPublishedExams();
@@ -108,7 +113,23 @@ public class ExamService {
                 combined.add(exam);
             }
         }
-        return combined.stream().map(this::toResponse).toList();
+        Map<Long, Long> participantByExam = participantCountsByExamIds(
+                combined.stream().map(Exam::getId).toList());
+        return combined.stream()
+                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L)))
+                .toList();
+    }
+
+    private Map<Long, Long> participantCountsByExamIds(List<Long> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = examAttemptRepository.countDistinctStudentsGroupedByExamIds(examIds);
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
     }
 
     @Transactional(readOnly = true)
@@ -547,6 +568,10 @@ public class ExamService {
     }
 
     private ExamResponse toResponse(Exam exam) {
+        return toResponse(exam, examAttemptRepository.countDistinctStudentsByExamId(exam.getId()));
+    }
+
+    private ExamResponse toResponse(Exam exam, long participantCount) {
         return ExamResponse.builder()
                 .id(exam.getId())
                 .code(exam.getCode())
@@ -559,6 +584,7 @@ public class ExamService {
                 .isActive(exam.getIsActive())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())
                 .questionCount(questionRepository.countByExam(exam)) // We keep this simple count query per row
+                .participantCount(participantCount)
                 .monitorTabSwitch(exam.getMonitorTabSwitch())
                 .monitorBlur(exam.getMonitorBlur())
                 .monitorExitFullscreen(exam.getMonitorExitFullscreen())

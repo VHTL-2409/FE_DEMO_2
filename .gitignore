@@ -6,7 +6,9 @@ docs/
 ./deloy
 ./loadtest
 .cursor/
-
+.agents/
+.mux/
+/stitch_new
 
 # Production env (chứa mật khẩu, secret)
 .env

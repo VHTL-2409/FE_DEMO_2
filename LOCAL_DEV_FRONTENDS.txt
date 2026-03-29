@@ -1,0 +1,31 @@
+Chạy FE song song với BE (không phá dự án gốc)
+===============================================
+
+1) Backend (giữ mặc định)
+   cd BE
+   mvn spring-boot:run
+   API: http://localhost:8082
+
+2) Dự án gốc — demo (cổng 5173)
+   cd demo
+   optional: copy .env.example .env  (chỉ khi cần đổi URL API)
+   npm ci && npm run dev
+   Mở: http://localhost:5173
+
+3) Nhánh thử — demo_2 (cổng mặc định 5173, giống demo — chỉ chạy một FE tại một thời điểm)
+   cd demo_2
+   optional: copy .env.example .env
+   npm ci && npm run dev
+   Mở: http://localhost:5173
+
+CORS / WebSocket
+----------------
+Mặc định trong application.properties đã cho phép 5173 (và preview 4173/4174).
+Docker compose vẫn liệt kê thêm 5174 nếu bạn tự đổi cổng Vite.
+
+CHÚ Ý: Nếu bạn tự đặt APP_CORS_ALLOWED_ORIGINS trong BE/.env hoặc IDE,
+phải LIỆT KÊ ĐẦY ĐỦ mọi origin FE bạn dùng. Thiếu một cổng → lỗi CORS preflight.
+
+Link email / đặt lại mật khẩu
+-----------------------------
+app.frontend.base-url mặc định là http://localhost:5173 (trùng cổng dev demo_2 hiện tại).

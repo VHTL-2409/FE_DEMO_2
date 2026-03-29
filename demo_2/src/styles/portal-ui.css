@@ -1,0 +1,563 @@
+/**
+ * Portal (học sinh / giáo viên): mượt, nhất quán, tôn trọng prefers-reduced-motion
+ * Design tokens — dùng trong shared components & chỉnh sửa khu học sinh
+ */
+
+:root {
+  /* Academic Amber — đồng bộ --role-primary / landing hero nâu cam */
+  --color-primary: #8d4b00;
+  --color-primary-hover: #6e3900;
+  --color-primary-light: #ffedd5;
+  --color-primary-soft: rgba(141, 75, 0, 0.12);
+  --color-info: #0ea5e9;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-success: #0f9f6e;
+  --color-warning: #f59e0b;
+  --color-text: #191c1e;
+  --color-text-secondary: #667085;
+  --color-bg: #f7f9fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: rgba(255, 255, 255, 0.92);
+  --color-surface-muted: #eef2f6;
+  --color-surface-soft: rgba(255, 255, 255, 0.72);
+  --color-border: rgba(199, 196, 216, 0.35);
+  --color-border-strong: rgba(141, 75, 0, 0.2);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 12px 32px -28px rgba(25, 28, 30, 0.08);
+  --shadow-md:
+    0 18px 48px -32px rgba(25, 28, 30, 0.08),
+    0 14px 28px -24px rgba(141, 75, 0, 0.12);
+  --shadow-lg:
+    0 28px 70px -40px rgba(25, 28, 30, 0.1),
+    0 22px 44px -28px rgba(141, 75, 0, 0.16);
+  --shadow-focus: 0 0 0 4px rgba(141, 75, 0, 0.18);
+
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-sans:
+    'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display:
+    'Manrope', 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+
+  /* Compatibility aliases for older classes/components */
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-hover);
+  --surface: var(--color-surface);
+  --surface-hover: var(--color-surface-muted);
+  --border: var(--color-border);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-secondary);
+
+}
+
+.dark {
+  --color-text: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-bg: #0b1220;
+  --color-surface: #101826;
+  --color-surface-raised: rgba(16, 24, 38, 0.9);
+  --color-surface-muted: rgba(30, 41, 59, 0.82);
+  --color-surface-soft: rgba(15, 23, 42, 0.66);
+  --color-border: rgba(148, 163, 184, 0.16);
+  --color-border-strong: rgba(251, 191, 36, 0.2);
+  --color-primary-light: rgba(251, 191, 36, 0.18);
+  --shadow-sm: 0 16px 32px -24px rgba(2, 6, 23, 0.5);
+  --shadow-md:
+    0 24px 54px -30px rgba(2, 6, 23, 0.62),
+    0 18px 36px -26px rgba(177, 95, 0, 0.16);
+  --shadow-lg:
+    0 34px 78px -38px rgba(2, 6, 23, 0.72),
+    0 22px 48px -30px rgba(177, 95, 0, 0.2);
+}
+
+html {
+  height: 100%;
+  min-height: 100dvh;
+  font-size: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Nền ổn định; chuỗi flex full-height — cuộn trong panel con, không kéo dài document */
+body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  background:
+    radial-gradient(circle at top left, rgba(177, 95, 0, 0.06), transparent 24%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), transparent 22%),
+    linear-gradient(180deg, #faf9f5 0%, #f4f4f0 100%);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+  overflow-y: hidden;
+}
+
+#app {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Bọc router-view — đồng bộ route có/không transition */
+.app-route-host {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Shell trang portal/student/teacher: lấp đầy vùng flex cha */
+.portal-viewport {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Vùng nội dung chính cuộn nội bộ — chỉ cuộn khi overflow; ẩn thanh, giữ cuộn chuột/bàn phím */
+.portal-main-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+  scrollbar-gutter: stable;
+}
+
+.portal-page-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+  scrollbar-gutter: stable;
+}
+
+.portal-scrollbar {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+  scrollbar-gutter: stable;
+}
+
+.portal-main-scroll,
+.portal-page-scroll,
+.teacher-page-shell,
+.portal-scrollbar,
+.modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+}
+
+.portal-main-scroll::-webkit-scrollbar,
+.portal-page-scroll::-webkit-scrollbar,
+.teacher-page-shell::-webkit-scrollbar,
+.portal-scrollbar::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.portal-main-scroll::-webkit-scrollbar-corner,
+.portal-page-scroll::-webkit-scrollbar-corner,
+.teacher-page-shell::-webkit-scrollbar-corner,
+.portal-scrollbar::-webkit-scrollbar-corner,
+.modal-body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.portal-main-scroll::-webkit-scrollbar-track,
+.portal-page-scroll::-webkit-scrollbar-track,
+.teacher-page-shell::-webkit-scrollbar-track,
+.portal-scrollbar::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.portal-main-scroll::-webkit-scrollbar-thumb,
+.portal-page-scroll::-webkit-scrollbar-thumb,
+.teacher-page-shell::-webkit-scrollbar-thumb,
+.portal-scrollbar::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.56);
+  background-clip: padding-box;
+}
+
+.portal-main-scroll::-webkit-scrollbar-thumb:hover,
+.portal-page-scroll::-webkit-scrollbar-thumb:hover,
+.teacher-page-shell::-webkit-scrollbar-thumb:hover,
+.portal-scrollbar::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.74);
+  background-clip: padding-box;
+}
+
+.dark .portal-main-scroll,
+.dark .portal-page-scroll,
+.dark .teacher-page-shell,
+.dark .portal-scrollbar,
+.dark .modal-body {
+  scrollbar-color: rgba(100, 116, 139, 0.84) transparent;
+}
+
+.dark .portal-main-scroll::-webkit-scrollbar-thumb,
+.dark .portal-page-scroll::-webkit-scrollbar-thumb,
+.dark .teacher-page-shell::-webkit-scrollbar-thumb,
+.dark .portal-scrollbar::-webkit-scrollbar-thumb,
+.dark .modal-body::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.82);
+  background-clip: padding-box;
+}
+
+/* Chuyển trang (App.vue — /student/* và /teacher/*) */
+.portal-page-enter-active,
+.portal-page-leave-active {
+  transition:
+    opacity 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.portal-page-enter-from {
+  opacity: 0;
+  transform: translateY(8px) scale(0.992);
+}
+
+.portal-page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.996);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-page-enter-active,
+  .portal-page-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+
+  .portal-page-enter-from,
+  .portal-page-leave-to {
+    transform: none !important;
+  }
+}
+
+/* Chuyển view con trong AdminLayout */
+.admin-view-enter-active,
+.admin-view-leave-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-view-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.admin-view-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-view-enter-active,
+  .admin-view-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+
+  .admin-view-enter-from,
+  .admin-view-leave-to {
+    transform: none !important;
+  }
+}
+
+/* Thanh tải route (App.vue) */
+.route-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: left;
+  background: linear-gradient(90deg, #b15f00, #8d4b00, #ea8c3c);
+  transition: opacity 0.18s ease;
+}
+
+.route-loading-bar--active {
+  opacity: 1;
+  animation: route-loading-indeterminate 0.95s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes route-loading-indeterminate {
+  0% {
+    transform: scaleX(0.12) translateX(-5%);
+  }
+  50% {
+    transform: scaleX(0.55) translateX(35%);
+  }
+  100% {
+    transform: scaleX(0.2) translateX(105%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading-bar--active {
+    animation: none;
+    transform: scaleX(0.35);
+  }
+}
+
+/* Vùng nội dung chính — tách lớp paint nhẹ; khớp chuỗi flex từ #app */
+.portal-route-root {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+/* Card / nút: ưu tiên transform + shadow thay vì transition-all */
+.portal-card-lift {
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s ease,
+    border-color 0.2s ease;
+}
+
+.portal-card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-card-lift {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    will-change: auto;
+  }
+
+  .portal-card-lift:hover {
+    transform: none;
+  }
+}
+
+/* Focus keyboard — dễ thấy hơn */
+.portal-focus:focus-visible {
+  outline: 2px solid rgba(141, 75, 0, 0.45);
+  outline-offset: 3px;
+}
+
+.portal-glass-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.76) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-lg);
+}
+
+.dark .portal-glass-panel {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.84) 0%, rgba(15, 23, 42, 0.72) 100%);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.portal-surface-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 250, 252, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-md);
+}
+
+.dark .portal-surface-card {
+  background: linear-gradient(180deg, rgba(16, 24, 38, 0.96) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+.portal-section-muted {
+  background:
+    radial-gradient(circle at top right, rgba(177, 95, 0, 0.08), transparent 38%),
+    linear-gradient(180deg, rgba(250, 249, 245, 0.94) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.dark .portal-section-muted {
+  background:
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 45%),
+    linear-gradient(180deg, rgba(16, 24, 38, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+}
+
+.portal-chip {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(141, 75, 0, 0.12);
+  box-shadow: 0 14px 30px -24px rgba(141, 75, 0, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.portal-gradient-text {
+  background: linear-gradient(135deg, #b15f00 0%, #8d4b00 52%, #6e3900 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.portal-mesh-surface {
+  background:
+    radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.18), transparent 18%),
+    radial-gradient(circle at 80% 0%, rgb(255 255 255 / 0.16), transparent 22%),
+    radial-gradient(circle at 100% 100%, rgb(234 140 60 / 0.22), transparent 24%),
+    linear-gradient(145deg, #552800 0%, #6e3900 38%, #8d4b00 68%, #b15f00 100%);
+}
+
+.portal-soft-ring {
+  box-shadow: var(--shadow-focus);
+}
+
+/* Skeleton pulse nhẹ (dùng chung) */
+@keyframes portal-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.portal-skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    90deg,
+    rgb(241 245 249) 0%,
+    rgb(226 232 240) 50%,
+    rgb(241 245 249) 100%
+  );
+  background-size: 200% 100%;
+  animation: portal-shimmer 1.2s ease-in-out infinite;
+}
+
+.dark .portal-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 59) 0%,
+    rgb(51 65 85) 50%,
+    rgb(30 41 59) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-skeleton {
+    animation: none;
+    background: rgb(226 232 240);
+  }
+
+  .dark .portal-skeleton {
+    background: rgb(51 65 85);
+  }
+}
+
+/* Subtle full-area background — use instead of stacked blur-orb layers (perf + calmer UI) */
+.portal-shell-bg {
+  background:
+    radial-gradient(circle at top right, rgba(177, 95, 0, 0.07), transparent 22%),
+    linear-gradient(180deg, rgba(250, 249, 245, 0.98) 0%, rgba(255, 255, 255, 0.97) 52%, rgba(244, 244, 240, 0.95) 100%);
+}
+
+.dark .portal-shell-bg {
+  background:
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.1), transparent 24%),
+    linear-gradient(180deg, rgb(11 18 32) 0%, rgba(15, 23, 42, 0.98) 100%);
+}
+
+.portal-panel {
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 250, 255, 0.92) 100%);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+
+.dark .portal-panel {
+  border-color: rgba(148, 163, 184, 0.12);
+  background: linear-gradient(180deg, rgba(16, 24, 38, 0.96) 0%, rgba(15, 23, 42, 0.92) 100%);
+}
+
+.portal-panel-soft {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-sm);
+  border-radius: calc(var(--radius-lg) - 6px);
+}
+
+.dark .portal-panel-soft {
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.portal-kicker {
+  color: var(--color-primary);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.portal-heading {
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.portal-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.98rem;
+  line-height: 1.75;
+}

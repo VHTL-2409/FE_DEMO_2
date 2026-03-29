@@ -1,0 +1,704 @@
+/* Design system - modern UI (kết hợp portal-ui.css cho học sinh / giáo viên) */
+:root {
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-hover);
+  --surface: var(--color-surface);
+  --surface-hover: var(--color-surface-muted);
+  --border: var(--color-border);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-secondary);
+}
+
+.dark {
+  --surface: var(--color-surface);
+  --surface-hover: var(--color-surface-muted);
+  --border: var(--color-border);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-secondary);
+}
+
+.font-display {
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+}
+
+/*
+ * Khu GV — stitch dashboard giáo viên v3 + Academic Amber (tách palette khỏi HS indigo)
+ */
+.teacher-portal-stitch {
+  --role-primary: #8d4b00;
+  --role-primary-container: #b15f00;
+  --role-primary-deep: #6e3900;
+  --role-primary-fixed: #ffdcc3;
+  --role-primary-soft: rgba(141, 75, 0, 0.12);
+  --role-tertiary: #006096;
+  --role-outline: rgba(219, 194, 176, 0.55);
+  --role-on-surface: #1b1c1a;
+  --role-on-surface-variant: #554336;
+  --role-surface: #ffffff;
+  --role-surface-muted: #faf9f5;
+  --role-surface-container: #efeeea;
+  --role-surface-container-high: #e9e8e4;
+  --role-surface-container-low: #f4f4f0;
+  --staff-primary: var(--role-primary);
+  --staff-primary-soft: var(--role-primary-soft);
+  --staff-border: rgba(219, 194, 176, 0.45);
+  --staff-border-strong: rgba(141, 75, 0, 0.22);
+}
+
+.teacher-portal-stitch .teacher-page-shell {
+  background: linear-gradient(180deg, #faf9f5 0%, #f4f4f0 100%);
+}
+
+.dark .teacher-portal-stitch .teacher-page-shell {
+  background: linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.98) 100%);
+}
+
+/* Khu học sinh — đồng bộ Academic Amber (stitch: dashboard_h_c_sinh_academic_amber_desktop, landing_page_academic_amber) */
+.student-portal-stitch {
+  --role-primary: #8d4b00;
+  --role-primary-container: #b15f00;
+  --role-primary-deep: #6e3900;
+  --role-primary-fixed: #ffdcc3;
+  --role-primary-soft: rgba(141, 75, 0, 0.12);
+  --role-outline: rgba(219, 194, 176, 0.55);
+  --role-on-surface: #1b1c1a;
+  --role-on-surface-variant: #554336;
+  --role-surface: #ffffff;
+  --role-surface-muted: #faf9f5;
+  --role-surface-container: #efeeea;
+  --role-surface-container-high: #e9e8e4;
+  --role-surface-container-low: #f4f4f0;
+  --staff-primary: var(--role-primary);
+  --staff-primary-soft: var(--role-primary-soft);
+  --staff-border: rgba(219, 194, 176, 0.45);
+  --staff-border-strong: rgba(141, 75, 0, 0.22);
+}
+
+.student-portal-stitch .teacher-page-shell {
+  background:
+    radial-gradient(circle at top right, rgba(141, 75, 0, 0.06), transparent 22%),
+    linear-gradient(180deg, #faf9f5 0%, #f4f4f0 100%);
+}
+
+.dark .student-portal-stitch .teacher-page-shell {
+  background: rgb(15 23 42);
+}
+
+.student-portal-stitch .font-display,
+.student-portal-stitch h1,
+.student-portal-stitch h2,
+.student-portal-stitch h3,
+.student-portal-stitch .staff-hero-title,
+.student-portal-stitch .teacher-page-title {
+  font-family: 'Manrope', 'Inter', 'Be Vietnam Pro', var(--font-sans, system-ui), sans-serif;
+}
+
+.student-portal-stitch .app-shell-brand-mark {
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--role-primary-container, #b15f00) 0%, var(--role-primary-deep, #6e3900) 100%);
+  box-shadow: 0 16px 28px -20px rgba(141, 75, 0, 0.45);
+}
+
+.teacher-portal-stitch,
+.teacher-portal-stitch .font-display {
+  font-family: 'Inter', var(--font-sans, system-ui), sans-serif;
+}
+
+/* stitch_new Academic Amber — tiêu đề serif (dashboard_gi_ng_vi_n_academic_amber) */
+.teacher-portal-stitch h1,
+.teacher-portal-stitch h2,
+.teacher-portal-stitch h3,
+.teacher-portal-stitch .staff-hero-title,
+.teacher-portal-stitch .teacher-page-title,
+.teacher-portal-stitch .stitch-font-headline {
+  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
+}
+
+@keyframes teacherFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes teacherFloatSlow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+
+@keyframes teacherFloatDelay {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, 8px, 0); }
+}
+
+.animate-fade-up {
+  animation: teacherFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-up-delay {
+  animation: teacherFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+.animate-float-slow {
+  animation: teacherFloatSlow 8s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: teacherFloatDelay 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-up-delay {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .animate-float-slow,
+  .animate-float-delay {
+    animation: none !important;
+  }
+}
+
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Khu GV/HS: layout-container nằm trong cột đã có max-height — dùng 100% để main flex-1 cuộn đúng */
+.teacher-portal-stitch .layout-container,
+.student-portal-stitch .layout-container {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+}
+
+.teacher-page-shell {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(141, 75, 0, 0.04), transparent 20%),
+    linear-gradient(180deg, rgba(250, 249, 245, 0.98) 0%, rgba(255, 255, 255, 0.97) 54%, rgba(244, 244, 240, 0.95) 100%);
+}
+
+.dark .teacher-page-shell {
+  background: linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.98) 100%);
+}
+
+@media (min-width: 640px) {
+  .teacher-page-shell {
+    padding: 1rem 1.25rem 1.1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .teacher-page-shell {
+    padding: 1.05rem 1.6rem 1.25rem;
+  }
+}
+
+/* Màn cần chặt hơn nữa (tuỳ chọn trên main) */
+.teacher-page-shell--compact {
+  padding: 0.375rem 0.625rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .teacher-page-shell--compact {
+    padding: 0.5rem 0.75rem 0.625rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .teacher-page-shell--compact {
+    padding: 0.625rem 1rem 0.75rem;
+  }
+}
+
+.teacher-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(247, 250, 255, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 1.35rem;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.teacher-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.dark .teacher-card {
+  background: linear-gradient(180deg, rgba(16, 24, 38, 0.96) 0%, rgba(15, 23, 42, 0.94) 100%);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+.dark .teacher-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Typography — đồng bộ tiêu đề trang / mục / mô tả (dùng class hoặc làm chuẩn Tailwind) */
+.teacher-page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  font-weight: 900;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  color: var(--color-text);
+}
+
+.dark .teacher-page-title {
+  color: rgb(248 250 252);
+}
+
+.teacher-page-lead {
+  margin-top: 0.125rem;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 768px) {
+  .teacher-page-lead {
+    font-size: 1rem;
+  }
+}
+
+.dark .teacher-page-lead {
+  color: rgb(148 163 184);
+}
+
+.teacher-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.02rem, 1.6vw, 1.28rem);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+.dark .teacher-section-title {
+  color: rgb(241 245 249);
+}
+
+/* Live monitoring modern UI */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.7; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+.glass-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.82) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  box-shadow: var(--shadow-md);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+.gradient-card-primary {
+  background: linear-gradient(135deg, rgba(141, 75, 0, 0.12) 0%, rgba(255, 252, 248, 0.96) 100%);
+}
+
+.gradient-card-alert {
+  background: linear-gradient(135deg, rgb(254 242 242) 0%, rgb(255 247 237) 100%);
+}
+
+.dark .gradient-card-primary {
+  background: linear-gradient(135deg, rgb(180 95 0 / 0.22) 0%, rgb(30 41 59 / 0.92) 100%);
+}
+
+.dark .gradient-card-alert {
+  background: linear-gradient(135deg, rgb(127 29 29 / 0.24) 0%, rgb(67 20 7 / 0.18) 100%);
+}
+
+/* Card hover enhancement */
+.card-interactive {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.app-shell-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  border-right: 1px solid var(--role-outline, rgba(199, 196, 216, 0.42));
+  background: linear-gradient(180deg, var(--role-surface-muted, rgba(245, 242, 254, 0.92)) 0%, var(--role-surface, rgba(255, 255, 255, 0.86)) 100%);
+  box-shadow: 0 28px 48px -38px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.teacher-portal-stitch .app-shell-sidebar {
+  border-radius: 0;
+  border-right: 1px solid rgba(251, 191, 36, 0.22);
+  background: var(--role-surface-container-low, #f4f4f0);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teacher-portal-stitch .app-shell-sidebar {
+    transition: none !important;
+  }
+}
+
+.dark .app-shell-sidebar {
+  background: linear-gradient(180deg, rgba(16, 24, 38, 0.94) 0%, rgba(15, 23, 42, 0.88) 100%);
+}
+
+/* stitch_new b_ng_i_u_khi_n_h_c_sinh_v3 / dashboard_h_c_sinh_desktop_1 — sidebar HS */
+.student-portal-stitch .app-shell-sidebar {
+  border-radius: 0 2rem 2rem 0;
+  border-right: 1px solid rgba(199, 196, 216, 0.38);
+  background: linear-gradient(180deg, #f2f4f6 0%, #f7f9fb 100%);
+  box-shadow: 0 32px 48px -4px rgba(0, 0, 0, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.dark .student-portal-stitch .app-shell-sidebar {
+  background: linear-gradient(180deg, rgb(30 41 59 / 0.95) 0%, rgb(15 23 42 / 0.98) 100%);
+  box-shadow: 0 24px 40px -8px rgba(0, 0, 0, 0.35);
+}
+
+.app-shell-topbar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--role-outline, rgba(199, 196, 216, 0.42));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.72) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 16px 34px -32px rgba(15, 23, 42, 0.22);
+}
+
+.dark .app-shell-topbar {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.86) 0%, rgba(15, 23, 42, 0.72) 100%);
+}
+
+.app-shell-topbar--compact {
+  position: sticky;
+  left: auto;
+  right: auto;
+}
+
+.app-shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.app-shell-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, var(--role-primary, var(--color-primary)) 0%, var(--role-primary-deep, var(--color-primary-hover)) 100%);
+  color: white;
+  box-shadow: 0 18px 30px -22px rgba(79, 70, 229, 0.5);
+}
+
+.teacher-portal-stitch .app-shell-brand-mark {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    var(--role-primary-container, #b15f00) 0%,
+    var(--role-primary-deep, #6e3900) 100%
+  );
+  box-shadow: 0 16px 28px -20px rgba(141, 75, 0, 0.45);
+}
+
+.app-shell-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  color: var(--text-muted);
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-shell-nav-link:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--role-primary, var(--color-primary));
+  transform: translateX(2px);
+}
+
+.app-shell-nav-link.is-active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.74) 100%);
+  color: var(--role-primary, var(--color-primary));
+  box-shadow: 0 14px 30px -24px rgba(15, 23, 42, 0.18);
+}
+
+/* stitch_new (examination_registry, faculty_overview) — mục active: surface-container-highest + amber-900 */
+.teacher-portal-stitch .app-shell-nav-link {
+  border-radius: 0.75rem;
+  transform: none;
+  color: rgb(100 116 139);
+}
+
+.teacher-portal-stitch .app-shell-nav-link:hover {
+  background: #efeeea;
+  color: rgb(120 53 15);
+  transform: none;
+}
+
+.dark .teacher-portal-stitch .app-shell-nav-link {
+  color: rgb(148 163 184);
+}
+
+.dark .teacher-portal-stitch .app-shell-nav-link:hover {
+  background: rgb(30 41 59 / 0.45);
+  color: rgb(251 191 36);
+}
+
+.teacher-portal-stitch .app-shell-nav-link.is-active {
+  background: #e3e2df;
+  color: rgb(120 53 15);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.dark .teacher-portal-stitch .app-shell-nav-link.is-active {
+  background: rgb(42 43 40);
+  color: rgb(253 230 138);
+}
+
+.teacher-portal-stitch .app-shell-nav-link:focus-visible {
+  outline: 2px solid var(--role-primary);
+  outline-offset: 2px;
+}
+
+/* stitch_new sidebar — ml-2 mr-4, không áp rail (có class gap-0) */
+.teacher-portal-stitch .app-shell-nav-link:not(.gap-0) {
+  margin-left: 0.5rem;
+  margin-right: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.app-shell-user-summary {
+  border: 1px solid var(--role-outline, rgba(199, 196, 216, 0.42));
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .app-shell-user-summary {
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.app-shell-search {
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.app-shell-search:focus {
+  border-color: rgba(79, 70, 229, 0.22);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.teacher-portal-stitch .app-shell-search {
+  border: none;
+  background: var(--role-surface-container-low, #f4f4f0);
+}
+
+.teacher-portal-stitch .app-shell-search:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(141, 75, 0, 0.2);
+  background: #fff;
+}
+
+.app-shell-cta {
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--role-primary-deep, var(--color-primary-hover)) 0%, var(--role-primary, var(--color-primary)) 100%);
+  color: white;
+  box-shadow: 0 18px 34px -24px rgba(79, 70, 229, 0.48);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.app-shell-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 38px -24px rgba(79, 70, 229, 0.55);
+}
+
+.teacher-portal-stitch .app-shell-cta {
+  background: linear-gradient(135deg, var(--role-primary-deep) 0%, var(--role-primary-container) 100%);
+  box-shadow: 0 18px 34px -24px rgba(141, 75, 0, 0.42);
+}
+
+.teacher-portal-stitch .app-shell-cta:hover {
+  box-shadow: 0 22px 38px -24px rgba(141, 75, 0, 0.5);
+}
+
+.teacher-portal-stitch .app-shell-cta:focus-visible {
+  outline: 2px solid var(--role-primary-fixed);
+  outline-offset: 3px;
+}
+
+.teacher-portal-stitch .portal-mesh-surface {
+  background:
+    radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.15), transparent 20%),
+    linear-gradient(135deg, var(--role-primary-deep) 0%, var(--role-primary-container) 52%, #c97a2c 100%);
+  box-shadow: 0 24px 48px -28px rgba(141, 75, 0, 0.4);
+}
+
+/* Modal overlay & content */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: modalOverlayIn 0.2s ease-out;
+}
+
+.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: white;
+  border: 1px solid rgb(226 232 240);
+  box-shadow: 0 28px 48px -22px rgb(15 23 42 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.03);
+  animation: modalContentIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .modal-content {
+  background: rgb(30 41 59);
+  border-color: rgb(51 65 85);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+}
+
+.modal-content-glass {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .modal-content-glass {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.dark .modal-header {
+  border-color: rgb(51 65 85);
+}
+
+.modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  color: rgb(100 116 139);
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: rgb(51 65 85);
+  background: rgb(241 245 249);
+}
+
+.dark .modal-close-btn:hover {
+  color: rgb(241 245 249);
+  background: rgb(51 65 85);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(90vh - 8rem);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgb(226 232 240);
+}
+
+.dark .modal-footer {
+  border-color: rgb(51 65 85);
+}

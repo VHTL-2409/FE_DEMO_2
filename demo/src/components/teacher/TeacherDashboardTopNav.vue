@@ -387,7 +387,7 @@ const buildStatusLineOption = (echarts) => {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(15, 23, 42, 0.92)',
-      borderColor: 'rgba(99, 102, 241, 0.45)',
+      borderColor: 'rgba(93, 95, 239, 0.45)',
       textStyle: { color: '#e2e8f0' }
     },
     grid: { left: '3%', right: '4%', bottom: '8%', top: '14%', containLabel: true },
@@ -411,12 +411,12 @@ const buildStatusLineOption = (echarts) => {
         smooth: 0.35,
         symbol: 'circle',
         symbolSize: 9,
-        lineStyle: { width: 3, color: '#6366f1' },
-        itemStyle: { color: '#818cf8' },
+        lineStyle: { width: 3, color: '#5d5fef' },
+        itemStyle: { color: '#7c7ef7' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(99, 102, 241, 0.35)' },
-            { offset: 1, color: 'rgba(99, 102, 241, 0.02)' }
+            { offset: 0, color: 'rgba(93, 95, 239, 0.35)' },
+            { offset: 1, color: 'rgba(93, 95, 239, 0.02)' }
           ])
         },
         data
@@ -432,7 +432,7 @@ const buildScheduleLineOption = () => {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(15, 23, 42, 0.92)',
-      borderColor: 'rgba(99, 102, 241, 0.45)',
+      borderColor: 'rgba(93, 95, 239, 0.45)',
       textStyle: { color: '#e2e8f0' }
     },
     legend: {
