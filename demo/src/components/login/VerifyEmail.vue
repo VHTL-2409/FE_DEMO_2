@@ -7,14 +7,14 @@
     >
       <div v-if="!done" class="text-center">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-primary text-3xl">hourglass_empty</span>
+          <LucideIcon name="hourglass_empty" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Đang xác minh...</h1>
       </div>
 
       <div v-else-if="success" class="text-center">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-primary text-3xl">check_circle</span>
+          <LucideIcon name="check_circle" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Xác minh thành công</h1>
         <RouterLink v-slot="{ navigate }" to="/login" custom>
@@ -24,7 +24,7 @@
 
       <div v-else class="text-center">
         <div class="size-14 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-rose-600 text-3xl">error</span>
+          <LucideIcon name="error" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Xác minh thất bại</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">{{ errorMessage }}</p>

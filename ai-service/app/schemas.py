@@ -67,3 +67,118 @@ class HealthResponse(BaseModel):
     ocr_ready: bool
     cv_ready: bool
     tesseract_ready: bool
+
+
+# AI Question Generation Schemas
+
+
+class GeneratedQuestionOption(BaseModel):
+    id: str
+    text: str
+
+
+class GeneratedQuestion(BaseModel):
+    content: str
+    options: list[GeneratedQuestionOption]
+    correct_answer: str
+    difficulty: str
+    explanation: str | None = None
+
+
+class GenerateQuestionsRequest(BaseModel):
+    topic: str | None = None
+    text: str | None = None
+    count: int = Field(default=5, ge=1, le=50)
+    difficulty: str = Field(default="MEDIUM")
+    language: str = Field(default="vi")
+
+
+class AiGenerateQuestionsResponse(BaseModel):
+    status: str
+    questions: list[GeneratedQuestion]
+    model: str
+    usage: dict[str, Any] = Field(default_factory=dict)
+
+
+# AI Essay Evaluation Schemas
+
+
+class EssayEvaluationRequest(BaseModel):
+    question: str
+    answer: str
+    rubric: str | None = None
+    max_score: float = Field(default=10.0, ge=0.0)
+
+
+class EssayCriterionScore(BaseModel):
+    criterion: str
+    score: float
+    max_score: float
+    feedback: str
+
+
+class AiEssayEvaluationResponse(BaseModel):
+    status: str
+    total_score: float
+    max_score: float
+    grade: str
+    overall_feedback: str
+    criteria_scores: list[EssayCriterionScore]
+    improvements: list[str] = Field(default_factory=list)
+
+
+# AI Analytics Schemas
+
+
+class PerformancePredictionRequest(BaseModel):
+    student_id: int
+    exam_id: int | None = None
+    history: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PerformancePredictionResponse(BaseModel):
+    status: str
+    predicted_score: float
+    confidence: float
+    recommendations: list[str] = Field(default_factory=list)
+
+
+class QuestionQualityRequest(BaseModel):
+    question_content: str
+    options: list[dict[str, str]]
+    correct_answer: str
+    difficulty: str | None = None
+
+
+class QuestionQualityResponse(BaseModel):
+    status: str
+    clarity_score: float
+    difficulty_appropriate: bool
+    suggestions: list[str] = Field(default_factory=list)
+    improvements: dict[str, str] = Field(default_factory=dict)
+
+
+# AI Chat (site bubble)
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(default_factory=list)
+    model: str | None = None
+
+
+class ChatResponse(BaseModel):
+    status: str
+    reply: str
+    model: str
+    usage: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+
+
+class ChatModelsResponse(BaseModel):
+    models: list[str]
+    available: bool

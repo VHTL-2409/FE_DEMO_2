@@ -1,189 +1,169 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
-    <div class="layout-container flex h-full grow flex-col">
-      <TeacherTopHeader active-section="monitoring" />
+  <div class="bg-[var(--ds-bg)] min-h-full">
+    <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
-      <main class="teacher-page-shell relative mx-auto max-w-7xl overflow-x-hidden">
-        <div class="relative mb-6 animate-fade-up">
-          <h1 class="mb-1.5 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">Chọn đề thi đang diễn ra</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400 sm:text-base">Chỉ hiển thị các đề thi đang trong thời gian thi để giám sát theo thời gian thực.</p>
+      <div class="mb-5 ds-animate-fade-up">
+        <div class="mb-2 flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
+          <RouterLink to="/teacher/dashboard" class="flex items-center gap-1 hover:text-[var(--ds-primary)] transition-colors">
+            <LucideIcon name="home" size="16" />
+            Trang chủ
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <RouterLink to="/teacher/live-monitoring" class="flex items-center gap-1 hover:text-[var(--ds-primary)] transition-colors">
+            <LucideIcon name="live_tv" size="16" />
+            Giám sát
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <span class="text-[var(--ds-text)] font-medium">Chọn đề thi</span>
+        </div>
+        <PageHeader
+          title="Giám sát trực tiếp"
+          subtitle="Chọn một đề thi đang trong thời gian thi để giám sát."
+          size="default"
+        />
+      </div>
+
+      <div class="mb-5 ds-animate-fade-up" style="animation-delay: 0.05s">
+        <div class="relative">
+          <LucideIcon name="search" />
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Tìm đề thi theo tiêu đề hoặc mã..."
+            class="ds-input w-full pl-12 pr-4 py-3 rounded-[var(--ds-radius-xl)] text-sm shadow-[var(--ds-shadow-sm)]"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5 ds-animate-fade-up" style="animation-delay: 0.08s">
+        <div v-if="isLoading" class="col-span-full flex flex-col items-center justify-center gap-3 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] py-16 text-center">
+          <LucideIcon name="progress_activity" size="24" />
+          <p class="text-sm text-[var(--ds-text-muted)]">Đang tải danh sách đề thi…</p>
         </div>
 
-        <div class="relative mb-6 flex animate-fade-up-delay flex-col gap-3 md:flex-row md:gap-4">
-          <div class="relative flex-1">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/50">search</span>
-            <input v-model="search" class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="Tìm đề thi theo tiêu đề hoặc mã..." type="text" />
-          </div>
+        <div v-else-if="!filteredExams.length" class="col-span-full">
+          <EmptyState
+            icon="monitoring"
+            title="Không có đề thi đang diễn ra"
+            description="Hiện không có kỳ thi nào trong khung giờ. Thử tìm kiếm khác hoặc quay lại sau."
+            action-label="Mở ngân hàng đề"
+            fill
+            dense
+            @action="goToExamBank"
+          />
         </div>
 
+        <div
+          v-for="exam in filteredExams"
+          :key="exam.id"
+          class="bg-[var(--ds-surface)] rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] border-l-4 border-l-[var(--ds-accent)] shadow-[var(--ds-shadow-sm)] overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--ds-shadow-lg)] cursor-pointer"
+          @click="goToMonitoring(exam)"
+        >
+          <div class="p-5 flex-1">
+            <div class="mb-3 flex items-start justify-between gap-2">
+              <StatusChip :status="exam.statusChip" size="sm" />
+              <span class="text-[11px] font-mono text-[var(--ds-text-muted)]">ID: {{ exam.id }}</span>
+            </div>
+            <h3 class="text-lg font-bold text-[var(--ds-text)] mb-2 leading-snug">{{ exam.title }}</h3>
+            <div class="flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
+              <LucideIcon name="meeting_room" size="16" />
+              {{ exam.location }}
+            </div>
 
-        <div class="relative grid grid-cols-1 gap-4 animate-fade-up-delay md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
-          <div v-if="isLoading" class="col-span-full rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800">
-            <span class="material-symbols-outlined mb-2 inline-block animate-spin text-xl text-primary">progress_activity</span>
-            <p>Đang tải danh sách đề thi…</p>
-          </div>
-
-          <div v-else-if="!filteredExams.length" class="col-span-full">
-            <EmptyState
-              class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40"
-              icon="monitoring"
-              title="Không có đề thi đang diễn ra"
-              description="Hiện không có kỳ thi nào trong khung giờ. Thử tìm kiếm khác hoặc quay lại sau; bạn cũng có thể tạo đề mới từ ngân hàng đề."
-              action-label="Mở ngân hàng đề"
-              dense
-              fill
-              @action="goToExamBank"
-            />
-          </div>
-
-          <div v-for="exam in filteredExams" :key="exam.id" :class="exam.cardBorder" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-primary/5 flex flex-col group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-l-4">
-            <div class="p-6 flex-1">
-              <div class="flex justify-between items-start mb-4">
-                <span :class="exam.statusClass" class="px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">{{ exam.status }}</span>
-                <span class="text-slate-400 text-xs font-mono">ID: {{ exam.id }}</span>
-              </div>
-              <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2 leading-snug">{{ exam.title }}</h3>
-              <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4">
-                <span class="material-symbols-outlined text-base">meeting_room</span>
-                <span>{{ exam.location }}</span>
-              </div>
-              <div class="grid grid-cols-2 gap-4 py-4 border-t border-slate-100 dark:border-slate-700 mt-4">
-                <div>
-                  <p class="text-xs text-slate-400 uppercase font-bold tracking-tighter">{{ exam.leftLabel }}</p>
-                  <div class="flex items-center gap-1 mt-1">
-                    <span class="material-symbols-outlined text-primary text-base">group</span>
-                    <span class="text-lg font-bold text-slate-900 dark:text-white">{{ exam.students }}</span>
-                  </div>
+            <div class="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--ds-border)] pt-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-text-muted)]">{{ exam.leftLabel }}</p>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <LucideIcon name="group" size="16" />
+                  <span class="text-lg font-bold text-[var(--ds-text)]">{{ exam.students }}</span>
                 </div>
-                <div>
-                  <p class="text-xs text-slate-400 uppercase font-bold tracking-tighter">{{ exam.timeLabel }}</p>
-                  <div class="flex items-center gap-1 mt-1">
-                    <span :class="exam.timeIconClass" class="material-symbols-outlined text-base">{{ exam.timeIcon }}</span>
-                    <span class="text-lg font-bold text-slate-900 dark:text-white">{{ exam.timeValue }}</span>
-                  </div>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-text-muted)]">{{ exam.timeLabel }}</p>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <LucideIcon name="schedule" size="16" />
+                  <span class="text-lg font-bold text-[var(--ds-text)]">{{ exam.timeLeft }}</span>
                 </div>
               </div>
             </div>
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700">
-              <button :class="exam.actionClass" class="w-full font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all" type="button" @click="openLiveSession(exam)">
-                <span class="material-symbols-outlined">{{ exam.actionIcon }}</span>
-                {{ exam.actionLabel }}
-              </button>
-            </div>
           </div>
 
-          <div class="border-2 border-dashed border-primary/10 rounded-xl flex flex-col items-center justify-center p-8 text-center bg-transparent min-h-[300px]">
-            <div class="size-16 rounded-full bg-primary/5 flex items-center justify-center mb-4">
-              <span class="material-symbols-outlined text-primary/40 text-4xl">add</span>
-            </div>
-            <h4 class="text-slate-500 dark:text-slate-400 font-bold">Lên lịch đề thi mới</h4>
-            <p class="text-slate-400 text-sm mt-1">Tạo hoặc khởi chạy bài đánh giá mới</p>
+          <div class="border-t border-[var(--ds-border)] px-5 py-3">
             <button
               type="button"
-              @click="goToExamBank"
-              class="mt-6 px-4 py-2 text-primary font-bold hover:bg-primary/5 rounded-lg border border-primary/20 transition-all"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-[var(--ds-radius-lg)] bg-[var(--ds-primary)] py-2 text-sm font-bold text-white transition-all hover:bg-[var(--ds-primary-hover)]"
             >
-              Xem ngân hàng đề
+              <LucideIcon name="monitoring" size="18" />
+              Giám sát
             </button>
           </div>
         </div>
-
-        <div class="relative mt-12 flex justify-center items-center gap-2 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm animate-fade-up-delay">
-          <span class="size-3 rounded-full bg-green-500"></span>
-          <span class="text-sm font-medium">{{ monitoringCards.length }} đề thi đang diễn ra</span>
-        </div>
-      </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
-import { listExams } from '../../services/examService'
 import { useRouter } from 'vue-router'
+import { listExams } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
-import TeacherTopHeader from './TeacherTopHeader.vue'
-import EmptyState from '../shared/EmptyState.vue'
+import PageHeader from '../ui/PageHeader.vue'
+import StatusChip from '../ui/StatusChip.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 const router = useRouter()
-const isDark = ref(false)
-const search = ref('')
-const exams = ref([])
-const isLoading = ref(false)
 const toast = useToast()
-
-const formatDateTime = (value) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString()
-}
-
-const isExamOngoing = (exam, nowMs) => {
-  const startMs = new Date(exam.startTime || '').getTime()
-  const endMs = new Date(exam.endTime || '').getTime()
-  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return false
-  return Boolean(exam.isActive) && startMs <= nowMs && nowMs <= endMs
-}
-
-const monitoringCards = computed(() => {
-  const nowMs = Date.now()
-  return exams.value
-    .filter((exam) => isExamOngoing(exam, nowMs))
-    .map((exam) => ({
-      id: exam.id,
-      examId: exam.id,
-      examCode: exam.code || '',
-      title: exam.title,
-      durationMinutes: exam.durationMinutes,
-      location: exam.description || 'Đề thi trực tuyến',
-      sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Kết thúc: ${formatDateTime(exam.endTime)}`,
-      status: 'Đang hoạt động',
-      statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      students: `${exam.questionCount || 0}`,
-      leftLabel: 'Số câu hỏi',
-      timeLabel: 'Kết thúc',
-      timeIcon: 'timer',
-      timeIconClass: 'text-orange-500',
-      timeValue: formatDateTime(exam.endTime),
-      actionLabel: 'Theo dõi trực tiếp',
-      actionIcon: 'visibility',
-      actionClass: 'bg-primary hover:bg-primary/90 text-white',
-      cardBorder: 'border-l-green-500'
-    }))
-})
+const isLoading = ref(false)
+const exams = ref([])
+const search = ref('')
 
 const filteredExams = computed(() => {
-  const keyword = search.value.trim().toLowerCase()
-  if (!keyword) return monitoringCards.value
-  return monitoringCards.value.filter((exam) =>
-    exam.title.toLowerCase().includes(keyword) || String(exam.examCode || '').toLowerCase().includes(keyword)
-  )
+  const q = search.value.trim().toLowerCase()
+  return exams.value
+    .filter(exam => exam.isActive && exam.startTime && exam.endTime)
+    .filter(exam => {
+      const now = Date.now()
+      const start = new Date(exam.startTime).getTime()
+      const end = new Date(exam.endTime).getTime()
+      return now >= start && now <= end
+    })
+    .filter(exam => !q || exam.title?.toLowerCase().includes(q) || exam.code?.toLowerCase().includes(q))
+    .map(exam => {
+      const now = Date.now()
+      const start = new Date(exam.startTime).getTime()
+      const end = new Date(exam.endTime).getTime()
+      const elapsed = Math.floor((now - start) / 60000)
+      const total = Math.floor((end - start) / 60000)
+      return {
+        id: exam.id,
+        title: exam.title || '—',
+        location: 'Trực tuyến',
+        code: exam.code || '',
+        students: exam.participantCount || 0,
+        timeLeft: `${Math.max(0, total - elapsed)} phút`,
+        leftLabel: 'Đang có mặt',
+        timeLabel: 'Còn lại',
+        statusChip: 'Đang diễn ra'
+      }
+    })
 })
 
-const goToExamBank = () => {
-  router.push('/teacher/exams')
-}
-
-const openLiveSession = (exam) => {
+const goToMonitoring = (exam) => {
   router.push({
     path: '/teacher/live-monitoring/session',
-    query: {
-      examId: exam.examId,
-      title: exam.title,
-      code: exam.examCode || '',
-      meta: exam.sessionMeta,
-      durationMinutes: exam.durationMinutes || ''
-    }
+    query: { examId: exam.id, title: exam.title, code: exam.code }
   })
 }
+
+const goToExamBank = () => router.push('/teacher/exams/list')
 
 const loadExams = async () => {
   isLoading.value = true
   try {
     exams.value = await listExams()
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : 'Không thể tải danh sách đề thi.')
+    toast.error('Không thể tải danh sách đề thi.')
   } finally {
     isLoading.value = false
   }
@@ -192,3 +172,17 @@ const loadExams = async () => {
 onMounted(loadExams)
 </script>
 
+<style scoped>
+.ds-input {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ds-input::placeholder { color: var(--ds-text-muted); }
+.ds-input:focus {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+</style>

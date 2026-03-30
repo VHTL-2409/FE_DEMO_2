@@ -8,7 +8,7 @@
           <div class="staff-page-wrap min-h-0 flex-1 overflow-x-hidden">
           <PageHeader
             class="shrink-0 animate-fade-up [&_.teacher-page-title]:text-[clamp(1.05rem,2.2vw,1.5rem)]"
-            eyebrow="Practice"
+            eyebrow="Luyện tập"
             title="Tạo bài luyện tập (Nhập tệp)"
             subtitle="Tải tệp, chọn số câu và thời lượng để luyện trong một luồng gọn."
           />
@@ -30,31 +30,35 @@
           <div class="relative flex min-h-0 flex-1 flex-col gap-2 animate-fade-up-delay sm:gap-3">
             <div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-2 overflow-x-hidden sm:gap-3">
               <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4 lg:min-h-0">
-                <section class="staff-surface flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
+                <section class="staff-surface relative flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
                   <div class="mb-2 flex shrink-0 items-center gap-2 border-b border-slate-100 pb-2">
-                    <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">upload_file</span>
+                    <LucideIcon name="upload_file" size="16" />
                     <h3 class="text-sm font-bold leading-snug sm:text-base">Tải tệp câu hỏi</h3>
                   </div>
 
                   <div class="flex min-h-0 flex-1 flex-col">
                     <label class="group relative flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 p-2 transition-all hover:border-primary/50 hover:bg-primary/5 sm:p-3">
-                      <input class="absolute inset-0 h-full w-full cursor-pointer opacity-0" type="file" accept=".csv,.xlsx,.pdf,.docx" @change="onFileChange" />
-                      <div class="mb-1.5 rounded-full bg-primary/10 p-2 transition-transform group-hover:scale-105 sm:p-2.5">
-                        <span class="material-symbols-outlined text-2xl text-primary sm:text-3xl">cloud_upload</span>
+                      <input class="absolute inset-0 h-full w-full cursor-pointer opacity-0" type="file" accept=".csv,.xlsx,.pdf,.docx,.json,.md,.markdown" @change="onFileChange" />
+                      <div class="mb-1.5 rounded-full bg-gradient-to-br from-primary/20 to-indigo-500/20 p-2 transition-all group-hover:scale-110 group-hover:shadow-lg sm:p-2.5">
+                        <LucideIcon name="cloud_upload" size="24" class="text-primary" />
                       </div>
                       <h4 class="mb-0.5 text-center text-xs font-semibold sm:text-sm">Chọn hoặc kéo thả tệp</h4>
                       <p class="line-clamp-2 px-1 text-center text-[10px] leading-snug text-slate-500 sm:text-[11px]">{{ FILE_FORMAT_DESC }}</p>
                       <div class="mt-1.5 flex flex-wrap justify-center gap-2 text-[10px] sm:mt-2 sm:text-[11px]">
                         <a :href="getTemplateDownloadUrl('csv')" download class="flex items-center gap-0.5 font-semibold text-primary hover:underline">
-                          <span class="material-symbols-outlined text-sm">download</span>
+                          <LucideIcon name="download" size="14" />
                           CSV
                         </a>
                         <a :href="getTemplateDownloadUrl('xlsx')" download class="flex items-center gap-0.5 font-semibold text-primary hover:underline">
-                          <span class="material-symbols-outlined text-sm">download</span>
+                          <LucideIcon name="download" size="14" />
                           Excel
                         </a>
                       </div>
-                      <p v-if="fileName" class="mt-2 max-w-full truncate px-1 text-center text-xs font-semibold text-primary">{{ fileName }}</p>
+                      <Transition name="fade">
+                        <div v-if="fileName" class="mt-2 max-w-full truncate px-1 text-center text-xs font-semibold text-primary">
+                          {{ fileName }}
+                        </div>
+                      </Transition>
                       <p v-if="selectedFile" class="text-[11px] text-slate-500">Dung lượng: {{ fileSizeLabel }}</p>
                     </label>
                   </div>
@@ -62,7 +66,7 @@
 
                 <section class="staff-surface flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
                   <div class="mb-2 flex shrink-0 items-center gap-2 border-b border-slate-100 pb-2">
-                    <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">analytics</span>
+                    <LucideIcon name="analytics" size="16" />
                     <h3 class="text-sm font-bold leading-snug sm:text-base">Số câu trong tệp</h3>
                   </div>
 
@@ -72,13 +76,13 @@
                         v-if="!selectedFile"
                         class="flex h-full min-h-[5.5rem] flex-col items-center justify-center gap-1.5 px-2 text-center text-slate-400"
                       >
-                        <span class="material-symbols-outlined text-2xl opacity-50 sm:text-3xl">summarize</span>
+                        <LucideIcon name="summarize" size="24" />
                         <p class="text-[11px] font-medium leading-snug text-slate-500 sm:text-xs">Chưa có tệp</p>
                         <p class="max-w-[14rem] text-[10px] leading-snug text-slate-400 sm:text-[11px]">Tải tệp bên trái để xem số câu hợp lệ.</p>
                       </div>
 
                       <div v-else-if="previewLoading" class="flex h-full min-h-[6rem] flex-col items-center justify-center gap-2">
-                        <span class="material-symbols-outlined animate-pulse text-2xl text-primary sm:text-3xl">hourglass_top</span>
+                        <LucideIcon name="hourglass_top" size="24" />
                         <p class="text-xs text-slate-600">Đang đọc tệp…</p>
                       </div>
 
@@ -113,7 +117,7 @@
 
               <section class="staff-surface shrink-0 rounded-2xl p-3 sm:p-4">
                 <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <span class="material-symbols-outlined shrink-0 text-base text-primary sm:text-lg">schedule</span>
+                  <LucideIcon name="schedule" size="16" />
                   <h3 class="text-sm font-bold leading-snug sm:text-base">Thời lượng làm bài</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
@@ -160,7 +164,7 @@
                 >
                   <template v-if="!isCreating">
                     Tạo &amp; bắt đầu
-                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+                    <LucideIcon name="arrow_forward" />
                   </template>
                   <template v-else>Đang xử lý…</template>
                 </button>
@@ -306,3 +310,14 @@ const startPractice = async () => {
   }
 }
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

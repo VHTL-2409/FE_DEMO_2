@@ -12,7 +12,7 @@
           :disabled="loading"
           @click="loadStats"
         >
-          <span class="material-symbols-outlined text-lg" :class="{ 'animate-spin': loading }">refresh</span>
+          <LucideIcon name="refresh" size="18" />
           Làm mới
         </button>
       </template>
@@ -26,7 +26,7 @@
       >
         <div class="mb-3 flex items-start justify-between gap-2">
           <span class="staff-metric-label">{{ card.label }}</span>
-          <span class="material-symbols-outlined rounded-2xl bg-indigo-500/15 p-2 text-indigo-400">{{ card.icon }}</span>
+          <LucideIcon :name="card.icon" />
         </div>
         <p class="staff-metric-value font-mono tabular-nums">{{ formatNum(card.value) }}</p>
       </article>
@@ -48,7 +48,7 @@
             :to="q.to"
             class="staff-surface-muted portal-card-lift group flex flex-col rounded-2xl p-4 text-left transition-colors hover:border-indigo-500/25"
           >
-            <span class="material-symbols-outlined text-2xl text-indigo-400 transition group-hover:text-indigo-300">{{ q.icon }}</span>
+            <LucideIcon :name="q.icon" size="24" />
             <p class="mt-3 text-sm font-semibold text-slate-900 dark:text-white">{{ q.label }}</p>
             <p v-if="q.hint" class="staff-muted-copy mt-1 line-clamp-2 text-xs">{{ q.hint }}</p>
           </RouterLink>
@@ -128,34 +128,72 @@ const buildLineOption = (echarts, series) => ({
   backgroundColor: 'transparent',
   tooltip: {
     trigger: 'axis',
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-    borderColor: 'rgba(99, 102, 241, 0.45)',
-    textStyle: { color: '#e2e8f0' }
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: [12, 16],
+    textStyle: { 
+      color: '#e2e8f0',
+      fontWeight: 600,
+      fontSize: 12
+    },
+    extraCssText: 'box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);'
   },
-  grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
+  grid: { 
+    left: '3%', 
+    right: '4%', 
+    bottom: '3%', 
+    top: '12%', 
+    containLabel: true 
+  },
   xAxis: {
     type: 'category',
     data: series.map((d) => d.date),
-    axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
-    axisLabel: { color: '#94a3b8', fontSize: 11 }
+    axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.3)', width: 2 } },
+    axisLabel: { 
+      color: '#94a3b8', 
+      fontSize: 11,
+      fontWeight: 600
+    },
+    axisTick: { show: false }
   },
   yAxis: {
     type: 'value',
-    splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.12)' } },
-    axisLabel: { color: '#94a3b8', fontSize: 11 }
+    splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.12)', type: 'dashed' } },
+    axisLabel: { color: '#94a3b8', fontSize: 11, fontWeight: 600 }
   },
   series: [
     {
-      name: 'Attempts',
+      name: 'Lượt thi',
       type: 'line',
-      smooth: true,
+      smooth: 0.4,
       symbol: 'circle',
-      symbolSize: 8,
-      lineStyle: { width: 3, color: '#2dd4bf' },
+      symbolSize: 10,
+      animationDuration: 2000,
+      animationEasing: 'elasticOut',
+      lineStyle: { 
+        width: 4, 
+        color: '#2dd4bf',
+        shadowColor: 'rgba(45, 212, 191, 0.4)',
+        shadowBlur: 12
+      },
+      itemStyle: { 
+        color: '#2dd4bf',
+        borderWidth: 3,
+        borderColor: '#0f172a'
+      },
+      emphasis: {
+        scale: true,
+        itemStyle: {
+          shadowColor: 'rgba(45, 212, 191, 0.6)',
+          shadowBlur: 16
+        }
+      },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(45, 212, 191, 0.35)' },
-          { offset: 1, color: 'rgba(45, 212, 191, 0)' }
+          { offset: 0, color: 'rgba(45, 212, 191, 0.4)' },
+          { offset: 1, color: 'rgba(45, 212, 191, 0.02)' }
         ])
       },
       data: series.map((d) => d.count)
@@ -165,16 +203,50 @@ const buildLineOption = (echarts, series) => ({
 
 const buildPieOption = (s) => ({
   backgroundColor: 'transparent',
-  tooltip: { trigger: 'item', backgroundColor: 'rgba(15, 23, 42, 0.92)', borderColor: 'rgba(99, 102, 241, 0.45)' },
-  legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+  tooltip: { 
+    trigger: 'item', 
+    backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: [12, 16],
+    textStyle: { color: '#e2e8f0', fontWeight: 600 },
+    extraCssText: 'box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);'
+  },
+  legend: { 
+    bottom: 10, 
+    textStyle: { color: '#94a3b8', fontWeight: 600 },
+    itemWidth: 18,
+    itemHeight: 12
+  },
   series: [
     {
       type: 'pie',
-      radius: ['42%', '68%'],
+      radius: ['42%', '70%'],
       center: ['50%', '46%'],
       avoidLabelOverlap: true,
-      itemStyle: { borderRadius: 8, borderColor: '#0f172a', borderWidth: 2 },
-      label: { color: '#cbd5e1' },
+      animationDuration: 1500,
+      animationEasing: 'elasticOut',
+      itemStyle: { 
+        borderRadius: 10, 
+        borderColor: '#0f172a', 
+        borderWidth: 3,
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowBlur: 8
+      },
+      label: { 
+        color: '#cbd5e1',
+        fontWeight: 600,
+        fontSize: 12
+      },
+      emphasis: {
+        scale: true,
+        scaleSize: 8,
+        itemStyle: {
+          shadowBlur: 20,
+          shadowColor: 'rgba(0, 0, 0, 0.3)'
+        }
+      },
       data: [
         { value: s.totalTeachers, name: 'Giáo viên', itemStyle: { color: '#818cf8' } },
         { value: s.totalStudents, name: 'Học sinh', itemStyle: { color: '#38bdf8' } },

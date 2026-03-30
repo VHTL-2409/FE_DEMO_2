@@ -7,7 +7,7 @@
     >
       <div class="text-center">
         <div class="size-14 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl">mail</span>
+          <LucideIcon name="mail" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Xác minh email để hoàn tất đăng ký</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">
@@ -41,7 +41,7 @@
               @click="navigate"
             >
               Xác minh ngay
-              <span class="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
+              <LucideIcon name="arrow_forward" size="18" />
             </button>
           </RouterLink>
         </div>
@@ -54,7 +54,7 @@
             :loading="isResending"
             @click="onResend"
           >
-            <span v-if="!isResending" class="material-symbols-outlined text-lg" aria-hidden="true">refresh</span>
+            <LucideIcon name="refresh" v-if="!isResending"  text-lg aria-hidden="true"/>
             {{ isResending ? 'Đang gửi...' : 'Gửi lại email xác minh' }}
           </BaseButton>
           <p v-if="resendMessage" class="text-sm" :class="resendSuccess ? 'text-green-600 dark:text-green-400' : 'text-rose-600 dark:text-rose-400'">

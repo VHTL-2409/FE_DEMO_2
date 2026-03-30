@@ -10,9 +10,7 @@
             :class="typeClass(toast.type)"
           >
             <div class="shrink-0 size-10 rounded-xl flex items-center justify-center" :class="iconBgClass(toast.type)">
-              <span class="material-symbols-outlined text-xl" :class="iconClass(toast.type)">
-                {{ iconName(toast.type) }}
-              </span>
+              <LucideIcon :name="iconName(toast.type)" size="20" :class="iconClass(toast.type)" />
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
               <p v-if="toast.title" class="text-sm font-bold text-slate-900 dark:text-slate-100 mb-0.5">{{ toast.title }}</p>
@@ -24,7 +22,7 @@
               @click="dismissToast(toast.id)"
               aria-label="Đóng thông báo"
             >
-              <span class="material-symbols-outlined text-lg">close</span>
+              <LucideIcon name="close" size="18" />
             </button>
           </div>
         </TransitionGroup>
@@ -35,12 +33,14 @@
 
 <script setup>
 import { computed } from 'vue'
-import { toastService } from '../../services/toastService'
+import { useToastStore } from '../../stores/toastStore'
 
-const toasts = computed(() => toastService.state.toasts)
+const toastStore = useToastStore()
+
+const toasts = computed(() => toastStore.toasts)
 
 const dismissToast = (id) => {
-  toastService.dismiss(id)
+  toastStore.dismiss(id)
 }
 
 const typeClass = (type) => {

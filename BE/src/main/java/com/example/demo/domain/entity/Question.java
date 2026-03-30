@@ -6,7 +6,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "questions")
+@Table(
+        name = "questions",
+        indexes = {
+                @Index(name = "idx_questions_exam_id", columnList = "exam_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

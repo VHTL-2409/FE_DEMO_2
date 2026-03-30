@@ -34,4 +34,5 @@ public class ExamRequest {
     private Boolean monitorRapidQuestionSwitch;
     private Boolean monitorMultiMonitor;
     private Boolean requireCameraMic;
+    private String className;
 }

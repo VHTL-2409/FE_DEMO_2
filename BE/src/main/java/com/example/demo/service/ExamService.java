@@ -34,6 +34,7 @@ import com.example.demo.common.DateTimeUtils;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,10 +99,14 @@ public class ExamService {
 
         if (isTeacher) {
             List<Exam> exams = examRepository.findByCreatedById(currentUser.getId());
-            Map<Long, Long> participantByExam = participantCountsByExamIds(
-                    exams.stream().map(Exam::getId).toList());
+            if (exams.isEmpty()) {
+                return List.of();
+            }
+            List<Long> examIds = exams.stream().map(Exam::getId).toList();
+            Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
+            Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
             return exams.stream()
-                    .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L)))
+                    .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
                     .toList();
         }
 
@@ -113,10 +118,14 @@ public class ExamService {
                 combined.add(exam);
             }
         }
-        Map<Long, Long> participantByExam = participantCountsByExamIds(
-                combined.stream().map(Exam::getId).toList());
+        if (combined.isEmpty()) {
+            return List.of();
+        }
+        List<Long> examIds = combined.stream().map(Exam::getId).toList();
+        Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
+        Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
         return combined.stream()
-                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L)))
+                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
                 .toList();
     }
 
@@ -125,6 +134,18 @@ public class ExamService {
             return Map.of();
         }
         List<Object[]> rows = examAttemptRepository.countDistinctStudentsGroupedByExamIds(examIds);
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private Map<Long, Long> questionCountsByExamIds(List<Long> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = questionRepository.countQuestionsGroupedByExamIds(examIds);
         Map<Long, Long> map = new HashMap<>();
         for (Object[] row : rows) {
             map.put((Long) row[0], (Long) row[1]);
@@ -452,6 +473,114 @@ public class ExamService {
         }
     }
 
+    @Transactional
+    public ExamResponse publishExam(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        exam.setIsActive(true);
+        return toResponse(examRepository.save(exam));
+    }
+
+    @Transactional
+    public ExamResponse unpublishExam(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        exam.setIsActive(false);
+        return toResponse(examRepository.save(exam));
+    }
+
+    @Transactional
+    public ExamResponse archiveExam(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        exam.setIsArchived(true);
+        return toResponse(examRepository.save(exam));
+    }
+
+    @Transactional
+    public ExamResponse unarchiveExam(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        exam.setIsArchived(false);
+        return toResponse(examRepository.save(exam));
+    }
+
+    @Transactional
+    public ExamResponse duplicateExam(Long examId, User actor) {
+        Exam original = requireManageableExam(examId, actor);
+        Exam copy = Exam.builder()
+                .title("Bản sao — " + original.getTitle())
+                .code(generateUniqueExamCode())
+                .description(original.getDescription())
+                .startTime(null)
+                .endTime(null)
+                .timezone(original.getTimezone() != null ? original.getTimezone() : "Asia/Ho_Chi_Minh")
+                .durationMinutes(original.getDurationMinutes())
+                .isActive(false)
+                .isArchived(false)
+                .createdBy(actor)
+                .monitorTabSwitch(original.getMonitorTabSwitch())
+                .monitorBlur(original.getMonitorBlur())
+                .monitorExitFullscreen(original.getMonitorExitFullscreen())
+                .monitorCopyPaste(original.getMonitorCopyPaste())
+                .monitorIdleTime(original.getMonitorIdleTime())
+                .monitorDevtools(original.getMonitorDevtools())
+                .monitorDuplicateIp(original.getMonitorDuplicateIp())
+                .monitorFastSubmit(original.getMonitorFastSubmit())
+                .monitorRightClick(original.getMonitorRightClick())
+                .monitorPrintScreen(original.getMonitorPrintScreen())
+                .monitorRapidQuestionSwitch(original.getMonitorRapidQuestionSwitch())
+                .monitorMultiMonitor(original.getMonitorMultiMonitor())
+                .requireCameraMic(original.getRequireCameraMic())
+                .practice(false)
+                .build();
+        examRepository.save(copy);
+        // Copy questions
+        List<Question> originalQs = questionRepository.findByExam(original);
+        for (Question oq : originalQs) {
+            Question nq = Question.builder()
+                    .exam(copy)
+                    .content(oq.getContent())
+                    .type(oq.getType())
+                    .scoreWeight(oq.getScoreWeight())
+                    .options(oq.getOptions())
+                    .correctAnswer(oq.getCorrectAnswer())
+                    .difficulty(oq.getDifficulty())
+                    .metadata(oq.getMetadata())
+                    .attachments(oq.getAttachments())
+                    .build();
+            questionRepository.save(nq);
+        }
+        return toResponse(copy);
+    }
+
+    @Transactional
+    public List<ExamResponse> bulkPublish(List<Long> examIds, User actor) {
+        List<ExamResponse> results = new ArrayList<>();
+        for (Long id : examIds) {
+            try {
+                results.add(publishExam(id, actor));
+            } catch (Exception ignored) { }
+        }
+        return results;
+    }
+
+    @Transactional
+    public List<ExamResponse> bulkArchive(List<Long> examIds, User actor) {
+        List<ExamResponse> results = new ArrayList<>();
+        for (Long id : examIds) {
+            try {
+                results.add(archiveExam(id, actor));
+            } catch (Exception ignored) { }
+        }
+        return results;
+    }
+
+    @Transactional
+    public void bulkDelete(List<Long> examIds, User actor) {
+        for (Long id : examIds) {
+            try {
+                deleteExam(id, actor);
+            } catch (Exception ignored) { }
+        }
+    }
+
     public Exam requireExam(Long examId) {
         return examRepository.findById(examId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
@@ -568,10 +697,15 @@ public class ExamService {
     }
 
     private ExamResponse toResponse(Exam exam) {
-        return toResponse(exam, examAttemptRepository.countDistinctStudentsByExamId(exam.getId()));
+        return toResponse(exam, examAttemptRepository.countDistinctStudentsByExamId(exam.getId()),
+                questionRepository.countByExam(exam));
     }
 
     private ExamResponse toResponse(Exam exam, long participantCount) {
+        return toResponse(exam, participantCount, questionRepository.countByExam(exam));
+    }
+
+    private ExamResponse toResponse(Exam exam, long participantCount, long questionCount) {
         return ExamResponse.builder()
                 .id(exam.getId())
                 .code(exam.getCode())
@@ -582,8 +716,10 @@ public class ExamService {
                 .timezone(exam.getTimezone() != null ? exam.getTimezone() : "Asia/Ho_Chi_Minh")
                 .durationMinutes(exam.getDurationMinutes())
                 .isActive(exam.getIsActive())
+                .isArchived(Boolean.TRUE.equals(exam.getIsArchived()))
+                .className(exam.getClassName())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())
-                .questionCount(questionRepository.countByExam(exam)) // We keep this simple count query per row
+                .questionCount(questionCount)
                 .participantCount(participantCount)
                 .monitorTabSwitch(exam.getMonitorTabSwitch())
                 .monitorBlur(exam.getMonitorBlur())

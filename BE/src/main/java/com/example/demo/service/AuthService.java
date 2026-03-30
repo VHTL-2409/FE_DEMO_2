@@ -59,6 +59,14 @@ public class AuthService {
             throw new ApiException(HttpStatus.CONFLICT, "Email '" + request.getEmail() + "' is already registered.");
         }
 
+        String rawPassword = request.getPassword();
+        if (rawPassword == null || rawPassword.trim().length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải ít nhất 8 ký tự.");
+        }
+        if (!rawPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
+        }
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -121,8 +129,11 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getCurrentPassword(), stored.getPassword())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Sai MK");
         }
-        if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 6) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "MK mới phải ít nhất 6 ký tự");
+        if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 8 ký tự và chứa cả chữ hoa, chữ thường và số.");
+        }
+        if (!request.getNewPassword().matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
         }
 
         stored.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
@@ -196,8 +207,11 @@ public class AuthService {
         if (token == null || token.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Token không hợp lệ.");
         }
-        if (newPassword == null || newPassword.trim().length() < 6) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 6 ký tự.");
+        if (newPassword == null || newPassword.trim().length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 8 ký tự.");
+        }
+        if (!newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
         }
         PasswordResetToken resetToken = resetTokenRepository
                 .findByTokenAndExpiresAtAfter(token.trim(), Instant.now())

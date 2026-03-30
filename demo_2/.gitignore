@@ -1,3 +1,6 @@
 node_modules
 dist
 .env
+
+# AI multi-key secrets (chứa API key — không commit)
+secrets/

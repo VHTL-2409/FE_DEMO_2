@@ -35,7 +35,7 @@
           class="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200"
           @click="$emit('resolve', issue.id ?? issue.key)"
         >
-          <span class="material-symbols-outlined text-base">task_alt</span>
+          <LucideIcon name="task_alt" size="16" />
           Đánh dấu đã xử lý
         </button>
       </article>
@@ -64,3 +64,4 @@ const badgeClass = (severity) => {
   return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
 }
 </script>
+

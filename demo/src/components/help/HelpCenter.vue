@@ -6,7 +6,7 @@
       >
         <RouterLink to="/" class="flex items-center gap-3 text-primary transition-opacity hover:opacity-90">
           <div class="size-9 flex items-center justify-center bg-primary text-white rounded-lg shadow-lg shadow-primary/20">
-            <span class="material-symbols-outlined text-xl">menu_book</span>
+            <LucideIcon name="menu_book" />
           </div>
           <div>
             <span class="text-base font-bold leading-tight">EduExam</span>
@@ -58,21 +58,21 @@
               to="/login"
               class="group rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-soft transition-all duration-200 hover:border-primary/40 hover:shadow-card-hover portal-focus dark:border-slate-700/80 dark:bg-slate-900/50"
             >
-              <span class="material-symbols-outlined text-primary text-2xl mb-2">login</span>
+              <LucideIcon name="login" size="24" />
               <h3 class="font-bold text-slate-900 dark:text-white mb-1">Đăng nhập</h3>
             </RouterLink>
             <RouterLink
               to="/register"
               class="group rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-soft transition-all duration-200 hover:border-primary/40 hover:shadow-card-hover portal-focus dark:border-slate-700/80 dark:bg-slate-900/50"
             >
-              <span class="material-symbols-outlined text-primary text-2xl mb-2">person_add</span>
+              <LucideIcon name="person_add" size="24" />
               <h3 class="font-bold text-slate-900 dark:text-white mb-1">Tạo tài khoản</h3>
             </RouterLink>
             <a
               href="mailto:support@examportal.edu"
               class="group rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-soft transition-all duration-200 hover:border-primary/40 hover:shadow-card-hover portal-focus dark:border-slate-700/80 dark:bg-slate-900/50"
             >
-              <span class="material-symbols-outlined text-primary text-2xl mb-2">mail</span>
+              <LucideIcon name="mail" size="24" />
               <h3 class="font-bold text-slate-900 dark:text-white mb-1">Liên hệ</h3>
               <p class="text-sm text-slate-500 dark:text-slate-400">support@examportal.edu</p>
             </a>
@@ -80,7 +80,7 @@
 
           <div v-show="activeHelpTab === 'faq'" class="mb-8">
             <h2 class="mb-4 flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
-              <span class="material-symbols-outlined text-primary">quiz</span>
+              <LucideIcon name="quiz" />
               Câu hỏi thường gặp
             </h2>
             <div class="space-y-3">
@@ -93,7 +93,7 @@
                   class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-slate-900 marker:content-none dark:text-white [&::-webkit-details-marker]:hidden"
                 >
                   <span>{{ item.q }}</span>
-                  <span class="material-symbols-outlined shrink-0 text-slate-400 transition-transform group-open:rotate-180">expand_more</span>
+                  <LucideIcon name="expand_more" />
                 </summary>
                 <div class="border-t border-slate-100 px-5 pb-4 pt-3 text-sm leading-relaxed text-slate-600 dark:border-slate-800/80 dark:text-slate-400">
                   {{ item.a }}
@@ -105,7 +105,7 @@
           <div v-show="activeHelpTab === 'student'" class="mb-8">
             <div class="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-primary/[0.06] to-transparent p-6 dark:border-slate-700/80 dark:from-primary/10 sm:p-8">
               <h3 class="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-                <span class="material-symbols-outlined text-primary">school</span>
+                <LucideIcon name="school" />
                 Dành cho học sinh
               </h3>
               <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
@@ -120,7 +120,7 @@
           <div v-show="activeHelpTab === 'teacher'" class="mb-8">
             <div class="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-emerald-500/[0.06] to-transparent p-6 dark:border-slate-700/80 dark:from-emerald-500/10 sm:p-8">
               <h3 class="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-                <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">co_present</span>
+                <LucideIcon name="co_present" />
                 Dành cho giáo viên
               </h3>
               <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
@@ -136,7 +136,7 @@
               href="mailto:support@examportal.edu?subject=EduExam%20-%20Hỗ%20trợ"
               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
             >
-              <span class="material-symbols-outlined text-lg">outgoing_mail</span>
+              <LucideIcon name="outgoing_mail" size="18" />
               Gửi yêu cầu hỗ trợ
             </a>
           </div>

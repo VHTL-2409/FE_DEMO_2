@@ -64,4 +64,14 @@ public class ImportController {
         importJobService.cancel(jobId, currentUserService.requireCurrentUser());
         return ApiResponse.success(null, "Đã hủy import job");
     }
+
+    @PostMapping("/from-azota")
+    public ApiResponse<ImportJobUploadResponse> uploadFromAzota(
+            @Valid @RequestBody ImportFromAzotaRequest request,
+            @RequestParam(value = "examId", required = false) Long examId
+    ) {
+        User actor = currentUserService.requireCurrentUser();
+        Exam exam = examId == null ? null : examService.requireManageableExam(examId, actor);
+        return ApiResponse.success(importJobService.uploadFromAzota(actor, exam, request));
+    }
 }

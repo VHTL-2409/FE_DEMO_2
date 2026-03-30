@@ -33,7 +33,13 @@ public class FormatDetector {
         if ("docx".equals(fileType)) {
             return new DetectedFormat(fileType, "docx-paragraphs", null, null);
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ CSV, XLSX, PDF và DOCX");
+        if ("json".equals(fileType)) {
+            return new DetectedFormat(fileType, "json-array", null, null);
+        }
+        if ("md".equals(fileType) || "markdown".equals(fileType)) {
+            return new DetectedFormat(fileType, "markdown-text", null, null);
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ CSV, XLSX, PDF, DOCX, JSON và Markdown");
     }
 
     public String extensionOf(String fileName) {

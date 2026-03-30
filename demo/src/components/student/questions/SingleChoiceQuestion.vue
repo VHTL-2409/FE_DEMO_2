@@ -3,8 +3,7 @@
     <label
       v-for="option in normalizedOptions"
       :key="option.id"
-      :class="modelValue === option.id ? activeClass : idleClass"
-      class="group relative flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 sm:p-5"
+      :class="[modelValue === option.id ? activeClass : idleClass, 'group relative flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 sm:p-5']"
     >
       <input
         :checked="modelValue === option.id"

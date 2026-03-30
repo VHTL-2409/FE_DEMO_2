@@ -5,7 +5,7 @@
         <header class="flex items-center justify-between border-b border-primary/10 px-6 py-4 lg:px-40 bg-white dark:bg-background-dark">
           <div class="flex items-center gap-3 text-primary">
             <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white">
-              <span class="material-symbols-outlined text-xl">school</span>
+              <LucideIcon name="school" />
             </div>
             <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-tight">EduPlatform</h2>
           </div>
@@ -25,7 +25,7 @@
                 @click="selectRole('STUDENT')"
               >
                 <div class="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                  <span class="material-symbols-outlined text-2xl">school</span>
+                  <LucideIcon name="school" size="24" />
                 </div>
                 <h3 class="text-lg font-bold mb-2">Học sinh</h3>
               </button>
@@ -37,7 +37,7 @@
                 @click="selectRole('TEACHER')"
               >
                 <div class="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                  <span class="material-symbols-outlined text-2xl">co_present</span>
+                  <LucideIcon name="co_present" size="24" />
                 </div>
                 <h3 class="text-lg font-bold mb-2">Giáo viên</h3>
               </button>

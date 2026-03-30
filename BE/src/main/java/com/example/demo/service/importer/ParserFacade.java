@@ -44,6 +44,14 @@ public class ParserFacade {
             case "xlsx" -> sourceMetadata.put("sourceRows", xlsxExtractor.readRows(file).size());
             case "pdf" -> sourceMetadata.put("rawTextLength", pdfTextExtractor.extractText(file).length());
             case "docx" -> sourceMetadata.put("rawTextLength", docxExtractor.extractText(file).length());
+            case "json" -> sourceMetadata.put("fileSizeBytes", file.getSize());
+            case "md", "markdown" -> {
+                try {
+                    sourceMetadata.put("rawTextLength", new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8).length());
+                } catch (java.io.IOException e) {
+                    sourceMetadata.put("rawTextLength", 0);
+                }
+            }
             default -> {
             }
         }

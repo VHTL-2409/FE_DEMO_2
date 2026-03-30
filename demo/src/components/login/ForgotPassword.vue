@@ -7,7 +7,7 @@
     >
       <div class="text-center mb-8">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-primary text-3xl">lock_reset</span>
+          <LucideIcon name="lock_reset" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Quên mật khẩu</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">Nhập email đăng ký để nhận link đặt lại mật khẩu qua Gmail</p>
@@ -21,7 +21,7 @@
             type="email"
             required
             autocomplete="email"
-            placeholder="your-email@gmail.com"
+            placeholder="email-cua-ban@gmail.com"
             :hint-id="hintId"
             :error-id="errorId"
           />
@@ -42,7 +42,7 @@
         </div>
         <div v-else class="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
           <p class="text-green-800 dark:text-green-200 text-sm font-medium flex items-center gap-2">
-            <span class="material-symbols-outlined text-xl">mark_email_read</span>
+            <LucideIcon name="mark_email_read" />
             Đã gửi email. Vui lòng kiểm tra hộp thư (kể cả thư mục spam).
           </p>
         </div>

@@ -101,6 +101,48 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     }
   }
 
+  const roomsGroupedByExam = computed(() => {
+    const groups = {}
+    for (const card of cards.value) {
+      const examId = card.examId || 'unknown'
+      if (!groups[examId]) {
+        groups[examId] = []
+      }
+      groups[examId].push(card)
+    }
+    return groups
+  })
+
+  const alertsBySeverity = computed(() => {
+    return {
+      CRITICAL: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'CRITICAL'),
+      HIGH_RISK: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'HIGH_RISK'),
+      SUSPICIOUS: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'SUSPICIOUS'),
+      CLEAN: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'CLEAN')
+    }
+  })
+
+  const connectionHealth = computed(() => {
+    const total = cards.value.length
+    if (total === 0) return { online: 0, offline: 0, percent: 100, level: 'unknown' }
+    const online = cards.value.filter(c => {
+      const s = String(c.status || '').toUpperCase()
+      return s === 'ACTIVE' || s === 'IN_PROGRESS'
+    }).length
+    const offline = total - online
+    const percent = Math.round((online / total) * 100)
+    let level = 'healthy'
+    if (percent < 50) level = 'critical'
+    else if (percent < 80) level = 'degraded'
+    return { online, offline, total, percent, level }
+  })
+
+  const flagStats = computed(() => {
+    const flagged = cards.value.filter(c => Number(c.riskScore || 0) > 0 || c.suspicious).length
+    const critical = cards.value.filter(c => Number(c.riskScore || 0) >= 81).length
+    return { flagged, critical }
+  })
+
   return {
     selectedExamId,
     cards,
@@ -110,6 +152,10 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     lastUpdatedAt,
     filters,
     visibleCards,
+    roomsGroupedByExam,
+    alertsBySeverity,
+    connectionHealth,
+    flagStats,
     setSelectedExam,
     setCards,
     upsertCard,

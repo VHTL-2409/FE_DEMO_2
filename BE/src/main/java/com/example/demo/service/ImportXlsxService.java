@@ -101,7 +101,26 @@ public class ImportXlsxService {
                 throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
             }
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF và DOCX");
+        if ("json".equals(extension)) {
+            validateFile(file, "json");
+            try {
+                return parseQuestionsFromJson(exam, file);
+            } catch (IOException ex) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file JSON");
+            } catch (RuntimeException ex) {
+                throw mapImportRuntimeException(ex, "Định dạng JSON không hợp lệ");
+            }
+        }
+        if ("md".equals(extension) || "markdown".equals(extension)) {
+            validateFile(file, extension);
+            try {
+                String text = new String(file.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                return parseQuestionsFromMarkdown(exam, text);
+            } catch (IOException ex) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Markdown");
+            }
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF, DOCX, JSON và Markdown");
     }
 
     public int countQuestions(MultipartFile file) {
@@ -134,14 +153,14 @@ public class ImportXlsxService {
                     continue;
                 }
 
-                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question", "cauhoi", "noidung");
-                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona", "dapana");
-                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb", "dapanb");
-                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc", "dapanc");
-                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond", "dapand");
-                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer", "dapandung");
-                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points", "diem");
-                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty", "domkho");
+                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question", "cauhoi", "noidung", "cauho i");
+                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona", "dapana", "dapanA", "dapan", "dapan a");
+                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb", "dapanb", "dapanB", "dapan", "dapan b");
+                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc", "dapanc", "dapanC", "dapan", "dapan c");
+                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond", "dapand", "dapanD", "dapan", "dapan d");
+                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer", "dapandung", "dapan dung", "dapan d", "correctanswer03");
+                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points", "diem", "diemso", "diem so");
+                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty", "domkho", "do kho");
 
                 if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
                     try {
@@ -181,14 +200,14 @@ public class ImportXlsxService {
                 CSVRecord record = records.get(index);
                 int rowNumber = index + 1;
 
-                String content = csvCellByHeader(record, headerIndexes, 0, "content", "question");
-                String optionA = csvCellByHeader(record, headerIndexes, 1, "optiona");
-                String optionB = csvCellByHeader(record, headerIndexes, 2, "optionb");
-                String optionC = csvCellByHeader(record, headerIndexes, 3, "optionc");
-                String optionD = csvCellByHeader(record, headerIndexes, 4, "optiond");
-                String correctAnswer = csvCellByHeader(record, headerIndexes, 5, "correctanswer");
-                String scoreCell = csvCellByHeader(record, headerIndexes, 6, "scoreweight", "points");
-                String difficulty = csvCellByHeader(record, headerIndexes, 7, "difficulty");
+                String content = csvCellByHeader(record, headerIndexes, 0, "content", "question", "cauhoi", "noidung");
+                String optionA = csvCellByHeader(record, headerIndexes, 1, "optiona", "option", "dapan", "dapanA");
+                String optionB = csvCellByHeader(record, headerIndexes, 2, "optionb", "dapanb", "dapanB");
+                String optionC = csvCellByHeader(record, headerIndexes, 3, "optionc", "dapanc", "dapanC");
+                String optionD = csvCellByHeader(record, headerIndexes, 4, "optiond", "dapand", "dapanD");
+                String correctAnswer = csvCellByHeader(record, headerIndexes, 5, "correctanswer", "correctanswer03", "dapandung");
+                String scoreCell = csvCellByHeader(record, headerIndexes, 6, "scoreweight", "points", "diem", "diemso");
+                String difficulty = csvCellByHeader(record, headerIndexes, 7, "difficulty", "domkho");
 
                 addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
                         difficulty, rowNumber);
@@ -199,6 +218,148 @@ public class ImportXlsxService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read csv file");
         } catch (RuntimeException ex) {
             throw mapImportRuntimeException(ex, "Invalid csv template format");
+        }
+    }
+
+    /**
+     * Parse questions from JSON file.
+     * Supported schemas:
+     *   [{ "content": "...", "optionA": "...", "optionB": "...", "optionC": "...",
+     *       "optionD": "...", "correctAnswer": "A", "scoreWeight": 1.0, "difficulty": "MEDIUM" }]
+     *   [{ "content": "...", "options": [{ "id": "A", "text": "..." }, ...],
+     *       "correctAnswer": "A", "type": "SINGLE_CHOICE" }]
+     *   [{ "content": "...", "correctAnswer": "Essay answer text", "type": "ESSAY" }]
+     */
+    @SuppressWarnings("unchecked")
+    private List<Question> parseQuestionsFromJson(Exam exam, MultipartFile file) throws IOException {
+        String json = new String(file.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        List<Question> questions = new ArrayList<>();
+
+        List<Map<String, Object>> root;
+        try {
+            root = objectMapper.readValue(json, List.class);
+        } catch (JsonProcessingException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "JSON không hợp lệ. Đảm bảo file có dạng: [ { \"content\": \"...\", ... }, ... ]");
+        }
+
+        if (root == null || root.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File JSON trống");
+        }
+
+        for (int i = 0; i < root.size(); i++) {
+            Map<String, Object> item = root.get(i);
+            String content = item.get("content") != null ? item.get("content").toString().trim() : "";
+            if (content.isBlank()) continue;
+
+            String correctAnswer = item.get("correctAnswer") != null ? item.get("correctAnswer").toString().trim() : "";
+            if (correctAnswer.isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Thiếu correctAnswer ở phần tử thứ " + (i + 1));
+            }
+
+            String type = item.get("type") != null ? item.get("type").toString().toUpperCase(Locale.ROOT) : "SINGLE_CHOICE";
+            boolean isEssay = type.contains("ESSAY") || type.contains("Tự luận") || type.contains("LONG");
+
+            String optionA = "", optionB = "", optionC = "", optionD = "";
+            String scoreCell = "1.0";
+            String difficulty = null;
+
+            if (!isEssay) {
+                if (item.containsKey("options") && item.get("options") instanceof List<?> optsList) {
+                    List<Map<String, Object>> options = (List<Map<String, Object>>) (List<?>) optsList;
+                    for (Object opt : options) {
+                        if (!(opt instanceof Map)) continue;
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> optMap = (Map<String, Object>) opt;
+                        String letter = optMap.get("id") != null ? optMap.get("id").toString().toUpperCase(Locale.ROOT) : "";
+                        String text = optMap.get("text") != null ? optMap.get("text").toString() : "";
+                        switch (letter) {
+                            case "A" -> optionA = text;
+                            case "B" -> optionB = text;
+                            case "C" -> optionC = text;
+                            case "D" -> optionD = text;
+                        }
+                    }
+                } else {
+                    optionA = item.get("optionA") != null ? item.get("optionA").toString() : "";
+                    optionB = item.get("optionB") != null ? item.get("optionB").toString() : "";
+                    optionC = item.get("optionC") != null ? item.get("optionC").toString() : "";
+                    optionD = item.get("optionD") != null ? item.get("optionD").toString() : "";
+                }
+            }
+
+            if (item.get("scoreWeight") != null) {
+                scoreCell = item.get("scoreWeight").toString();
+            }
+            if (item.get("difficulty") != null) {
+                difficulty = item.get("difficulty").toString();
+            }
+
+            if (isEssay) {
+                // Essay: correctAnswer là text tự do
+                Question question = Question.builder()
+                        .exam(exam)
+                        .content(content)
+                        .type(QuestionType.ESSAY)
+                        .scoreWeight(parseDoubleSafe(scoreCell, 1.0, i + 1))
+                        .correctAnswer(correctAnswer)
+                        .difficulty(normalizeDifficulty(difficulty))
+                        .build();
+                questions.add(question);
+            } else {
+                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD,
+                        correctAnswer, scoreCell, difficulty, i + 1);
+            }
+        }
+
+        if (questions.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Không tìm thấy câu hỏi hợp lệ trong JSON. Kiểm tra xem có thiếu content hoặc correctAnswer không.");
+        }
+        return questions;
+    }
+
+    /**
+     * Parse questions from Markdown text.
+     * Supported format:
+     *   ## Câu 1: Nội dung câu hỏi?
+     *   A) Đáp án A
+     *   B) Đáp án B
+     *   C) Đáp án C
+     *   D) Đáp án D
+     *   Đáp án: A
+     *
+     *   ### Câu 2: Câu hỏi tiếp?
+     *   A) ...
+     *   ...
+     *   Đáp án: B
+     */
+    private List<Question> parseQuestionsFromMarkdown(Exam exam, String markdownText) {
+        if (markdownText == null || markdownText.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File Markdown trống");
+        }
+        // Merge markdown tables / headings into a clean text block first
+        String text = markdownText
+                .replaceAll("(?m)^[\\|#].*$", "")       // remove table lines and separators
+                .replaceAll("(?m)^={3,}$", "")          // remove markdown separators
+                .replaceAll("(?m)^#{1,6}\\s+", "")        // strip heading markers: # ## ### etc.
+                .replaceAll("(?m)^[*_]{1,3}([^*_]+)[*_]{1,3}$", "$1") // strip bold/italic
+                .replaceAll("(?m)\\|\\s*", " ")           // cells in table row → space
+                .trim();
+
+        // Delegate to the existing text parser which already handles:
+        // "Câu N. content | A) B) C) D) | Đáp án: A"
+        return parseQuestionsFromText(exam, text);
+    }
+
+    private double parseDoubleSafe(String value, double fallback, int rowNumber) {
+        if (value == null || value.isBlank()) return fallback;
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Giá trị scoreWeight không hợp lệ tại phần tử thứ " + rowNumber + ": " + value);
         }
     }
 
@@ -251,6 +412,11 @@ public class ImportXlsxService {
         if (rawText == null || rawText.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File trống hoặc không có nội dung");
         }
+        String trimmed = rawText.trim();
+        if (trimmed.length() < 50) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "File PDF/Word có thể chứa hình ảnh thay vì văn bản có thể đọc. Vui lòng dùng file đã OCR hoặc file có text extractable.");
+        }
         String normalized = rawText.replace("\r\n", "\n").replace("\r", "\n");
         List<Question> questions = new ArrayList<>();
         List<String> blocks = splitQuestionBlocks(normalized);
@@ -268,7 +434,7 @@ public class ImportXlsxService {
 
         if (questions.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "Không tìm thấy câu hỏi hợp lệ. Định dạng: Câu N. nội dung | A) B) C) D) | Đáp án: A");
+                    "Không tìm thấy câu hỏi hợp lệ. Định dạng yêu cầu: Câu 1. nội dung | A) đáp án | B) đáp án | C) đáp án | D) đáp án | Đáp án: A");
         }
 
         return questions;
@@ -276,7 +442,7 @@ public class ImportXlsxService {
 
     private List<String> splitQuestionBlocks(String text) {
         List<String> blocks = new ArrayList<>();
-        Pattern startPattern = Pattern.compile("(?m)^(?:Câu\\s+)?(\\d+)[\\.\\)]\\s");
+        Pattern startPattern = Pattern.compile("(?m)^(?:Câu\\s+)?(\\d+)[\\.\\)\\s]");
         Matcher matcher = startPattern.matcher(text);
         int lastStart = -1;
         while (matcher.find()) {
@@ -545,6 +711,9 @@ public class ImportXlsxService {
         if (normalized.endsWith(".csv")) return "csv";
         if (normalized.endsWith(".pdf")) return "pdf";
         if (normalized.endsWith(".docx")) return "docx";
+        if (normalized.endsWith(".json")) return "json";
+        if (normalized.endsWith(".md")) return "md";
+        if (normalized.endsWith(".markdown")) return "markdown";
         return "";
     }
 

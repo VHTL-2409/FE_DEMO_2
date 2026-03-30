@@ -4,6 +4,7 @@ import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.assignment.NewSessionRequest;
 import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
+import com.example.demo.api.dto.exam.BulkExamRequest;
 import com.example.demo.api.dto.exam.PracticeExamRequest;
 import com.example.demo.service.AnswerSimilarityService;
 import com.example.demo.service.CurrentUserService;
@@ -107,5 +108,62 @@ public class ExamController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<com.example.demo.api.dto.exam.QuestionWrongStatsItem>> questionWrongStats(@PathVariable Long examId) {
         return ApiResponse.success(examService.getQuestionWrongStats(examId, currentUserService.requireCurrentUser()));
+    }
+
+    @PatchMapping("/{examId}/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<ExamResponse> publish(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.publishExam(examId, user));
+    }
+
+    @PatchMapping("/{examId}/unpublish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<ExamResponse> unpublish(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.unpublishExam(examId, user));
+    }
+
+    @PatchMapping("/{examId}/archive")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<ExamResponse> archive(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.archiveExam(examId, user));
+    }
+
+    @PatchMapping("/{examId}/unarchive")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<ExamResponse> unarchive(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.unarchiveExam(examId, user));
+    }
+
+    @PostMapping("/{examId}/duplicate")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<ExamResponse> duplicate(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.duplicateExam(examId, user));
+    }
+
+    @PostMapping("/bulk/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<List<ExamResponse>> bulkPublish(@Valid @RequestBody BulkExamRequest request) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.bulkPublish(request.getExamIds(), user));
+    }
+
+    @PostMapping("/bulk/archive")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<List<ExamResponse>> bulkArchive(@Valid @RequestBody BulkExamRequest request) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.bulkArchive(request.getExamIds(), user));
+    }
+
+    @PostMapping("/bulk/delete")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<Void> bulkDelete(@Valid @RequestBody BulkExamRequest request) {
+        var user = currentUserService.requireCurrentUser();
+        examService.bulkDelete(request.getExamIds(), user);
+        return ApiResponse.success(null, "Đã xóa các đề thi được chọn.");
     }
 }

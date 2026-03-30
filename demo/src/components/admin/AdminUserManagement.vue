@@ -7,7 +7,7 @@
       class="staff-surface rounded-[1.5rem] p-4 sm:p-5 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center"
     >
       <div class="relative flex-1 max-w-xl">
-        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xl pointer-events-none">search</span>
+        <LucideIcon name="search" />
         <input
           v-model="searchInput"
           type="search"
@@ -48,7 +48,7 @@
           :disabled="loading"
           @click="load"
         >
-          <span class="material-symbols-outlined text-lg" :class="{ 'animate-spin': loading }">refresh</span>
+          <LucideIcon name="refresh" size="18" />
           Làm mới
         </button>
       </div>
@@ -104,7 +104,7 @@
                     class="staff-action-btn staff-action-btn-primary mr-1"
                     @click="openDetail(row)"
                   >
-                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    <LucideIcon name="visibility" size="16" />
                     Chi tiết
                   </button>
                   <button
@@ -112,7 +112,7 @@
                     class="staff-action-btn staff-action-btn-neutral text-rose-600 dark:text-rose-400"
                     @click="confirmDelete(row)"
                   >
-                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                    <LucideIcon name="delete" size="16" />
                     Xóa
                   </button>
                 </td>
@@ -171,7 +171,7 @@
               class="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
               @click="closeDetail"
             >
-              <span class="material-symbols-outlined">close</span>
+              <LucideIcon name="close" />
             </button>
           </div>
           <div v-if="detailLoading" class="px-5 py-12 text-center text-slate-400">Đang tải…</div>

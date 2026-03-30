@@ -7,7 +7,7 @@
     >
       <div class="text-center mb-8">
         <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span class="material-symbols-outlined text-primary text-3xl">key</span>
+          <LucideIcon name="key" size="30" />
         </div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Đặt lại mật khẩu</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">Nhập mật khẩu mới (ít nhất 6 ký tự)</p>

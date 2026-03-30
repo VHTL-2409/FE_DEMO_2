@@ -1,89 +1,92 @@
 <template>
-  <div class="admin-shell staff-shell-surface dark flex h-dvh max-h-dvh min-h-0 w-full flex-1 flex-col overflow-hidden text-slate-100 selection:bg-indigo-500/20">
-    <header class="staff-topbar sticky top-0 z-50 shrink-0">
-      <div class="w-full px-4 sm:px-6 lg:px-10">
-        <div class="flex min-h-[4.6rem] flex-col justify-center gap-3 py-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <div class="staff-brand-mark flex size-11 items-center justify-center rounded-2xl text-sm font-black text-white">
-                A
-              </div>
-              <div class="min-w-0">
-                <p class="truncate text-[1.08rem] font-black tracking-[-0.03em] text-slate-900 dark:text-white">EduExam Admin</p>
-                <p class="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Control plane · users · exams · analytics
-                </p>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 sm:gap-3">
-              <div class="staff-user-pill hidden items-center gap-3 rounded-xl px-3 py-2 sm:flex">
-                <div class="text-right">
-                  <p class="text-sm font-bold text-slate-900 dark:text-white">Quản trị viên</p>
-                  <p class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                    Internal staff
-                  </p>
-                </div>
-                <div class="staff-brand-mark flex size-10 items-center justify-center rounded-2xl text-sm font-black text-white">A</div>
-              </div>
-              <button
-                type="button"
-                class="staff-action-btn staff-action-btn-neutral gap-2"
-                @click="logout"
-              >
-                <span class="material-symbols-outlined text-lg">logout</span>
-                <span class="hidden sm:inline">Đăng xuất</span>
-              </button>
-            </div>
-          </div>
-
-          <nav class="staff-nav-scroller -mx-1 flex items-center gap-2 overflow-x-auto px-1">
-            <RouterLink
-              v-for="link in navLinks"
-              :key="link.to"
-              :to="link.to"
-              class="staff-nav-link rounded-xl px-3 py-2 text-sm font-semibold"
-              active-class="is-active"
-            >
-              <span class="inline-flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px]">{{ link.icon }}</span>
-                {{ link.label }}
-              </span>
-            </RouterLink>
-          </nav>
-        </div>
-      </div>
-    </header>
-
-    <div class="admin-route-host relative z-10 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden px-4 py-5 sm:px-6 md:py-6 lg:px-10">
-      <RouterView />
-    </div>
+  <div class="admin-shell dark min-h-full">
+    <AppShell
+      layout="admin"
+      :active-section="activeSection"
+      :sidebar-items="adminSidebarItems"
+      :user="authUser"
+      role="admin"
+    >
+      <slot />
+    </AppShell>
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import { clearAuthSession } from '../../services/authService'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import AppShell from '../layout/AppShell.vue'
+import { useAuthStore } from '../../stores/authStore'
+import { storeToRefs } from 'pinia'
 
-const router = useRouter()
+const route = useRoute()
+const auth = useAuthStore()
+const { user: authUser } = storeToRefs(auth)
 
-const navLinks = [
-  { to: '/admin/dashboard', label: 'Tổng quan', icon: 'dashboard' },
-  { to: '/admin/students', label: 'Học sinh', icon: 'school' },
-  { to: '/admin/teachers', label: 'Giáo viên', icon: 'co_present' },
-  { to: '/admin/admins', label: 'Admin', icon: 'admin_panel_settings' },
-  { to: '/admin/exams', label: 'Đề thi', icon: 'quiz' }
+const activeSection = computed(() => {
+  const path = route.path || ''
+  if (path === '/admin' || path === '/admin/dashboard') return 'dashboard'
+  if (path.startsWith('/admin/users')) return 'users'
+  if (path.startsWith('/admin/teachers')) return 'teachers'
+  if (path.startsWith('/admin/students')) return 'students'
+  if (path.startsWith('/admin/exams')) return 'exams'
+  return 'dashboard'
+})
+
+const adminSidebarItems = [
+  { to: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan' },
+  { to: '/admin/users', icon: 'group', label: 'Người dùng' },
+  { to: '/admin/teachers', icon: 'school', label: 'Giáo viên' },
+  { to: '/admin/students', icon: 'person', label: 'Học sinh' },
+  { to: '/admin/exams', icon: 'quiz', label: 'Đề thi' }
 ]
-
-const logout = () => {
-  clearAuthSession()
-  router.push('/login')
-}
-
 </script>
 
-<style scoped>
-.admin-shell {
-  font-family: var(--font-sans);
+<style>
+/* Admin dark sidebar overrides — applied via .admin-shell.dark */
+.admin-shell.dark .ds-sidebar {
+  background: #0f172a;
+  border-right-color: rgba(51, 65, 85, 0.55);
+}
+
+.admin-shell.dark .ds-sidebar .border-b {
+  border-bottom-color: rgba(51, 65, 85, 0.55) !important;
+}
+
+.admin-shell.dark .ds-sidebar .border-t {
+  border-top-color: rgba(51, 65, 85, 0.55) !important;
+}
+
+.admin-shell.dark .ds-sidebar .border-r {
+  border-right-color: rgba(51, 65, 85, 0.55) !important;
+}
+
+.admin-shell.dark .ds-sidebar .text-\[\#64748b\] {
+  color: #64748b !important;
+}
+
+.admin-shell.dark .ds-sidebar .hover\:bg-\[\#e2e8f0\] {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-shell.dark .ds-sidebar .hover\:text-\[\#e2e8f0\] {
+  color: #e2e8f0;
+}
+
+.admin-shell.dark .ds-sidebar .hover\:bg-slate-800 {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-shell.dark .ds-sidebar .text-\[\#94a3b8\] {
+  color: #94a3b8 !important;
+}
+
+.admin-shell.dark .ds-sidebar .hover\:bg-\[\#94a3b8\] {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Admin main area dark */
+.admin-shell.dark {
+  background: #0f172a;
 }
 </style>

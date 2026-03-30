@@ -10,7 +10,7 @@
         >
           <div class="flex items-center gap-3 text-primary">
             <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white">
-              <span class="material-symbols-outlined text-xl">school</span>
+              <LucideIcon name="school" />
             </div>
             <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-tight">EduExam Platform</h2>
           </div>
@@ -39,11 +39,7 @@
               <div class="space-y-5">
                 <BaseField label="Username" v-slot="{ inputId, hintId, errorId }">
                   <div class="relative">
-                    <span
-                      class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400"
-                      aria-hidden="true"
-                      >person</span
-                    >
+                    <LucideIcon name="user" class="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400" aria-hidden="true" />
                     <BaseInput
                       :id="inputId"
                       v-model="username"
@@ -57,11 +53,7 @@
                 </BaseField>
                 <BaseField label="Email" v-slot="{ inputId, hintId, errorId }">
                   <div class="relative">
-                    <span
-                      class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400"
-                      aria-hidden="true"
-                      >mail</span
-                    >
+                    <LucideIcon name="mail" class="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400" aria-hidden="true" />
                     <BaseInput
                       :id="inputId"
                       v-model="email"
@@ -80,11 +72,7 @@
                   v-slot="{ inputId, hintId, errorId }"
                 >
                   <div class="relative">
-                    <span
-                      class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400"
-                      aria-hidden="true"
-                      >lock</span
-                    >
+                    <LucideIcon name="lock" class="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-xl text-slate-400" aria-hidden="true" />
                     <BaseInput
                       :id="inputId"
                       v-model="password"
@@ -101,7 +89,7 @@
 
               <BaseButton type="submit" class="w-full" size="lg" :loading="isSubmitting">
                 {{ isSubmitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản' }}
-                <span class="material-symbols-outlined text-xl" aria-hidden="true">arrow_forward</span>
+                <LucideIcon name="arrow_forward" />
               </BaseButton>
               <p class="text-center text-xs text-slate-500 leading-relaxed">
                 Bằng việc tạo tài khoản, bạn đồng ý với

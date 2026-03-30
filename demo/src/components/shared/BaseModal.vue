@@ -29,7 +29,7 @@
             aria-label="Đóng"
             @click="close"
           >
-            <span class="material-symbols-outlined">close</span>
+            <LucideIcon name="close" />
           </button>
         </div>
         <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-5">
@@ -88,3 +88,4 @@ watch(
   }
 )
 </script>
+

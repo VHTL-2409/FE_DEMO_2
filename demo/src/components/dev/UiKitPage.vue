@@ -10,7 +10,7 @@
 
       <section class="mb-10 space-y-4">
         <h2 class="teacher-section-title text-slate-800 dark:text-slate-100">
-          <span class="material-symbols-outlined text-primary" aria-hidden="true">palette</span>
+          <LucideIcon name="palette" />
           Màu & nền
         </h2>
         <div class="flex flex-wrap gap-3">
@@ -22,7 +22,7 @@
 
       <section class="mb-10 space-y-4">
         <h2 class="teacher-section-title text-slate-800 dark:text-slate-100">
-          <span class="material-symbols-outlined text-primary" aria-hidden="true">smart_button</span>
+          <LucideIcon name="smart_button" />
           Nút
         </h2>
         <div class="flex flex-wrap gap-3">
@@ -36,7 +36,7 @@
 
       <section class="mb-10 space-y-4">
         <h2 class="teacher-section-title text-slate-800 dark:text-slate-100">
-          <span class="material-symbols-outlined text-primary" aria-hidden="true">input</span>
+          <LucideIcon name="input" />
           Form
         </h2>
           <BaseCard>
@@ -67,7 +67,7 @@
 
       <section class="mb-10 space-y-4">
         <h2 class="teacher-section-title text-slate-800 dark:text-slate-100">
-          <span class="material-symbols-outlined text-primary" aria-hidden="true">widgets</span>
+          <LucideIcon name="widgets" />
           Card & trạng thái
         </h2>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -83,7 +83,7 @@
         to="/login"
         class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline portal-focus rounded-lg"
       >
-        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        <LucideIcon name="arrow_back" size="18" />
         Về đăng nhập
       </RouterLink>
     </div>
@@ -103,3 +103,4 @@ const demoName = ref('')
 const demoEmail = ref('')
 const demoError = ref('Ví dụ thông báo lỗi validation')
 </script>
+

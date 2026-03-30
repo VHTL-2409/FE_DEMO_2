@@ -8,13 +8,13 @@
     <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false" :show-menu="false">
       <template #rightActions>
         <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium">
-          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">videocam</span>
+          <LucideIcon name="videocam" :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"  text-sm leading-none/>
           <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ cameraReady ? 'Camera bật' : 'Camera tắt' }}</span>
           <span :class="micReady ? 'bg-emerald-400' : 'bg-rose-500'" class="w-1 h-1 rounded-full"></span>
-          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">mic</span>
+          <LucideIcon name="mic" :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"  text-sm leading-none/>
           <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ micReady ? 'Mic bật' : 'Mic tắt' }}</span>
           <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-          <span class="material-symbols-outlined text-sm leading-none text-slate-500">wifi</span>
+          <LucideIcon name="wifi" size="14" />
           <span class="text-slate-500">Đã kết nối</span>
         </div>
         <div
@@ -56,10 +56,10 @@
           role="status"
           aria-live="polite"
         >
-          <span v-if="saveStatus === 'saving'" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-          <span v-else-if="saveStatus === 'saved'" class="material-symbols-outlined text-sm text-emerald-600">check_circle</span>
-          <span v-else-if="hasPendingChanges" class="material-symbols-outlined text-sm text-amber-600">schedule</span>
-          <span v-else-if="saveStatus === 'error'" class="material-symbols-outlined text-sm text-amber-600">cloud_off</span>
+          <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'"  text-sm animate-spin/>
+          <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'"  text-sm text-emerald-600/>
+          <LucideIcon name="schedule" v-else-if="hasPendingChanges"  text-sm text-amber-600/>
+          <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'"  text-sm text-amber-600/>
           <span class="truncate">{{ saveStatusLabel }}</span>
         </div>
         <BaseButton
@@ -110,7 +110,7 @@
         <div class="max-w-lg w-full rounded-2xl border-2 border-amber-400 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-fade-up ring-4 ring-amber-500/30">
           <div class="flex items-center gap-4 mb-4">
             <div class="size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl">warning</span>
+              <LucideIcon name="warning" size="30" />
             </div>
             <div>
               <h2 class="text-xl font-bold text-amber-800 dark:text-amber-200">Cảnh báo từ giám thị</h2>
@@ -121,7 +121,7 @@
             <p class="text-slate-800 dark:text-slate-200 font-medium">{{ teacherWarningMessage }}</p>
           </div>
           <button type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center gap-2" @click="showTeacherWarningModal = false">
-            <span class="material-symbols-outlined">check_circle</span>
+            <LucideIcon name="check_circle" />
             Tôi đã hiểu
           </button>
         </div>
@@ -132,7 +132,7 @@
           v-if="!examSurfaceReady"
           class="staff-surface-strong flex min-h-[min(50dvh,20rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-10 dark:bg-slate-900"
         >
-          <span class="material-symbols-outlined mb-3 animate-spin text-4xl text-primary">progress_activity</span>
+          <LucideIcon name="progress_activity" size="36" />
           <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Đang tải đề thi…</p>
           <p class="mt-1 max-w-xs text-center text-xs text-slate-500 dark:text-slate-400">Vui lòng đợi trong giây lát.</p>
         </div>
@@ -141,7 +141,7 @@
           v-else-if="examSurfaceReady && examLoadFailed"
           class="staff-surface-strong flex min-h-[min(40dvh,16rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
         >
-          <span class="material-symbols-outlined mb-2 text-4xl text-rose-300 dark:text-rose-700">error</span>
+          <LucideIcon name="error" size="36" />
           <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không tải được đề thi</p>
           <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Vui lòng làm mới trang hoặc quay lại sau.</p>
         </div>
@@ -150,7 +150,7 @@
           v-else-if="examSurfaceReady && !questions.length"
           class="staff-surface-strong flex min-h-[min(45dvh,18rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
         >
-          <span class="material-symbols-outlined mb-2 text-4xl text-slate-300 dark:text-slate-600">quiz</span>
+          <LucideIcon name="quiz" size="36" />
           <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không có câu hỏi</p>
           <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
         </div>
@@ -162,7 +162,7 @@
           <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-6 md:p-7">
             <div class="mb-6 flex justify-between items-center shrink-0">
               <span class="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-                <span class="material-symbols-outlined text-base">quiz</span>
+                <LucideIcon name="quiz" size="16" />
                 Câu {{ currentIndex + 1 }} / {{ questions.length }}
               </span>
               <button
@@ -171,7 +171,7 @@
                 :disabled="isSuspended"
                 @click="toggleMarkCurrentQuestion"
               >
-                <span class="material-symbols-outlined text-base">{{ markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add' }}</span>
+                <LucideIcon :name="markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add'" size="16" />
                 {{ markedQuestions[String(currentQuestion.id)] ? 'Bỏ đánh dấu' : 'Đánh dấu xem lại' }}
               </button>
             </div>
@@ -187,7 +187,7 @@
           <div class="shrink-0 border-t border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6 sm:py-4">
             <div class="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
               <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 px-5 py-3 font-bold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800" type="button">
-                <span class="material-symbols-outlined text-xl">arrow_back</span>
+                <LucideIcon name="arrow_back" />
                 Câu trước
               </button>
               <div class="flex flex-col gap-2 sm:flex-row">
@@ -197,12 +197,12 @@
                   :disabled="isSuspended"
                   @click="toggleMarkCurrentQuestion"
                 >
-                  <span class="material-symbols-outlined text-lg">bookmark</span>
+                  <LucideIcon name="bookmark" size="18" />
                   {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
                 </button>
                 <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:flex-initial" type="button">
                 Câu tiếp theo
-                <span class="material-symbols-outlined text-xl">arrow_forward</span>
+                <LucideIcon name="arrow_forward" />
                 </button>
               </div>
             </div>
@@ -226,7 +226,7 @@
                 type="button"
                 @click="toggleCamera"
               >
-                <span class="material-symbols-outlined text-lg">{{ cameraReady ? 'videocam' : 'videocam_off' }}</span>
+                <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="18" />
               </button>
               <button
                 :disabled="isSuspended"
@@ -236,21 +236,21 @@
                 type="button"
                 @click="toggleMic"
               >
-                <span class="material-symbols-outlined text-lg">{{ micReady ? 'mic' : 'mic_off' }}</span>
+                <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="18" />
               </button>
             </div>
           </div>
           <div class="relative aspect-video bg-slate-900">
             <video ref="cameraPreviewRef" autoplay playsinline muted class="w-full h-full object-cover" :class="{ 'opacity-0': !cameraReady }" />
             <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center bg-slate-800/90">
-              <span class="material-symbols-outlined text-4xl text-slate-500">videocam_off</span>
+              <LucideIcon name="videocam_off" size="36" />
             </div>
           </div>
         </div>
         <div v-if="examSurfaceReady" class="staff-surface rounded-[1.25rem] p-4 dark:bg-slate-900 sm:p-5">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-lg">trending_up</span>
+              <LucideIcon name="trending_up" size="18" />
               Tiến độ làm bài
             </h3>
             <span class="text-lg font-bold text-primary tabular-nums">{{ progressPercent }}%</span>
@@ -275,7 +275,7 @@
           <div class="flex w-full min-w-0 flex-col">
           <div class="flex items-center justify-between mb-3">
             <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-lg">list</span>
+              <LucideIcon name="list" size="18" />
               Danh sách câu hỏi
             </h3>
             <span class="text-xs text-slate-500 font-medium">{{ questions.length }} câu</span>
@@ -305,7 +305,7 @@
 
     <footer class="shrink-0 border-t border-slate-200/80 bg-slate-50/60 px-3 py-1.5 text-center text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400 sm:px-4">
       Hỗ trợ:
-      <span class="cursor-pointer font-semibold text-primary hover:underline">support@edu-portal.com</span>
+      <span class="cursor-pointer font-semibold text-primary hover:underline">hotro@edu-portal.com</span>
     </footer>
 
     <BaseModal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
@@ -328,7 +328,7 @@
       <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
       <div v-if="unansweredCount > 0" class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4">
         <p class="text-sm font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg" aria-hidden="true">warning</span>
+          <LucideIcon name="warning" size="18" />
           Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.
         </p>
       </div>
@@ -874,7 +874,7 @@ const handleWindowBlur = () => {
       ...pendingViolationByType.value,
       BLUR: true
     }
-    void reportViolation('BLUR', 'Window lost focus during exam attempt')
+    void reportViolation('BLUR', 'Cửa sổ mất tiêu điểm trong phòng thi')
   }, BLUR_GRACE_MS)
 }
 
@@ -906,7 +906,7 @@ const handleFullscreenChange = () => {
     EXIT_FULLSCREEN: true
   }
   showFullscreenPrompt.value = !isPracticeExam.value
-  void reportViolation('EXIT_FULLSCREEN', 'Exited fullscreen during exam attempt')
+  void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình trong phòng thi')
 }
 
 const resetIdleTimer = () => {
@@ -922,7 +922,7 @@ const handleCopyPaste = (event) => {
   const clipboardText = event?.clipboardData?.getData?.('text') || ''
   const summary = clipboardText.length > 50
     ? `${event.type} ${clipboardText.length} ký tự`
-    : `Detected ${event.type} during exam`
+    : `Phát hiện ${event.type} trong phòng thi`
   void reportViolation('COPY_PASTE', summary, LONG_VIOLATION_COOLDOWN_MS)
 }
 
@@ -937,7 +937,7 @@ const scheduleDevToolsCheck = () => {
   if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer)
   devtoolsCheckTimer = window.setInterval(() => {
     if (detectDevToolsOpen()) {
-      void reportViolation('DEVTOOLS_OPEN', 'DevTools detected during exam', LONG_VIOLATION_COOLDOWN_MS)
+      void reportViolation('DEVTOOLS_OPEN', 'DevTools được phát hiện trong phòng thi', LONG_VIOLATION_COOLDOWN_MS)
     }
   }, 5000)
 }
@@ -1227,7 +1227,7 @@ const handleExamKeydown = (e) => {
   if (isSuspended.value) return
   if (e.key === 'F12' || (e.ctrlKey && ['c', 'v', 'u'].includes(String(e.key || '').toLowerCase()))) {
     e.preventDefault()
-    void reportViolation('DEVTOOLS_OPEN', `Blocked shortcut: ${e.key}`, LONG_VIOLATION_COOLDOWN_MS)
+    void reportViolation('DEVTOOLS_OPEN', `Phát hiện phím tắt: ${e.key}`, LONG_VIOLATION_COOLDOWN_MS)
     return
   }
   if (!e.ctrlKey) return

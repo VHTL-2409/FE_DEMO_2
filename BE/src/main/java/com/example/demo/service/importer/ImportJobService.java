@@ -79,6 +79,31 @@ public class ImportJobService {
                 .build();
     }
 
+    @Transactional
+    public ImportJobUploadResponse uploadFromAzota(User actor, @Nullable Exam exam, ImportFromAzotaRequest request) {
+        if (request == null || request.getQuestions() == null || request.getQuestions().isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Danh sách câu hỏi từ Azota đang trống");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        ImportJob job = importJobRepository.save(ImportJob.builder()
+                .owner(actor)
+                .exam(exam)
+                .sourceFileName("azota-import")
+                .fileType("azota")
+                .status(ImportJobStatus.PROCESSING)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+        importJobExecutor.execute(() -> processAzotaJob(job.getId(), request));
+
+        return ImportJobUploadResponse.builder()
+                .jobId(job.getId())
+                .status(job.getStatus().name())
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public ImportJobStatusResponse status(Long jobId, User actor) {
         ImportJob job = requireJob(jobId, actor);
@@ -181,6 +206,73 @@ public class ImportJobService {
             job.setUpdatedAt(LocalDateTime.now());
             importJobRepository.save(job);
         }
+    }
+
+    private void processAzotaJob(Long jobId, ImportFromAzotaRequest request) {
+        ImportJob job = importJobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalStateException("Import job not found: " + jobId));
+        if (job.getStatus() == ImportJobStatus.CANCELLED) {
+            return;
+        }
+
+        try {
+            int index = 1;
+            List<ImportPreviewQuestionDto> previewQuestions = new java.util.ArrayList<>();
+            for (ImportFromAzotaQuestionDto q : request.getQuestions()) {
+                previewQuestions.add(q.toPreviewDto(index++));
+            }
+
+            List<ImportIssueDto> issues = inspectAzotaQuestions(previewQuestions);
+
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("fileType", "azota");
+            summary.put("parseMethod", "api");
+            summary.put("source", "azota");
+            summary.put("totalDetected", previewQuestions.size());
+            summary.put("successfullyParsed", previewQuestions.size());
+            summary.put("needsReview", issues.stream()
+                    .filter(i -> !Boolean.TRUE.equals(i.getResolved()))
+                    .count());
+
+            ParsedImportPreview preview = new ParsedImportPreview(summary, previewQuestions, issues);
+            persistPreview(job, preview);
+
+        } catch (Exception ex) {
+            job.setStatus(ImportJobStatus.FAILED);
+            job.setErrorLog(writeJson(Map.of("message", ex.getMessage())));
+            job.setUpdatedAt(LocalDateTime.now());
+            importJobRepository.save(job);
+        }
+    }
+
+    private List<ImportIssueDto> inspectAzotaQuestions(List<ImportPreviewQuestionDto> questions) {
+        List<ImportIssueDto> issues = new java.util.ArrayList<>();
+        for (ImportPreviewQuestionDto question : questions) {
+            int questionIndex = question.getIndex() == null ? 0 : question.getIndex();
+            if (question.getContent() == null || question.getContent().isBlank()) {
+                issues.add(issue("MISSING_CONTENT", "ERROR", questionIndex, Map.of("message", "Thiếu nội dung câu hỏi")));
+            }
+            if (question.getOptions() == null || question.getOptions().size() < 2) {
+                issues.add(issue("OPTIONS_TOO_FEW", "ERROR", questionIndex, Map.of("message", "Cần ít nhất 2 lựa chọn")));
+            }
+            if (question.getCorrectAnswer() == null || question.getCorrectAnswer().isBlank()) {
+                issues.add(issue("MISSING_CORRECT_ANSWER", "ERROR", questionIndex, Map.of("message", "Thiếu đáp án đúng")));
+            }
+            if (question.getDifficulty() == null || question.getDifficulty().isBlank()) {
+                issues.add(issue("MISSING_DIFFICULTY", "WARNING", questionIndex, Map.of("message", "Chưa có độ khó")));
+            }
+        }
+        return issues;
+    }
+
+    private ImportIssueDto issue(String type, String severity, Integer questionIndex, Map<String, Object> payload) {
+        return ImportIssueDto.builder()
+                .issueType(type)
+                .severity(severity)
+                .questionIndex(questionIndex)
+                .issueData(writeJson(payload))
+                .resolved(Boolean.FALSE)
+                .build();
     }
 
     @Transactional

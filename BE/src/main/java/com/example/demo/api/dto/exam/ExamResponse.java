@@ -39,4 +39,6 @@ public class ExamResponse {
     private Boolean monitorRapidQuestionSwitch;
     private Boolean monitorMultiMonitor;
     private Boolean requireCameraMic;
+    private Boolean isArchived;
+    private String className;
 }

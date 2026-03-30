@@ -9,6 +9,18 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d datn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   be:
     build:
@@ -24,17 +36,56 @@ services:
       APP_AI_SERVICE_ENABLED: "true"
       APP_AI_SERVICE_BASE_URL: http://ai-service:8090
     depends_on:
-      - db
-      - ai-service
+      db:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
     ports:
       - "8082:8082"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   ai-service:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      APP_AI_API_KEY: ${APP_AI_API_KEY:-${OPENAI_API_KEY:-}}
+      APP_AI_MODEL: ${APP_AI_MODEL:-gpt-4o-mini}
+      # OpenAI 兼容代理：例如 https://api.key4u.shop/v1（将 api.openai.com 换为网关地址）
+      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-}
+      # Multi-key: JSON file {"model-id": "api-key", ...} (mount in volumes below)
+      APP_AI_MODEL_KEYS_FILE: ${APP_AI_MODEL_KEYS_FILE:-}
+      # Tùy chọn: inline JSON nếu không dùng file (ưu tiên file)
+      APP_AI_MODEL_KEYS_JSON: ${APP_AI_MODEL_KEYS_JSON:-}
+    volumes:
+      # Mount secrets directory → /run/secrets (đặt quyền 600)
+      - ./secrets:/run/secrets:ro
     ports:
       - "8090:8090"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   fe:
     build:
@@ -47,6 +98,12 @@ services:
       - "8080:80"
     depends_on:
       - be
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
 volumes:
   pgdata:

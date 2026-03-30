@@ -12,3 +12,6 @@ docs/
 
 # Production env (chứa mật khẩu, secret)
 .env
+
+# AI multi-key secrets (chứa API key — không commit)
+secrets/

@@ -18,7 +18,7 @@
           :disabled="loading"
           @click="load"
         >
-          <span class="material-symbols-outlined text-lg" :class="{ 'animate-spin': loading }">refresh</span>
+          <LucideIcon name="refresh" size="18" />
           Làm mới
         </button>
       </div>

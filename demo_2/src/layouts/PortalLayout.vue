@@ -6,6 +6,7 @@
     ]"
   >
     <slot />
+    <AiChatBubble v-if="isTeacherRoute" />
   </div>
 </template>
 
@@ -13,6 +14,7 @@
 import { computed, provide, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTeacherShellDocumentSync } from '../composables/useTeacherShellDocumentSync'
+import AiChatBubble from '../components/common/AiChatBubble.vue'
 
 const route = useRoute()
 useTeacherShellDocumentSync()

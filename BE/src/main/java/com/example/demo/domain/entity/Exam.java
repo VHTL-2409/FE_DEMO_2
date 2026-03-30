@@ -6,7 +6,14 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "exams")
+@Table(
+        name = "exams",
+        indexes = {
+                @Index(name = "idx_exams_created_by", columnList = "created_by"),
+                @Index(name = "idx_exams_is_active", columnList = "is_active"),
+                @Index(name = "idx_exams_start_time", columnList = "start_time")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,6 +48,12 @@ public class Exam {
 
     @Column(name = "is_active")
     private Boolean isActive;
+
+    @Column(name = "is_archived")
+    private Boolean isArchived;
+
+    @Column(name = "class_name", length = 100)
+    private String className;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
