@@ -161,6 +161,18 @@ const alertTrendLabel = computed(() => {
   }
 }
 
+@media (min-width: 1600px) {
+  .td-kpi-grid {
+    gap: 1.5rem;
+  }
+  .td-kpi-card__value {
+    font-size: 3rem;
+  }
+  .td-kpi-card {
+    padding: 1.5rem;
+  }
+}
+
 @media (max-width: 480px) {
   .td-kpi-grid {
     grid-template-columns: 1fr;

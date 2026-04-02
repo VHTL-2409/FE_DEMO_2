@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.common.DateTimeUtils;
 import com.example.demo.common.VietNamTime;
+import lombok.extern.slf4j.Slf4j;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExamService {
@@ -133,6 +135,19 @@ public class ExamService {
         Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
         Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
         return combined.stream()
+                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExamResponse> listPublishedExamsByTeacher(User teacher) {
+        if (teacher == null) return List.of();
+        List<Exam> exams = assignmentRepository.findDistinctPublishedExamsByTeacher(teacher);
+        if (exams.isEmpty()) return List.of();
+        List<Long> examIds = exams.stream().map(Exam::getId).toList();
+        Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
+        Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
+        return exams.stream()
                 .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
                 .toList();
     }

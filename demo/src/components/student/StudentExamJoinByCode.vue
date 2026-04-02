@@ -19,8 +19,8 @@
         />
       </div>
 
-      <!-- Two-card layout -->
-      <div class="max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-4 ds-animate-fade-up" style="animation-delay: 0.05s">
+      <!-- Two-card layout - centered on desktop -->
+      <div class="max-w-4xl mx-auto lg:max-w-none grid grid-cols-1 lg:grid-cols-2 gap-4 ds-animate-fade-up" style="animation-delay: 0.05s">
 
         <!-- Card 1: Thi theo mã đề -->
         <div class="ejc__card rounded-[var(--ds-radius-2xl)] border border-[var(--ds-border)] bg-gradient-to-br from-[var(--ds-surface)] to-[var(--ds-primary-soft)]/20 p-6 shadow-[var(--ds-shadow-md)] relative overflow-hidden">
@@ -93,6 +93,28 @@
             </div>
           </div>
 
+          <!-- Lọc theo lớp (trong card) -->
+          <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <label class="text-sm font-semibold text-[var(--ds-text-muted)] whitespace-nowrap shrink-0">
+              <LucideIcon name="folder" size="14" class="inline mr-1" />
+              Lớp học:
+            </label>
+            <div class="relative flex-1 min-w-0 sm:max-w-md">
+              <select
+                v-model="selectedClassId"
+                class="ds-select w-full appearance-none rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2 pr-10 text-sm font-medium text-[var(--ds-text)] cursor-pointer transition-all duration-200 hover:border-[var(--ds-primary-border)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-[var(--ds-primary)]"
+              >
+                <option value="">Tất cả lớp học</option>
+                <option v-for="cls in uniqueClasses" :key="cls.id" :value="cls.id">
+                  {{ cls.name }}{{ cls.subject ? ` - ${cls.subject}` : '' }}
+                </option>
+              </select>
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--ds-text-muted)]">
+                <LucideIcon name="chevron_down" size="16" />
+              </div>
+            </div>
+          </div>
+
           <!-- Loading -->
           <div v-if="isLoadingClasses" class="flex items-center justify-center gap-3 py-8">
             <div class="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
@@ -100,17 +122,17 @@
           </div>
 
           <!-- No classes -->
-          <div v-else-if="classExams.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
+          <div v-else-if="filteredClassExams.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
             <div class="size-14 rounded-full bg-[var(--ds-gray-100)] flex items-center justify-center mb-3">
               <LucideIcon name="school" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
-            <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Chưa tham gia lớp học nào</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Bạn chưa tham gia lớp học nào. Tham gia lớp qua mã lớp để xem các đề thi được giao.</p>
+            <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Không có đề thi</h3>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Không tìm thấy đề thi nào{{ selectedClassId ? ' trong lớp đã chọn' : ' từ lớp học của bạn' }}.</p>
           </div>
 
           <!-- Class exam list -->
           <div v-else class="ejc__class-list">
-            <div v-for="cls in classExams" :key="cls.id" class="ejc__class-group">
+            <div v-for="cls in filteredClassExams" :key="cls.id" class="ejc__class-group">
               <div class="ejc__class-header">
                 <LucideIcon name="folder" size="14" />
                 <span>{{ cls.name }}</span>
@@ -179,10 +201,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { joinExamByCode } from '../../services/examService'
-import { getMyClasses, getClassDetail } from '../../services/classService'
+import { getMyClasses, getStudentClassExams } from '../../services/classService'
 import { useToast } from '../../composables/useToast'
 import PageHeader from '../ui/PageHeader.vue'
 
@@ -195,6 +217,21 @@ const isInputFocused = ref(false)
 
 const classExams = ref([])
 const isLoadingClasses = ref(false)
+const selectedClassId = ref('')
+
+const uniqueClasses = computed(() => {
+  const seen = new Set()
+  return classExams.value.filter(cls => {
+    if (seen.has(cls.id)) return false
+    seen.add(cls.id)
+    return true
+  })
+})
+
+const filteredClassExams = computed(() => {
+  if (!selectedClassId.value) return classExams.value
+  return classExams.value.filter(cls => cls.id === selectedClassId.value)
+})
 
 const goToWaitingRoom = async () => {
   const query = examCode.value.trim()
@@ -254,8 +291,8 @@ const loadClassExams = async () => {
     const results = []
     for (const cls of classes) {
       try {
-        const detail = await getClassDetail(cls.id)
-        results.push({ ...cls, exams: detail?.exams || [] })
+        const exams = await getStudentClassExams(cls.id)
+        results.push({ ...cls, exams: exams || [] })
       } catch {
         results.push({ ...cls, exams: [] })
       }
@@ -281,6 +318,18 @@ onMounted(() => { loadClassExams() })
 }
 .ds-input::placeholder { color: var(--ds-text-muted); }
 .ds-input:focus {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+
+.ds-select {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ds-select:focus {
   border-color: var(--ds-primary);
   box-shadow: 0 0 0 3px var(--ds-primary-ring);
 }

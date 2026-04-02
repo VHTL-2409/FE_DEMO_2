@@ -206,6 +206,11 @@ public class ClassService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public boolean isStudentEnrolled(Long classId, Long studentId) {
+        return classStudentRepository.existsByClassEntityIdAndStudentId(classId, studentId);
+    }
+
     @Transactional
     public List<ClassStudentResponse> forceAddStudentsToClass(Long classId, ForceAddStudentsRequest request, User teacher) {
         ClassEntity classEntity = requireManageableClass(classId, teacher);

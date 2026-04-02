@@ -21,6 +21,9 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e LEFT JOIN e.createdBy WHERE a.isPublished = true")
     List<Exam> findDistinctPublishedExams();
 
+    @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e WHERE a.isPublished = true AND a.createdBy = :teacher")
+    List<Exam> findDistinctPublishedExamsByTeacher(User teacher);
+
     Optional<Assignment> findByIdAndExam(Long id, Exam exam);
 
     void deleteByExam(Exam exam);

@@ -53,6 +53,10 @@
   .al { max-width: 1800px; }
 }
 
+@media (min-width: 1920px) {
+  .al { max-width: 1920px; }
+}
+
 /* KPI strip */
 .al__kpi-strip {
   display: grid;

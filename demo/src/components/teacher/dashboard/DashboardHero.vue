@@ -226,7 +226,11 @@ const heroSubtitle = computed(() => {
 }
 
 @media (min-width: 1600px) {
-  .td-hero__subtitle { max-width: 700px; }
+  .td-hero__subtitle { max-width: 750px; }
+}
+
+@media (min-width: 1920px) {
+  .td-hero__subtitle { max-width: 850px; }
 }
 
 /* Quick stats strip */
@@ -358,7 +362,7 @@ const heroSubtitle = computed(() => {
 
 .td-hero__cta--live:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.25);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
 }
 
 .td-hero__cta--primary {
@@ -369,7 +373,7 @@ const heroSubtitle = computed(() => {
 
 .td-hero__cta--primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
 .td-hero__cta:active {

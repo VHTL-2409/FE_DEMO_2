@@ -56,17 +56,21 @@ defineEmits(['create-exam', 'open-monitoring'])
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 0 1rem;
 }
 
 @media (min-width: 1400px) {
-  .tdl-topbar-overlay__inner { max-width: 1400px; }
+  .tdl-topbar-overlay__inner { max-width: 1440px; }
 }
 
 @media (min-width: 1600px) {
   .tdl-topbar-overlay__inner { max-width: 1600px; }
+}
+
+@media (min-width: 1920px) {
+  .tdl-topbar-overlay__inner { max-width: 1800px; }
 }
 
 .tdl-topbar-overlay__search-hint {

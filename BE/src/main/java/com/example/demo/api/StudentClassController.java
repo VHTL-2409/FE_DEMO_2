@@ -4,8 +4,14 @@ import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.classmanagement.ClassResponse;
 import com.example.demo.api.dto.classmanagement.ClassStudentResponse;
 import com.example.demo.api.dto.classmanagement.JoinClassByCodeRequest;
+import com.example.demo.api.dto.exam.ExamResponse;
+import com.example.demo.common.ApiException;
+import org.springframework.http.HttpStatus;
+import com.example.demo.domain.entity.ClassEntity;
+import com.example.demo.repository.ClassRepository;
 import com.example.demo.service.ClassService;
 import com.example.demo.service.CurrentUserService;
+import com.example.demo.service.ExamService;
 import com.example.demo.domain.entity.User;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,10 +26,15 @@ public class StudentClassController {
 
     private final ClassService classService;
     private final CurrentUserService currentUserService;
+    private final ExamService examService;
+    private final ClassRepository classRepository;
 
-    public StudentClassController(ClassService classService, CurrentUserService currentUserService) {
+    public StudentClassController(ClassService classService, CurrentUserService currentUserService,
+                                  ExamService examService, ClassRepository classRepository) {
         this.classService = classService;
         this.currentUserService = currentUserService;
+        this.examService = examService;
+        this.classRepository = classRepository;
     }
 
     @PostMapping("/join")
@@ -37,5 +48,17 @@ public class StudentClassController {
     public ApiResponse<List<ClassResponse>> getMyClasses() {
         User student = currentUserService.requireCurrentUser();
         return ApiResponse.success(classService.getStudentClasses(student));
+    }
+
+    @GetMapping("/{classId}/exams")
+    public ApiResponse<List<ExamResponse>> getClassExams(@PathVariable Long classId) {
+        User student = currentUserService.requireCurrentUser();
+        ClassEntity classEntity = classRepository.findById(classId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp học"));
+        if (!classService.isStudentEnrolled(classId, student.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không thuộc lớp học này");
+        }
+        List<ExamResponse> exams = examService.listPublishedExamsByTeacher(classEntity.getTeacher());
+        return ApiResponse.success(exams);
     }
 }

@@ -437,7 +437,11 @@ onMounted(loadClasses)
 }
 
 @media (min-width: 1600px) {
-  .cmp { max-width: 1600px; }
+  .cmp { max-width: 1800px; }
+}
+
+@media (min-width: 1920px) {
+  .cmp { max-width: 1920px; }
 }
 
 /* Header */

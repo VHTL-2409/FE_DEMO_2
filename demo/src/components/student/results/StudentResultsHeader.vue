@@ -64,6 +64,7 @@ import { computed } from 'vue'
 const props = defineProps({
   activeTab: { type: String, default: 'exam' },
   tabCounts: { type: Object, default: () => ({}) },
+  showSummary: { type: Boolean, default: false },
   summaryStats: {
     type: Object,
     default: () => ({ totalCount: 0, avgScore: '-', latestScore: '-' })

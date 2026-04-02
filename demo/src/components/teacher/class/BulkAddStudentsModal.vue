@@ -7,7 +7,7 @@
             <LucideIcon name="users-plus" />
           </div>
           <div>
-            <h3 class="basm-modal__title">Thêm học sinh hàng loạt</h3>
+            <h3 class="basm-modal__title">Import học sinh vào lớp</h3>
             <p class="basm-modal__subtitle">{{ className }}</p>
           </div>
           <button type="button" class="basm-modal__close" @click="close">
@@ -221,7 +221,7 @@ const emit = defineEmits(['update:modelValue', 'added'])
 const toast = useToast()
 
 // Tab state
-const activeTab = ref('ids')
+const activeTab = ref('csv')
 
 // ID input state
 const studentIdsInput = ref('')

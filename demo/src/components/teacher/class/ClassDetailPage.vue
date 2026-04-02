@@ -20,9 +20,9 @@
           <LucideIcon :name="copied ? 'check' : 'copy'" />
           <span>{{ copied ? 'Đã sao chép!' : 'Sao chép mã' }}</span>
         </button>
-        <button type="button" class="cdp__quick-btn cdp__quick-btn--primary" @click="showAddStudentModal = true">
-          <LucideIcon name="user-plus" />
-          <span>Thêm học sinh</span>
+        <button type="button" class="cdp__quick-btn cdp__quick-btn--primary" @click="showBulkAddModal = true">
+          <LucideIcon name="upload" />
+          <span>Import học sinh</span>
         </button>
         <button type="button" class="cdp__quick-btn cdp__quick-btn--secondary" @click="openEditModal">
           <LucideIcon name="edit" />
@@ -120,39 +120,6 @@
             </div>
           </div>
 
-          <!-- Quick Actions Card -->
-          <div class="cdp__card">
-            <h3 class="cdp__card-title">
-              <LucideIcon name="bolt" />
-              Thao tác nhanh
-            </h3>
-            <div class="cdp__actions-list">
-              <button type="button" class="cdp__action-btn" @click="showAddStudentModal = true">
-                <LucideIcon name="user-plus" />
-                <div>
-                  <span class="cdp__action-title">Thêm học sinh</span>
-                  <span class="cdp__action-desc">Thêm học sinh vào lớp</span>
-                </div>
-                <LucideIcon name="chevron-right" class="cdp__action-arrow" />
-              </button>
-              <button type="button" class="cdp__action-btn" @click="showBulkAddModal = true">
-                <LucideIcon name="users-plus" />
-                <div>
-                  <span class="cdp__action-title">Thêm nhiều học sinh</span>
-                  <span class="cdp__action-desc">Nhập danh sách email</span>
-                </div>
-                <LucideIcon name="chevron-right" class="cdp__action-arrow" />
-              </button>
-              <button type="button" class="cdp__action-btn" @click="openEditModal">
-                <LucideIcon name="edit" />
-                <div>
-                  <span class="cdp__action-title">Chỉnh sửa lớp</span>
-                  <span class="cdp__action-desc">Cập nhật thông tin lớp</span>
-                </div>
-                <LucideIcon name="chevron-right" class="cdp__action-arrow" />
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- Right Column: Students List -->
@@ -187,10 +154,10 @@
             <div v-else-if="filteredStudents.length === 0 && !isLoadingStudents" class="cdp__empty">
               <LucideIcon name="users" size="48" />
               <h4>{{ searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh trong lớp' }}</h4>
-              <p>{{ searchQuery ? 'Thử thay đổi từ khóa tìm kiếm' : 'Thêm học sinh để bắt đầu quản lý lớp học' }}</p>
-              <button v-if="!searchQuery" type="button" class="cdp__btn cdp__btn--primary" @click="showAddStudentModal = true">
-                <LucideIcon name="user-plus" />
-                Thêm học sinh đầu tiên
+              <p>{{ searchQuery ? 'Thử thay đổi từ khóa tìm kiếm' : 'Import danh sách học sinh từ file CSV' }}</p>
+              <button v-if="!searchQuery" type="button" class="cdp__btn cdp__btn--primary" @click="showBulkAddModal = true">
+                <LucideIcon name="upload" />
+                Import học sinh
               </button>
             </div>
 
@@ -202,7 +169,6 @@
                     <th>Học sinh</th>
                     <th>Email</th>
                     <th>Ngày tham gia</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,16 +183,6 @@
                     </td>
                     <td class="cdp__td-muted">{{ student.studentEmail }}</td>
                     <td class="cdp__td-muted">{{ formatDate(student.joinedAt) }}</td>
-                    <td>
-                      <button
-                        type="button"
-                        class="cdp__remove-btn"
-                        title="Xóa khỏi lớp"
-                        @click="confirmRemoveStudent(student)"
-                      >
-                        <LucideIcon name="user-minus" />
-                      </button>
-                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -276,14 +232,6 @@
       @submit="handleUpdateClass"
     />
 
-    <!-- Add Student Modal -->
-    <AddStudentModal
-      v-model="showAddStudentModal"
-      :class-id="classId"
-      :class-name="classData?.name"
-      @added="loadStudents"
-    />
-
     <!-- Bulk Add Students Modal -->
     <BulkAddStudentsModal
       v-model="showBulkAddModal"
@@ -291,34 +239,6 @@
       :class-name="classData?.name"
       @added="loadStudents"
     />
-
-    <!-- Remove Student Confirm Modal -->
-    <div v-if="showRemoveModal" class="cdp__modal-overlay" @click.self="showRemoveModal = false">
-      <div class="cdp__modal">
-        <div class="cdp__modal__header">
-          <div class="cdp__modal__icon cdp__modal__icon--danger">
-            <LucideIcon name="user-minus" />
-          </div>
-          <div>
-            <h3 class="cdp__modal__title">Xóa học sinh khỏi lớp</h3>
-            <p class="cdp__modal__subtitle">Hành động này sẽ không xóa tài khoản học sinh</p>
-          </div>
-          <button type="button" class="cdp__modal__close" @click="showRemoveModal = false">
-            <LucideIcon name="x" />
-          </button>
-        </div>
-        <div class="cdp__modal__body">
-          Xóa học sinh <strong>{{ studentToRemove?.studentUsername }}</strong> khỏi lớp <strong>{{ classData?.name }}</strong>?
-        </div>
-        <div class="cdp__modal__footer">
-          <button type="button" class="cdp__btn cdp__btn--outline" @click="showRemoveModal = false">Hủy</button>
-          <button type="button" class="cdp__btn cdp__btn--danger" :disabled="isRemoving" @click="doRemoveStudent">
-            <span v-if="isRemoving" class="cdp__spinner cdp__spinner--sm"></span>
-            <template v-else>Xóa khỏi lớp</template>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -326,11 +246,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiError } from '../../../services/apiClient'
-import { getClassDetail, updateClass, getClassStudents, removeStudentFromClass } from '../../../services/classService'
+import { getClassDetail, updateClass, getClassStudents } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 import LucideIcon from '../../common/LucideIcon.vue'
 import ClassFormModal from './ClassFormModal.vue'
-import AddStudentModal from './AddStudentModal.vue'
 import BulkAddStudentsModal from './BulkAddStudentsModal.vue'
 
 const router = useRouter()
@@ -345,7 +264,6 @@ const students = ref([])
 const isLoading = ref(true)
 const isLoadingStudents = ref(false)
 const isUpdating = ref(false)
-const isRemoving = ref(false)
 const error = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
@@ -354,10 +272,7 @@ const copied = ref(false)
 
 // Modals
 const showEditModal = ref(false)
-const showAddStudentModal = ref(false)
 const showBulkAddModal = ref(false)
-const showRemoveModal = ref(false)
-const studentToRemove = ref(null)
 
 // Computed
 const filteredStudents = computed(() => {
@@ -480,27 +395,6 @@ const copyClassCode = async () => {
   }
 }
 
-const confirmRemoveStudent = (student) => {
-  studentToRemove.value = student
-  showRemoveModal.value = true
-}
-
-const doRemoveStudent = async () => {
-  if (!studentToRemove.value) return
-  isRemoving.value = true
-  try {
-    await removeStudentFromClass(classId.value, studentToRemove.value.studentId)
-    toast.success('Đã xóa học sinh khỏi lớp.')
-    showRemoveModal.value = false
-    studentToRemove.value = null
-    await loadStudents()
-  } catch (err) {
-    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa học sinh.')
-  } finally {
-    isRemoving.value = false
-  }
-}
-
 // Watch route params to reload data when navigating between classes
 watch(() => route.params.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
@@ -531,7 +425,11 @@ onMounted(async () => {
 }
 
 @media (min-width: 1600px) {
-  .cdp { max-width: 1600px; }
+  .cdp { max-width: 1800px; }
+}
+
+@media (min-width: 1920px) {
+  .cdp { max-width: 1920px; }
 }
 
 /* Header */
@@ -821,6 +719,18 @@ onMounted(async () => {
   grid-template-columns: 320px 1fr;
   gap: 1.5rem;
   align-items: start;
+}
+
+@media (min-width: 1400px) {
+  .cdp__grid {
+    grid-template-columns: 400px 1fr;
+  }
+}
+
+@media (min-width: 1600px) {
+  .cdp__grid {
+    grid-template-columns: 480px 1fr;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -1198,31 +1108,6 @@ onMounted(async () => {
 }
 
 .dark .cdp__student-name { color: var(--ds-text); }
-
-.cdp__remove-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--ds-border);
-  background: var(--ds-surface);
-  color: var(--ds-text-muted);
-  border-radius: var(--ds-radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.dark .cdp__remove-btn {
-  background: var(--ds-gray-700);
-  border-color: var(--ds-border-strong);
-}
-
-.cdp__remove-btn:hover {
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger);
-  border-color: var(--ds-danger);
-}
 
 /* Pagination */
 .cdp__pagination {

@@ -81,6 +81,11 @@ export const getMyClasses = async () => {
   return unwrapApiData(payload) || []
 }
 
+export const getStudentClassExams = async (classId) => {
+  const payload = await apiRequest(`/api/student/classes/${classId}/exams`)
+  return unwrapApiData(payload) || []
+}
+
 export const importStudentsToClass = async (classId, students) => {
   const payload = await apiRequest(`/api/teacher/classes/${classId}/students/import`, {
     method: 'POST',

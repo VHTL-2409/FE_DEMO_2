@@ -79,16 +79,10 @@
           <div v-if="activeTab === 'students'" class="cdd-drawer__content">
             <div class="cdd-students-header">
               <h3 class="cdd-students-title">Danh sách học sinh</h3>
-              <div class="cdd-students-actions">
-                <button type="button" class="cdd-btn cdd-btn--secondary" @click="showBulkAddModal = true">
-                  <LucideIcon name="users-plus" />
-                  Thêm nhiều
-                </button>
-                <button type="button" class="cdd-btn cdd-btn--primary" @click="showAddModal = true">
-                  <LucideIcon name="user-plus" />
-                  Thêm học sinh
-                </button>
-              </div>
+              <button type="button" class="cdd-btn cdd-btn--primary" @click="showBulkAddModal = true">
+                <LucideIcon name="upload" />
+                Import học sinh
+              </button>
             </div>
 
             <div v-if="isLoadingStudents" class="cdd-loading">
@@ -99,9 +93,9 @@
             <div v-else-if="students.length === 0" class="cdd-empty">
               <LucideIcon name="users" />
               <p>Chưa có học sinh trong lớp</p>
-              <button type="button" class="cdd-btn cdd-btn--outline" @click="showAddModal = true">
-                <LucideIcon name="plus" />
-                Thêm học sinh đầu tiên
+              <button type="button" class="cdd-btn cdd-btn--outline" @click="showBulkAddModal = true">
+                <LucideIcon name="upload" />
+                Import học sinh
               </button>
             </div>
 
@@ -118,14 +112,6 @@
                   <span class="cdd-student__name">{{ student.studentUsername }}</span>
                   <span class="cdd-student__email">{{ student.studentEmail }}</span>
                 </div>
-                <button
-                  type="button"
-                  class="cdd-student__remove"
-                  title="Xóa khỏi lớp"
-                  @click="confirmRemoveStudent(student)"
-                >
-                  <LucideIcon name="user-minus" />
-                </button>
               </div>
             </div>
           </div>
@@ -137,14 +123,6 @@
         </div>
       </div>
 
-      <!-- Add Student Modal -->
-      <AddStudentModal
-        v-model="showAddModal"
-        :class-id="classItem?.id"
-        :class-name="classItem?.name"
-        @added="loadStudents"
-      />
-
       <!-- Bulk Add Students Modal -->
       <BulkAddStudentsModal
         v-model="showBulkAddModal"
@@ -152,34 +130,6 @@
         :class-name="classItem?.name"
         @added="loadStudents"
       />
-
-      <!-- Remove Confirm Modal -->
-      <div v-if="showRemoveModal" class="cdd-modal-overlay" @click.self="showRemoveModal = false">
-        <div class="cdd-modal">
-          <div class="cdd-modal__header">
-            <div class="cdd-modal__icon cdd-modal__icon--danger">
-              <LucideIcon name="user-minus" />
-            </div>
-            <div>
-              <h3 class="cdd-modal__title">Xóa học sinh khỏi lớp</h3>
-              <p class="cdd-modal__subtitle">Hành động này sẽ không xóa tài khoản học sinh</p>
-            </div>
-            <button type="button" class="cdd-modal__close" @click="showRemoveModal = false">
-              <LucideIcon name="x" />
-            </button>
-          </div>
-          <div class="cdd-modal__body">
-            Xóa học sinh <strong>{{ studentToRemove?.studentUsername }}</strong> khỏi lớp <strong>{{ classItem?.name }}</strong>?
-          </div>
-          <div class="cdd-modal__footer">
-            <button type="button" class="cdd-btn cdd-btn--outline" @click="showRemoveModal = false">Hủy</button>
-            <button type="button" class="cdd-btn cdd-btn--danger" :disabled="isRemoving" @click="doRemoveStudent">
-              <span v-if="isRemoving" class="cdd-spinner cdd-spinner--sm"></span>
-              <template v-else>Xóa khỏi lớp</template>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </Transition>
 </template>
@@ -187,10 +137,9 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ApiError } from '../../../services/apiClient'
-import { getClassStudents, removeStudentFromClass } from '../../../services/classService'
+import { getClassStudents } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 import LucideIcon from '../../common/LucideIcon.vue'
-import AddStudentModal from './AddStudentModal.vue'
 import BulkAddStudentsModal from './BulkAddStudentsModal.vue'
 
 const props = defineProps({
@@ -205,10 +154,6 @@ const toast = useToast()
 const activeTab = ref('info')
 const students = ref([])
 const isLoadingStudents = ref(false)
-const showAddModal = ref(false)
-const showRemoveModal = ref(false)
-const studentToRemove = ref(null)
-const isRemoving = ref(false)
 const copied = ref(false)
 const showBulkAddModal = ref(false)
 
@@ -266,27 +211,6 @@ const copyClassCode = async () => {
     setTimeout(() => { copied.value = false }, 2000)
   } catch {
     toast.error('Không thể sao chép mã lớp.')
-  }
-}
-
-const confirmRemoveStudent = (student) => {
-  studentToRemove.value = student
-  showRemoveModal.value = true
-}
-
-const doRemoveStudent = async () => {
-  if (!studentToRemove.value) return
-  isRemoving.value = true
-  try {
-    await removeStudentFromClass(props.classItem.id, studentToRemove.value.studentId)
-    toast.success('Đã xóa học sinh khỏi lớp.')
-    showRemoveModal.value = false
-    studentToRemove.value = null
-    await loadStudents()
-  } catch (err) {
-    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa học sinh.')
-  } finally {
-    isRemoving.value = false
   }
 }
 
@@ -547,11 +471,6 @@ const close = () => {
   gap: 0.75rem;
 }
 
-.cdd-students-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .cdd-students-title {
   font-size: 0.9rem;
   font-weight: 800;
@@ -652,24 +571,6 @@ const close = () => {
   text-overflow: ellipsis;
 }
 
-.cdd-student__remove {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: var(--ds-gray-100);
-  color: var(--ds-text-muted);
-  border-radius: var(--ds-radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  flex-shrink: 0;
-}
-
-.dark .cdd-student__remove { background: var(--ds-gray-700); }
-.cdd-student__remove:hover { background: var(--ds-danger-soft); color: var(--ds-danger); }
-
 .cdd-drawer__footer {
   padding: 1.25rem 1.5rem;
   border-top: 1px solid var(--ds-border);
@@ -729,111 +630,6 @@ const close = () => {
 
 .dark .cdd-btn--secondary { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
 .cdd-btn--secondary:hover { border-color: var(--ds-primary); color: var(--ds-primary); }
-
-/* Modal */
-.cdd-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 1.5rem;
-}
-
-.cdd-modal {
-  background: white;
-  border-radius: var(--ds-radius-2xl);
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-  overflow: hidden;
-}
-
-.dark .cdd-modal { background: var(--ds-gray-800); }
-
-.cdd-modal__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--ds-border);
-}
-
-.dark .cdd-modal__header { border-bottom-color: var(--ds-border-strong); }
-
-.cdd-modal__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--ds-radius-xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.cdd-modal__icon--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
-
-.cdd-modal__title {
-  font-family: var(--ds-font-display);
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--ds-text);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.dark .cdd-modal__title { color: #f1f5f9; }
-
-.cdd-modal__subtitle {
-  font-size: 0.8rem;
-  color: var(--ds-text-muted);
-  margin: 0.25rem 0 0;
-}
-
-.cdd-modal__close {
-  margin-left: auto;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: var(--ds-gray-100);
-  color: var(--ds-text-muted);
-  border-radius: var(--ds-radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.dark .cdd-modal__close { background: var(--ds-gray-700); }
-.cdd-modal__close:hover { background: var(--ds-gray-200); color: var(--ds-text); }
-.dark .cdd-modal__close:hover { background: var(--ds-gray-600); }
-
-.cdd-modal__body {
-  padding: 1.5rem;
-  font-size: 0.875rem;
-  color: var(--ds-text-secondary);
-  line-height: 1.6;
-}
-
-.dark .cdd-modal__body { color: #94a3b8; }
-.cdd-modal__body strong { color: var(--ds-text); }
-.dark .cdd-modal__body strong { color: #f1f5f9; }
-
-.cdd-modal__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-}
-
-.dark .cdd-modal__footer { border-top-color: var(--ds-border-strong); background: var(--ds-gray-800); }
 
 /* Transition */
 .cdd-drawer-enter-active,
