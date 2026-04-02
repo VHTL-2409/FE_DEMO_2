@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <!-- Header -->
       <div class="mb-4">

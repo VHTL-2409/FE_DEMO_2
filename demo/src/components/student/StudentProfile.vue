@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <div class="mb-5 ds-animate-fade-up">
         <PageHeader
@@ -35,12 +35,12 @@
 
       <!-- Profile Card -->
       <section v-else class="ds-animate-fade-up" style="animation-delay: 0.05s">
-        <div class="rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 shadow-[var(--ds-shadow-sm)]">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <!-- Avatar & Identity -->
-          <div class="flex flex-col items-center text-center md:flex-row md:text-left md:gap-8">
+          <div class="lg:col-span-3 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 shadow-[var(--ds-shadow-sm)] flex flex-col items-center text-center">
             <div class="relative shrink-0">
               <div class="size-24 overflow-hidden rounded-full border-4 shadow-[var(--ds-shadow-md)]" style="border-color: var(--ds-primary-soft);">
-                <img v-if="profileAvatarUrl && formatField(profileAvatarUrl) !== 'Chưa điền'" :src="profileAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                <img v-if="profileAvatarSrc" :src="profileAvatarSrc" alt="Avatar" class="h-full w-full object-cover" />
                 <div v-else class="flex h-full w-full items-center justify-center bg-[var(--ds-primary-soft)] text-3xl font-black" style="color: var(--ds-primary);">{{ profileInitial }}</div>
               </div>
               <label class="absolute -bottom-1 -right-1 flex size-8 cursor-pointer items-center justify-center rounded-full shadow-[var(--ds-shadow-sm)] transition-transform hover:scale-110" style="background-color: var(--ds-primary); color: white;">
@@ -49,9 +49,9 @@
               </label>
             </div>
 
-            <div class="mt-4 md:mt-0 flex-1">
+            <div class="mt-4">
               <h2 class="text-2xl font-bold text-[var(--ds-text)]">{{ profileName }}</h2>
-              <div class="flex flex-wrap items-center gap-2 mt-1.5 justify-center md:justify-start">
+              <div class="flex flex-wrap items-center gap-2 mt-1.5 justify-center">
                 <span class="inline-flex items-center gap-1 rounded-full bg-[var(--ds-primary-soft)] px-2.5 py-0.5 text-xs font-semibold" style="color: var(--ds-primary);">
                   <LucideIcon name="badge" size="12" />
                   ID: {{ profileId }}
@@ -68,47 +68,49 @@
             </div>
           </div>
 
-          <!-- Fields -->
-          <div class="mt-8 space-y-2 border-t border-[var(--ds-border)] pt-6">
-            <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-              <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                <LucideIcon name="user" size="16" class="text-[var(--ds-primary)]" />
-                Tên đăng nhập
-              </span>
-              <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileUsername) }}</span>
+          <!-- Info Fields -->
+          <div class="lg:col-span-9 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 shadow-[var(--ds-shadow-sm)]">
+            <!-- Fields -->
+            <div class="space-y-2 border-t border-[var(--ds-border)] pt-6">
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
+                  <LucideIcon name="user" size="16" class="text-[var(--ds-primary)]" />
+                  Tên đăng nhập
+                </span>
+                <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileUsername) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
+                  <LucideIcon name="display_settings" size="16" class="text-[var(--ds-primary)]" />
+                  Tên hiển thị
+                </span>
+                <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileDisplayName) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
+                  <LucideIcon name="person" size="16" class="text-[var(--ds-primary)]" />
+                  Họ và tên
+                </span>
+                <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileFullName) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
+                  <LucideIcon name="cake" size="16" class="text-[var(--ds-primary)]" />
+                  Ngày sinh
+                </span>
+                <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatDate(profileDateOfBirth) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
+                  <LucideIcon name="phone" size="16" class="text-[var(--ds-primary)]" />
+                  Số điện thoại
+                </span>
+                <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profilePhone) }}</span>
+              </div>
             </div>
-            <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-              <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                <LucideIcon name="display_settings" size="16" class="text-[var(--ds-primary)]" />
-                Tên hiển thị
-              </span>
-              <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileDisplayName) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-              <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                <LucideIcon name="person" size="16" class="text-[var(--ds-primary)]" />
-                Họ và tên
-              </span>
-              <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileFullName) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-              <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                <LucideIcon name="cake" size="16" class="text-[var(--ds-primary)]" />
-                Ngày sinh
-              </span>
-              <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatDate(profileDateOfBirth) }}</span>
-            </div>
-            <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-              <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                <LucideIcon name="phone" size="16" class="text-[var(--ds-primary)]" />
-                Số điện thoại
-              </span>
-              <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profilePhone) }}</span>
-            </div>
-          </div>
 
-          <!-- Action buttons -->
-          <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-[var(--ds-border)] pt-6">
+            <!-- Action buttons -->
+            <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--ds-border)] pt-6">
             <button
               type="button"
               class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ds-text-secondary)] transition-all hover:bg-[var(--ds-gray-50)] hover:shadow-md hover:-translate-y-0.5"
@@ -232,6 +234,18 @@ const profileDateOfBirth = computed(() => profile.value?.dateOfBirth || '-')
 const profileEmail = computed(() => profile.value?.email || '-')
 const profilePhone = computed(() => profile.value?.phone || '-')
 const profileAvatarUrl = computed(() => profile.value?.avatarUrl || '-')
+
+const resolveBackendUrl = (path) => {
+  if (!path || path === '-' || path === '/-') return ''
+  if (String(path).startsWith('http')) return path
+  return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082'}${path}`
+}
+
+const profileAvatarSrc = computed(() => {
+  const raw = profile.value?.avatarUrl
+  if (!raw || raw === '-' || raw === '/-') return ''
+  return resolveBackendUrl(raw)
+})
 
 const formatField = (value) => {
   if (value === null || value === undefined) return 'Chưa điền'

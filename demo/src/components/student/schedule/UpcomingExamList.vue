@@ -212,6 +212,21 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
   margin-bottom: 0.25rem;
 }
 
+/* Exam list - 2 column grid on wide screens */
+.uel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .uel__list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
 /* Load more */
 .uel__load-more {
   display: flex;

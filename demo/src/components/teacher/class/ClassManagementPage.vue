@@ -432,6 +432,14 @@ onMounted(loadClasses)
   padding: 1.5rem;
 }
 
+@media (min-width: 1400px) {
+  .cmp { max-width: 1500px; }
+}
+
+@media (min-width: 1600px) {
+  .cmp { max-width: 1600px; }
+}
+
 /* Header */
 .cmp__header {
   display: flex;

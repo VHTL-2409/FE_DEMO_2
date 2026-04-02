@@ -481,6 +481,14 @@ onMounted(loadExams)
   padding: 1.5rem;
 }
 
+@media (min-width: 1400px) {
+  .elp { max-width: 1500px; }
+}
+
+@media (min-width: 1600px) {
+  .elp { max-width: 1600px; }
+}
+
 /* Header */
 .elp__header {
   display: flex;

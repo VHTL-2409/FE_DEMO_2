@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-4xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
       <div class="flex min-h-0 flex-1 flex-col gap-5">
         <div class="ds-animate-fade-up">
           <StudentResultsHeader
@@ -10,9 +10,9 @@
             @tab-change="setTab"
           />
         </div>
-        
+
         <!-- Stats cards -->
-        <div class="grid gap-4 md:grid-cols-3 ds-animate-fade-up" style="animation-delay: 0.05s">
+        <div class="grid gap-4 md:grid-cols-4 ds-animate-fade-up" style="animation-delay: 0.05s">
           <div class="rounded-2xl border border-[var(--ds-border)] bg-gradient-to-br from-[var(--ds-surface)] to-[var(--ds-primary-soft)] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center gap-3">
               <div class="p-2.5 rounded-xl bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]">

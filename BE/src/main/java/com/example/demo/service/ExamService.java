@@ -557,7 +557,9 @@ public class ExamService {
         for (Long id : examIds) {
             try {
                 results.add(publishExam(id, actor));
-            } catch (Exception ignored) { }
+            } catch (Exception e) {
+                log.warn("Failed to publish exam {} in bulk operation: {}", id, e.getMessage());
+            }
         }
         return results;
     }
@@ -568,7 +570,9 @@ public class ExamService {
         for (Long id : examIds) {
             try {
                 results.add(archiveExam(id, actor));
-            } catch (Exception ignored) { }
+            } catch (Exception e) {
+                log.warn("Failed to archive exam {} in bulk operation: {}", id, e.getMessage());
+            }
         }
         return results;
     }
@@ -578,7 +582,9 @@ public class ExamService {
         for (Long id : examIds) {
             try {
                 deleteExam(id, actor);
-            } catch (Exception ignored) { }
+            } catch (Exception e) {
+                log.warn("Failed to delete exam {} in bulk operation: {}", id, e.getMessage());
+            }
         }
     }
 

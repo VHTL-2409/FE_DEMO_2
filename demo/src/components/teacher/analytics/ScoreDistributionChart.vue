@@ -148,14 +148,14 @@ const avgColorClass = computed(() => {
   return 'sdc__stat-val--danger'
 })
 
-// Bar colors based on pass threshold
+// Bar colors based on pass threshold (softened palette for comfortable viewing)
 const barColors = computed(() => {
   if (!hasData.value) return []
   return props.distribution.map(d => {
     const score = Number(d.score ?? d.label ?? 0)
-    if (score < props.passingScore) return '#dc2626'  // fail
-    if (score >= 8) return '#16a34a'  // excellent
-    return '#4f46e5'  // pass
+    if (score < props.passingScore) return '#f87171'  // soft red
+    if (score >= 8) return '#34d399'  // soft emerald
+    return '#818cf8'  // soft indigo
   })
 })
 
@@ -230,14 +230,12 @@ const buildBarOption = () => {
         value: Number(d.count ?? d.value ?? 0),
         itemStyle: {
           color: barColors.value[i],
-          borderRadius: [6, 6, 0, 0],
-          shadowColor: `rgba(${barColors.value[i] === '#dc2626' ? '220,38,38' : barColors.value[i] === '#16a34a' ? '22,163,74' : '79,70,229'}, 0.3)`,
-          shadowBlur: 8
+          borderRadius: [6, 6, 0, 0]
         }
       })),
       barWidth: '70%',
-      animationDuration: 1200,
-      animationEasing: 'elasticOut',
+      animationDuration: 800,
+      animationEasing: 'cubicOut',
       label: {
         show: values.value.some(v => v > 0),
         position: 'top',
@@ -249,8 +247,8 @@ const buildBarOption = () => {
       },
       emphasis: {
         itemStyle: {
-          shadowBlur: 16,
-          shadowColor: 'rgba(0, 0, 0, 0.15)'
+          shadowBlur: 2,
+          shadowColor: 'rgba(0, 0, 0, 0.06)'
         }
       }
     }]
@@ -313,23 +311,21 @@ const buildLineOption = () => {
       smooth: 0.4,
       symbol: 'circle',
       symbolSize: 8,
-      animationDuration: 1500,
-      animationEasing: 'elasticOut',
+      animationDuration: 1000,
+      animationEasing: 'cubicOut',
       areaStyle: {
         color: {
           type: 'linear',
           x: 0, y: 0, x2: 0, y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(79, 70, 229, 0.25)' },
+            { offset: 0, color: 'rgba(79, 70, 229, 0.2)' },
             { offset: 1, color: 'rgba(79, 70, 229, 0.02)' }
           ]
         }
       },
       lineStyle: { 
         color: '#4f46e5', 
-        width: 3,
-        shadowColor: 'rgba(79, 70, 229, 0.3)',
-        shadowBlur: 8
+        width: 3
       },
       label: {
         show: values.value.some(v => v > 0),
@@ -343,8 +339,8 @@ const buildLineOption = () => {
       emphasis: {
         scale: true,
         itemStyle: {
-          shadowColor: 'rgba(79, 70, 229, 0.4)',
-          shadowBlur: 12
+          shadowColor: 'rgba(79, 70, 229, 0.1)',
+          shadowBlur: 2
         }
       }
     }]
@@ -471,14 +467,14 @@ watch([hasData, chartType], async ([data, type]) => {
 /* Chart */
 .sdc__chart-wrap {
   flex: 1;
-  min-height: 280px;
+  min-height: 320px;
   padding: 0.5rem 0.75rem;
   position: relative;
 }
 
 .sdc__canvas {
   width: 100%;
-  height: 280px;
+  height: 320px;
 }
 
 /* Loading */

@@ -363,42 +363,23 @@ const optionClass = (item, option) => {
   transition: all 0.3s ease;
 }
 
-.rdp__score-ring::before {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.rdp__score-ring--high { 
-  border-color: var(--ds-success); 
+.rdp__score-ring--high {
+  border-color: var(--ds-success);
   background: rgba(16, 185, 129, 0.06);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
 }
-.rdp__score-ring--high::before { box-shadow: 0 0 30px rgba(16, 185, 129, 0.4); }
 
-.rdp__score-ring--mid { 
-  border-color: var(--ds-warning); 
+.rdp__score-ring--mid {
+  border-color: var(--ds-warning);
   background: rgba(234, 179, 8, 0.06);
-  box-shadow: 0 0 20px rgba(234, 179, 8, 0.2);
 }
-.rdp__score-ring--mid::before { box-shadow: 0 0 30px rgba(234, 179, 8, 0.4); }
 
-.rdp__score-ring--low { 
-  border-color: var(--ds-danger); 
+.rdp__score-ring--low {
+  border-color: var(--ds-danger);
   background: rgba(220, 38, 38, 0.06);
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
 }
-.rdp__score-ring--low::before { box-shadow: 0 0 30px rgba(220, 38, 38, 0.4); }
 
 .rdp__score-ring:hover {
-  transform: scale(1.05);
-}
-
-.rdp__score-ring:hover::before {
-  opacity: 1;
+  transform: scale(1.03);
 }
 
 .rdp__score-val {

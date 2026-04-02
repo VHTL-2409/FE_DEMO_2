@@ -103,6 +103,14 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+@media (min-width: 1400px) {
+  .ccl__main-inner { max-width: 1500px; }
+}
+
+@media (min-width: 1600px) {
+  .ccl__main-inner { max-width: 1600px; }
+}
+
 /* Sidebar */
 .ccl__sidebar {
   width: 380px;

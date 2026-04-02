@@ -274,6 +274,25 @@ const form = reactive({
   requireCameraMic: true
 })
 
+// Watch proctoringEnabled to reset related settings when disabled
+watch(() => form.proctoringEnabled, (enabled) => {
+  if (!enabled) {
+    form.requireCameraMic = false
+    form.monitorTabSwitch = false
+    form.monitorBlur = false
+    form.monitorExitFullscreen = false
+    form.monitorCopyPaste = false
+    form.monitorIdleTime = false
+    form.monitorDevtools = false
+    form.monitorDuplicateIp = false
+    form.monitorFastSubmit = false
+    form.monitorRightClick = false
+    form.monitorPrintScreen = false
+    form.monitorRapidQuestionSwitch = false
+    form.monitorMultiMonitor = false
+  }
+})
+
 // Mock teacher classes — thay bằng API thực tế
 const availableClasses = ref([
   { id: 1, name: '10A1 - Toán Giải tích' },
@@ -495,7 +514,7 @@ function buildExamPayload() {
     monitorPrintScreen: form.monitorPrintScreen,
     monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
     monitorMultiMonitor: form.monitorMultiMonitor,
-    requireCameraMic: form.requireCameraMic
+    requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false
   }
 }
 

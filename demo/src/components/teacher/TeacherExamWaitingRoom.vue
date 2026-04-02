@@ -400,6 +400,14 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+@media (min-width: 1400px) {
+  .wr-container { max-width: 1500px; }
+}
+
+@media (min-width: 1600px) {
+  .wr-container { max-width: 1600px; }
+}
+
 /* Header */
 .wr-header {
   display: flex;

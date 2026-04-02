@@ -280,6 +280,25 @@ const form = reactive({
   requireCameraMic: true
 })
 
+// Watch proctoringEnabled to reset related settings when disabled
+watch(() => form.proctoringEnabled, (enabled) => {
+  if (!enabled) {
+    form.requireCameraMic = false
+    form.monitorTabSwitch = false
+    form.monitorBlur = false
+    form.monitorExitFullscreen = false
+    form.monitorCopyPaste = false
+    form.monitorIdleTime = false
+    form.monitorDevtools = false
+    form.monitorDuplicateIp = false
+    form.monitorFastSubmit = false
+    form.monitorRightClick = false
+    form.monitorPrintScreen = false
+    form.monitorRapidQuestionSwitch = false
+    form.monitorMultiMonitor = false
+  }
+})
+
 // Available classes loaded from API
 const availableClasses = ref([])
 const isLoadingClasses = ref(false)
@@ -540,7 +559,7 @@ function buildExamPayload() {
     monitorPrintScreen: form.monitorPrintScreen,
     monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
     monitorMultiMonitor: form.monitorMultiMonitor,
-    requireCameraMic: form.requireCameraMic
+    requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false
   }
 }
 

@@ -526,6 +526,14 @@ onMounted(async () => {
   padding: 1.5rem;
 }
 
+@media (min-width: 1400px) {
+  .cdp { max-width: 1500px; }
+}
+
+@media (min-width: 1600px) {
+  .cdp { max-width: 1600px; }
+}
+
 /* Header */
 .cdp__header {
   display: flex;

@@ -65,7 +65,23 @@
   gap: 1.5rem;
 }
 
-/* Responsive */
+/* Responsive - large screens */
+@media (min-width: 1400px) {
+  .sdl { max-width: 1400px; }
+  .sdl__main { grid-template-columns: 1fr 360px; }
+}
+
+@media (min-width: 1600px) {
+  .sdl { max-width: 1600px; }
+  .sdl__main { grid-template-columns: 1fr 400px; }
+}
+
+@media (min-width: 1920px) {
+  .sdl { max-width: 1800px; }
+  .sdl__main { grid-template-columns: 1fr 440px; }
+}
+
+/* Responsive - medium screens */
 @media (max-width: 1200px) {
   .sdl__main {
     grid-template-columns: 1fr 280px;

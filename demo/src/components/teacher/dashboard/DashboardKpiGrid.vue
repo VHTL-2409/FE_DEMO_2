@@ -178,13 +178,13 @@ const alertTrendLabel = computed(() => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   box-shadow: var(--ds-shadow-xs);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   overflow: hidden;
 }
 
 .td-kpi-card:hover {
   box-shadow: var(--ds-shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: rgba(148, 163, 184, 0.3);
 }
 

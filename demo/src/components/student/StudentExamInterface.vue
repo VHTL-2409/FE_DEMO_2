@@ -1030,7 +1030,24 @@ onMounted(async () => {
       if (examConfig.value.monitorPrintScreen !== false) document.addEventListener('keydown', handlePrintScreen)
       if (examConfig.value.monitorMultiMonitor !== false) setTimeout(checkMultiMonitor, 3000)
     }
-  } catch { examLoadFailed.value = true; examSurfaceReady.value = true; showErrorPopup.value = true; errorPopupMessage.value = 'Không tải được nội dung bài thi. Vui lòng làm mới trang.' }
+  } catch (error) {
+    console.error('Load exam error:', error)
+    examLoadFailed.value = true
+    examSurfaceReady.value = true
+
+    let userMessage = 'Không tải được nội dung bài thi. Vui lòng làm mới trang.'
+    if (error?.message?.includes('403') || error?.status === 403) {
+      userMessage = 'Bạn không có quyền làm bài thi này.'
+    } else if (error?.message?.includes('404') || error?.status === 404) {
+      userMessage = 'Bài thi không tồn tại hoặc đã bị xóa.'
+    } else if (error?.message?.includes('401') || error?.status === 401) {
+      userMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
+    } else if (questionList?.length === 0) {
+      userMessage = 'Bài thi chưa có câu hỏi. Vui lòng liên hệ giáo viên.'
+    }
+    errorPopupMessage.value = userMessage
+    showErrorPopup.value = true
+  }
 })
 
 onUnmounted(() => {

@@ -207,8 +207,8 @@ const toggleExpand = () => {
 .dic__badge {
   padding: 0.2rem 0.625rem;
   border-radius: var(--ds-radius-full);
-  background: var(--ds-warning-soft);
-  color: var(--ds-warning);
+  background: rgba(234, 179, 8, 0.08);
+  color: #d97706;
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -354,23 +354,23 @@ const toggleExpand = () => {
 }
 
 .dic__difficulty-badge--critical {
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger);
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
 }
 
 .dic__difficulty-badge--warning {
-  background: rgba(234, 179, 8, 0.1);
+  background: rgba(234, 179, 8, 0.08);
   color: #d97706;
 }
 
 .dic__difficulty-badge--caution {
-  background: rgba(234, 179, 8, 0.08);
+  background: rgba(234, 179, 8, 0.06);
   color: #eab308;
 }
 
 .dic__difficulty-badge--ok {
-  background: var(--ds-success-soft);
-  color: var(--ds-success);
+  background: rgba(34, 197, 94, 0.08);
+  color: #16a34a;
 }
 
 /* Bar */
@@ -397,10 +397,10 @@ const toggleExpand = () => {
   transition: width 0.4s ease;
 }
 
-.dic__bar-fill--critical { background: var(--ds-danger); }
-.dic__bar-fill--warning { background: #d97706; }
-.dic__bar-fill--caution { background: #eab308; }
-.dic__bar-fill--ok { background: var(--ds-success); }
+.dic__bar-fill--critical { background: #f87171; }
+.dic__bar-fill--warning { background: #fb923c; }
+.dic__bar-fill--caution { background: #facc15; }
+.dic__bar-fill--ok { background: #34d399; }
 
 .dic__bar-label {
   font-size: 0.65rem;

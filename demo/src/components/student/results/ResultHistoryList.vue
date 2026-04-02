@@ -223,14 +223,14 @@ const scoreRingClass = (score) => {
 .ehl__empty-cta:hover { background: var(--ds-primary-hover, #4338ca); transform: translateY(-1px); }
 
 /* List */
-.ehl__list { display: flex; flex-direction: column; gap: 0.625rem; }
+.ehl__list { display: flex; flex-direction: column; gap: 0.75rem; }
 
 /* Card */
 .ehl__card {
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 1rem 1.125rem;
+  padding: 1rem 1.25rem;
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
@@ -243,8 +243,8 @@ const scoreRingClass = (score) => {
 .dark .ehl__card { border-color: var(--ds-border-strong); }
 
 .ehl__card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   border-color: var(--ds-primary-border);
 }
 
@@ -341,8 +341,8 @@ const scoreRingClass = (score) => {
 }
 
 .ehl__score-ring {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -372,9 +372,9 @@ const scoreRingClass = (score) => {
   box-shadow: 0 0 16px rgba(220, 38, 38, 0.2);
 }
 
-.ehl__card:hover .ehl__score-ring--high { box-shadow: 0 0 24px rgba(16, 185, 129, 0.4); }
-.ehl__card:hover .ehl__score-ring--mid { box-shadow: 0 0 24px rgba(234, 179, 8, 0.4); }
-.ehl__card:hover .ehl__score-ring--low { box-shadow: 0 0 24px rgba(220, 38, 38, 0.4); }
+.ehl__card:hover .ehl__score-ring--high { box-shadow: 0 0 12px rgba(16, 185, 129, 0.35); }
+.ehl__card:hover .ehl__score-ring--mid { box-shadow: 0 0 12px rgba(234, 179, 8, 0.35); }
+.ehl__card:hover .ehl__score-ring--low { box-shadow: 0 0 12px rgba(220, 38, 38, 0.35); }
 
 .ehl__score-val {
   font-family: var(--ds-font-display);

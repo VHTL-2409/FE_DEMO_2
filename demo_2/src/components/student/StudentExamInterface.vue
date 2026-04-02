@@ -1555,9 +1555,19 @@ onMounted(async () => {
       }
     }
   } catch (error) {
+    console.error('Load exam error:', error)
     examLoadFailed.value = true
     examSurfaceReady.value = true
-    toast.error('Không thể tải nội dung bài thi.')
+
+    let userMessage = 'Không thể tải nội dung bài thi.'
+    if (error?.message?.includes('403') || error?.status === 403) {
+      userMessage = 'Bạn không có quyền làm bài thi này.'
+    } else if (error?.message?.includes('404') || error?.status === 404) {
+      userMessage = 'Bài thi không tồn tại hoặc đã bị xóa.'
+    } else if (error?.message?.includes('401') || error?.status === 401) {
+      userMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
+    }
+    toast.error(userMessage)
   }
 })
 

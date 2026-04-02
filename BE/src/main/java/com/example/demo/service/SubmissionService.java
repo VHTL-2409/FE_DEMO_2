@@ -533,6 +533,6 @@ public class SubmissionService {
     }
 
     private boolean hasRole(User user, RoleName roleName) {
-        return user.getRoles().stream().anyMatch(role -> role.getName() == roleName);
+        return user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName));
     }
 }

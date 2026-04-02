@@ -87,6 +87,15 @@
             Danh sách câu hỏi
             <span class="ec-qb-list__count">{{ localQuestions.length }}</span>
           </h4>
+          <button
+            v-if="localQuestions.length > 0"
+            type="button"
+            class="ec-qb-delete-all-btn"
+            @click="confirmDeleteAll"
+          >
+            <LucideIcon name="delete_sweep" />
+            Xóa tất cả
+          </button>
         </div>
 
         <div v-if="localQuestions.length === 0" class="ec-qb-empty">
@@ -179,21 +188,49 @@
       <!-- Exam code display when multiple versions enabled -->
       <Transition name="ec-slide">
         <div v-if="localMultipleVersions" class="exam-code-card">
-          <div class="ecc__icon">
-            <LucideIcon name="vpn_key" />
+          <div class="ecc__header">
+            <div class="ecc__icon">
+              <LucideIcon name="vpn_key" />
+            </div>
+            <div class="ecc__title-group">
+              <p class="ecc__label">Chia mã đề</p>
+              <p class="ecc__desc">Mỗi mã đề sẽ có thứ tự câu hỏi riêng</p>
+            </div>
           </div>
           <div class="ecc__body">
-            <p class="ecc__label">Số mã đề</p>
-            <p class="ecc__code">
-              {{ versionCount }} mã đề
-              <button type="button" class="ecc__edit-btn" @click="showVersionModal = true" title="Chỉnh sửa">
-                <LucideIcon name="edit" />
+            <div class="ecc__stepper">
+              <button
+                type="button"
+                class="ecc__stepper-btn"
+                :disabled="versionCount <= 2"
+                @click="versionCount = Math.max(2, versionCount - 1)"
+              >
+                <LucideIcon name="remove" />
               </button>
-            </p>
-            <p class="ecc__hint">
+              <div class="ecc__stepper-value">
+                <span class="ecc__stepper-num">{{ versionCount }}</span>
+                <span class="ecc__stepper-unit">mã đề</span>
+              </div>
+              <button
+                type="button"
+                class="ecc__stepper-btn"
+                :disabled="versionCount >= 20"
+                @click="versionCount = Math.min(20, versionCount + 1)"
+              >
+                <LucideIcon name="add" />
+              </button>
+            </div>
+            <input
+              v-model.number="versionCount"
+              type="range"
+              min="2"
+              max="20"
+              class="ecc__slider"
+            />
+            <div class="ecc__hint-row">
               <LucideIcon name="info" size="13" />
-              Mỗi mã đề sẽ có thứ tự câu hỏi riêng
-            </p>
+              <span>Tối thiểu 2, tối đa 20 mã đề</span>
+            </div>
           </div>
         </div>
       </Transition>
@@ -301,6 +338,17 @@ const removeQuestion = (index) => {
   const updated = [...localQuestions.value]
   updated.splice(index, 1)
   localQuestions.value = updated
+}
+
+const deleteAllQuestions = () => {
+  localQuestions.value = []
+}
+
+const confirmDeleteAll = () => {
+  if (localQuestions.value.length === 0) return
+  if (window.confirm(`Xóa tất cả ${localQuestions.value.length} câu hỏi?`)) {
+    deleteAllQuestions()
+  }
 }
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -824,6 +872,36 @@ const handleImport = async () => {
   font-size: 0.7rem;
 }
 
+.ec-qb-delete-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.ec-qb-delete-all-btn:hover {
+  background: var(--ds-danger);
+  color: white;
+  border-color: var(--ds-danger);
+}
+
+.dark .ec-qb-delete-all-btn {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.dark .ec-qb-delete-all-btn:hover {
+  background: var(--ds-danger);
+}
+
 .ec-qb-empty {
   display: flex;
   flex-direction: column;
@@ -997,78 +1075,159 @@ const handleImport = async () => {
 
 /* Exam code card */
 .exam-code-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  padding: 1rem 1.125rem;
+  border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  border: 1.5px dashed var(--ds-info);
-  background: var(--ds-info-bg);
+  overflow: hidden;
+  margin-top: 1rem;
 }
 
-.dark .exam-code-card { background: rgba(2, 132, 199, 0.1); border-color: rgba(2, 132, 199, 0.3); }
+.dark .exam-code-card {
+  border-color: var(--ds-border-strong);
+  background: rgba(2, 132, 199, 0.05);
+}
+
+.ecc__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--ds-primary-soft);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.dark .ecc__header { background: rgba(79, 70, 229, 0.15); border-color: var(--ds-border-strong); }
 
 .ecc__icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--ds-radius-md);
-  background: rgba(2, 132, 199, 0.15);
-  color: var(--ds-info);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-primary);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.dark .ecc__icon { color: var(--ds-info); }
+.dark .ecc__icon { background: var(--ds-primary); }
 
-.ecc__body { flex: 1; min-width: 0; }
+.ecc__title-group { flex: 1; }
 
 .ecc__label {
-  font-size: 0.7rem;
+  font-size: 0.875rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ds-text-muted);
-  margin: 0 0 0.2rem;
+  color: var(--ds-text);
+  margin: 0;
 }
 
-.ecc__code {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: 'Courier New', monospace;
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: var(--ds-info);
-  margin: 0 0 0.3rem;
+.dark .ecc__label { color: white; }
+
+.ecc__desc {
+  font-size: 0.75rem;
+  color: var(--ds-text-secondary);
+  margin: 0.125rem 0 0;
 }
 
-.dark .ecc__code { color: var(--ds-info); }
+.dark .ecc__desc { color: var(--ds-text-secondary); }
 
-.ecc__edit-btn {
+.ecc__body {
+  padding: 1.25rem;
+  background: var(--ds-surface);
+}
+
+.dark .ecc__body { background: var(--ds-surface); }
+
+.ecc__stepper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: var(--ds-radius-md);
-  background: rgba(2, 132, 199, 0.15);
-  color: var(--ds-info);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.ecc__edit-btn:hover { background: rgba(2, 132, 199, 0.25); }
-
-.ecc__hint {
+.ecc__stepper-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-gray-50);
+  color: var(--ds-text);
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.72rem;
+  justify-content: center;
+  transition: all 0.15s ease;
+  font-size: 1.25rem;
+}
+
+.dark .ecc__stepper-btn {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+  color: white;
+}
+
+.ecc__stepper-btn:hover:not(:disabled) {
+  background: var(--ds-primary);
+  color: white;
+  border-color: var(--ds-primary);
+}
+
+.ecc__stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ecc__stepper-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 5rem;
+}
+
+.ecc__stepper-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--ds-primary);
+  line-height: 1;
+}
+
+.dark .ecc__stepper-num { color: var(--ds-primary); }
+
+.ecc__stepper-unit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-text-secondary);
+}
+
+.ecc__slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ds-gray-200);
+  outline: none;
+  -webkit-appearance: none;
+  margin-bottom: 0.75rem;
+}
+
+.dark .ecc__slider { background: var(--ds-gray-700); }
+
+.ecc__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ds-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+}
+
+.ecc__hint-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
   color: var(--ds-text-muted);
-  margin: 0;
+  justify-content: center;
 }
 
 /* Buttons */

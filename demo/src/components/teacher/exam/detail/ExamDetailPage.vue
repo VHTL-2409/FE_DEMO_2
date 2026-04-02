@@ -712,6 +712,14 @@ onMounted(loadExam)
   width: 100%;
 }
 
+@media (min-width: 1400px) {
+  .edp__loading { max-width: 1600px; }
+}
+
+@media (min-width: 1600px) {
+  .edp__loading { max-width: 1800px; }
+}
+
 .edp__loading-inner {
   display: flex;
   flex-direction: column;
@@ -752,6 +760,14 @@ onMounted(loadExam)
   max-width: 1440px;
   margin: 0 auto;
   align-items: start;
+}
+
+@media (min-width: 1400px) {
+  .edp__body-inner { max-width: 1600px; }
+}
+
+@media (min-width: 1600px) {
+  .edp__body-inner { max-width: 1800px; }
 }
 
 @media (max-width: 1100px) {

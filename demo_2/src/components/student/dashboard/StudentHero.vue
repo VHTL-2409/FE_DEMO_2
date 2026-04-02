@@ -221,6 +221,14 @@ const nextAction = computed(() => {
   color: var(--ds-text);
 }
 
+@media (min-width: 1400px) {
+  .sh__headline { max-width: 580px; }
+}
+
+@media (min-width: 1600px) {
+  .sh__headline { max-width: 700px; }
+}
+
 /* Next action chip */
 .sh__next-action {
   display: inline-flex;

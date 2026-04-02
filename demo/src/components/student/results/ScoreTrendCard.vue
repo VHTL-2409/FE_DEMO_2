@@ -265,22 +265,19 @@ const barClass = (score) => {
   filter: brightness(1.15);
 }
 
-.stc__bar-fill--high { 
-  background: linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.6) 100%);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+.stc__bar-fill--high {
+  background: linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.5) 100%);
 }
-.stc__bar-fill--mid { 
-  background: linear-gradient(180deg, #f59e0b 0%, rgba(245, 158, 11, 0.6) 100%);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+.stc__bar-fill--mid {
+  background: linear-gradient(180deg, #f59e0b 0%, rgba(245, 158, 11, 0.5) 100%);
 }
-.stc__bar-fill--low { 
-  background: linear-gradient(180deg, #ef4444 0%, rgba(239, 68, 68, 0.6) 100%);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+.stc__bar-fill--low {
+  background: linear-gradient(180deg, #ef4444 0%, rgba(239, 68, 68, 0.5) 100%);
 }
 
-.stc__bar-wrap:hover .stc__bar-fill--high { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
-.stc__bar-wrap:hover .stc__bar-fill--mid { box-shadow: 0 0 20px rgba(245, 158, 11, 0.5); }
-.stc__bar-wrap:hover .stc__bar-fill--low { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+.stc__bar-wrap:hover .stc__bar-fill--high { box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
+.stc__bar-wrap:hover .stc__bar-fill--mid { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+.stc__bar-wrap:hover .stc__bar-fill--low { box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
 
 /* Bar tooltip */
 .stc__bar-tooltip {

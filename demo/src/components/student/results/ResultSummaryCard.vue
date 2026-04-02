@@ -117,14 +117,14 @@ const completionRate = computed(() => {
 .rsc__grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .rsc__card {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
   border-radius: var(--ds-radius-xl);
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
@@ -163,7 +163,7 @@ const completionRate = computed(() => {
 .rsc__card-val {
   display: block;
   font-family: var(--ds-font-display);
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 900;
   color: var(--ds-text);
   line-height: 1;
@@ -176,7 +176,7 @@ const completionRate = computed(() => {
 
 .rsc__card-lbl {
   display: block;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--ds-text-muted);
   text-transform: uppercase;
@@ -245,8 +245,8 @@ const completionRate = computed(() => {
 }
 
 .rsc__card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .rsc__card:hover .rsc__card-icon {

@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-5xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <!-- Breadcrumb -->
       <div class="mb-4 ds-animate-fade-up">
@@ -171,24 +171,24 @@
           <div class="grid grid-cols-3 gap-4 text-center">
             <div
               class="rounded-lg p-4"
-              style="background-color: var(--ds-success-bg); border: 1px solid rgba(22, 163, 74, 0.2)"
+              style="background-color: rgba(34, 197, 94, 0.06); border: 1px solid rgba(22, 163, 74, 0.15)"
             >
-              <p class="text-3xl font-extrabold" style="color: var(--ds-success)">{{ answerStats.correct }}</p>
-              <p class="text-sm font-medium" style="color: var(--ds-success)">Câu đúng</p>
+              <p class="text-2xl font-bold" style="color: #16a34a">{{ answerStats.correct }}</p>
+              <p class="text-sm font-medium" style="color: #16a34a">Câu đúng</p>
             </div>
             <div
               class="rounded-lg p-4"
-              style="background-color: var(--ds-danger-bg); border: 1px solid rgba(220, 38, 38, 0.2)"
+              style="background-color: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.15)"
             >
-              <p class="text-3xl font-extrabold" style="color: var(--ds-danger)">{{ answerStats.wrong }}</p>
-              <p class="text-sm font-medium" style="color: var(--ds-danger)">Câu sai</p>
+              <p class="text-2xl font-bold" style="color: #dc2626">{{ answerStats.wrong }}</p>
+              <p class="text-sm font-medium" style="color: #dc2626">Câu sai</p>
             </div>
             <div
               class="rounded-lg p-4"
-              style="background-color: var(--ds-warning-bg); border: 1px solid rgba(245, 158, 11, 0.2)"
+              style="background-color: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.15)"
             >
-              <p class="text-3xl font-extrabold" style="color: var(--ds-warning)">{{ answerStats.skipped }}</p>
-              <p class="text-sm font-medium" style="color: var(--ds-warning)">Bỏ qua</p>
+              <p class="text-2xl font-bold" style="color: #d97706">{{ answerStats.skipped }}</p>
+              <p class="text-sm font-medium" style="color: #d97706">Bỏ qua</p>
             </div>
           </div>
         </DsCard>

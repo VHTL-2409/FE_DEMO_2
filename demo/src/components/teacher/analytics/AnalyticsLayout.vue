@@ -45,11 +45,23 @@
   margin: 0 auto;
 }
 
+@media (min-width: 1400px) {
+  .al { max-width: 1600px; }
+}
+
+@media (min-width: 1600px) {
+  .al { max-width: 1800px; }
+}
+
 /* KPI strip */
 .al__kpi-strip {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0.875rem;
+}
+
+@media (min-width: 1600px) {
+  .al__kpi-strip { grid-template-columns: repeat(6, 1fr); }
 }
 
 /* Charts row: 2/3 + 1/3 */
@@ -60,9 +72,8 @@
   align-items: start;
 }
 
-/* Filters */
-.al__filters {
-  /* Filter component provides its own spacing */
+@media (min-width: 1600px) {
+  .al__charts-row { gap: 1.25rem; }
 }
 
 /* Responsive */

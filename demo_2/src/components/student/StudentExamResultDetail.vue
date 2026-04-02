@@ -42,7 +42,7 @@
               <BaseCard hoverable class="stitch-editorial-shadow flex flex-col gap-2 border border-[#dbc2b0]/20 !shadow-sm dark:border-slate-700">
                 <p class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Tổng điểm</p>
                 <div class="flex items-baseline gap-2">
-                  <p class="stitch-serif-gradient-text text-4xl font-bold md:text-5xl">{{ scoreTen }}</p>
+                  <p class="text-4xl font-bold md:text-5xl" :class="scoreColorClass">{{ scoreTen }}</p>
                   <span class="text-lg font-semibold text-slate-400 dark:text-slate-500">/ 10</span>
                 </div>
                 <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
@@ -68,17 +68,17 @@
                   <p class="text-slate-900 dark:text-slate-100 text-base font-semibold mb-6">Phân bố câu trả lời</p>
                   <div class="grid h-48 grid-cols-3 items-end gap-4 px-4 md:gap-6">
                     <div class="flex flex-col items-center gap-3 h-full justify-end">
-                      <div class="bg-green-500/20 border-t-4 border-green-500 w-full rounded-t-lg" :style="{ height: `${Math.max(8, correctRatio)}%` }"></div>
+                      <div class="bg-emerald-500/15 border-t-2 border-emerald-500 w-full rounded-t-lg" :style="{ height: `${Math.max(8, correctRatio)}%` }"></div>
                       <p class="text-slate-600 dark:text-slate-400 text-xs font-bold uppercase">Đúng</p>
-                      <span class="text-green-600 font-bold">{{ correctCount }}</span>
+                      <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ correctCount }}</span>
                     </div>
                     <div class="flex flex-col items-center gap-3 h-full justify-end">
-                      <div class="bg-red-500/20 border-t-4 border-red-500 w-full rounded-t-lg" :style="{ height: `${Math.max(8, incorrectRatio)}%` }"></div>
+                      <div class="bg-red-500/15 border-t-2 border-red-500 w-full rounded-t-lg" :style="{ height: `${Math.max(8, incorrectRatio)}%` }"></div>
                       <p class="text-slate-600 dark:text-slate-400 text-xs font-bold uppercase">Sai</p>
-                      <span class="text-red-600 font-bold">{{ incorrectCount }}</span>
+                      <span class="text-red-600 dark:text-red-400 font-bold">{{ incorrectCount }}</span>
                     </div>
                     <div class="flex flex-col items-center gap-3 h-full justify-end">
-                      <div class="bg-slate-300 dark:bg-slate-700 border-t-4 border-slate-400 w-full rounded-t-lg" :style="{ height: `${Math.max(8, skippedRatio)}%` }"></div>
+                      <div class="bg-slate-300/30 dark:bg-slate-700/50 border-t-2 border-slate-400 w-full rounded-t-lg" :style="{ height: `${Math.max(8, skippedRatio)}%` }"></div>
                       <p class="text-slate-600 dark:text-slate-400 text-xs font-bold uppercase">Bỏ qua</p>
                       <span class="text-slate-500 font-bold">{{ skippedCount }}</span>
                     </div>
@@ -247,6 +247,11 @@ const attemptedAt = computed(() => {
 })
 const scorePercent = computed(() => Math.round(Number(report.value?.score ?? route.query.score ?? 0)))
 const scoreTen = computed(() => (scorePercent.value / 10).toFixed(1))
+const scoreColorClass = computed(() => {
+  if (scorePercent.value >= 80) return 'text-emerald-500 dark:text-emerald-400'
+  if (scorePercent.value >= 50) return 'text-amber-500 dark:text-amber-400'
+  return 'text-red-500 dark:text-red-400'
+})
 const timeTaken = computed(() => {
   const startedAt = detail.value?.startedAt
   const submittedAt = detail.value?.submittedAt
