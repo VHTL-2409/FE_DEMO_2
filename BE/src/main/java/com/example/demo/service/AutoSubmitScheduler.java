@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.repository.ExamAttemptRepository;
@@ -30,7 +31,7 @@ public class AutoSubmitScheduler {
         List<ExamAttempt> inProgress = new java.util.ArrayList<>();
         inProgress.addAll(examAttemptRepository.findByStatus(AttemptStatus.IN_PROGRESS));
         inProgress.addAll(examAttemptRepository.findByStatus(AttemptStatus.PAUSED));
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         int count = 0;
         for (ExamAttempt attempt : inProgress) {
             if (now.isAfter(submissionHelper.deadlineAt(attempt))) {

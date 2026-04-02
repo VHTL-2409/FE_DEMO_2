@@ -10,7 +10,7 @@
         :class="{ 'af__tab--active': activeTab === tab.id }"
         @click="$emit('update:activeTab', tab.id)"
       >
-        <LucideIcon :name="tab.icon" />
+        <LucideIcon :name="tab.icon" :size="16" />
         {{ tab.label }}
         <span v-if="tab.count !== undefined" class="af__tab-count">{{ tab.count }}</span>
       </button>
@@ -20,7 +20,7 @@
     <div class="af__controls">
       <!-- Search -->
       <div class="af__search">
-        <LucideIcon name="search" />
+        <LucideIcon class="af__search-icon" name="search" :size="18" />
         <input
           :value="searchQuery"
           type="text"
@@ -34,7 +34,7 @@
           class="af__search-clear"
           @click="$emit('update:searchQuery', '')"
         >
-          <LucideIcon name="close" />
+          <LucideIcon name="close" :size="16" />
         </button>
       </div>
 
@@ -71,7 +71,7 @@
         :disabled="exportLoading"
         @click="$emit('export')"
       >
-        <LucideIcon name="download" />
+        <LucideIcon name="download" :size="18" />
         Xuất CSV
       </button>
     </div>
@@ -80,6 +80,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import LucideIcon from '../../common/LucideIcon.vue'
 
 const props = defineProps({
   activeTab: { type: String, default: 'all' },
@@ -227,8 +228,61 @@ const sortOptions = [
   flex-wrap: wrap;
 }
 
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .af {
+    padding: 0.75rem 0;
+  }
+
+  .af__tabs {
+    gap: 0.375rem;
+  }
+
+  .af__tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .af__controls {
+    gap: 0.5rem;
+  }
+
+  .af__search {
+    flex: 1 1 100%;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .af__select {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
+    font-size: 0.75rem;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  }
+
+  .af__export-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .af__select {
+    flex: 1 1 100%;
+  }
+
+  .af__tab {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .af__tab-label {
+    font-size: 0.7rem;
+  }
+}
+
 /* Search */
 .af__search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -253,9 +307,17 @@ const sortOptions = [
 }
 
 .af__search-icon {
-  font-size: 1.125rem;
-  color: var(--ds-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: var(--ds-text-muted);
+}
+
+.af__search-icon :deep(svg) {
+  width: 18px !important;
+  height: 18px !important;
+  display: block;
 }
 
 .af__search-input {
@@ -266,9 +328,10 @@ const sortOptions = [
   font-size: 0.875rem;
   color: var(--ds-text);
   min-width: 0;
+  width: 100%;
 }
 
-.dark .af__search-input { color: #f1f5f9; }
+.dark .af__search-input { color: var(--ds-text); }
 .af__search-input::placeholder { color: var(--ds-text-muted); }
 
 .af__search-clear {
@@ -292,33 +355,56 @@ const sortOptions = [
 
 /* Select */
 .af__select {
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  padding: 0.625rem 2.75rem 0.625rem 1rem;
   background: var(--ds-surface);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
+  border: 2px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--ds-text-secondary);
   outline: none;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.625rem center;
+  background-position: right 0.75rem center;
   background-color: var(--ds-surface);
-  transition: all 0.15s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  min-width: 130px;
 }
 
 .dark .af__select {
   background-color: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #94a3b8;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  color: var(--ds-text-muted);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+.af__select:hover {
+  border-color: var(--ds-primary-border);
+  background-color: white;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+.dark .af__select:hover {
+  background-color: var(--ds-gray-700);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 
 .af__select:focus {
   border-color: var(--ds-primary);
-  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+  box-shadow: 0 0 0 4px var(--ds-primary-ring), 0 8px 24px rgba(79, 70, 229, 0.2);
+  background-color: white;
+  transform: scale(1.02);
+}
+
+.dark .af__select:focus { 
+  background-color: var(--ds-gray-700);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: scale(1.02);
 }
 
 /* Spacer */

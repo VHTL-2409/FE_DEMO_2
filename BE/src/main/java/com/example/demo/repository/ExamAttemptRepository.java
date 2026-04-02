@@ -29,10 +29,6 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     Optional<ExamAttempt> findByIdAndStudent(Long id, User student);
 
-    /**
-     * Loads attempt with exam, exam creator, and student — required when
-     * {@code spring.jpa.open-in-view=false} and code reads {@code exam.getCreatedBy()} etc.
-     */
     @Query("""
             SELECT DISTINCT ea FROM ExamAttempt ea
             LEFT JOIN FETCH ea.exam e
@@ -44,54 +40,58 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);
 
-    @Query("""
-            SELECT ea
-            FROM ExamAttempt ea
-            WHERE ea.exam = :exam
-              AND ea.clientIp = :clientIp
+    /**
+     * Tim cac attempt cung IP trong ky thi.
+     * Khong loc theo ngay gio vi IP detection chi can biet co attempt nao cung IP.
+     */
+    @Query(value = """
+            SELECT ea.*
+            FROM exam_attempts ea
+            WHERE ea.exam_id = :examId
+              AND ea.client_ip = :clientIp
               AND ea.id <> :attemptId
-              AND ea.student.id <> :studentId
-              AND ea.status IN :statuses
-              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
-              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
-            """)
+              AND ea.student_id <> :studentId
+              AND ea.status IN (:inProgress, :paused)
+            """, nativeQuery = true)
     List<ExamAttempt> findDuplicateIpCounterparts(
-            @Param("exam") Exam exam,
+            @Param("examId") Long examId,
             @Param("clientIp") String clientIp,
             @Param("attemptId") Long attemptId,
             @Param("studentId") Long studentId,
-            @Param("statuses") List<AttemptStatus> statuses,
-            @Param("sessionFrom") LocalDateTime sessionFrom,
-            @Param("sessionTo") LocalDateTime sessionTo);
+            @Param("inProgress") String inProgress,
+            @Param("paused") String paused);
 
     @Query(value = """
-            SELECT ea
-            FROM ExamAttempt ea LEFT JOIN FETCH ea.student
-            WHERE ea.exam = :exam
-              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
-              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
+            SELECT ea.*
+            FROM exam_attempts ea
+            LEFT JOIN users u ON ea.student_id = u.id
+            WHERE ea.exam_id = :examId
+              AND (CASE WHEN :sessionFrom IS NOT NULL AND :sessionTo IS NOT NULL
+                        THEN ea.started_at >= :sessionFrom AND ea.started_at <= :sessionTo
+                        ELSE TRUE END)
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
-              AND (:student = '' OR LOWER(ea.student.username) LIKE CONCAT('%', :student, '%'))
-              AND (:riskMin IS NULL OR ea.riskScore >= :riskMin)
-              AND (:riskMax IS NULL OR ea.riskScore <= :riskMax)
+              AND (:student = '' OR LOWER(u.username) LIKE '%' || :student || '%')
+              AND (:riskMin IS NULL OR ea.risk_score >= :riskMin)
+              AND (:riskMax IS NULL OR ea.risk_score <= :riskMax)
             """, countQuery = """
-            SELECT count(ea)
-            FROM ExamAttempt ea
-            WHERE ea.exam = :exam
-              AND (:sessionFrom IS NULL OR ea.startedAt >= :sessionFrom)
-              AND (:sessionTo IS NULL OR ea.startedAt <= :sessionTo)
+            SELECT count(ea.id)
+            FROM exam_attempts ea
+            WHERE ea.exam_id = :examId
+              AND (CASE WHEN :sessionFrom IS NOT NULL AND :sessionTo IS NOT NULL
+                        THEN ea.started_at >= :sessionFrom AND ea.started_at <= :sessionTo
+                        ELSE TRUE END)
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
-              AND (:student = '' OR LOWER(ea.student.username) LIKE CONCAT('%', :student, '%'))
-              AND (:riskMin IS NULL OR ea.riskScore >= :riskMin)
-              AND (:riskMax IS NULL OR ea.riskScore <= :riskMax)
-            """)
+              AND (:student = '' OR LOWER((SELECT u2.username FROM users u2 WHERE u2.id = ea.student_id)) LIKE '%' || :student || '%')
+              AND (:riskMin IS NULL OR ea.risk_score >= :riskMin)
+              AND (:riskMax IS NULL OR ea.risk_score <= :riskMax)
+            """, nativeQuery = true)
     Page<ExamAttempt> searchByExam(
-            @Param("exam") Exam exam,
+            @Param("examId") Long examId,
             @Param("sessionFrom") LocalDateTime sessionFrom,
             @Param("sessionTo") LocalDateTime sessionTo,
-            @Param("status") AttemptStatus status,
+            @Param("status") String status,
             @Param("suspicious") Boolean suspicious,
             @Param("student") String student,
             @Param("riskMin") Integer riskMin,

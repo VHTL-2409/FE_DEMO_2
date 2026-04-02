@@ -1,5 +1,5 @@
 <template>
-  <div :class="rootClass" class="base-card">
+  <div :class="rootClass" class="gs-card">
     <slot />
   </div>
 </template>
@@ -11,40 +11,56 @@ const props = defineProps({
   padding: {
     type: String,
     default: 'md',
-    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+    validator: (v) => ['sm', 'md', 'lg', 'none'].includes(v)
+  },
+  variant: {
+    type: String,
+    default: 'default',
+    validator: (v) => ['default', 'flat', 'glass', 'elevated'].includes(v)
   },
   hoverable: { type: Boolean, default: false }
 })
 
 const paddingClass = {
+  none: '',
   sm: 'p-4',
   md: 'p-6',
   lg: 'p-8'
 }
 
+const variantClass = computed(() => {
+  const variantMap = {
+    default: '',
+    flat: 'gs-card--flat',
+    glass: 'gs-card--glass',
+    elevated: 'glass--elevated'
+  }
+  return variantMap[props.variant] || ''
+})
+
 const rootClass = computed(() => {
   const base = [
-    'rounded-[1.6rem] border',
-    paddingClass[props.padding] || paddingClass.md
+    paddingClass[props.padding] || paddingClass.md,
+    variantClass.value
   ]
-  if (props.hoverable) {
-    base.push('portal-card-lift')
-  } else {
-    base.push('')
-  }
-  return base
+  return base.filter(Boolean)
 })
 </script>
 
 <style scoped>
-.base-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 255, 0.94) 100%);
-  border-color: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-md);
+/* Hoverable uses .gs-card hover from glass-system.css via .gs-lift utility */
+/* Additional scoped refinements */
+.gs-card {
+  will-change: transform, box-shadow;
 }
 
-.dark .base-card {
-  background: linear-gradient(180deg, rgba(16, 24, 38, 0.96) 0%, rgba(15, 23, 42, 0.92) 100%);
-  border-color: rgba(148, 163, 184, 0.14);
+/* Ensure hover effect is smooth */
+.gs-card:hover {
+  cursor: pointer;
+}
+
+/* If not hoverable, remove cursor pointer */
+.gs-card:not(.gs-lift):hover {
+  cursor: default;
 }
 </style>

@@ -1,89 +1,174 @@
 <template>
-  <div
-    :class="rootClass"
-    class="empty-state"
-    role="status"
-  >
-    <span
-      v-if="icon"
-      :class="iconClass"
-      aria-hidden="true"
-    >
-      {{ icon }}
-    </span>
-    <h3 :class="titleClass">
-      {{ title }}
-    </h3>
-    <p v-if="description" :class="descriptionClass">
-      {{ description }}
-    </p>
-    <BaseButton
+  <div :class="rootClass" class="ds-empty" role="status">
+    <!-- Illustration / Icon -->
+    <div v-if="icon || variantIcon" class="ds-empty__icon">
+      <LucideIcon :name="variantIcon || icon" />
+    </div>
+    <div v-else-if="variant === 'no-data'" class="ds-empty__icon ds-empty__icon--no-data">
+      <LucideIcon name="inbox" />
+    </div>
+    <div v-else-if="variant === 'error'" class="ds-empty__icon ds-empty__icon--error">
+      <LucideIcon name="alert_triangle" />
+    </div>
+    <div v-else-if="variant === 'loading'" class="ds-empty__icon ds-empty__icon--loading">
+      <LucideIcon name="loader_2" class="ds-empty__spinner" />
+    </div>
+    <div v-else-if="variant === 'success'" class="ds-empty__icon ds-empty__icon--success">
+      <LucideIcon name="check_circle" />
+    </div>
+
+    <!-- Title -->
+    <h3 class="ds-empty__title">{{ title }}</h3>
+
+    <!-- Description -->
+    <p v-if="description" class="ds-empty__desc">{{ description }}</p>
+
+    <!-- Action Button -->
+    <button
       v-if="actionLabel"
-      variant="primary"
+      class="ds-empty__action ds-btn ds-btn--primary"
       @click="$emit('action')"
     >
+      <LucideIcon v-if="actionIcon" :name="actionIcon" />
       {{ actionLabel }}
-    </BaseButton>
+    </button>
+
+    <!-- Secondary action -->
+    <button
+      v-if="secondaryActionLabel"
+      class="ds-empty__secondary-action ds-empty__action ds-btn ds-btn--ghost"
+      @click="$emit('secondary-action')"
+    >
+      {{ secondaryActionLabel }}
+    </button>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import BaseButton from './BaseButton.vue'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const props = defineProps({
   icon: { type: String, default: '' },
   title: { type: String, required: true },
   description: { type: String, default: '' },
   actionLabel: { type: String, default: '' },
-  /** Gọn hơn: trong ô bảng hoặc panel nhỏ */
+  actionIcon: { type: String, default: '' },
+  secondaryActionLabel: { type: String, default: '' },
   dense: { type: Boolean, default: false },
-  /** Chiếm chiều cao vùng cha (scroll / card) để không còn “dải trống” mỏng */
-  fill: { type: Boolean, default: false }
+  fill: { type: Boolean, default: false },
+  variant: {
+    type: String,
+    default: 'default',
+    validator: (v) => ['default', 'no-data', 'error', 'loading', 'success'].includes(v)
+  }
 })
 
-defineEmits(['action'])
+defineEmits(['action', 'secondary-action'])
 
 const rootClass = computed(() => {
-  const base = 'flex w-full flex-col items-center justify-center text-center rounded-[1.5rem] border'
-  const pad = props.dense ? 'py-6 px-3 sm:px-4' : 'py-10 px-4'
-  const fill = props.fill ? 'min-h-[min(42dvh,320px)] flex-1' : ''
-  return [base, pad, fill].filter(Boolean).join(' ')
-})
-
-const iconClass = computed(() => {
-  const color = 'text-[color:var(--color-text-secondary)] select-none'
-  if (props.dense) {
-    return `material-symbols-outlined text-4xl ${color} mb-2`
-  }
-  return `material-symbols-outlined text-5xl ${color} mb-4`
-})
-
-const titleClass = computed(() => {
-  if (props.dense) {
-    return 'text-base font-bold text-slate-900 dark:text-slate-100 mb-1'
-  }
-  return 'text-lg font-bold text-slate-900 dark:text-slate-100 mb-2'
-})
-
-const descriptionClass = computed(() => {
-  const mb = props.actionLabel ? 'mb-4 sm:mb-6' : 'mb-0'
-  if (props.dense) {
-    return `text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md ${mb}`
-  }
-  return `text-sm text-slate-600 dark:text-slate-400 max-w-md ${mb}`
+  const classes = []
+  if (props.dense) classes.push('ds-empty--dense')
+  if (props.fill) classes.push('ds-empty--fill')
+  return classes.join(' ')
 })
 </script>
 
 <style scoped>
-.empty-state {
-  border-color: rgba(255, 255, 255, 0.7);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 250, 255, 0.92) 100%);
-  box-shadow: var(--shadow-sm);
+.ds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  gap: 0.75rem;
 }
 
-.dark .empty-state {
-  border-color: rgba(148, 163, 184, 0.12);
-  background: linear-gradient(180deg, rgba(16, 24, 38, 0.94) 0%, rgba(15, 23, 42, 0.9) 100%);
+.ds-empty--dense { padding: 2rem 1rem; }
+.ds-empty--fill { width: 100%; height: 100%; min-height: 200px; }
+
+.ds-empty__icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--ds-radius-2xl);
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.dark .ds-empty__icon {
+  background: var(--ds-gray-800);
+  color: #94a3b8;
+}
+
+.ds-empty__icon :deep(.lucide) { font-size: 2rem; }
+
+.ds-empty__icon--no-data {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+}
+
+.ds-empty__icon--error {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.ds-empty__icon--loading {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.ds-empty__icon--success {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ds-empty__spinner {
+  animation: dsSpin 1s linear infinite;
+}
+
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+
+.ds-empty__title {
+  font-family: var(--ds-font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ds-text);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.dark .ds-empty__title { color: #f1f5f9; }
+
+.ds-empty__desc {
+  font-size: 0.875rem;
+  color: var(--ds-text-muted);
+  margin: 0;
+  max-width: 360px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.ds-empty__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ds-empty__action :deep(.lucide) { font-size: 1rem; }
+
+.ds-empty__secondary-action {
+  font-size: 0.8125rem;
+  color: var(--ds-text-muted);
+  font-weight: 600;
+}
+
+.ds-empty__secondary-action:hover {
+  color: var(--ds-primary);
 }
 </style>

@@ -1,23 +1,25 @@
 import { apiRequest, ApiError, unwrapApiData } from './apiClient'
 
-/** Tên hiển thị từ GET /api/me (có studentProfile lồng nhau) */
-export const displayNameFromMe = (me) => {
-  if (!me || typeof me !== 'object') return ''
-  const sp = me.studentProfile
-  return (
-    sp?.fullName ||
-    sp?.displayName ||
-    me.fullName ||
-    me.displayName ||
-    me.username ||
-    ''
-  )
-}
-
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_USER_KEY = 'auth_user'
 const AUTH_USER_TS_KEY = 'auth_user_ts'
-const USER_CACHE_TTL_MS = 5 * 60 * 1000
+/** Cache user info for 15 minutes — avoid redundant /api/me calls on every navigation */
+const USER_CACHE_TTL_MS = 15 * 60 * 1000
+
+/**
+ * Check if the stored JWT token has expired without decoding the full token.
+ * Falls back to true (expired) if token cannot be parsed.
+ */
+const isTokenExpired = () => {
+  const raw = localStorage.getItem(AUTH_TOKEN_KEY)
+  if (!raw) return true
+  try {
+    const payload = JSON.parse(atob(raw.split('.')[1]))
+    return (payload.exp * 1000) < Date.now()
+  } catch {
+    return true
+  }
+}
 
 const normalizeAuthUser = (authData) => ({
   username: authData?.username || '',
@@ -104,6 +106,28 @@ const isUserCacheFresh = () => {
   return Date.now() - ts < USER_CACHE_TTL_MS
 }
 
+/** Guard: ngăn gọi refresh đồng thời từ nhiều route navigation */
+let _refreshPromise = null
+export const getCachedOrRefresh = async (force = false) => {
+  const token = getStoredToken()
+  if (!token) return null
+
+  // Token expired → force refresh
+  if (isTokenExpired()) {
+    return syncCurrentUserFromDatabase()
+  }
+
+  // Cache fresh and user exists → skip API call
+  if (!force && isUserCacheFresh()) {
+    const cached = getStoredUser()
+    if (cached?.username) return cached
+  }
+
+  if (_refreshPromise) return _refreshPromise
+  _refreshPromise = syncCurrentUserFromDatabase().finally(() => { _refreshPromise = null })
+  return _refreshPromise
+}
+
 /** Role/username từ GET /api/me (User + roles trong DB) — dùng chung cho validateSession và sync */
 const persistUserFromMeResponse = (data) => {
   const user = {
@@ -122,7 +146,7 @@ const fetchMeUserAndPersist = async () => {
 
 /**
  * Luôn gọi API /api/me để lấy role đúng theo database, cập nhật localStorage.
- * Không xóa session khi lỗi mạng (trả null); chỉ clear khi 401/403.
+ * Chỉ clear session khi 401/403. Khi network error → giữ session hiện tại.
  */
 export const syncCurrentUserFromDatabase = async () => {
   const token = getStoredToken()
@@ -139,7 +163,8 @@ export const syncCurrentUserFromDatabase = async () => {
         return null
       }
     }
-    return null
+    // Network error hoặc server error 5xx: giữ session hiện tại
+    return getStoredUser()
   }
 }
 
@@ -236,6 +261,11 @@ export const validateSession = async () => {
   const token = getStoredToken()
   if (!token) return null
 
+  if (isTokenExpired()) {
+    clearAuthSession()
+    return null
+  }
+
   const cachedUser = getStoredUser()
   if (cachedUser && isUserCacheFresh()) {
     if (!cachedUser.username) {
@@ -252,16 +282,16 @@ export const validateSession = async () => {
       if (error.status === 404 && String(error?.payload?.message || '').includes('Student profile not found')) {
         return getStoredUser()
       }
+      if (error.status === 401 || error.status === 403) {
+        clearAuthSession()
+        return null
+      }
     }
-    clearAuthSession()
-    return null
+    return getStoredUser()
   }
 }
 
-export const fetchStudentProfile = async () => {
-  const payload = await apiRequest('/api/profile/student')
-  return unwrapApiData(payload) ?? payload
-}
+export const fetchStudentProfile = async () => apiRequest('/api/profile/student')
 
 export const fetchTeacherProfile = async () => apiRequest('/api/profile/teacher')
 

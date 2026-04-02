@@ -8,8 +8,10 @@ docs/
 .cursor/
 .agents/
 .mux/
+.codex/
+everything-claude-code/
 /stitch_new
-
+*.ps1
 # Production env (chứa mật khẩu, secret)
 .env
 

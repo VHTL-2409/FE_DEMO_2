@@ -25,7 +25,7 @@ const router = createRouter({
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
     if (to.hash) return { el: to.hash, behavior: 'smooth' }
-    return { top: 0, left: 0, behavior: 'instant' }
+    return false
   },
   routes: [
     { path: '/', component: () => import('./components/public/SiteIntroduction.vue'), alias: ['/gioi-thieu'] },
@@ -64,12 +64,16 @@ const router = createRouter({
     },
     { path: '/teacher/dashboard', component: () => import('./components/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams', redirect: '/teacher/exams/list' },
+    { path: '/teacher/classes', component: () => import('./components/teacher/class/ClassManagementPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/class/:id', component: () => import('./components/teacher/class/ClassDetailPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/list', component: () => import('./components/teacher/exam/list/ExamListPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/exams/create', component: () => import('./components/teacher/exam/ExamCreationPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/exams/create', component: () => import('./components/teacher/exam/ExamTypeSelector.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/exams/build', component: () => import('./components/teacher/exam/ExamCreationPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/manual', component: () => import('./components/teacher/TeacherManualQuestionEntry.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/schedule', component: () => import('./components/teacher/TeacherExamScheduleCreate.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/new-session', component: () => import('./components/teacher/TeacherExamNewSession.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/created-success', component: () => import('./components/teacher/TeacherExamCreatedSuccess.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/exams/waiting-room', component: () => import('./components/teacher/TeacherExamWaitingRoom.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/review', redirect: to => ({ path: '/teacher/exams/review/summary', query: to.query }), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/review/summary', component: () => import('./components/teacher/TeacherExamReviewSummary.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/review/incidents', component: () => import('./components/teacher/TeacherIncidentReviewUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
@@ -87,6 +91,7 @@ const router = createRouter({
     { path: '/student/submission-confirmation', component: () => import('./components/student/StudentSubmissionConfirmation.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/study-history', component: () => import('./components/student/StudentStudyHistory.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-result', component: () => import('./components/student/StudentExamResultDetail.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
+    { path: '/student/classes', component: () => import('./components/student/class/StudentClassList.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/generate-practice-test', component: () => import('./components/student/StudentGeneratePracticeTest.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/profile', component: () => import('./components/student/StudentProfile.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/schedule', component: () => import('./components/student/StudentExamSchedule.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },

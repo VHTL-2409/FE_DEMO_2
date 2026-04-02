@@ -92,7 +92,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import BaseCard from '../shared/BaseCard.vue'
 import BaseField from '../shared/BaseField.vue'

@@ -73,17 +73,18 @@
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <!-- Exam Code -->
+            <!-- Exam Code — chỉ hiện với bài thi tự do -->
             <div
+              v-if="examType === 'free'"
               class="rounded-lg p-4 text-center"
-              style="background-color: var(--ds-primary-soft); border: 1px solid var(--ds-primary-border)"
+              style="background-color: var(--ds-info-bg); border: 1px solid rgba(2, 132, 199, 0.25)"
             >
-              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-primary)">Mã đề thi</p>
-              <p class="mt-1 text-2xl font-extrabold tracking-wider" style="color: var(--ds-primary)">{{ examCode }}</p>
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: #0284c7">Mã đề thi</p>
+              <p class="mt-1 text-2xl font-extrabold tracking-wider" style="color: #0284c7; font-family: 'Courier New', monospace">{{ examCode }}</p>
               <button
                 type="button"
                 class="mt-2 text-xs font-semibold underline-offset-200 hover:underline"
-                style="color: var(--ds-primary)"
+                style="color: #0284c7"
                 @click="copyCode"
               >
                 <span class="flex items-center justify-center gap-1">
@@ -91,6 +92,17 @@
                   Sao chép mã
                 </span>
               </button>
+            </div>
+
+            <!-- Exam type badge — hiện với bài thi riêng tư -->
+            <div
+              v-if="examType === 'private'"
+              class="rounded-lg p-4 text-center"
+              style="background-color: var(--ds-primary-soft); border: 1px solid var(--ds-primary-border)"
+            >
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-primary)">Hình thức</p>
+              <p class="mt-1 text-xl font-extrabold" style="color: var(--ds-primary)">Bài thi riêng tư</p>
+              <p class="mt-1 text-xs" style="color: var(--ds-text-muted)">Chỉ học sinh trong lớp được phép</p>
             </div>
 
             <!-- Duration -->
@@ -127,37 +139,106 @@
       </div>
 
       <!-- Action Cards -->
-      <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 ds-animate-fade-up" style="animation-delay: 0.15s">
-        <ActionCard
-          icon="dashboard"
-          title="Về Dashboard"
-          description="Xem tổng quan các đợt thi"
-          to="/teacher"
-        />
-        <ActionCard
-          icon="list"
-          title="Danh sách đề thi"
-          description="Quản lý tất cả đề thi của bạn"
-          to="/teacher/exams"
-        />
-        <ActionCard
-          icon="add_circle"
-          title="Tạo đề thi khác"
-          description="Bắt đầu một đợt thi mới"
-          to="/teacher/exams/create"
-        />
+      <div class="mt-8 ds-animate-fade-up" style="animation-delay: 0.15s">
+        <!-- Giám sát - quan trọng nhất -->
+        <RouterLink
+          :to="`/teacher/live-monitoring/session?examId=${examId}`"
+          class="flex items-center gap-4 p-4 mb-4 rounded-xl transition-all hover:scale-[1.01] cursor-pointer"
+          style="background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%); color: white; box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3); text-decoration: none;"
+        >
+          <div class="flex items-center justify-center size-12 rounded-lg" style="background: rgba(255,255,255,0.2)">
+            <LucideIcon name="monitor_heart" size="24" />
+          </div>
+          <div class="flex-1">
+            <p class="font-bold text-lg">Giám sát ngay</p>
+            <p class="text-sm opacity-90">Theo dõi phòng chờ và tiến trình thi của sinh viên</p>
+          </div>
+          <LucideIcon name="chevron_right" size="20" class="opacity-75" />
+        </RouterLink>
+
+        <!-- Grid cho các action khác -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <RouterLink
+            to="/teacher"
+            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--ds-primary-border)] hover:bg-[var(--ds-primary-soft)] hover:shadow-md text-decoration-none"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]">
+              <LucideIcon name="dashboard" />
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-[var(--ds-text)]">Dashboard</p>
+              <p class="text-xs text-[var(--ds-text-muted)]">Tổng quan</p>
+            </div>
+          </RouterLink>
+
+          <RouterLink
+            to="/teacher/exams"
+            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--ds-primary-border)] hover:bg-[var(--ds-primary-soft)] hover:shadow-md text-decoration-none"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]">
+              <LucideIcon name="assignment" />
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-[var(--ds-text)]">Danh sách</p>
+              <p class="text-xs text-[var(--ds-text-muted)]">Quản lý đề thi</p>
+            </div>
+          </RouterLink>
+
+          <RouterLink
+            to="/teacher/exams/create"
+            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--ds-primary-border)] hover:bg-[var(--ds-primary-soft)] hover:shadow-md text-decoration-none"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]">
+              <LucideIcon name="add_circle" />
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-[var(--ds-text)]">Tạo mới</p>
+              <p class="text-xs text-[var(--ds-text-muted)]">Đề thi khác</p>
+            </div>
+          </RouterLink>
+
+          <button
+            type="button"
+            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--ds-info)] hover:bg-[var(--ds-info-bg)] hover:shadow-md text-left"
+            @click="copyCode"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg" style="background-color: var(--ds-info-bg); color: var(--ds-info);">
+              <LucideIcon name="content_copy" />
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-[var(--ds-text)]">Sao chép mã</p>
+              <p class="text-xs text-[var(--ds-text-muted)]">Chia sẻ đề thi</p>
+            </div>
+          </button>
+        </div>
       </div>
 
-      <!-- Share Info -->
-      <div class="mt-8 ds-animate-fade-up" style="animation-delay: 0.2s">
+      <!-- Share Info — chỉ với bài thi tự do -->
+      <div v-if="examType === 'free'" class="mt-8 ds-animate-fade-up" style="animation-delay: 0.2s">
         <DsCard padding="md" variant="accent" accent-color="info">
           <div class="flex items-start gap-3">
             <LucideIcon name="tips_and_updates" />
             <div>
               <p class="text-sm font-semibold" style="color: var(--ds-text)">Mẹo chia sẻ đợt thi</p>
               <p class="mt-1 text-xs" style="color: var(--ds-text-secondary)">
-                Chia sẻ mã đề thi <span class="font-bold" style="color: var(--ds-primary)">{{ examCode }}</span> với sinh viên qua email, Zalo, hoặc phương tiện khác.
+                Chia sẻ mã đề thi <span class="font-bold" style="color: #0284c7">{{ examCode }}</span> với sinh viên qua email, Zalo, hoặc phương tiện khác.
                 Sinh viên sẽ nhập mã này để tham gia thi.
+              </p>
+            </div>
+          </div>
+        </DsCard>
+      </div>
+
+      <!-- Info — với bài thi riêng tư -->
+      <div v-if="examType === 'private'" class="mt-8 ds-animate-fade-up" style="animation-delay: 0.2s">
+        <DsCard padding="md" variant="accent" accent-color="primary">
+          <div class="flex items-start gap-3">
+            <LucideIcon name="school" />
+            <div>
+              <p class="text-sm font-semibold" style="color: var(--ds-text)">Đợt thi riêng tư</p>
+              <p class="mt-1 text-xs" style="color: var(--ds-text-secondary)">
+                Chỉ học sinh trong lớp được chỉ định mới có thể tham gia thi.
+                Học sinh sẽ thấy đề thi này trong danh sách bài thi của lớp.
               </p>
             </div>
           </div>
@@ -169,15 +250,17 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import DsCard from '../ui/DsCard.vue'
-import ActionCard from '../ui/ActionCard.vue'
+import { useToast } from '../../composables/useToast'
 
 const route = useRoute()
+const toast = useToast()
 
 const examId = computed(() => route.query.examId || 'EX-001')
-const examCode = computed(() => route.query.code || 'ABCD1234')
+const examCode = computed(() => route.query.examCode || '')
+const examType = computed(() => route.query.examType || 'free')
 const examTitle = computed(() => route.query.title || 'Đề thi mới')
 const durationMinutes = computed(() => route.query.durationMinutes || '30')
 const questionCount = computed(() => route.query.questionCount || '20')
@@ -212,7 +295,10 @@ const formattedEndTime = computed(() => {
 })
 
 const copyCode = () => {
-  navigator.clipboard.writeText(examCode.value)
+  if (examCode.value) {
+    navigator.clipboard.writeText(examCode.value)
+    toast.success('Đã sao chép mã đề thi!')
+  }
 }
 </script>
 

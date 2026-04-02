@@ -1,307 +1,511 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="flex h-full min-h-0 flex-1 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
-    <div class="layout-container flex min-h-0 flex-1 grow flex-col">
-    <TeacherTopHeader active-section="exam-list" />
+  <div class="sm-app ts-page">
+    <!-- Page Header -->
+    <header class="ts-header">
+      <div class="ts-header__left">
+        <RouterLink to="/teacher/exams" class="ts-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>Quay lại</span>
+        </RouterLink>
+        <div class="ts-header__info">
+          <h1 class="sm-heading-2">Thiết lập phiên thi</h1>
+          <p class="sm-body-small">{{ examTitle }}</p>
+        </div>
+      </div>
+    </header>
 
-    <main class="teacher-stitch-main teacher-page-shell relative mx-auto w-full max-w-none min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4 sm:py-5 lg:px-5">
+    <!-- Main Form -->
+    <div class="ts-form-container">
+      <!-- Exam Info Card -->
+      <div class="ts-exam-card">
+        <div class="ts-exam-card__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+        </div>
+        <div class="ts-exam-card__content">
+          <h3 class="ts-exam-card__title">{{ examTitle }}</h3>
+          <span class="sm-badge">Bản nháp</span>
+        </div>
+      </div>
 
-      <header class="relative mb-8 w-full max-w-screen-2xl animate-fade-up">
-        <p class="portal-kicker mb-2">
-          <RouterLink to="/teacher/dashboard" class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400">Trang chủ</RouterLink>
-          <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-          <RouterLink to="/teacher/exams/list" class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400">Danh sách đề</RouterLink>
-          <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-          <span class="font-semibold text-[var(--role-primary)]">Đợt thi mới</span>
-        </p>
-        <h1 class="stitch-font-headline text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-100 md:text-5xl">
-          Tạo đợt thi mới
-        </h1>
-        <p class="mt-0.5 truncate text-xs font-medium text-[var(--role-on-surface-variant)] dark:text-slate-300">{{ examTitle }}</p>
-      </header>
-
-      <section class="stitch-ambient-shadow relative w-full max-w-screen-2xl rounded-xl border border-[color:rgba(219,194,176,0.45)] bg-white p-8 shadow-sm animate-fade-up-delay dark:border-slate-700 dark:bg-slate-900">
-        <div class="flex items-center gap-2 mb-6">
-          <span class="material-symbols-outlined text-primary">schedule</span>
-          <h3 class="text-lg font-bold">Thời gian đợt thi mới</h3>
+      <!-- Schedule Section -->
+      <section class="ts-section">
+        <div class="ts-section__header">
+          <h2 class="sm-heading-4">Lịch thi</h2>
+          <p class="sm-body-small">Thiết lập thời gian bắt đầu và kết thúc cho phiên thi này</p>
         </div>
 
-        <div class="space-y-4">
-          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/70 p-4">
-            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">
-              <span class="material-symbols-outlined text-base">timer</span>
-              Thời lượng làm bài (phút)
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <input
-                v-model.number="timeLimit"
-                type="number"
-                min="5"
-                max="480"
-                class="w-24 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center font-bold"
-                @blur="clampTimeLimit"
-              />
-              <span class="text-slate-600 dark:text-slate-400">phút</span>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="opt in durationPresets"
-                  :key="opt"
-                  type="button"
-                  :class="timeLimit === opt ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'"
-                  class="px-3 py-1.5 text-xs font-semibold rounded border hover:bg-primary/10 dark:hover:bg-primary/10"
-                  @click="timeLimit = opt"
-                >
-                  {{ opt }}p
-                </button>
-              </div>
-            </div>
+        <div class="ts-grid ts-grid--2">
+          <div class="sm-field">
+            <label class="sm-field__label">Thời gian bắt đầu <span class="ts-required">*</span></label>
+            <input
+              v-model="formData.startTime"
+              type="datetime-local"
+              class="sm-input"
+            />
           </div>
 
-          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
-            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <span class="material-symbols-outlined text-base">schedule</span>
-              Bắt đầu
-            </div>
-            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                v-model="startDate"
-                :min="minDateStr"
-                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
-                type="date"
-              />
-              <input
-                v-model="startClock"
-                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
-                type="time"
-                step="300"
-              />
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartNow">Bây giờ</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn15Minutes">+15 phút</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn30Minutes">+30 phút</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setStartIn1Hour">+1 giờ</button>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-4">
-            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <span class="material-symbols-outlined text-base">event_available</span>
-              Kết thúc
-            </div>
-            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                v-model="endDate"
-                :min="startDate"
-                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
-                type="date"
-              />
-              <input
-                v-model="endClock"
-                class="stitch-schedule-field w-full px-4 py-3 text-sm text-slate-800 outline-none transition-all dark:text-slate-100"
-                type="time"
-                step="300"
-              />
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20" type="button" @click="setEndByDuration">
-                Bắt đầu + {{ timeLimit }} phút
-              </button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(30)">+30 phút</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(60)">+1 giờ</button>
-              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" type="button" @click="setEndAfterMinutes(90)">+1h30</button>
-            </div>
+          <div class="sm-field">
+            <label class="sm-field__label">Thời gian kết thúc <span class="ts-required">*</span></label>
+            <input
+              v-model="formData.endTime"
+              type="datetime-local"
+              class="sm-input"
+            />
           </div>
         </div>
 
-        <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-          <span class="font-semibold text-slate-700 dark:text-slate-200">Xem trước:</span>
-          <span v-if="previewLabel"> {{ previewLabel }}</span>
-          <span v-else> Hãy chọn thời gian bắt đầu và kết thúc.</span>
-        </div>
-
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-8">
-          <button class="px-8 py-3 rounded-lg border border-slate-200 dark:border-slate-800 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button" @click="goBack">
-            Quay lại
-          </button>
-          <div class="flex gap-3">
-            <button class="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" type="button" @click="setEndByDuration">
-              Tự tính kết thúc
-            </button>
-            <button :disabled="isSubmitting" class="px-10 py-3 rounded-lg bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed" type="button" @click="handleCreateSession">
-              {{ isSubmitting ? 'Đang tạo...' : 'Tạo đợt thi mới' }}
-              <span class="material-symbols-outlined text-lg">add_circle</span>
-            </button>
-          </div>
+        <div class="sm-field" style="max-width: 200px;">
+          <label class="sm-field__label">Thời gian làm bài (phút) <span class="ts-required">*</span></label>
+          <input
+            v-model.number="formData.durationMinutes"
+            type="number"
+            min="1"
+            max="300"
+            class="sm-input"
+          />
+          <span class="sm-field__hint">Thời gian làm bài tối đa cho mỗi thí sinh</span>
         </div>
       </section>
-    </main>
+
+      <!-- Proctoring Section -->
+      <section class="ts-section">
+        <div class="ts-section__header">
+          <h2 class="sm-heading-4">Cài đặt giám sát</h2>
+          <p class="sm-body-small">Cấu hình các tính năng chống gian lận cho phiên thi</p>
+        </div>
+
+        <div class="ts-toggle-list">
+          <label class="ts-toggle-item">
+            <div class="ts-toggle-item__content">
+              <div class="ts-toggle-item__header">
+                <div class="ts-toggle-item__icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                </div>
+                <span class="ts-toggle-item__title">Giám sát camera</span>
+              </div>
+              <span class="ts-toggle-item__desc">Yêu cầu thí sinh bật camera trong quá trình thi</span>
+            </div>
+            <input type="checkbox" v-model="formData.cameraEnabled" class="ts-toggle-input" />
+            <span class="ts-toggle-switch" :class="{ 'ts-toggle-switch--active': formData.cameraEnabled }"></span>
+          </label>
+
+          <label class="ts-toggle-item">
+            <div class="ts-toggle-item__content">
+              <div class="ts-toggle-item__header">
+                <div class="ts-toggle-item__icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </div>
+                <span class="ts-toggle-item__title">Giám sát microphone</span>
+              </div>
+              <span class="ts-toggle-item__desc">Yêu cầu thí sinh bật microphone trong quá trình thi</span>
+            </div>
+            <input type="checkbox" v-model="formData.micEnabled" class="ts-toggle-input" />
+            <span class="ts-toggle-switch" :class="{ 'ts-toggle-switch--active': formData.micEnabled }"></span>
+          </label>
+
+          <label class="ts-toggle-item">
+            <div class="ts-toggle-item__content">
+              <div class="ts-toggle-item__header">
+                <div class="ts-toggle-item__icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
+                </div>
+                <span class="ts-toggle-item__title">Phát hiện chuyển tab</span>
+              </div>
+              <span class="ts-toggle-item__desc">Cảnh báo khi thí sinh chuyển sang tab khác</span>
+            </div>
+            <input type="checkbox" v-model="formData.tabSwitchDetection" class="ts-toggle-input" />
+            <span class="ts-toggle-switch" :class="{ 'ts-toggle-switch--active': formData.tabSwitchDetection }"></span>
+          </label>
+
+          <label class="ts-toggle-item">
+            <div class="ts-toggle-item__content">
+              <div class="ts-toggle-item__header">
+                <div class="ts-toggle-item__icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+                <span class="ts-toggle-item__title">Chống copy câu hỏi</span>
+              </div>
+              <span class="ts-toggle-item__desc">Ngăn thí sinh copy nội dung câu hỏi</span>
+            </div>
+            <input type="checkbox" v-model="formData.preventCopy" class="ts-toggle-input" />
+            <span class="ts-toggle-switch" :class="{ 'ts-toggle-switch--active': formData.preventCopy }"></span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="ts-actions">
+      <button class="sm-btn sm-btn--secondary" @click="cancel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        Hủy bỏ
+      </button>
+      <button class="sm-btn sm-btn--ghost" @click="saveDraft">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        Lưu nháp
+      </button>
+      <button class="sm-btn sm-btn--primary" @click="publish">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2L11 13"></path>
+          <path d="M22 2L15 22 11 13 2 9l20-7z"></path>
+        </svg>
+        Xuất bản ngay
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { createNewSession, getExamDetail } from '../../services/examService'
+import { ref } from 'vue'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
+import { publishExam, createNewSession } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
-import { toastExamPublished } from '../../utils/teacherExamFeedback'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
-import TeacherTopHeader from './TeacherTopHeader.vue'
 
 const router = useRouter()
 const route = useRoute()
-const isDark = ref(false)
-const timeLimit = ref(60)
-const isSubmitting = ref(false)
-const durationPresets = [15, 30, 45, 60, 90, 120, 180]
 const toast = useToast()
 
-const formatDatePart = (date) => {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
+const examId = route.query.examId || ''
+const examTitle = route.query.title || 'Đề thi chưa có tiêu đề'
 
-const formatTimePart = (date) => {
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  return `${hh}:${mm}`
-}
+const formData = ref({
+  startTime: '',
+  endTime: '',
+  durationMinutes: 30,
+  cameraEnabled: true,
+  micEnabled: false,
+  tabSwitchDetection: true,
+  preventCopy: true
+})
 
 const now = new Date()
-const defaultEnd = new Date(now.getTime() + 60 * 60000)
+const defaultStart = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+const defaultEnd = new Date(defaultStart.getTime() + 2 * 60 * 60 * 1000)
 
-const startDate = ref(formatDatePart(now))
-const startClock = ref(formatTimePart(now))
-const endDate = ref(formatDatePart(defaultEnd))
-const endClock = ref(formatTimePart(defaultEnd))
+formData.value.startTime = formatDateTimeLocal(defaultStart)
+formData.value.endTime = formatDateTimeLocal(defaultEnd)
 
-const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
-const examTitle = computed(() => route.query.title || 'Đề thi')
-
-const minDateStr = computed(() => formatDatePart(new Date()))
-
-const buildLocalDateTime = (datePart, timePart) => {
-  if (!datePart || !timePart) return ''
-  return `${datePart}T${timePart}:00`
+function formatDateTimeLocal(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
-const startAt = computed(() => buildLocalDateTime(startDate.value, startClock.value))
-const endAt = computed(() => buildLocalDateTime(endDate.value, endClock.value))
-
-const toDate = (value) => {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
+const cancel = () => {
+  router.back()
 }
 
-const previewLabel = computed(() => {
-  const start = toDate(startAt.value)
-  const end = toDate(endAt.value)
-  if (!start || !end) return ''
-  if (end <= start) return 'Thời gian kết thúc đang sớm hơn thời gian bắt đầu.'
-  return `${start.toLocaleString()} → ${end.toLocaleString()}`
-})
-
-const setStartNow = () => {
-  const date = new Date()
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setStartIn15Minutes = () => {
-  const date = new Date(Date.now() + 15 * 60000)
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setStartIn30Minutes = () => {
-  const date = new Date(Date.now() + 30 * 60000)
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setStartIn1Hour = () => {
-  const date = new Date(Date.now() + 60 * 60000)
-  startDate.value = formatDatePart(date)
-  startClock.value = formatTimePart(date)
-}
-
-const setEndByDuration = () => {
-  const start = toDate(startAt.value)
-  if (!start) return
-  const date = new Date(start.getTime() + Number(timeLimit.value || 60) * 60000)
-  endDate.value = formatDatePart(date)
-  endClock.value = formatTimePart(date)
-}
-
-const setEndAfterMinutes = (minutes) => {
-  const start = toDate(startAt.value)
-  if (!start) return
-  const date = new Date(start.getTime() + minutes * 60000)
-  endDate.value = formatDatePart(date)
-  endClock.value = formatTimePart(date)
-}
-
-const clampTimeLimit = () => {
-  const val = Number(timeLimit.value)
-  if (Number.isNaN(val) || val < 5) timeLimit.value = 5
-  else if (val > 480) timeLimit.value = 480
-}
-
-const goBack = () => {
-  router.push('/teacher/exams/list')
-}
-
-const handleCreateSession = async () => {
-  const duration = Math.max(5, Math.min(480, Number(timeLimit.value) || 60))
-  if (!examId.value) {
-    toast.error('Thiếu mã đề thi.')
-    return
-  }
-
-  if (!startAt.value || !endAt.value) {
-    toast.error('Vui lòng chọn cả ngày/giờ bắt đầu và kết thúc.')
-    return
-  }
-
-  const start = toDate(startAt.value)
-  const end = toDate(endAt.value)
-  if (!start || !end || end <= start) {
-    toast.error('Thời gian kết thúc phải sau thời gian bắt đầu.')
-    return
-  }
-
-  isSubmitting.value = true
+const saveDraft = async () => {
   try {
-    const exam = await createNewSession(examId.value, {
-      startTime: startAt.value,
-      endTime: endAt.value,
-      durationMinutes: duration
+    await createNewSession(examId, {
+      startTime: formData.value.startTime,
+      endTime: formData.value.endTime,
+      durationMinutes: formData.value.durationMinutes
     })
-
-    toastExamPublished(toast, {
-      title: exam.title || examTitle.value,
-      code: exam?.code,
-      isUpdate: false
-    })
-    await router.push('/teacher/exams/list')
-  } catch (error) {
-    toast.error(error?.payload?.message || 'Không thể tạo đợt thi mới. Vui lòng thử lại.')
-  } finally {
-    isSubmitting.value = false
+    toast.info('Đã lưu nháp phiên thi.')
+    router.push({ path: '/teacher/exams', query: { draft: 'true' } })
+  } catch (err) {
+    toast.error('Lưu nháp thất bại.')
   }
 }
 
-onMounted(async () => {
-  if (examId.value) {
-    try {
-      const exam = await getExamDetail(examId.value)
-      if (exam?.durationMinutes) {
-        timeLimit.value = Math.max(5, Math.min(480, exam.durationMinutes))
+const publish = async () => {
+  try {
+    const session = await createNewSession(examId, {
+      startTime: formData.value.startTime,
+      endTime: formData.value.endTime,
+      durationMinutes: formData.value.durationMinutes
+    })
+    await publishExam(examId)
+    toast.success('Xuất bản phiên thi thành công!')
+    router.push({
+      path: '/teacher/exams/created-success',
+      query: {
+        examId,
+        code: session?.code || '',
+        title: examTitle,
+        durationMinutes: formData.value.durationMinutes,
+        startAt: formData.value.startTime,
+        endAt: formData.value.endTime,
+        questionCount: route.query.questionCount || '0'
       }
-    } catch {
-      // ignore
-    }
+    })
+  } catch (err) {
+    toast.error('Xuất bản thất bại: ' + (err.message || 'Lỗi không xác định'))
   }
-})
+}
 </script>
+
+<style scoped>
+.ts-page {
+  padding: var(--sm-space-8);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Header */
+.ts-header {
+  margin-bottom: var(--sm-space-8);
+}
+
+.ts-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-4);
+}
+
+.ts-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sm-space-2);
+  font-size: var(--sm-text-sm);
+  font-weight: 500;
+  color: var(--sm-text-secondary);
+  text-decoration: none;
+  transition: color var(--sm-duration-fast) var(--sm-ease-out);
+}
+
+.ts-back:hover {
+  color: var(--sm-text-primary);
+}
+
+.ts-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-1);
+}
+
+/* Form Container */
+.ts-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-6);
+}
+
+/* Exam Card */
+.ts-exam-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sm-space-4);
+  padding: var(--sm-space-5);
+  background: var(--sm-bg-secondary);
+  border: 1px solid var(--sm-border-default);
+  border-radius: var(--sm-radius-lg);
+}
+
+.ts-exam-card__icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sm-accent-muted);
+  border-radius: var(--sm-radius-md);
+  color: var(--sm-accent-primary);
+  flex-shrink: 0;
+}
+
+.ts-exam-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-2);
+}
+
+.ts-exam-card__title {
+  font-size: var(--sm-text-lg);
+  font-weight: 600;
+  color: var(--sm-text-primary);
+  margin: 0;
+}
+
+/* Sections */
+.ts-section {
+  background: var(--sm-bg-secondary);
+  border: 1px solid var(--sm-border-default);
+  border-radius: var(--sm-radius-lg);
+  padding: var(--sm-space-6);
+}
+
+.ts-section__header {
+  margin-bottom: var(--sm-space-6);
+}
+
+.ts-section__header h2 {
+  margin-bottom: var(--sm-space-1);
+}
+
+/* Grid */
+.ts-grid {
+  display: grid;
+  gap: var(--sm-space-4);
+}
+
+.ts-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 640px) {
+  .ts-grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Required */
+.ts-required {
+  color: var(--sm-error-text);
+}
+
+/* Toggle List */
+.ts-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-3);
+}
+
+.ts-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sm-space-4);
+  padding: var(--sm-space-4);
+  background: var(--sm-bg-tertiary);
+  border-radius: var(--sm-radius-md);
+  cursor: pointer;
+  transition: background var(--sm-duration-fast) var(--sm-ease-out);
+}
+
+.ts-toggle-item:hover {
+  background: var(--sm-border-subtle);
+}
+
+.ts-toggle-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-space-1);
+}
+
+.ts-toggle-item__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sm-space-3);
+}
+
+.ts-toggle-item__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sm-bg-secondary);
+  border-radius: var(--sm-radius-sm);
+  color: var(--sm-text-secondary);
+}
+
+.ts-toggle-item__title {
+  font-size: var(--sm-text-sm);
+  font-weight: 500;
+  color: var(--sm-text-primary);
+}
+
+.ts-toggle-item__desc {
+  font-size: var(--sm-text-xs);
+  color: var(--sm-text-tertiary);
+  margin-left: 44px;
+}
+
+.ts-toggle-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ts-toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--sm-border-default);
+  border-radius: 12px;
+  flex-shrink: 0;
+  transition: background var(--sm-duration-normal) var(--sm-ease-out);
+}
+
+.ts-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: var(--sm-shadow-sm);
+  transition: transform var(--sm-duration-normal) var(--sm-ease-out);
+}
+
+.ts-toggle-switch--active {
+  background: var(--sm-accent-primary);
+}
+
+.ts-toggle-switch--active::after {
+  transform: translateX(20px);
+}
+
+/* Actions */
+.ts-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sm-space-3);
+  padding: var(--sm-space-4) var(--sm-space-6);
+  background: var(--sm-bg-secondary);
+  border-top: 1px solid var(--sm-border-default);
+  margin: var(--sm-space-8) calc(-1 * var(--sm-space-8)) calc(-1 * var(--sm-space-8));
+  border-radius: 0 0 var(--sm-radius-lg) var(--sm-radius-lg);
+}
+
+@media (max-width: 640px) {
+  .ts-page {
+    padding: var(--sm-space-4);
+  }
+  
+  .ts-actions {
+    margin: var(--sm-space-6) calc(-1 * var(--sm-space-4)) calc(-1 * var(--sm-space-4));
+    flex-wrap: wrap;
+  }
+  
+  .ts-actions .sm-btn {
+    flex: 1;
+  }
+}
+</style>

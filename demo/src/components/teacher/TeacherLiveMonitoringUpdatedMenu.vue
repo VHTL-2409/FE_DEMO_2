@@ -450,9 +450,9 @@ const lastUpdatedLabel = computed(() => {
 })
 
 // ── Load data ──────────────────────────────────────────────────────────────────
-const loadAttempts = async () => {
+const loadAttempts = async (silent = false) => {
   if (!examId.value) return
-  isSyncing.value = true
+  if (!silent) isSyncing.value = true
   try {
     const fetchedAttempts = await listExamAttempts(examId.value)
     const detailPairs = await Promise.all(
@@ -465,14 +465,25 @@ const loadAttempts = async () => {
         }
       })
     )
-    attempts.value = fetchedAttempts
-    detailsByAttemptId.value = Object.fromEntries(detailPairs)
-    lastUpdatedAt.value = Date.now()
-    addEvent({ type: 'REFRESH', message: 'Dữ liệu được cập nhật', studentName: '' })
+    
+    // Check if data actually changed to avoid unnecessary updates
+    const newDataStr = JSON.stringify(fetchedAttempts.map(a => ({ id: a.id, status: a.status, riskScore: a.riskScore })))
+    const oldDataStr = JSON.stringify(attempts.value.map(a => ({ id: a.id, status: a.status, riskScore: a.riskScore })))
+    
+    if (newDataStr !== oldDataStr) {
+      attempts.value = fetchedAttempts
+      detailsByAttemptId.value = Object.fromEntries(detailPairs)
+      lastUpdatedAt.value = Date.now()
+      
+      // Only add refresh event when data actually changed
+      if (!silent) {
+        addEvent({ type: 'REFRESH', message: 'Dữ liệu được cập nhật', studentName: '' })
+      }
+    }
   } catch (err) {
     toast.error(err instanceof ApiError ? err.message : 'Không thể tải dữ liệu giám sát.')
   } finally {
-    isSyncing.value = false
+    if (!silent) isSyncing.value = false
   }
 }
 
@@ -524,10 +535,9 @@ const connectRealtime = async () => {
     isSocketConnected.value = true
     stompClient.subscribe(`/topic/exams/${examId.value}/alerts`, () => {
       const now = Date.now()
-      if (now - lastRealtimeRefreshAt < 200) return
+      if (now - lastRealtimeRefreshAt < 500) return // Debounce 500ms
       lastRealtimeRefreshAt = now
-      void loadAttempts()
-      addEvent({ type: 'ALERT', message: 'Có cảnh báo mới', studentName: '' })
+      void loadAttempts(true) // silent mode - don't show loading, don't add event
     })
   }
 
@@ -560,13 +570,25 @@ const toggleConnectionMode = (mode) => {
 }
 
 // ── Events & Alerts ─────────────────────────────────────────────────────────────
+let lastEventType = ''
+let lastEventTime = 0
+
 const addEvent = (event) => {
+  const now = Date.now()
+  // Throttle: don't add same event type within 2 seconds
+  if (event.type === lastEventType && now - lastEventTime < 2000) {
+    return
+  }
+  
   const evt = {
     ...event,
-    id: Date.now() + Math.random(),
+    id: now + Math.random(),
     timestamp: new Date().toISOString()
   }
-  recentEvents.value = [evt, ...recentEvents.value].slice(0, 50)
+  lastEventType = event.type
+  lastEventTime = now
+  
+  recentEvents.value = [evt, ...recentEvents.value].slice(0, 30) // Limit to 30 events
 }
 
 const handleAlertClick = (alert) => {
@@ -768,11 +790,12 @@ onMounted(async () => {
   if (connectionMode.value === 'realtime') {
     await connectRealtime()
   }
+  // Poll only when WebSocket is disconnected, with 5s interval
   refreshTimer = window.setInterval(() => {
     if (!isSocketConnected.value) {
-      void loadAttempts()
+      void loadAttempts(true) // silent mode
     }
-  }, 1500)
+  }, 5000)
 })
 
 onUnmounted(() => {
@@ -825,7 +848,7 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.dark .lm__empty-grid p { color: #94a3b8; }
+.dark .lm__empty-grid p { color: var(--ds-text-muted); }
 
 .lm__empty-grid button {
   padding: 0.5rem 1.25rem;
@@ -920,7 +943,7 @@ onUnmounted(() => {
   font-family: var(--ds-font-display);
 }
 
-.dark .lm__footer-stat strong { color: #f1f5f9; }
+.dark .lm__footer-stat strong { color: var(--ds-text); }
 
 
 .lm__footer-stat--online strong { color: var(--ds-success); }
@@ -992,7 +1015,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.lm__modal-icon--warning { background: rgba(234, 179, 8, 0.1); color: #d97706; }
+.lm__modal-icon--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
 .lm__modal-icon--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
 
 .lm__modal-title {
@@ -1003,7 +1026,7 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.dark .lm__modal-title { color: #f1f5f9; }
+.dark .lm__modal-title { color: var(--ds-text); }
 
 .lm__modal-subtitle {
   font-size: 0.8rem;
@@ -1023,7 +1046,7 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
 }
 
-.dark .lm__modal-label { color: #94a3b8; }
+.dark .lm__modal-label { color: var(--ds-text-muted); }
 
 .lm__modal-textarea {
   width: 100%;
@@ -1044,7 +1067,7 @@ onUnmounted(() => {
 .dark .lm__modal-textarea {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .lm__modal-textarea::placeholder { color: var(--ds-text-muted); }
@@ -1085,7 +1108,7 @@ onUnmounted(() => {
 .dark .lm__modal-btn--ghost {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #94a3b8;
+  color: var(--ds-text-muted);
 }
 
 .lm__modal-btn--ghost:hover {
@@ -1098,13 +1121,13 @@ onUnmounted(() => {
 }
 
 .lm__modal-btn--warning {
-  background: #d97706;
+  background: var(--ds-warning);
   color: white;
   box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25);
 }
 
 .lm__modal-btn--warning:hover:not(:disabled) {
-  background: #b45309;
+  background: var(--ds-primary-hover);
   transform: translateY(-1px);
 }
 

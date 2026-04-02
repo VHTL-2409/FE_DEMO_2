@@ -58,6 +58,7 @@ const isTeacherRoute = computed(() => (route.path || '').startsWith('/teacher/')
 const activeSection = computed(() => {
   const path = route.path || ''
   if (path.startsWith('/teacher/dashboard')) return 'dashboard'
+  if (path.startsWith('/teacher/classes')) return 'classes'
   if (path.startsWith('/teacher/exams/create') || path.startsWith('/teacher/exams/schedule') || path.startsWith('/teacher/exams/manual') || path.startsWith('/teacher/exams/new-session')) return 'exam'
   if (path.startsWith('/teacher/exams/list')) return 'exam-list'
   if (path.startsWith('/teacher/live-monitoring')) return 'monitoring'
@@ -68,6 +69,7 @@ const activeSection = computed(() => {
 
 const teacherSidebarItems = computed(() => [
   { section: 'dashboard', to: '/teacher/dashboard', icon: 'dashboard', label: 'Trang chủ' },
+  { section: 'classes', to: '/teacher/classes', icon: 'groups', label: 'Lớp học' },
   { section: 'exam', to: '/teacher/exams/create', icon: 'quiz', label: 'Tạo đề thi' },
   { section: 'exam-list', to: '/teacher/exams/list', icon: 'list_alt', label: 'Danh sách đề' },
   {
@@ -78,7 +80,6 @@ const teacherSidebarItems = computed(() => [
     badge: alertCount.value > 0 ? String(alertCount.value) : null,
     badgeVariant: 'danger'
   },
-  { section: 'review', to: '/teacher/exams/review/summary', icon: 'assessment', label: 'Báo cáo' },
   { section: 'profile', to: '/teacher/profile', icon: 'account_circle', label: 'Hồ sơ' }
 ])
 </script>

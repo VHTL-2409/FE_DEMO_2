@@ -1,14 +1,5 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
-/** Múi giờ của máy giáo viên tạo đề thi (từ trình duyệt) */
-export const getBrowserTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
-  } catch {
-    return 'Asia/Ho_Chi_Minh'
-  }
-}
-
 const toLocalDateTimeOrNull = (value) => {
   if (!value) return null
   const date = new Date(value)
@@ -33,6 +24,11 @@ export const getExamDetail = async (examId) => {
   return unwrapApiData(payload)
 }
 
+export const getWaitingStudents = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/waiting-students`)
+  return unwrapApiData(payload) || []
+}
+
 export const joinExamByCode = async (query) => {
   const payload = await apiRequest(`/api/exams/join?query=${encodeURIComponent(query)}`)
   return unwrapApiData(payload)
@@ -45,7 +41,6 @@ export const createExam = async ({
   durationMinutes = 60,
   startTime = null,
   endTime = null,
-  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -70,7 +65,6 @@ export const createExam = async ({
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -98,7 +92,6 @@ export const updateExam = async (examId, {
   durationMinutes,
   startTime = null,
   endTime = null,
-  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -123,7 +116,6 @@ export const updateExam = async (examId, {
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -180,14 +172,13 @@ export const deleteExam = async (examId) => {
   })
 }
 
-export const createNewSession = async (examId, { startTime, endTime, durationMinutes, timezone = null }) => {
+export const createNewSession = async (examId, { startTime, endTime, durationMinutes }) => {
   const payload = await apiRequest(`/api/exams/${examId}/sessions`, {
     method: 'POST',
     body: JSON.stringify({
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      durationMinutes: durationMinutes || null,
-      timezone: timezone || getBrowserTimezone()
+      durationMinutes: durationMinutes || null
     })
   })
   return unwrapApiData(payload)

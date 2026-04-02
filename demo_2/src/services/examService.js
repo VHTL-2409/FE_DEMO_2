@@ -1,14 +1,5 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
-/** Múi giờ của máy giáo viên tạo đề thi (từ trình duyệt) */
-export const getBrowserTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh'
-  } catch {
-    return 'Asia/Ho_Chi_Minh'
-  }
-}
-
 const toLocalDateTimeOrNull = (value) => {
   if (!value) return null
   const date = new Date(value)
@@ -44,7 +35,6 @@ export const createExam = async ({
   durationMinutes = 60,
   startTime = null,
   endTime = null,
-  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -68,7 +58,6 @@ export const createExam = async ({
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -95,7 +84,6 @@ export const updateExam = async (examId, {
   durationMinutes,
   startTime = null,
   endTime = null,
-  timezone = null,
   isActive = false,
   monitorTabSwitch,
   monitorBlur,
@@ -119,7 +107,6 @@ export const updateExam = async (examId, {
       durationMinutes,
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      timezone: timezone || getBrowserTimezone(),
       isActive,
       monitorTabSwitch,
       monitorBlur,
@@ -176,14 +163,13 @@ export const deleteExam = async (examId) => {
   })
 }
 
-export const createNewSession = async (examId, { startTime, endTime, durationMinutes, timezone = null }) => {
+export const createNewSession = async (examId, { startTime, endTime, durationMinutes }) => {
   const payload = await apiRequest(`/api/exams/${examId}/sessions`, {
     method: 'POST',
     body: JSON.stringify({
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
-      durationMinutes: durationMinutes || null,
-      timezone: timezone || getBrowserTimezone()
+      durationMinutes: durationMinutes || null
     })
   })
   return unwrapApiData(payload)
@@ -197,4 +183,92 @@ export const getAnswerSimilarity = async (examId) => {
 export const getQuestionWrongStats = async (examId) => {
   const payload = await apiRequest(`/api/exams/${examId}/question-wrong-stats`)
   return unwrapApiData(payload) || []
+}
+
+// ─── Publish / Unpublish / Archive ─────────────────────────────────
+
+export const publishExam = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/publish`, { method: 'PATCH' })
+  return unwrapApiData(payload)
+}
+
+export const unpublishExam = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/unpublish`, { method: 'PATCH' })
+  return unwrapApiData(payload)
+}
+
+export const archiveExam = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/archive`, { method: 'PATCH' })
+  return unwrapApiData(payload)
+}
+
+export const unarchiveExam = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/unarchive`, { method: 'PATCH' })
+  return unwrapApiData(payload)
+}
+
+export const duplicateExam = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/duplicate`, { method: 'POST' })
+  return unwrapApiData(payload)
+}
+
+// ─── Bulk operations ────────────────────────────────────────────────
+
+export const bulkPublishExams = async (examIds) => {
+  const payload = await apiRequest('/api/exams/bulk/publish', {
+    method: 'POST',
+    body: JSON.stringify({ examIds })
+  })
+  return unwrapApiData(payload) || []
+}
+
+export const bulkArchiveExams = async (examIds) => {
+  const payload = await apiRequest('/api/exams/bulk/archive', {
+    method: 'POST',
+    body: JSON.stringify({ examIds })
+  })
+  return unwrapApiData(payload) || []
+}
+
+export const bulkDeleteExams = async (examIds) => {
+  await apiRequest('/api/exams/bulk/delete', {
+    method: 'POST',
+    body: JSON.stringify({ examIds })
+  })
+}
+
+// ─── Export helpers ─────────────────────────────────────────────────
+
+export const exportExamAsJson = (exam) => {
+  const blob = new Blob([JSON.stringify(exam, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `exam-${exam.id}-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export const exportExamsAsCsv = (exams) => {
+  const headers = ['ID', 'Mã', 'Tên đề thi', 'Mô tả', 'Thời lượng (phút)', 'Bắt đầu', 'Kết thúc', 'Trạng thái', 'Câu hỏi', 'Học sinh']
+  const rows = exams.map(e => [
+    e.id,
+    e.code || '',
+    `"${(e.title || '').replace(/"/g, '""')}"`,
+    `"${(e.description || '').replace(/"/g, '""')}"`,
+    e.durationMinutes || '',
+    e.startTime ? new Date(e.startTime).toLocaleString('vi-VN') : '',
+    e.endTime ? new Date(e.endTime).toLocaleString('vi-VN') : '',
+    e.isActive ? 'Hoạt động' : 'Nháp',
+    e.questionCount || 0,
+    e.participantCount || 0
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `danh-sach-de-thi-${Date.now()}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }

@@ -53,9 +53,19 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
+		<!-- Jackson 2 (để tương thích code dùng com.fasterxml.jackson.*) -->
+		<!-- Jackson 3 (tools.jackson.*) được spring-boot-starter-jackson:4.0.3 cung cấp -->
+		<!-- Cả hai cùng tồn tại trong classpath: Jackson 2 cho code hiện tại, Jackson 3 cho Spring Boot 4 -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<!-- JSR310 module cho Jackson 2 (OffsetDateTime, LocalDateTime...) -->
+		<!-- spring-boot-starter-jackson:4.0.3 mang tools.jackson (Jackson 3), -->
+		<!-- nhưng code dùng com.fasterxml.jackson (Jackson 2) nên cần module riêng -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
 
 		<dependency>
@@ -132,6 +142,13 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-Duser.timezone=Asia/Ho_Chi_Minh</argLine>
 				</configuration>
 			</plugin>
 			<plugin>

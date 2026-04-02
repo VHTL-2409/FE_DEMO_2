@@ -65,22 +65,26 @@
               </div>
             </div>
             <div v-if="exam.description" class="edm__desc">
-              <p class="edm__desc-label">Mo ta</p>
+              <p class="edm__desc-label">Mô tả</p>
               <p class="edm__desc-val">{{ exam.description }}</p>
             </div>
           </div>
 
           <div class="edm__footer">
             <button type="button" class="edm__btn edm__btn--outline" @click="$emit('update:modelValue', false)">
-              Dong
+              Đóng
+            </button>
+            <button type="button" class="edm__btn edm__btn--outline" @click="$emit('detail', exam)">
+              <LucideIcon name="bar_chart" />
+              Chi tiết
             </button>
             <button type="button" class="edm__btn edm__btn--outline" @click="$emit('edit', exam)">
               <LucideIcon name="edit" />
-              Chinh sua
+              Chỉnh sửa
             </button>
             <button type="button" class="edm__btn edm__btn--primary" @click="$emit('duplicate', exam)">
               <LucideIcon name="content_copy" />
-              Nhan ban
+              Nhân bản
             </button>
           </div>
         </div>
@@ -95,7 +99,7 @@ defineProps({
   exam: { type: Object, default: null }
 })
 
-defineEmits(['update:modelValue', 'edit', 'duplicate'])
+defineEmits(['update:modelValue', 'detail', 'edit', 'duplicate'])
 
 const formatDateTime = (d) => {
   try {
@@ -199,6 +203,7 @@ const formatDateTime = (d) => {
 
 .edm__footer {
   display: flex; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--ds-border);

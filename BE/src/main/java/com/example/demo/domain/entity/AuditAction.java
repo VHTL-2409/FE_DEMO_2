@@ -16,5 +16,7 @@ public enum AuditAction {
     /** Hệ thống tự gửi cảnh báo vì risk cao */
     SYSTEM_RISK_WARNING,
     /** Hệ thống tự tạm dừng phiên vì risk critical */
-    SYSTEM_ATTEMPT_PAUSE
+    SYSTEM_ATTEMPT_PAUSE,
+    /** Hệ thống tự khôi phục phiên khi risk giảm từ critical */
+    SYSTEM_ATTEMPT_RESUME
 }

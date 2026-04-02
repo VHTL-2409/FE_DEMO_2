@@ -1,7 +1,7 @@
 <template>
-  <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-3xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
-
+  <div class="flex min-h-full flex-col bg-[var(--ds-bg)]">
+    <!-- Nội dung chính: đã bỏ 2 cột quy định + checklist dài -->
+    <div class="mx-auto w-full max-w-3xl flex-1 px-4 pb-4 pt-4 sm:px-6 lg:px-8">
       <!-- Header: exam info + countdown -->
       <div class="mb-4">
         <ExamLobbyHeader
@@ -19,30 +19,70 @@
         />
       </div>
 
-      <!-- Info + Readiness in 2 columns -->
-      <div class="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2">
-        <!-- Rules -->
-        <ExamRuleCard
-          :duration="examDuration"
-          :question-count="totalQuestions"
-          :require-camera-mic="requireCameraMic"
-        />
-
-        <!-- Readiness checklist -->
-        <ReadinessChecklist
-          :camera-ready="cameraReady"
-          :mic-ready="micReady"
-          :network-ready="true"
-          :is-checking="isCheckingDevices"
-          :error-msg="deviceError"
-          :require-camera-mic="requireCameraMic"
-          @retry="checkDevices"
-        />
+      <!-- Tóm tắt nhanh: thời gian, số câu, camera/mic, kiểm tra lại -->
+      <div
+        class="rounded-2xl border px-4 py-3 sm:px-5"
+        style="border-color: var(--ds-border); background: var(--ds-surface)"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-[var(--ds-text)]">
+            <span class="inline-flex items-center gap-1.5">
+              <LucideIcon name="timer" class="text-[var(--ds-primary)]" />
+              {{ examDuration }} phút
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <LucideIcon name="help" class="text-[var(--ds-primary)]" />
+              {{ totalQuestions }} câu
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+            <span
+              class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+              :class="cameraReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+            >
+              <LucideIcon name="videocam" class="text-[1rem]" />
+              Camera {{ cameraReady ? 'OK' : 'chưa OK' }}
+            </span>
+            <span
+              class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+              :class="micReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+            >
+              <LucideIcon name="mic" class="text-[1rem]" />
+              Mic {{ micReady ? 'OK' : 'chưa OK' }}
+            </span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition hover:bg-[var(--ds-gray-50)] dark:hover:bg-[var(--ds-gray-800)]"
+              style="border-color: var(--ds-border); color: var(--ds-primary)"
+              :disabled="isCheckingDevices"
+              @click="checkDevices"
+            >
+              <LucideIcon name="refresh" />
+              {{ isCheckingDevices ? 'Đang kiểm tra…' : 'Kiểm tra lại' }}
+            </button>
+          </div>
+        </div>
+        <p v-if="deviceError" class="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
+          {{ deviceError }}
+        </p>
+        <p class="mt-3 text-center text-xs text-[var(--ds-text-muted)]">
+          Cần hỗ trợ?
+          <button type="button" class="font-semibold hover:underline" style="color: var(--ds-primary)" @click="openSupport">
+            Liên hệ hỗ trợ
+          </button>
+        </p>
       </div>
+    </div>
 
-      <!-- Start button -->
-      <div class="mb-4">
+    <!-- CTA cố định phía dưới (sticky trong khung nội dung — không tràn sang sidebar) -->
+    <div
+      class="sticky bottom-0 z-20 mt-auto w-full border-t backdrop-blur-md"
+      style="border-color: var(--ds-border); background: color-mix(in srgb, var(--ds-bg) 97%, transparent); box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.06)"
+    >
+      <div class="mx-auto flex w-full max-w-lg justify-center px-4 py-3">
         <StartExamPanel
+          compact
+          join-label="Tham gia bài thi"
           :can-start="canStart"
           :is-starting="isStarting"
           :is-ended="isEnded"
@@ -52,14 +92,7 @@
           @start="goToExamInterface"
         />
       </div>
-
     </div>
-
-    <!-- Footer -->
-    <footer class="shrink-0 border-t px-6 py-2 text-center text-xs md:px-20 lg:px-40" style="border-color: var(--ds-border); color: var(--ds-text-muted);">
-      Cần hỗ trợ?
-      <button type="button" class="font-semibold hover:underline" style="color: var(--ds-primary);" @click="openSupport">Liên hệ hỗ trợ</button>
-    </footer>
   </div>
 </template>
 
@@ -70,11 +103,9 @@ import { startAttempt } from '../../services/attemptService'
 import { getExamDetail } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
+import { parseBackendDate } from '../../utils/dateUtils'
 
-// Lobby components
 import ExamLobbyHeader from './lobby/ExamLobbyHeader.vue'
-import ExamRuleCard from './lobby/ExamRuleCard.vue'
-import ReadinessChecklist from './lobby/ReadinessChecklist.vue'
 import StartExamPanel from './lobby/StartExamPanel.vue'
 
 const route = useRoute()
@@ -82,7 +113,6 @@ const router = useRouter()
 const { openSupport } = useNotifications()
 const isStarting = ref(false)
 const isSyncing = ref(false)
-const startError = ref('')
 const nowMs = ref(Date.now())
 const examDetail = ref(null)
 const lastSyncedAt = ref(null)
@@ -95,7 +125,6 @@ const toast = useToast()
 let timerId = null
 let examRefreshTimerId = null
 
-// ─── Computed from route / detail ──────────────────────────────────
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const examCode = computed(() => String(route.query.examCode || '-'))
 const examTitle = computed(() => examDetail.value?.title || route.query.exam || 'Kỳ thi')
@@ -107,16 +136,8 @@ const totalQuestions = computed(() =>
 )
 const startAtRaw = computed(() => String(examDetail.value?.startTime || route.query.startAt || ''))
 const endAtRaw = computed(() => String(examDetail.value?.endTime || route.query.endAt || ''))
-const startAtDate = computed(() => {
-  if (!startAtRaw.value) return null
-  const date = new Date(startAtRaw.value)
-  return Number.isNaN(date.getTime()) ? null : date
-})
-const endAtDate = computed(() => {
-  if (!endAtRaw.value) return null
-  const date = new Date(endAtRaw.value)
-  return Number.isNaN(date.getTime()) ? null : date
-})
+const startAtDate = computed(() => parseBackendDate(startAtRaw.value))
+const endAtDate = computed(() => parseBackendDate(endAtRaw.value))
 
 const isEnded = computed(() => endAtDate.value ? nowMs.value > endAtDate.value.getTime() : false)
 
@@ -142,7 +163,6 @@ const lastSyncedLabel = computed(() => {
   })
 })
 
-// ─── API calls ─────────────────────────────────────────────────────
 const refreshExamDetail = async () => {
   if (!examId.value) return
   isSyncing.value = true
@@ -192,10 +212,7 @@ const checkDevices = async () => {
   }
 }
 
-// ─── Navigation ────────────────────────────────────────────────────
 const goToExamInterface = async () => {
-  startError.value = ''
-
   if (!examId.value) {
     toast.error('Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.')
     return
@@ -243,7 +260,6 @@ const goToExamInterface = async () => {
   }
 }
 
-// ─── Lifecycle ────────────────────────────────────────────────────
 onMounted(async () => {
   await refreshExamDetail()
   await checkDevices()

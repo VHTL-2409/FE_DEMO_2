@@ -2,6 +2,7 @@ package com.example.demo.service.helper;
 
 import com.example.demo.api.dto.submission.AnswerInput;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
@@ -35,7 +36,7 @@ public class SubmissionHelper {
     }
 
     public void validateAttemptTime(ExamAttempt attempt) {
-        if (LocalDateTime.now().isAfter(deadlineAt(attempt))) {
+        if (VietNamTime.now().isAfter(deadlineAt(attempt))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt time is over");
         }
     }
@@ -86,7 +87,7 @@ public class SubmissionHelper {
     }
 
     public long remainingSeconds(ExamAttempt attempt) {
-        long seconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), deadlineAt(attempt));
+        long seconds = ChronoUnit.SECONDS.between(VietNamTime.now(), deadlineAt(attempt));
         return Math.max(seconds, 0);
     }
 }

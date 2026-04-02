@@ -1,10 +1,11 @@
 package com.example.demo.api.dto.monitoring;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +20,8 @@ public class RiskScoreResponse {
     private String actionTaken;
     private Map<String, Integer> breakdown;
     private List<LatestSignalItem> latestSignals;
-    private LocalDateTime updatedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+    private OffsetDateTime updatedAt;
 
     @Getter
     @Builder
@@ -29,6 +31,7 @@ public class RiskScoreResponse {
         private Double confidence;
         private String severity;
         private String evidence;
-        private LocalDateTime createdAt;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+        private OffsetDateTime createdAt;
     }
 }

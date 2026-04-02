@@ -329,9 +329,12 @@ import FormSection from '../ui/FormSection.vue'
 import DataTable from '../ui/DataTable.vue'
 import StatusChip from '../ui/StatusChip.vue'
 import ActionBar from '../ui/ActionBar.vue'
+import { createQuestion } from '../../services/questionService'
+import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const examId = route.query.examId || ''
 const examTitle = route.query.title || 'Đề thi chưa có tiêu đề'
@@ -428,24 +431,64 @@ const cancel = () => {
   router.back()
 }
 
-const saveAll = () => {
-  console.log('Save all questions:', questions.value)
-  router.push({
-    path: '/teacher/exams',
-    query: { saved: 'true' }
-  })
+const saveAll = async () => {
+  if (questions.value.length === 0) return
+  try {
+    for (const q of questions.value) {
+      await createQuestion(Number(examId), {
+        content: q.content,
+        type: 'SINGLE_CHOICE',
+        scoreWeight: q.score,
+        options: [
+          { id: 'A', text: q.optionA },
+          { id: 'B', text: q.optionB },
+          { id: 'C', text: q.optionC },
+          { id: 'D', text: q.optionD }
+        ],
+        correctAnswer: q.correctAnswer,
+        difficulty: null
+      })
+    }
+    toast.success(`Đã lưu ${questions.value.length} câu hỏi thành công!`)
+    router.push({
+      path: '/teacher/exams',
+      query: { saved: 'true' }
+    })
+  } catch (err) {
+    toast.error('Lưu câu hỏi thất bại: ' + (err.message || 'Lỗi không xác định'))
+  }
 }
 
-const saveAndContinue = () => {
-  console.log('Save and continue:', questions.value)
-  router.push({
-    path: '/teacher/exams/new-session',
-    query: {
-      examId,
-      title: examTitle,
-      questionCount: questions.value.length
+const saveAndContinue = async () => {
+  if (questions.value.length === 0) return
+  try {
+    for (const q of questions.value) {
+      await createQuestion(Number(examId), {
+        content: q.content,
+        type: 'SINGLE_CHOICE',
+        scoreWeight: q.score,
+        options: [
+          { id: 'A', text: q.optionA },
+          { id: 'B', text: q.optionB },
+          { id: 'C', text: q.optionC },
+          { id: 'D', text: q.optionD }
+        ],
+        correctAnswer: q.correctAnswer,
+        difficulty: null
+      })
     }
-  })
+    toast.success(`Đã lưu ${questions.value.length} câu hỏi! Đang chuyển đến tạo đợt thi...`)
+    router.push({
+      path: '/teacher/exams/new-session',
+      query: {
+        examId,
+        title: examTitle,
+        questionCount: questions.value.length
+      }
+    })
+  } catch (err) {
+    toast.error('Lưu câu hỏi thất bại: ' + (err.message || 'Lỗi không xác định'))
+  }
 }
 </script>
 

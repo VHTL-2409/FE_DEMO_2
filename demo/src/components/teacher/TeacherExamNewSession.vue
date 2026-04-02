@@ -247,9 +247,12 @@ import PageHeader from '../ui/PageHeader.vue'
 import DsCard from '../ui/DsCard.vue'
 import FormSection from '../ui/FormSection.vue'
 import ActionBar from '../ui/ActionBar.vue'
+import { publishExam, createNewSession } from '../../services/examService'
+import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const examId = route.query.examId || ''
 const examTitle = route.query.title || 'Đề thi chưa có tiêu đề'
@@ -287,36 +290,46 @@ const cancel = () => {
   router.back()
 }
 
-const saveDraft = () => {
-  console.log('Save draft:', formData.value)
-  router.push({
-    path: '/teacher/exams',
-    query: { draft: 'true' }
-  })
-}
-
-const publish = () => {
-  console.log('Publish exam session:', formData.value)
-  router.push({
-    path: '/teacher/exams/created-success',
-    query: {
-      examId: examId || 'EX-001',
-      code: generateExamCode(),
-      title: examTitle,
-      durationMinutes: formData.value.durationMinutes,
-      startAt: formData.value.startTime,
-      endAt: formData.value.endTime
-    }
-  })
-}
-
-function generateExamCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = ''
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+const saveDraft = async () => {
+  try {
+    await createNewSession(examId, {
+      startTime: formData.value.startTime,
+      endTime: formData.value.endTime,
+      durationMinutes: formData.value.durationMinutes
+    })
+    toast.info('Đã lưu nháp đợt thi.')
+    router.push({ path: '/teacher/exams', query: { draft: 'true' } })
+  } catch (err) {
+    toast.error('Lưu nháp thất bại.')
   }
-  return code
+}
+
+const publish = async () => {
+  try {
+    // Create session first
+    const session = await createNewSession(examId, {
+      startTime: formData.value.startTime,
+      endTime: formData.value.endTime,
+      durationMinutes: formData.value.durationMinutes
+    })
+    // Then publish
+    await publishExam(examId)
+    toast.success('Xuất bản đợt thi thành công!')
+    router.push({
+      path: '/teacher/exams/created-success',
+      query: {
+        examId,
+        code: session?.code || '',
+        title: examTitle,
+        durationMinutes: formData.value.durationMinutes,
+        startAt: formData.value.startTime,
+        endAt: formData.value.endTime,
+        questionCount: route.query.questionCount || '0'
+      }
+    })
+  } catch (err) {
+    toast.error('Xuất bản thất bại: ' + (err.message || 'Lỗi không xác định'))
+  }
 }
 </script>
 

@@ -186,7 +186,7 @@ import { FILE_FORMAT_DESC, getTemplateDownloadUrl, previewImportFile } from '../
 import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 
 const durationOptions = [
   { value: 15, label: '15 phút' },

@@ -393,7 +393,7 @@ watch([hasData, chartType], async ([data, type]) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 400px;
 }
 
 .dark .sdc {
@@ -471,14 +471,14 @@ watch([hasData, chartType], async ([data, type]) => {
 /* Chart */
 .sdc__chart-wrap {
   flex: 1;
-  min-height: 200px;
+  min-height: 280px;
   padding: 0.5rem 0.75rem;
   position: relative;
 }
 
 .sdc__canvas {
   width: 100%;
-  height: 200px;
+  height: 280px;
 }
 
 /* Loading */

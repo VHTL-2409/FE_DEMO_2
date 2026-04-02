@@ -1,45 +1,40 @@
 <template>
   <div class="ec-page">
-    <!-- Top bar: Title + breadcrumb + save status -->
-    <div class="ec-topbar">
-      <div class="ec-topbar__inner">
-        <!-- Left: breadcrumb -->
-        <div class="ec-topbar__breadcrumb">
-          <RouterLink class="ec-topbar__bc-link" to="/teacher/exams/list">
+    <!-- Body: top header strip + form columns -->
+    <div class="ec-body">
+
+      <!-- Page header: breadcrumb + save status + action buttons -->
+      <div class="ec-page-header">
+        <div class="ec-page-header__breadcrumb">
+          <RouterLink class="ec-page-header__bc-link" to="/teacher/exams/list">
             <LucideIcon name="assignment" />
             Đề thi
           </RouterLink>
           <LucideIcon name="chevron_right" />
-          <span class="ec-topbar__bc-current">Tạo đề thi mới</span>
+          <span class="ec-page-header__bc-current">Tạo đề thi</span>
         </div>
-
-        <!-- Right: status + actions -->
-        <div class="ec-topbar__actions">
-          <!-- Save status indicator -->
-          <div class="ec-topbar__save-status" :class="saveStatusClass">
+        <div class="ec-page-header__actions">
+          <div class="ec-page-header__save-status" :class="saveStatusClass">
             <LucideIcon :name="saveStatusIcon" />
             <span>{{ saveStatusLabel }}</span>
           </div>
-
-          <!-- Buttons -->
           <button type="button" class="ec-btn ec-btn--ghost" @click="handleSaveDraft">
             <LucideIcon name="save" />
-            Lưu nháp
+            <span>Lưu nháp</span>
           </button>
           <button type="button" class="ec-btn ec-btn--primary" @click="handlePublish" :disabled="!canPublish">
             <LucideIcon name="rocket_launch" />
-            Xuất bản
+            <span>Xuất bản</span>
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- Body: left form + right preview -->
-    <div class="ec-body">
       <div class="ec-body__inner">
 
         <!-- Left column: Form sections -->
         <div class="ec-form-col">
+          <!-- Scrollable content wrapper -->
+          <div class="ec-form-scroll">
 
           <!-- Progress steps -->
           <div class="ec-steps">
@@ -63,25 +58,28 @@
             v-show="activeStep === 'info'"
             v-model:title="form.title"
             v-model:subject="form.subject"
-            v-model:className="form.className"
             v-model:description="form.description"
+            :exam-type="form.examType"
+            v-model:class-id="form.classId"
+            :available-classes="availableClasses"
+            :is-loading-classes="isLoadingClasses"
           />
 
           <!-- Section: Cấu hình thi -->
           <ExamConfigSection
             v-show="activeStep === 'config'"
             v-model:duration="form.durationMinutes"
-            v-model:shuffleQuestions="form.shuffleQuestions"
-            v-model:shuffleAnswers="form.shuffleAnswers"
             v-model:showAnswers="form.showAnswersAfterEnd"
             v-model:allowReview="form.allowReview"
             v-model:maxAttempts="form.maxAttempts"
           />
 
-          <!-- Section: Câu hỏi -->
+          <!-- Section: Phân tích đề thi -->
           <QuestionBuilder
             v-show="activeStep === 'questions'"
             v-model:questions="form.questions"
+            v-model:shuffleQuestions="form.shuffleQuestions"
+            v-model:shuffleAnswers="form.shuffleAnswers"
           />
 
           <!-- Section: Lịch thi -->
@@ -112,7 +110,9 @@
             v-model:requireCameraMic="form.requireCameraMic"
           />
 
-          <!-- Navigation between steps -->
+          </div><!-- end .ec-form-scroll -->
+
+          <!-- Navigation between steps — always visible at bottom -->
           <div class="ec-form-nav">
             <button
               v-if="!isFirstStep"
@@ -175,7 +175,7 @@
             <div class="ec-modal__body">
               <div class="ec-modal__preview-content">
                 <h3 class="ec-preview-exam-title">{{ form.title || 'Tiêu đề đề thi' }}</h3>
-                <p class="ec-preview-exam-meta">{{ form.subject }} · {{ form.className }}</p>
+                <p class="ec-preview-exam-meta">{{ form.examType === 'private' ? className : form.subject }}</p>
                 <div class="ec-preview-exam-info">
                   <span class="ec-preview-exam-info-item">
                     <LucideIcon name="timer" />
@@ -215,10 +215,11 @@
 
 <script setup>
 import { ref, computed, reactive, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ApiError } from '../../../services/apiClient'
-import { createExam, updateExam, getBrowserTimezone } from '../../../services/examService'
+import { createExam, updateExam } from '../../../services/examService'
 import { importQuestionsFromFile } from '../../../services/questionService'
+import { listClasses } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 
 import ExamInfoSection from './ExamInfoSection.vue'
@@ -229,13 +230,14 @@ import ProctoringSection from './ProctoringSection.vue'
 import ExamPreviewPanel from './ExamPreviewPanel.vue'
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 
 // ─── Steps definition ────────────────────────────────────────
 const steps = [
   { id: 'info', label: 'Thông tin' },
   { id: 'config', label: 'Cấu hình' },
-  { id: 'questions', label: 'Câu hỏi' },
+  { id: 'questions', label: 'Phân tích đề thi' },
   { id: 'schedule', label: 'Lịch thi' },
   { id: 'proctor', label: 'Giám sát' }
 ]
@@ -245,22 +247,22 @@ const form = reactive({
   // Info
   title: '',
   subject: '',
-  className: '',
   description: '',
+  examType: 'free',
+  classId: '',
   // Config
   durationMinutes: 60,
-  shuffleQuestions: false,
-  shuffleAnswers: false,
   showAnswersAfterEnd: false,
   allowReview: true,
   maxAttempts: 1,
   // Questions
   questions: [],
+  shuffleQuestions: false,
+  shuffleAnswers: false,
   importedFile: null,
   // Schedule
   startTime: '',
   endTime: '',
-  timezone: getBrowserTimezone(),
   // Proctoring
   proctoringEnabled: true,
   monitorTabSwitch: true,
@@ -278,6 +280,36 @@ const form = reactive({
   requireCameraMic: true
 })
 
+// Available classes loaded from API
+const availableClasses = ref([])
+const isLoadingClasses = ref(false)
+
+const loadTeacherClasses = async () => {
+  isLoadingClasses.value = true
+  try {
+    const classes = await listClasses()
+    availableClasses.value = classes.map(cls => ({
+      id: cls.id,
+      name: cls.name || cls.className || `Lớp ${cls.id}`
+    }))
+  } catch (error) {
+    console.warn('Failed to load classes:', error)
+    availableClasses.value = []
+  } finally {
+    isLoadingClasses.value = false
+  }
+}
+
+// ─── Init from query ─────────────────────────────────────────
+onMounted(async () => {
+  const type = route.query.type
+  if (type === 'free' || type === 'private') {
+    form.examType = type
+  }
+  // Load teacher's classes for private exam selection
+  await loadTeacherClasses()
+})
+
 // ─── UI state ─────────────────────────────────────────────────
 const activeStep = ref('info')
 const saveState = ref('idle') // idle | saving | saved | error
@@ -290,6 +322,11 @@ const isFirstStep = computed(() => activeStep.value === steps[0].id)
 const isLastStep = computed(() => activeStep.value === steps[steps.length - 1].id)
 
 const completedSteps = ref(new Set())
+
+const className = computed(() => {
+  const cls = availableClasses.value.find(c => c.id == form.classId)
+  return cls ? cls.name : ''
+})
 
 const isStepComplete = (stepId) => completedSteps.value.has(stepId)
 
@@ -326,17 +363,18 @@ const saveStatusIcon = computed(() => {
 })
 
 const saveStatusClass = computed(() => ({
-  'ec-topbar__save-status--saving': saveState.value === 'saving',
-  'ec-topbar__save-status--saved': saveState.value === 'saved',
-  'ec-topbar__save-status--error': saveState.value === 'error'
+  'ec-page-header__save-status--saving': saveState.value === 'saving',
+  'ec-page-header__save-status--saved': saveState.value === 'saved',
+  'ec-page-header__save-status--error': saveState.value === 'error'
 }))
 
 // ─── Validation ───────────────────────────────────────────────
-const isInfoValid = computed(() =>
-  form.title.trim().length >= 3 &&
-  form.subject.trim().length > 0 &&
-  form.className.trim().length > 0
-)
+const isInfoValid = computed(() => {
+  if (form.title.trim().length < 3) return false
+  if (form.examType === 'free' && form.subject.trim().length === 0) return false
+  if (form.examType === 'private' && !form.classId) return false
+  return true
+})
 
 const isQuestionsValid = computed(() => form.questions.length > 0)
 
@@ -413,9 +451,17 @@ const handlePublish = async () => {
     payload.isActive = true
 
     let examId = createdExamId.value
+    let createdExam = null
+
+    console.log('Creating exam with payload:', payload)
     if (!examId) {
-      const created = await createExam(payload)
-      examId = created.id
+      createdExam = await createExam(payload)
+      console.log('Created exam response:', createdExam)
+      examId = createdExam?.id ?? createdExam?.examId ?? createdExam?.data?.id ?? createdExam?.data?.examId
+      console.log('Extracted examId:', examId)
+      if (!examId) {
+        throw new Error('Không nhận được ID đề thi từ server')
+      }
       createdExamId.value = examId
     } else {
       await updateExam(examId, payload)
@@ -426,20 +472,44 @@ const handlePublish = async () => {
       await importQuestionsFromFile(examId, form.importedFile)
     }
 
-    // Navigate to success page
-    router.push({
-      path: '/teacher/exams/created-success',
-      query: {
-        examId,
-        title: form.title,
-        durationMinutes: form.durationMinutes,
-        startAt: form.startTime,
-        endAt: form.endTime,
-        questionCount: form.questions.length
-      }
-    })
+    // Navigate to waiting room
+    toast.success('Xuất bản đề thi thành công!')
+    
+    // Small delay to ensure toast is shown
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const finalCode = form.examType === 'free'
+      ? (createdExam?.code || generateExamCode())
+      : null
+      
+    const query = {
+      examId: String(examId),
+      title: form.title,
+      examType: form.examType,
+      durationMinutes: String(form.durationMinutes),
+      startAt: form.startTime || '',
+      endAt: form.endTime || '',
+      questionCount: String(form.questions.length)
+    }
+    
+    if (finalCode) {
+      query.examCode = finalCode
+    }
+    
+    console.log('Navigating to waiting room with query:', query)
+    try {
+      await router.replace({
+        path: '/teacher/exams/waiting-room',
+        query
+      })
+      console.log('Navigation completed')
+    } catch (navErr) {
+      console.error('Navigation failed:', navErr)
+      toast.error('Không thể chuyển trang. Vui lòng vào thủ công: /teacher/exams/waiting-room?examId=' + examId)
+    }
   } catch (error) {
     saveState.value = 'error'
+    console.error('Publish error:', error)
     toast.error(error instanceof ApiError ? error.message : 'Không thể xuất bản đề thi.')
   } finally {
     isSubmitting.value = false
@@ -447,19 +517,17 @@ const handlePublish = async () => {
 }
 
 function buildExamPayload() {
+  const className = form.examType === 'private'
+    ? (availableClasses.value.find(c => c.id == form.classId)?.name || null)
+    : null
   return {
     title: form.title.trim(),
     description: form.description.trim(),
+    className,
     durationMinutes: Number(form.durationMinutes) || 60,
     startTime: form.startTime || null,
     endTime: form.endTime || null,
-    timezone: form.timezone,
-    shuffleQuestions: form.shuffleQuestions,
-    shuffleAnswers: form.shuffleAnswers,
-    showAnswersAfterEnd: form.showAnswersAfterEnd,
-    allowReview: form.allowReview,
-    maxAttempts: Number(form.maxAttempts) || 1,
-    proctoringEnabled: form.proctoringEnabled,
+    isActive: true,
     monitorTabSwitch: form.monitorTabSwitch,
     monitorBlur: form.monitorBlur,
     monitorExitFullscreen: form.monitorExitFullscreen,
@@ -474,6 +542,10 @@ function buildExamPayload() {
     monitorMultiMonitor: form.monitorMultiMonitor,
     requireCameraMic: form.requireCameraMic
   }
+}
+
+function generateExamCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
 // Auto-mark step complete when data filled
@@ -491,32 +563,19 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   background: var(--ds-bg);
 }
 
-/* ===== Topbar ===== */
-.ec-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--ds-border);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-}
-
-.dark .ec-topbar {
-  background: rgba(30, 41, 59, 0.95);
-}
-
-.ec-topbar__inner {
+/* ===== Page Header — breadcrumb strip inside content, not a separate bar ===== */
+.ec-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0.875rem 1.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  flex-shrink: 0;
 }
 
-.ec-topbar__breadcrumb {
+.ec-page-header__breadcrumb {
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -524,7 +583,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   color: var(--ds-text-muted);
 }
 
-.ec-topbar__bc-link {
+.ec-page-header__bc-link {
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -533,28 +592,22 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   transition: color 0.15s ease;
 }
 
-.ec-topbar__bc-link:hover {
+.ec-page-header__bc-link:hover {
   color: var(--ds-primary);
 }
 
-
-.ec-topbar__bc-sep {
-  font-size: 0.875rem;
-  opacity: 0.5;
-}
-
-.ec-topbar__bc-current {
+.ec-page-header__bc-current {
   font-weight: 600;
   color: var(--ds-text);
 }
 
-.ec-topbar__actions {
+.ec-page-header__actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.ec-topbar__save-status {
+.ec-page-header__save-status {
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -568,13 +621,13 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   transition: all 0.2s ease;
 }
 
-.ec-topbar__save-status--saving {
+.ec-page-header__save-status--saving {
   background: var(--ds-info-soft);
   color: var(--ds-info);
   border-color: rgba(2, 132, 199, 0.2);
 }
 
-.ec-topbar__save-status--saving .ec-topbar__save-icon {
+.ec-page-header__save-status--saving .ec-page-header__save-icon {
   animation: spin 1s linear infinite;
 }
 
@@ -583,19 +636,19 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   to { transform: rotate(360deg); }
 }
 
-.ec-topbar__save-status--saved {
+.ec-page-header__save-status--saved {
   background: var(--ds-success-soft);
   color: var(--ds-success);
   border-color: rgba(22, 163, 74, 0.2);
 }
 
-.ec-topbar__save-status--error {
+.ec-page-header__save-status--error {
   background: var(--ds-danger-soft);
   color: var(--ds-danger);
   border-color: rgba(220, 38, 38, 0.2);
 }
 
-.ec-topbar__save-icon {
+.ec-page-header__save-icon {
   font-size: 1rem;
 }
 
@@ -614,12 +667,10 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   white-space: nowrap;
 }
 
-
 .ec-btn--sm {
   padding: 0.5rem 1rem;
   font-size: 0.8rem;
 }
-
 
 .ec-btn--ghost {
   background: transparent;
@@ -693,12 +744,13 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 
 .ec-body__inner {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 360px;
   gap: 1.5rem;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.5rem 2rem;
   align-items: start;
+  height: 100%;
 }
 
 @media (max-width: 1024px) {
@@ -787,14 +839,42 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 }
 
 
-/* ===== Form Navigation ===== */
+/* ===== Form Layout — flex column so nav can be sticky ===== */
+.ec-form-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Scrollable content area */
+.ec-form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-right: -0.5rem;
+}
+
+/* ===== Form Navigation — sticky at bottom ===== */
 .ec-form-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 1.5rem;
-  padding-top: 1.5rem;
+  padding: 1rem 0;
   border-top: 1px solid var(--ds-border);
+  background: var(--ds-bg);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .ec-form-nav {
+    padding: 0.875rem 0;
+    margin-top: 1rem;
+  }
 }
 
 /* ===== Modal ===== */
@@ -837,7 +917,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 }
 
 .dark .ec-modal__title {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .ec-modal__close {
@@ -884,7 +964,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 }
 
 .dark .ec-preview-exam-title {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .ec-preview-exam-meta {
@@ -973,12 +1053,13 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .ec-topbar__inner {
+  .ec-page-header {
     flex-wrap: wrap;
     gap: 0.75rem;
+    padding: 0.875rem 1rem;
   }
 
-  .ec-topbar__save-status {
+  .ec-page-header__save-status {
     display: none;
   }
 

@@ -5,36 +5,26 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 /**
- * Chuyển đổi thời gian theo timezone.
- * Dùng timezone của giáo viên tạo đề thi (exam.timezone), fallback Asia/Ho_Chi_Minh.
+ * Tiện ích xử lý thời gian — luôn dùng timezone Việt Nam để đảm bảo nhất quán.
  */
 public final class DateTimeUtils {
 
-    public static final ZoneId ZONE_HCM = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private DateTimeUtils() {}
 
-    public static OffsetDateTime toOffsetHcm(LocalDateTime ldt) {
-        return toOffset(ldt, ZONE_HCM);
-    }
-
-    /** Chuyển LocalDateTime sang OffsetDateTime theo timezone (ví dụ "Asia/Ho_Chi_Minh"). */
-    public static OffsetDateTime toOffset(LocalDateTime ldt, String timezone) {
+    /**
+     * Chuyển LocalDateTime sang OffsetDateTime theo timezone Việt Nam.
+     */
+    public static OffsetDateTime toOffset(LocalDateTime ldt) {
         if (ldt == null) return null;
-        ZoneId zone = toZoneId(timezone);
-        return ldt.atZone(zone).toOffsetDateTime();
+        return ldt.atZone(VIETNAM_ZONE).toOffsetDateTime();
     }
 
+    /**
+     * Chuyển LocalDateTime sang OffsetDateTime theo ZoneId cho trước.
+     */
     public static OffsetDateTime toOffset(LocalDateTime ldt, ZoneId zoneId) {
         return ldt == null ? null : ldt.atZone(zoneId).toOffsetDateTime();
-    }
-
-    public static ZoneId toZoneId(String timezone) {
-        if (timezone == null || timezone.isBlank()) return ZONE_HCM;
-        try {
-            return ZoneId.of(timezone);
-        } catch (Exception e) {
-            return ZONE_HCM;
-        }
     }
 }

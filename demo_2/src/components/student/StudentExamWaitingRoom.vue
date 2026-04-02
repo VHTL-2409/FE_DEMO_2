@@ -1,99 +1,97 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
+  <div :class="isDark ? 'dark' : 'light'" class="portal-viewport flex h-full min-h-0 flex-col" style="background: var(--glass-bg)">
     <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
       <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
         <StudentTopHeader active-section="examJoin" class="shrink-0" />
 
-        <main class="teacher-page-shell student-stitch-main relative flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col overflow-hidden">
+        <main class="teacher-page-shell relative flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col overflow-hidden">
           <div
-            class="portal-scrollbar student-stitch-paper-bg relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 py-5 md:py-6"
+            class="portal-scrollbar relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 py-5 md:py-6"
+            style="background: var(--glass-bg)"
           >
-            <div class="pointer-events-none absolute left-0 top-24 -z-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl dark:bg-primary/5" aria-hidden="true" />
-            <div class="pointer-events-none absolute bottom-16 right-0 -z-0 h-72 w-72 rounded-full bg-amber-200/35 blur-3xl dark:bg-amber-900/25" aria-hidden="true" />
+            <div class="pointer-events-none absolute left-0 top-24 -z-0 h-80 w-80 rounded-full opacity-20 blur-3xl" style="background: var(--glass-amber)" aria-hidden="true" />
+            <div class="pointer-events-none absolute bottom-16 right-0 -z-0 h-72 w-72 rounded-full opacity-15 blur-3xl" style="background: var(--glass-violet)" aria-hidden="true" />
 
             <div class="relative z-10 flex w-full flex-1 flex-col gap-6 md:gap-8">
               <div class="flex flex-col gap-2 animate-fade-up md:gap-3">
-                <nav class="mb-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
-                  <RouterLink to="/student/dashboard" class="transition hover:text-primary">Trang chủ</RouterLink>
-                  <span class="material-symbols-outlined text-[14px] text-slate-400">chevron_right</span>
-                  <RouterLink to="/student/exam-join" class="transition hover:text-primary">Thi qua mã</RouterLink>
-                  <span class="material-symbols-outlined text-[14px] text-slate-400">chevron_right</span>
-                  <span class="font-semibold text-primary">Phòng chờ</span>
+                <nav class="gs-eyebrow mb-1 flex flex-wrap items-center gap-2">
+                  <RouterLink to="/student/dashboard" class="hover:text-[--glass-amber] transition">Trang chủ</RouterLink>
+                  <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                  <RouterLink to="/student/exam-join" class="hover:text-[--glass-amber] transition">Thi qua mã</RouterLink>
+                  <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                  <span class="text-[--glass-amber]">Phòng chờ</span>
                 </nav>
-                <div
-                  class="inline-flex w-fit items-center gap-2 rounded-full bg-primary-100/90 px-3 py-1 text-sm font-semibold text-primary-800 dark:bg-primary-900/40 dark:text-primary-200"
-                >
+                <div class="gs-badge gs-badge--amber gs-pulse inline-flex w-fit items-center gap-2">
                   <span class="relative flex h-2 w-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[--glass-amber] opacity-75"></span>
+                    <span class="relative inline-flex h-2 w-2 rounded-full bg-[--glass-amber]"></span>
                   </span>
                   Phòng chờ đang hoạt động
                 </div>
                 <div class="flex flex-wrap items-center gap-2 text-xs">
-                  <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
-                    <span :class="isSyncing ? 'bg-amber-500' : 'bg-emerald-500'" class="size-2 rounded-full"></span>
+                  <span class="text-xs font-bold px-2.5 py-1 rounded-full border" :style="isSyncing ? 'background: var(--glass-amber-soft); color: var(--glass-amber); border-color: var(--glass-amber-border)' : 'background: var(--glass-success-soft); color: var(--glass-success); border-color: var(--glass-success-border)'">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full mr-1.5" :style="isSyncing ? 'background: var(--glass-amber)' : 'background: var(--glass-success)'" />
                     {{ isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ổn định' }}
                   </span>
-                  <span class="text-slate-500 dark:text-slate-400">Cập nhật: {{ lastSyncedLabel }}</span>
+                  <span class="text-[--glass-text-muted]">Cập nhật: {{ lastSyncedLabel }}</span>
                 </div>
               </div>
 
-              <!-- stitch_new/online_waiting_room — lưới 7+5 -->
+              <!-- Main waiting room grid -->
               <div class="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6 animate-fade-up-delay lg:grid-cols-12 lg:gap-8">
-                <div
-                  class="rounded-xl border border-[#dbc2b0]/10 bg-white p-6 shadow-sm stitch-editorial-shadow dark:border-slate-600/50 dark:bg-slate-900/40 md:p-8 lg:col-span-7"
-                >
+                <!-- Main info card -->
+                <div class="gs-card gs-scale rounded-xl p-6 md:p-8 lg:col-span-7">
                   <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                     <div class="min-w-0">
-                      <span class="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-primary">Phòng chờ trực tuyến</span>
-                      <h1 class="stitch-font-headline text-2xl font-bold leading-tight text-[#1b1c1a] dark:text-amber-100 md:text-3xl">
+                      <span class="gs-eyebrow mb-2 block">Phòng chờ trực tuyến</span>
+                      <h1 class="text-2xl font-bold leading-tight md:text-3xl" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">
                         {{ examTitle }}
                       </h1>
                     </div>
-                    <div class="shrink-0 rounded-lg bg-[#e9e8e4] px-4 py-2 text-center dark:bg-slate-800">
-                      <span class="block text-[10px] font-bold uppercase tracking-wider text-[#554336] dark:text-slate-400">Mã phòng</span>
-                      <span class="stitch-font-headline text-lg font-bold tracking-widest text-primary">{{ examCode }}</span>
+                    <div class="gs-card--flat glass shrink-0 rounded-lg px-4 py-2 text-center">
+                      <span class="gs-eyebrow block !text-xs">Mã phòng</span>
+                      <span class="gs-stat__value text-lg tracking-widest text-[--glass-amber]">{{ examCode }}</span>
                     </div>
                   </div>
 
-                  <div class="mb-6 flex items-center gap-5 rounded-xl bg-[#f4f4f0] p-5 dark:bg-slate-800/60">
+                  <div class="glass-card flex items-center gap-5 rounded-xl p-5 mb-6" style="background: var(--glass-amber-soft)">
                     <div class="relative flex h-16 w-16 shrink-0 items-center justify-center">
-                      <div class="absolute inset-0 rounded-full border-4 border-primary/15" />
+                      <div class="absolute inset-0 rounded-full border-4 border-[--glass-amber]/15" />
                       <div
-                        class="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-primary"
+                        class="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-[--glass-amber]"
                         style="animation-duration: 3s"
                       />
-                      <span class="material-symbols-outlined relative text-2xl text-primary">hourglass_empty</span>
+                      <span class="material-symbols-outlined relative text-2xl text-[--glass-amber]">hourglass_empty</span>
                     </div>
                     <div>
-                      <h2 class="stitch-font-headline text-lg font-semibold text-[#1b1c1a] dark:text-slate-100">Đang chờ giám thị</h2>
-                      <p class="mt-1 text-sm text-[var(--stitch-on-surface-variant)] dark:text-slate-400">
+                      <h2 class="text-lg font-semibold" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">Đang chờ giám thị</h2>
+                      <p class="mt-1 text-sm text-[--glass-text-secondary]">
                         Giữ kết nối. Bài thi mở khi đủ điều kiện và giám thị cho phép.
                       </p>
                     </div>
                   </div>
 
-                  <div class="space-y-3 border-b border-[#dbc2b0]/15 pb-6 text-sm dark:border-slate-600/50">
+                  <div class="space-y-3 border-b border-[--glass-border] pb-6 text-sm">
                     <div class="flex items-center justify-between py-2">
-                      <span class="text-[var(--stitch-on-surface-variant)] dark:text-slate-400">Thời lượng</span>
-                      <span class="font-semibold text-[#1b1c1a] dark:text-slate-100">{{ examDuration }} phút</span>
+                      <span class="text-[--glass-text-secondary]">Thời lượng</span>
+                      <span class="font-semibold text-[--glass-text]">{{ examDuration }} phút</span>
                     </div>
                     <div class="flex items-center justify-between py-2">
-                      <span class="text-[var(--stitch-on-surface-variant)] dark:text-slate-400">Số câu</span>
-                      <span class="font-semibold text-[#1b1c1a] dark:text-slate-100">{{ totalQuestions }} câu</span>
+                      <span class="text-[--glass-text-secondary]">Số câu</span>
+                      <span class="font-semibold text-[--glass-text]">{{ totalQuestions }} câu</span>
                     </div>
                   </div>
 
                   <div class="mt-6 flex flex-col items-center gap-5">
                     <div class="text-center">
-                      <p class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Thời gian đến lúc bắt đầu</p>
-                      <div class="text-5xl font-black tabular-nums text-primary">{{ countdownLabel }}</div>
-                      <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Bắt đầu lúc: {{ startAtDisplay }}</p>
+                      <p class="gs-eyebrow mb-2">Thời gian đến lúc bắt đầu</p>
+                      <div class="text-5xl font-black tabular-nums" style="font-family: 'Space Grotesk', monospace; color: var(--glass-amber)">{{ countdownLabel }}</div>
+                      <p class="mt-2 text-xs text-[--glass-text-muted]">Bắt đầu lúc: {{ startAtDisplay }}</p>
                     </div>
                     <div class="w-full max-w-md space-y-4">
                       <button
                         type="button"
-                        class="silk-press-gradient inline-flex w-full min-h-[3.25rem] items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-white shadow-lg shadow-primary/20 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        class="gs-btn gs-btn--primary gs-btn--shimmer gs-btn--lg inline-flex w-full items-center justify-center gap-2 rounded-xl shadow-lg"
                         :disabled="isCheckingDevices || !canStart || isStarting"
                         @click="goToExamInterface"
                       >
@@ -103,86 +101,90 @@
                           Bắt đầu làm bài
                         </template>
                       </button>
-                      <p v-if="isEnded" class="text-center text-sm italic text-rose-600">Bài thi đã kết thúc.</p>
-                      <p v-if="!canStart && !isEnded" class="text-center text-sm italic text-slate-500 dark:text-slate-400">Bài thi chưa bắt đầu.</p>
+                      <p v-if="isEnded" class="gs-badge gs-badge--danger text-center">Bài thi đã kết thúc.</p>
+                      <p v-if="!canStart && !isEnded" class="text-center text-sm italic text-[--glass-text-muted]">Bài thi chưa bắt đầu.</p>
                     </div>
                   </div>
                 </div>
 
+                <!-- Sidebar cards -->
                 <div class="flex flex-col gap-5 lg:col-span-5">
-                  <BaseCard hoverable class="stitch-editorial-shadow border border-[#dbc2b0]/25 dark:border-slate-600/50 dark:bg-primary/5">
-                    <h2 class="teacher-section-title mb-3 text-slate-900 dark:text-white">
-                      <span class="material-symbols-outlined text-primary">check_circle</span>
+                  <!-- System check card -->
+                  <BaseCard hoverable class="glass-card">
+                    <h2 class="mb-3 flex items-center gap-2 text-base font-bold" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">
+                      <span class="material-symbols-outlined text-xl" style="color: var(--glass-amber)">check_circle</span>
                       Kiểm tra hệ thống
                     </h2>
                     <div class="space-y-4">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                          <span :class="cameraReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="material-symbols-outlined">videocam</span>
+                          <span :style="cameraReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'" class="material-symbols-outlined">videocam</span>
                           <span class="text-sm font-medium">Camera</span>
                         </div>
-                        <span :class="cameraReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="text-xs font-bold uppercase">
+                        <span :style="cameraReady ? 'background: var(--glass-success-soft); color: var(--glass-success)' : 'background: var(--glass-danger-soft); color: var(--glass-danger)'" class="text-xs font-bold px-2.5 py-1 rounded-full border">
                           {{ cameraReady ? 'Sẵn sàng' : 'Chưa cấp quyền' }}
                         </span>
                       </div>
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                          <span :class="micReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="material-symbols-outlined">mic</span>
+                          <span :style="micReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'" class="material-symbols-outlined">mic</span>
                           <span class="text-sm font-medium">Micro</span>
                         </div>
-                        <span :class="micReady ? 'text-green-600 dark:text-green-400' : 'text-rose-500'" class="text-xs font-bold uppercase">
+                        <span :style="micReady ? 'background: var(--glass-success-soft); color: var(--glass-success)' : 'background: var(--glass-danger-soft); color: var(--glass-danger)'" class="text-xs font-bold px-2.5 py-1 rounded-full border">
                           {{ micReady ? 'Sẵn sàng' : 'Chưa cấp quyền' }}
                         </span>
                       </div>
-                      <p v-if="isCheckingDevices" class="text-xs text-slate-500">Đang kiểm tra camera và micro...</p>
+                      <p v-if="isCheckingDevices" class="text-xs text-[--glass-text-muted]">Đang kiểm tra camera và micro...</p>
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                          <span class="material-symbols-outlined text-green-600 dark:text-green-400">wifi</span>
+                          <span class="material-symbols-outlined" style="color: var(--glass-success)">wifi</span>
                           <span class="text-sm font-medium">Kết nối Internet</span>
                         </div>
-                        <span class="text-xs font-bold uppercase text-green-600 dark:text-green-400">Ổn định</span>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full border" style="background: var(--glass-success-soft); color: var(--glass-success)">Ổn định</span>
                       </div>
                     </div>
                   </BaseCard>
 
-                  <div class="rounded-xl border border-primary/15 bg-primary/5 p-6 text-center dark:bg-primary/10">
-                    <div class="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-primary text-white shadow-inner">
-                      <span class="material-symbols-outlined text-3xl">school</span>
+                  <!-- Exam rules card -->
+                  <div class="glass-card rounded-xl p-5" style="background: var(--glass-success-soft)">
+                    <div class="gs-stat__icon mx-auto mb-3 flex size-16 items-center justify-center rounded-full" style="background: var(--glass-success)">
+                      <span class="material-symbols-outlined text-3xl text-white">school</span>
                     </div>
-                    <h3 class="stitch-font-headline text-base font-bold text-amber-900 dark:text-amber-100">Quy chế phòng thi</h3>
-                    <p class="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Chuẩn phòng thi an toàn</p>
+                    <h3 class="text-base font-bold mb-1 text-center" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">Quy chế phòng thi</h3>
+                    <p class="text-xs text-center" style="color: var(--glass-text-muted)">Chuẩn phòng thi an toàn</p>
                   </div>
 
-                  <div class="space-y-5 rounded-xl bg-[#f4f4f0] p-6 text-sm dark:bg-slate-800/50">
+                  <!-- Rules list -->
+                  <div class="glass-card space-y-5 rounded-xl p-5">
                     <div class="flex gap-3">
-                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e3e2df] dark:bg-slate-700">
-                        <span class="material-symbols-outlined text-lg text-primary">videocam</span>
+                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--glass-amber-soft)">
+                        <span class="material-symbols-outlined text-lg" style="color: var(--glass-amber)">videocam</span>
                       </div>
                       <div>
-                        <p class="font-semibold text-[#1b1c1a] dark:text-slate-100">Giữ camera bật</p>
-                        <p class="mt-0.5 text-xs leading-relaxed text-[var(--stitch-on-surface-variant)] dark:text-slate-400">
+                        <p class="font-semibold" style="color: var(--glass-text)">Giữ camera bật</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-[--glass-text-secondary]">
                           Khuôn mặt rõ trong khung hình suốt phiên thi.
                         </p>
                       </div>
                     </div>
                     <div class="flex gap-3">
-                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e3e2df] dark:bg-slate-700">
-                        <span class="material-symbols-outlined text-lg text-primary">tab_unselected</span>
+                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--glass-amber-soft)">
+                        <span class="material-symbols-outlined text-lg" style="color: var(--glass-amber)">tab_unselected</span>
                       </div>
                       <div>
-                        <p class="font-semibold text-[#1b1c1a] dark:text-slate-100">Không chuyển tab</p>
-                        <p class="mt-0.5 text-xs leading-relaxed text-[var(--stitch-on-surface-variant)] dark:text-slate-400">
+                        <p class="font-semibold" style="color: var(--glass-text)">Không chuyển tab</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-[--glass-text-secondary]">
                           Hệ thống ghi nhận khi rời cửa sổ làm bài.
                         </p>
                       </div>
                     </div>
                     <div class="flex gap-3">
-                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e3e2df] dark:bg-slate-700">
-                        <span class="material-symbols-outlined text-lg text-primary">volume_off</span>
+                      <div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--glass-amber-soft)">
+                        <span class="material-symbols-outlined text-lg" style="color: var(--glass-amber)">volume_off</span>
                       </div>
                       <div>
-                        <p class="font-semibold text-[#1b1c1a] dark:text-slate-100">Giữ yên lặng</p>
-                        <p class="mt-0.5 text-xs leading-relaxed text-[var(--stitch-on-surface-variant)] dark:text-slate-400">
+                        <p class="font-semibold" style="color: var(--glass-text)">Giữ yên lặng</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-[--glass-text-secondary]">
                           Micro có thể được dùng để giám sát môi trường.
                         </p>
                       </div>
@@ -194,9 +196,9 @@
           </div>
         </main>
 
-        <footer class="shrink-0 border-t border-slate-200/80 px-6 py-2 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 md:px-20 lg:px-40">
+        <footer class="shrink-0 border-t px-6 py-2 text-center text-xs md:px-20 lg:px-40" style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-muted)">
           Cần hỗ trợ?
-          <button type="button" class="text-primary font-semibold hover:underline" @click="openSupport">Liên hệ hỗ trợ</button>
+          <button type="button" class="font-semibold transition-colors" style="color: var(--glass-amber)" @click="openSupport">Liên hệ hỗ trợ</button>
         </footer>
       </div>
     </div>

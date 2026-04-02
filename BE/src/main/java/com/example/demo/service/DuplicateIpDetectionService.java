@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.MonitoringEventType;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 
@@ -42,13 +44,12 @@ public class DuplicateIpDetectionService {
 
         var exam = attempt.getExam();
         List<ExamAttempt> counterparts = examAttemptRepository.findDuplicateIpCounterparts(
-                exam,
+                exam.getId(),
                 normalizedIp,
                 attempt.getId(),
                 attempt.getStudent().getId(),
-                ACTIVE_STATUSES,
-                exam.getStartTime(),
-                exam.getEndTime());
+                AttemptStatus.IN_PROGRESS.name(),
+                AttemptStatus.PAUSED.name());
 
         for (ExamAttempt counterpart : counterparts) {
             String pairSignature = buildPairSignature(attempt, counterpart, normalizedIp);
@@ -56,15 +57,24 @@ public class DuplicateIpDetectionService {
                 continue;
             }
 
-            monitoringService.addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
-            monitoringService.addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
+            // Idempotent insert: if constraint violation, another thread already inserted this exact event
+            try {
+                monitoringService.addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
+            } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
+                // Already inserted by concurrent thread — skip
+            }
+            try {
+                monitoringService.addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
+            } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
+                // Already inserted by concurrent thread — skip
+            }
             auditLogService.logSystemDuplicateIp(attempt, pairSignature);
             auditLogService.logSystemDuplicateIp(counterpart, pairSignature);
         }
     }
 
     private boolean isInCooldown(ExamAttempt attempt, String pairSignature) {
-        LocalDateTime cutoff = LocalDateTime.now().minusSeconds(Math.max(duplicateIpCooldownSeconds, 0));
+        LocalDateTime cutoff = VietNamTime.now().minusSeconds(Math.max(duplicateIpCooldownSeconds, 0));
         return monitoringEventRepository.existsByAttemptAndEventTypeAndDetailsAndCreatedAtAfter(
                 attempt,
                 MonitoringEventType.DUPLICATE_IP,

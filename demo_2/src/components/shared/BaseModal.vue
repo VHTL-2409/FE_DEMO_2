@@ -1,45 +1,47 @@
 <template>
   <Teleport to="body">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="presentation"
-    >
+    <Transition name="gs-modal">
       <div
-        class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-        aria-hidden="true"
-        @click="onOverlayClick"
-      />
-      <div
-        ref="panelRef"
-        class="relative z-10 w-full max-w-lg rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--color-surface)] dark:bg-slate-900 shadow-[var(--shadow-lg)] max-h-[90vh] flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-        @keydown="onPanelKeydown"
+        v-if="modelValue"
+        class="gs-modal-backdrop"
+        role="presentation"
       >
-        <div class="flex items-start justify-between gap-3 p-5 border-b border-slate-200 dark:border-slate-700 shrink-0">
-          <h2 :id="titleId" class="text-lg font-bold text-slate-900 dark:text-slate-100 pr-2">
-            {{ title }}
-          </h2>
-          <button
-            v-if="!persistent"
-            type="button"
-            class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 portal-focus"
-            aria-label="Đóng"
-            @click="close"
-          >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-5">
-          <slot />
-        </div>
-        <div v-if="$slots.footer" class="p-5 border-t border-slate-200 dark:border-slate-700 shrink-0">
-          <slot name="footer" />
+        <div
+          class="gs-modal"
+          :class="sizeClass"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          @keydown="onPanelKeydown"
+        >
+          <!-- Header -->
+          <div class="gs-modal__header">
+            <h2 :id="titleId" class="gs-modal__title">
+              {{ title }}
+            </h2>
+            <button
+              v-if="!persistent"
+              type="button"
+              class="gs-spring gs-btn gs-btn--ghost w-9 h-9 p-0"
+              aria-label="Đóng"
+              @click="close"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="gs-modal__body">
+            <slot />
+          </div>
+
+          <!-- Footer -->
+          <div v-if="$slots.footer && !hideFooter" class="gs-modal__footer">
+            <slot name="footer" />
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -50,7 +52,13 @@ import { useFocusTrap } from '../../composables/useFocusTrap'
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   title: { type: String, required: true },
-  persistent: { type: Boolean, default: false }
+  persistent: { type: Boolean, default: false },
+  size: {
+    type: String,
+    default: 'md',
+    validator: (v) => ['sm', 'md', 'lg', 'xl'].includes(v)
+  },
+  hideFooter: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -62,12 +70,18 @@ const isActive = computed(() => props.modelValue)
 
 useFocusTrap(panelRef, isActive)
 
+const sizeClass = computed(() => {
+  const sizeMap = {
+    sm: 'gs-modal--sm',
+    md: '',
+    lg: 'gs-modal--lg',
+    xl: 'gs-modal--xl'
+  }
+  return sizeMap[props.size] || ''
+})
+
 const close = () => {
   emit('update:modelValue', false)
-}
-
-const onOverlayClick = () => {
-  if (!props.persistent) close()
 }
 
 const onPanelKeydown = (e) => {
@@ -88,3 +102,71 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+/* Transition animations */
+.gs-modal-enter-active {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.gs-modal-leave-active {
+  transition: opacity var(--duration-fast) var(--ease-in);
+}
+
+.gs-modal-enter-from,
+.gs-modal-leave-to {
+  opacity: 0;
+}
+
+.gs-modal-enter-active .gs-modal {
+  animation: gsModalIn var(--duration-slow) var(--ease-spring) forwards;
+}
+
+.gs-modal-leave-active .gs-modal {
+  animation: gsModalOut var(--duration-fast) var(--ease-in) forwards;
+}
+
+@keyframes gsModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gsModalOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+}
+
+/* XL size variant */
+.gs-modal--xl {
+  max-width: 900px;
+}
+
+/* Scrollable body */
+.gs-modal__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border-hover) transparent;
+}
+
+.gs-modal__body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.gs-modal__body::-webkit-scrollbar-thumb {
+  background: var(--glass-border-hover);
+  border-radius: 2px;
+}
+</style>

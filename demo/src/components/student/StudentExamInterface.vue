@@ -1,339 +1,413 @@
 <template>
-  <div
-    :class="isDark ? 'dark' : 'light'"
-    class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
-    @contextmenu="handleRightClick"
-  >
-    <div class="shrink-0">
-    <StudentTopHeader :show-profile="false" :show-sign-out="false" :show-notifications="false" :show-menu="false">
-      <template #rightActions>
-        <div class="hidden xl:flex items-center gap-3 mr-2 text-xs font-medium">
-          <LucideIcon name="videocam" :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"  text-sm leading-none/>
-          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ cameraReady ? 'Camera bật' : 'Camera tắt' }}</span>
-          <span :class="micReady ? 'bg-emerald-400' : 'bg-rose-500'" class="w-1 h-1 rounded-full"></span>
-          <LucideIcon name="mic" :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"  text-sm leading-none/>
-          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ micReady ? 'Mic bật' : 'Mic tắt' }}</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-          <LucideIcon name="wifi" size="14" />
-          <span class="text-slate-500">Đã kết nối</span>
+  <div class="ei-root">
+    <!-- ── Fixed Top Bar ─────────────────────────────────────── -->
+    <div class="ei-topbar">
+      <div class="ei-topbar__left">
+        <!-- Exam title chip -->
+        <div class="ei-topbar__exam-chip">
+          <LucideIcon name="quiz" size="14" />
+          <span class="ei-topbar__exam-title">{{ examTitle }}</span>
         </div>
-        <div
-          v-if="initialRemainingForProgress > 0"
-          class="hidden sm:flex flex-col gap-1 min-w-[120px] max-w-[180px]"
-          role="group"
-          aria-label="Thời gian còn lại"
-        >
-          <progress
-            class="exam-timer-progress w-full h-2 rounded-full overflow-hidden accent-[color:var(--color-primary)]"
-            :class="timerBarAccentClass"
-            :value="remainingSeconds"
-            :max="initialRemainingForProgress || 1"
-            :aria-valuenow="remainingSeconds"
-            aria-valuemin="0"
-            :aria-valuemax="initialRemainingForProgress || 1"
-            :aria-label="timerAriaLabel"
-          />
+        <!-- Live device indicators -->
+        <div class="ei-topbar__devices">
+          <span class="ei-device" :class="cameraReady ? 'ei-device--on' : 'ei-device--off'">
+            <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="13" />
+          </span>
+          <span class="ei-device" :class="micReady ? 'ei-device--on' : 'ei-device--off'">
+            <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="13" />
+          </span>
+          <span class="ei-conn-dot" :class="isConnected ? 'ei-conn-dot--on' : 'ei-conn-dot--off'" />
         </div>
-        <div class="staff-surface flex items-center gap-3 rounded-xl px-4 py-2.5">
-          <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">{{ timerHours }}</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Giờ</span>
-          </div>
-          <span class="text-base font-light opacity-30">:</span>
-          <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">{{ timerMinutes }}</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Phút</span>
-          </div>
-          <span class="text-base font-light opacity-30">:</span>
-          <div class="flex flex-col items-center leading-none">
-            <span class="text-sm font-bold tabular-nums">{{ timerSeconds }}</span>
-            <span class="text-[9px] uppercase tracking-wider opacity-60">Giây</span>
+      </div>
+
+      <!-- Timer — Circular countdown ring -->
+      <div class="ei-topbar__timer" :class="timerBarAccentClass">
+        <div class="ei-timer-ring-wrap">
+          <svg class="ei-timer-ring-svg" viewBox="0 0 72 72" width="60" height="60">
+            <!-- Background ring -->
+            <circle class="ei-timer-ring-bg" cx="36" cy="36" r="30" />
+            <!-- Progress ring -->
+            <circle
+              class="ei-timer-ring-prog"
+              cx="36" cy="36" r="30"
+              :stroke-dasharray="timerCircumference"
+              :stroke-dashoffset="timerRingOffset"
+            />
+          </svg>
+          <div class="ei-timer-ring-inner">
+            <span class="ei-timer-digits">{{ timerHours }}:{{ timerMinutes }}:{{ timerSeconds }}</span>
           </div>
         </div>
-        <div
-          v-if="saveStatusLabel"
-          class="hidden md:flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 max-w-[180px]"
-          role="status"
-          aria-live="polite"
-        >
-          <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'"  text-sm animate-spin/>
-          <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'"  text-sm text-emerald-600/>
-          <LucideIcon name="schedule" v-else-if="hasPendingChanges"  text-sm text-amber-600/>
-          <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'"  text-sm text-amber-600/>
-          <span class="truncate">{{ saveStatusLabel }}</span>
+        <!-- Progress bar below -->
+        <div class="ei-timer-progress">
+          <div class="ei-timer-progress__fill" :style="{ width: timerProgressWidth }" />
         </div>
-        <BaseButton
-          type="button"
-          size="sm"
-          variant="ghost"
-          class="hidden md:inline-flex text-xs"
-          :disabled="isSuspended || saveStatus === 'saving'"
-          @click="manualSaveDraft"
-        >
+      </div>
+
+      <!-- Right actions -->
+      <div class="ei-topbar__right">
+        <!-- Save status -->
+        <div v-if="saveStatusLabel" class="ei-save-status">
+          <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'" size="13" class="ei-save-icon ei-save-icon--spin" />
+          <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'" size="13" class="ei-save-icon ei-save-icon--ok" />
+          <LucideIcon name="schedule" v-else-if="hasPendingChanges" size="13" class="ei-save-icon ei-save-icon--pending" />
+          <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'" size="13" class="ei-save-icon ei-save-icon--err" />
+          <span class="ei-save-label">{{ saveStatusLabel }}</span>
+        </div>
+
+        <button type="button" class="ei-btn ei-btn--outline" :disabled="isSuspended || saveStatus === 'saving'" @click="manualSaveDraft">
           Lưu ngay
-        </BaseButton>
-        <BaseButton
-          type="button"
-          size="sm"
-          class="text-xs"
-          :disabled="isSuspended"
-          @click="openSubmitModal"
-        >
+        </button>
+        <button type="button" class="ei-btn ei-btn--primary" :disabled="isSuspended" @click="openSubmitModal">
           Nộp bài
-        </BaseButton>
-      </template>
-    </StudentTopHeader>
+        </button>
+      </div>
     </div>
 
-    <main class="relative flex w-full min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 md:gap-4 lg:flex-row lg:gap-4">
-      <div
-        v-if="showFullscreenPrompt && !isPracticeExam && !isSuspended"
-        class="absolute inset-x-4 top-0 z-30 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 shadow-lg backdrop-blur dark:border-amber-800 dark:bg-amber-900/70 sm:inset-x-6"
-      >
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm font-bold text-amber-800 dark:text-amber-200">Yêu cầu toàn màn hình đang tắt</p>
-            <p class="text-xs text-amber-700 dark:text-amber-300">Bấm vào để tiếp tục làm bài trong chế độ toàn màn hình.</p>
-          </div>
-          <BaseButton type="button" size="sm" @click="requestExamFullscreen">Vào toàn màn hình</BaseButton>
-        </div>
+    <!-- ── Fullscreen Warning ──────────────────────────────── -->
+    <Transition name="ei-slide-down">
+      <div v-if="showFullscreenPrompt && !isPracticeExam && !isSuspended" class="ei-fs-warn">
+        <LucideIcon name="fullscreen" size="16" />
+        <span>Yêu cầu chế độ toàn màn hình</span>
+        <button type="button" class="ei-fs-warn__btn" @click="requestExamFullscreen">Vào toàn màn hình</button>
       </div>
-      <div v-if="isSuspended" class="absolute inset-0 z-20 bg-black/60 backdrop-blur-[1px] flex items-center justify-center px-4">
-        <div class="max-w-lg w-full rounded-2xl border border-rose-300 bg-white p-6 text-center shadow-2xl">
-          <h2 class="text-2xl font-bold text-rose-700 mb-2">{{ attemptStatus === 'PAUSED' ? 'Phiên thi đang tạm dừng' : 'Bài thi đã bị đình chỉ' }}</h2>
-          <p class="text-sm text-slate-600">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
-        </div>
-      </div>
+    </Transition>
 
-      <!-- Modal cảnh báo từ giám thị -->
-      <div v-if="showTeacherWarningModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-amber-900/40 backdrop-blur-sm" @click.self="showTeacherWarningModal = false">
-        <div class="max-w-lg w-full rounded-2xl border-2 border-amber-400 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-fade-up ring-4 ring-amber-500/30">
-          <div class="flex items-center gap-4 mb-4">
-            <div class="size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-              <LucideIcon name="warning" size="30" />
+    <!-- ── Suspended Overlay ──────────────────────────────── -->
+    <Transition name="ei-fade">
+      <div v-if="isSuspended" class="ei-suspend-overlay">
+        <div class="ei-suspend-card">
+          <div class="ei-suspend-icon">
+            <LucideIcon name="pause_circle" size="40" />
+          </div>
+          <h2 class="ei-suspend-title">
+            {{ attemptStatus === 'PAUSED' ? 'Phiên thi đang tạm dừng' : 'Bài thi đã bị đình chỉ' }}
+          </h2>
+          <p class="ei-suspend-desc">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Teacher Warning Modal ──────────────────────────── -->
+    <Transition name="ei-fade">
+      <div v-if="showTeacherWarningModal" class="ei-modal-overlay" @click.self="showTeacherWarningModal = false">
+        <div class="ei-modal ei-modal--warn">
+          <div class="ei-modal__header">
+            <div class="ei-modal__icon ei-modal__icon--warn">
+              <LucideIcon name="warning" size="22" />
             </div>
             <div>
-              <h2 class="text-xl font-bold text-amber-800 dark:text-amber-200">Cảnh báo từ giám thị</h2>
-              <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
+              <h2 class="ei-modal__title">Cảnh báo từ giám thị</h2>
+              <p class="ei-modal__sub">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
             </div>
           </div>
-          <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 mb-6">
-            <p class="text-slate-800 dark:text-slate-200 font-medium">{{ teacherWarningMessage }}</p>
+          <div class="ei-modal__body">
+            <p class="ei-modal__msg">{{ teacherWarningMessage }}</p>
           </div>
-          <button type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center gap-2" @click="showTeacherWarningModal = false">
-            <LucideIcon name="check_circle" />
+          <button type="button" class="ei-modal__confirm" @click="showTeacherWarningModal = false">
+            <LucideIcon name="check_circle" size="16" />
             Tôi đã hiểu
           </button>
         </div>
       </div>
-      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+    </Transition>
 
-        <div
-          v-if="!examSurfaceReady"
-          class="staff-surface-strong flex min-h-[min(50dvh,20rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-10 dark:bg-slate-900"
-        >
-          <LucideIcon name="progress_activity" size="36" />
-          <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Đang tải đề thi…</p>
-          <p class="mt-1 max-w-xs text-center text-xs text-slate-500 dark:text-slate-400">Vui lòng đợi trong giây lát.</p>
+    <!-- ── Error Popup Modal ─────────────────────────────── -->
+    <Transition name="ei-fade">
+      <div v-if="showErrorPopup" class="ei-modal-overlay" @click.self="showErrorPopup = false">
+        <div class="ei-modal ei-modal--error">
+          <div class="ei-modal__header">
+            <div class="ei-modal__icon ei-modal__icon--error">
+              <LucideIcon name="error" size="22" />
+            </div>
+            <div>
+              <h2 class="ei-modal__title">Đã xảy ra lỗi</h2>
+            </div>
+          </div>
+          <div class="ei-modal__body">
+            <p class="ei-modal__msg">{{ errorPopupMessage }}</p>
+          </div>
+          <button type="button" class="ei-modal__confirm ei-modal__confirm--error" @click="showErrorPopup = false">
+            <LucideIcon name="close" size="16" />
+            Đóng
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Success Popup Modal ──────────────────────────── -->
+    <Transition name="ei-fade">
+      <div v-if="showSuccessPopup" class="ei-modal-overlay" @click.self="showSuccessPopup = false">
+        <div class="ei-modal ei-modal--success">
+          <div class="ei-modal__header">
+            <div class="ei-modal__icon ei-modal__icon--success">
+              <LucideIcon name="check_circle" size="22" />
+            </div>
+            <div>
+              <h2 class="ei-modal__title">Thành công</h2>
+            </div>
+          </div>
+          <div class="ei-modal__body">
+            <p class="ei-modal__msg">{{ successPopupMessage }}</p>
+          </div>
+          <button type="button" class="ei-modal__confirm ei-modal__confirm--success" @click="showSuccessPopup = false">
+            <LucideIcon name="check" size="16" />
+            Đóng
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Info Popup Modal ──────────────────────────────── -->
+    <Transition name="ei-fade">
+      <div v-if="showInfoPopup" class="ei-modal-overlay" @click.self="showInfoPopup = false">
+        <div class="ei-modal ei-modal--info">
+          <div class="ei-modal__header">
+            <div class="ei-modal__icon ei-modal__icon--info">
+              <LucideIcon name="info" size="22" />
+            </div>
+            <div>
+              <h2 class="ei-modal__title">{{ infoPopupTitle || 'Thông báo' }}</h2>
+            </div>
+          </div>
+          <div class="ei-modal__body">
+            <p class="ei-modal__msg">{{ infoPopupMessage }}</p>
+          </div>
+          <button type="button" class="ei-modal__confirm ei-modal__confirm--info" @click="showInfoPopup = false">
+            <LucideIcon name="check" size="16" />
+            Đóng
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Main Content ──────────────────────────────────── -->
+    <main class="ei-main">
+      <!-- Left: Question Area -->
+      <div class="ei-question-col">
+
+        <!-- Loading -->
+        <div v-if="!examSurfaceReady" class="ei-empty-state">
+          <LucideIcon name="progress_activity" size="36" class="ei-empty-icon" />
+          <p class="ei-empty-title">Đang tải đề thi…</p>
+          <p class="ei-empty-desc">Vui lòng đợi trong giây lát.</p>
         </div>
 
-        <div
-          v-else-if="examSurfaceReady && examLoadFailed"
-          class="staff-surface-strong flex min-h-[min(40dvh,16rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
-        >
-          <LucideIcon name="error" size="36" />
-          <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không tải được đề thi</p>
-          <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Vui lòng làm mới trang hoặc quay lại sau.</p>
+        <!-- Load failed -->
+        <div v-else-if="examLoadFailed" class="ei-empty-state">
+          <LucideIcon name="error" size="36" class="ei-empty-icon" />
+          <p class="ei-empty-title">Không tải được đề thi</p>
+          <p class="ei-empty-desc">Vui lòng làm mới trang hoặc quay lại sau.</p>
         </div>
 
-        <div
-          v-else-if="examSurfaceReady && !questions.length"
-          class="staff-surface-strong flex min-h-[min(45dvh,18rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
-        >
-          <LucideIcon name="quiz" size="36" />
-          <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không có câu hỏi</p>
-          <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
+        <!-- No questions -->
+        <div v-else-if="!questions.length" class="ei-empty-state">
+          <LucideIcon name="quiz" size="36" class="ei-empty-icon" />
+          <p class="ei-empty-title">Không có câu hỏi</p>
+          <p class="ei-empty-desc">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
         </div>
 
-        <div
-          v-else-if="currentQuestion"
-          class="staff-surface-strong flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.25rem] dark:bg-slate-900"
-        >
-          <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-6 md:p-7">
-            <div class="mb-6 flex justify-between items-center shrink-0">
-              <span class="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-                <LucideIcon name="quiz" size="16" />
-                Câu {{ currentIndex + 1 }} / {{ questions.length }}
+        <!-- Question Card — slide transition -->
+        <Transition name="ei-q-slide" mode="out-in">
+          <div v-if="currentQuestion" :key="currentQuestion.id" class="ei-question-card">
+            <!-- Question header -->
+            <div class="ei-q-header">
+              <!-- Circular progress ring -->
+              <div class="ei-q-progress-ring">
+                <svg class="ei-q-ring-svg" viewBox="0 0 36 36" width="36" height="36">
+                  <circle class="ei-q-ring-bg" cx="18" cy="18" r="15" />
+                  <circle
+                    class="ei-q-ring-prog"
+                    cx="18" cy="18" r="15"
+                    :stroke-dasharray="qRingCircumference"
+                    :stroke-dashoffset="qRingOffset"
+                  />
+                </svg>
+                <span class="ei-q-ring-label">{{ currentIndex + 1 }}</span>
+              </div>
+              <span class="ei-q-badge">
+                / {{ questions.length }} câu
               </span>
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-amber-600 dark:hover:text-amber-300"
-                :disabled="isSuspended"
-                @click="toggleMarkCurrentQuestion"
-              >
-                <LucideIcon :name="markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add'" size="16" />
+              <button type="button" class="ei-mark-btn" :disabled="isSuspended" @click="toggleMarkCurrentQuestion">
+                <LucideIcon :name="markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add'" size="15" />
                 {{ markedQuestions[String(currentQuestion.id)] ? 'Bỏ đánh dấu' : 'Đánh dấu xem lại' }}
               </button>
             </div>
-            <div class="prose dark:prose-invert mb-6 max-w-none">
-              <h2 class="text-xl font-semibold leading-relaxed text-slate-900 dark:text-slate-100 sm:text-2xl">
-                {{ currentQuestion.content }}
-              </h2>
+
+            <!-- Question text -->
+            <div class="ei-q-content">
+              <h2 class="ei-q-text">{{ currentQuestion.content }}</h2>
             </div>
 
-            <QuestionRenderer :question="currentQuestion" v-model="currentQuestionAnswer" :disabled="isSuspended" />
-          </div>
+            <!-- Answer options -->
+            <div class="ei-q-answer">
+              <QuestionRenderer :question="currentQuestion" v-model="currentQuestionAnswer" :disabled="isSuspended" />
+            </div>
 
-          <div class="shrink-0 border-t border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6 sm:py-4">
-            <div class="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-              <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 px-5 py-3 font-bold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800" type="button">
-                <LucideIcon name="arrow_back" />
+            <!-- Navigation footer -->
+            <div class="ei-q-footer">
+              <button
+                type="button"
+                class="ei-nav-btn ei-nav-btn--prev"
+                :disabled="currentIndex === 0"
+                @click="goPrevious"
+              >
+                <LucideIcon name="arrow_back" size="16" />
                 Câu trước
               </button>
-              <div class="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  class="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-amber-600 dark:hover:text-amber-300"
-                  :disabled="isSuspended"
-                  @click="toggleMarkCurrentQuestion"
-                >
-                  <LucideIcon name="bookmark" size="18" />
-                  {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
-                </button>
-                <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:flex-initial" type="button">
-                Câu tiếp theo
-                <LucideIcon name="arrow_forward" />
-                </button>
-              </div>
+
+              <button type="button" class="ei-mark-btn ei-mark-btn--sm" :disabled="isSuspended" @click="toggleMarkCurrentQuestion">
+                <LucideIcon name="bookmark" size="14" />
+                {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
+              </button>
+
+              <button
+                type="button"
+                class="ei-nav-btn ei-nav-btn--next"
+                :disabled="currentIndex >= questions.length - 1"
+                @click="goNext"
+              >
+                Câu tiếp
+                <LucideIcon name="arrow_forward" size="16" />
+              </button>
             </div>
           </div>
-        </div>
+        </Transition>
       </div>
 
-      <aside
-        class="relative flex w-full shrink-0 flex-col gap-3 lg:w-[min(100%,20rem)] lg:max-h-full lg:min-h-0"
-        :class="{ 'opacity-90': !examSurfaceReady }"
-      >
-        <div v-if="shouldCheckDevices && mediaStreamRef" class="staff-surface overflow-hidden rounded-[1.25rem] dark:bg-slate-900">
-          <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Camera của bạn</span>
-            <div class="flex items-center gap-1">
+      <!-- Right: Sidebar -->
+      <aside class="ei-sidebar">
+
+        <!-- Camera preview -->
+        <div v-if="shouldCheckDevices && mediaStreamRef" class="ei-cam-card">
+          <div class="ei-cam-header">
+            <span class="ei-cam-label">Camera của bạn</span>
+            <div class="ei-cam-actions">
               <button
-                :disabled="isSuspended"
-                :title="cameraReady ? 'Tắt camera' : 'Bật camera'"
-                :class="cameraReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
-                class="p-2 rounded-lg transition-all disabled:opacity-50"
                 type="button"
+                :disabled="isSuspended"
+                class="ei-cam-btn"
+                :class="cameraReady ? 'ei-cam-btn--on' : 'ei-cam-btn--off'"
                 @click="toggleCamera"
+                :title="cameraReady ? 'Tắt camera' : 'Bật camera'"
               >
-                <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="18" />
+                <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="15" />
               </button>
               <button
-                :disabled="isSuspended"
-                :title="micReady ? 'Tắt micro' : 'Bật micro'"
-                :class="micReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
-                class="p-2 rounded-lg transition-all disabled:opacity-50"
                 type="button"
+                :disabled="isSuspended"
+                class="ei-cam-btn"
+                :class="micReady ? 'ei-cam-btn--on' : 'ei-cam-btn--off'"
                 @click="toggleMic"
+                :title="micReady ? 'Tắt micro' : 'Bật micro'"
               >
-                <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="18" />
+                <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="15" />
               </button>
             </div>
           </div>
-          <div class="relative aspect-video bg-slate-900">
-            <video ref="cameraPreviewRef" autoplay playsinline muted class="w-full h-full object-cover" :class="{ 'opacity-0': !cameraReady }" />
-            <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center bg-slate-800/90">
-              <LucideIcon name="videocam_off" size="36" />
+          <div class="ei-cam-preview">
+            <video ref="cameraPreviewRef" autoplay playsinline muted class="ei-cam-video" :class="{ 'ei-cam-video--hidden': !cameraReady }" />
+            <div v-if="!cameraReady" class="ei-cam-off">
+              <LucideIcon name="videocam_off" size="28" />
             </div>
-          </div>
-        </div>
-        <div v-if="examSurfaceReady" class="staff-surface rounded-[1.25rem] p-4 dark:bg-slate-900 sm:p-5">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <LucideIcon name="trending_up" size="18" />
-              Tiến độ làm bài
-            </h3>
-            <span class="text-lg font-bold text-primary tabular-nums">{{ progressPercent }}%</span>
-          </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-            <div class="bg-primary h-full rounded-full transition-all duration-500" :style="{ width: `${progressPercent}%` }"></div>
-          </div>
-          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary"></span> Đã làm: {{ answeredCount }}</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Chưa làm: {{ unansweredCount }}</span>
-          </div>
-          <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Đánh dấu: {{ markedCount }}</span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Bỏ qua: {{ skippedCount }}</span>
           </div>
         </div>
 
-        <div
-          v-if="examSurfaceReady"
-          class="portal-scrollbar flex min-h-0 max-h-[min(52dvh,28rem)] flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5 lg:max-h-none"
-        >
-          <div class="flex w-full min-w-0 flex-col">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <LucideIcon name="list" size="18" />
-              Danh sách câu hỏi
-            </h3>
-            <span class="text-xs text-slate-500 font-medium">{{ questions.length }} câu</span>
+        <!-- Progress card -->
+        <div v-if="examSurfaceReady" class="ei-prog-card">
+          <div class="ei-prog-header">
+            <LucideIcon name="trending_up" size="15" />
+            <span class="ei-prog-title">Tiến độ làm bài</span>
+            <span class="ei-prog-pct">{{ progressPercent }}%</span>
           </div>
-          <div class="grid grid-cols-5 gap-2 pb-2 overscroll-contain">
+          <div class="ei-prog-bar">
+            <div class="ei-prog-bar__fill" :style="{ width: `${progressPercent}%` }" />
+          </div>
+          <div class="ei-prog-stats">
+            <span class="ei-prog-stat ei-prog-stat--done">
+              <span class="ei-prog-dot ei-prog-dot--done" />
+              Đã làm: {{ answeredCount }}
+            </span>
+            <span class="ei-prog-stat ei-prog-stat--skip">
+              <span class="ei-prog-dot ei-prog-dot--skip" />
+              Chưa: {{ unansweredCount }}
+            </span>
+          </div>
+          <div class="ei-prog-tags">
+            <span class="ei-prog-tag ei-prog-tag--mark">
+              <LucideIcon name="bookmark" size="11" />
+              Đánh dấu: {{ markedCount }}
+            </span>
+            <span class="ei-prog-tag ei-prog-tag--skip">
+              Bỏ qua: {{ skippedCount }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Question navigator -->
+        <div v-if="examSurfaceReady" class="ei-nav-card">
+          <div class="ei-nav-card__header">
+            <LucideIcon name="list" size="15" />
+            <span>Danh sách câu hỏi</span>
+            <span class="ei-nav-card__count">{{ questions.length }}</span>
+          </div>
+          <div class="ei-q-grid">
             <button
               v-for="(question, idx) in questions"
               :key="question.id"
-              :class="questionButtonClass(idx)"
-              class="aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105"
               type="button"
+              :class="questionButtonClass(idx)"
+              class="ei-q-grid-btn"
               @click="selectQuestion(idx)"
             >
               {{ idx + 1 }}
             </button>
           </div>
-          <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary"></span> Đã làm</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-amber-400"></span> Đánh dấu</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Bỏ qua</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-transparent border border-slate-400"></span> Chưa mở</span>
-          </div>
+          <div class="ei-q-legend">
+            <span class="ei-legend-item">
+              <span class="ei-legend-dot ei-legend-dot--done" />
+              Đã làm
+            </span>
+            <span class="ei-legend-item">
+              <span class="ei-legend-dot ei-legend-dot--mark" />
+              Đánh dấu
+            </span>
+            <span class="ei-legend-item">
+              <span class="ei-legend-dot ei-legend-dot--skip" />
+              Bỏ qua
+            </span>
           </div>
         </div>
       </aside>
     </main>
 
-    <footer class="shrink-0 border-t border-slate-200/80 bg-slate-50/60 px-3 py-1.5 text-center text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400 sm:px-4">
-      Hỗ trợ:
-      <span class="cursor-pointer font-semibold text-primary hover:underline">hotro@edu-portal.com</span>
-    </footer>
-
+    <!-- ── Submit Modal ────────────────────────────────── -->
     <BaseModal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
-      <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-        Đã trả lời <strong>{{ answeredCount }}</strong> / {{ questions.length }} câu.
-        <span v-if="unansweredCount > 0" class="text-[color:var(--color-warning)] font-semibold">
-          Còn {{ unansweredCount }} câu chưa trả lời.
-        </span>
-      </p>
-      <div class="mb-4 grid grid-cols-2 gap-3 text-xs">
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-          <p class="text-slate-500 dark:text-slate-400">Đánh dấu xem lại</p>
-          <p class="mt-1 text-lg font-bold text-amber-600 dark:text-amber-300">{{ markedCount }}</p>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-          <p class="text-slate-500 dark:text-slate-400">Đã mở nhưng bỏ qua</p>
-          <p class="mt-1 text-lg font-bold text-slate-700 dark:text-slate-100">{{ skippedCount }}</p>
-        </div>
-      </div>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
-      <div v-if="unansweredCount > 0" class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4">
-        <p class="text-sm font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-          <LucideIcon name="warning" size="18" />
-          Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.
+      <div class="ei-submit-info">
+        <p class="ei-submit-count">
+          Đã trả lời <strong>{{ answeredCount }}</strong> / {{ questions.length }} câu.
+          <span v-if="unansweredCount > 0" class="ei-submit-warn">
+            Còn {{ unansweredCount }} câu chưa trả lời.
+          </span>
         </p>
+        <div class="ei-submit-stats">
+          <div class="ei-submit-stat">
+            <p class="ei-submit-stat__label">Đánh dấu xem lại</p>
+            <p class="ei-submit-stat__val ei-submit-stat__val--warn">{{ markedCount }}</p>
+          </div>
+          <div class="ei-submit-stat">
+            <p class="ei-submit-stat__label">Đã mở nhưng bỏ qua</p>
+            <p class="ei-submit-stat__val">{{ skippedCount }}</p>
+          </div>
+        </div>
+        <p class="ei-submit-note">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
+        <div v-if="unansweredCount > 0" class="ei-submit-unanswered">
+          <LucideIcon name="warning" size="15" />
+          <span>Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.</span>
+        </div>
       </div>
       <template #footer>
-        <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
+        <div class="ei-modal-actions">
           <BaseButton variant="ghost" type="button" @click="closeSubmitModal">Tiếp tục làm bài</BaseButton>
           <BaseButton id="submit-exam-confirm" :loading="isSubmitting" type="button" @click="submitExamAction">
             Nộp bài
@@ -355,48 +429,48 @@ import { useProctoringSession } from '../../composables/useProctoringSession'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
-import StudentTopHeader from './StudentTopHeader.vue'
+import { parseBackendDate } from '../../utils/dateUtils.js'
 import BaseModal from '../shared/BaseModal.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
 
 const route = useRoute()
 const router = useRouter()
-const isDark = ref(false)
+const toast = useToast()
 
-const examTitle = computed(() => route.query.exam || 'Giữa kỳ Tâm lý học nâng cao')
+const examTitle = computed(() => route.query.exam || 'Bài thi')
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const isPracticeExam = computed(() => String(route.query.isPractice || '') === 'true')
+
 const examConfig = ref({
-  monitorTabSwitch: true,
-  monitorBlur: true,
-  monitorExitFullscreen: true,
-  monitorCopyPaste: true,
-  monitorIdleTime: true,
-  monitorDevtools: true,
-  monitorDuplicateIp: true,
-  monitorFastSubmit: true,
-  monitorRightClick: true,
-  monitorPrintScreen: true,
-  monitorRapidQuestionSwitch: true,
-  monitorMultiMonitor: true,
-  requireCameraMic: true
+  monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true,
+  monitorCopyPaste: true, monitorIdleTime: true, monitorDevtools: true,
+  monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: true,
+  monitorPrintScreen: true, monitorRapidQuestionSwitch: true,
+  monitorMultiMonitor: true, requireCameraMic: true
 })
+
 const showSubmitModal = ref(false)
 const isSubmitting = ref(false)
 const questions = ref([])
-/** Đặt true sau khi gán questions — tránh vùng trống khi đang tải */
 const examSurfaceReady = ref(false)
 const examLoadFailed = ref(false)
+
+// Popup states
+const showErrorPopup = ref(false)
+const errorPopupMessage = ref('')
+const showSuccessPopup = ref(false)
+const successPopupMessage = ref('')
+const showInfoPopup = ref(false)
+const infoPopupMessage = ref('')
+const infoPopupTitle = ref('')
 const answers = ref({})
 const markedQuestions = ref({})
 const visitedQuestions = ref({})
 const currentIndex = ref(0)
 const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds || ''), 10) || 0)
 const initialRemainingForProgress = ref(0)
-
-const toast = useToast()
 const attemptStatus = ref('IN_PROGRESS')
 const teacherWarningMessage = ref('')
 const showTeacherWarningModal = ref(false)
@@ -407,6 +481,7 @@ const pendingViolationByType = ref({})
 const questionSwitchTimestamps = ref([])
 const cameraReady = ref(false)
 const micReady = ref(false)
+const isConnected = ref(true)
 const deviceError = ref('')
 const isCheckingDevices = ref(false)
 const mediaStreamRef = ref(null)
@@ -432,7 +507,7 @@ const realtimeChannel = useRealtimeChannel()
 const showFullscreenPrompt = ref(false)
 const isFullscreenActive = ref(false)
 
-const normalizeQuestionType = (question) => String(question?.type || 'SINGLE_CHOICE').toUpperCase()
+const normalizeQuestionType = (q) => String(q?.type || 'SINGLE_CHOICE').toUpperCase()
 
 const hasAnswerValue = (value) => {
   if (Array.isArray(value)) return value.length > 0
@@ -443,42 +518,29 @@ const hasAnswerValue = (value) => {
 const serializeAnswerValue = (question, value) => {
   const type = normalizeQuestionType(question)
   if (value == null) return ''
-  if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') {
-    return JSON.stringify(Array.isArray(value) ? value : [])
-  }
-  if (type === 'MATCHING') {
-    return JSON.stringify(value && typeof value === 'object' ? value : {})
-  }
+  if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') return JSON.stringify(Array.isArray(value) ? value : [])
+  if (type === 'MATCHING') return JSON.stringify(value && typeof value === 'object' ? value : {})
   return String(value)
 }
 
 const deserializeAnswerValue = (question, value) => {
   const type = normalizeQuestionType(question)
-  if (value == null) {
-    return type === 'MULTIPLE_CHOICE' || type === 'ORDERING' ? [] : (type === 'MATCHING' ? {} : '')
-  }
-  if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') {
-    return Array.isArray(value) ? value : parseQuestionJson(value, [])
-  }
-  if (type === 'MATCHING') {
-    return (value && typeof value === 'object' && !Array.isArray(value)) ? value : parseQuestionJson(value, {})
-  }
+  if (value == null) return type === 'MULTIPLE_CHOICE' || type === 'ORDERING' ? [] : (type === 'MATCHING' ? {} : '')
+  if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') return Array.isArray(value) ? value : parseQuestionJson(value, [])
+  if (type === 'MATCHING') return (value && typeof value === 'object' && !Array.isArray(value)) ? value : parseQuestionJson(value, {})
   return String(value)
 }
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
-const devicesReady = computed(() => cameraReady.value && micReady.value)
 const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
-const answeredCount = computed(() => Object.values(answers.value).filter((value) => {
-  return hasAnswerValue(value)
-}).length)
+const answeredCount = computed(() => Object.values(answers.value).filter(hasAnswerValue).length)
 const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
 const markedCount = computed(() => Object.values(markedQuestions.value).filter(Boolean).length)
-const skippedCount = computed(() => questions.value.filter((question) => {
-  const key = String(question.id)
+const skippedCount = computed(() => questions.value.filter((q) => {
+  const key = String(q.id)
   return Boolean(visitedQuestions.value[key]) && !hasAnswerValue(answers.value[key]) && !Boolean(markedQuestions.value[key])
 }).length)
-const notVisitedCount = computed(() => questions.value.filter((question) => !visitedQuestions.value[String(question.id)]).length)
+const notVisitedCount = computed(() => questions.value.filter((q) => !visitedQuestions.value[String(q.id)]).length)
 const progressPercent = computed(() => {
   if (!questions.value.length) return 0
   return Math.round((answeredCount.value / questions.value.length) * 100)
@@ -486,67 +548,65 @@ const progressPercent = computed(() => {
 const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 3600)).padStart(2, '0'))
 const timerMinutes = computed(() => String(Math.floor((remainingSeconds.value % 3600) / 60)).padStart(2, '0'))
 const timerSeconds = computed(() => String(remainingSeconds.value % 60).padStart(2, '0'))
+const timerProgressWidth = computed(() => {
+  if (!initialRemainingForProgress.value) return '0%'
+  return `${Math.max(0, (remainingSeconds.value / initialRemainingForProgress.value) * 100)}%`
+})
 
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 const timerBarAccentClass = computed(() => {
   const max = Math.max(initialRemainingForProgress.value, 1)
   const ratio = remainingSeconds.value / max
-  if (ratio < 0.2) {
-    return prefersReducedMotion() ? 'exam-timer--danger' : 'exam-timer--danger exam-timer--pulse'
-  }
-  if (ratio <= 0.5) return 'exam-timer--warning'
+  if (ratio < 0.2) return prefersReducedMotion() ? 'ei-timer--danger' : 'ei-timer--danger ei-timer--pulse'
+  if (ratio <= 0.5) return 'ei-timer--warn'
   return ''
 })
 
-const timerAriaLabel = computed(() => {
-  const m = Math.floor(remainingSeconds.value / 60)
-  const sec = remainingSeconds.value % 60
-  return `Thời gian còn lại: ${m} phút ${sec} giây`
+// Circular ring
+const timerCircumference = 2 * Math.PI * 30 // r=30
+const timerRingOffset = computed(() => {
+  if (!initialRemainingForProgress.value) return timerCircumference
+  const ratio = Math.max(0, Math.min(1, remainingSeconds.value / initialRemainingForProgress.value))
+  return timerCircumference * (1 - ratio)
+})
+
+// Question progress ring
+const qRingCircumference = 2 * Math.PI * 15 // r=15
+const qRingOffset = computed(() => {
+  if (!questions.value.length) return qRingCircumference
+  const ratio = (currentIndex.value) / questions.value.length
+  return qRingCircumference * (1 - ratio)
 })
 
 const currentQuestionAnswer = computed({
   get: () => {
-    const question = currentQuestion.value
-    if (!question) return ''
-    const currentValue = answers.value[question.id]
-    const type = normalizeQuestionType(question)
-    if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') {
-      return Array.isArray(currentValue) ? currentValue : []
-    }
-    if (type === 'MATCHING') {
-      return currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {}
-    }
-    return currentValue ?? ''
+    const q = currentQuestion.value
+    if (!q) return ''
+    const cv = answers.value[q.id]
+    const type = normalizeQuestionType(q)
+    if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') return Array.isArray(cv) ? cv : []
+    if (type === 'MATCHING') return (cv && typeof cv === 'object' && !Array.isArray(cv)) ? cv : {}
+    return cv ?? ''
   },
   set: (value) => {
-    const question = currentQuestion.value
-    if (!question) return
-    onSelectAnswer(question.id, value)
+    const q = currentQuestion.value
+    if (!q) return
+    onSelectAnswer(q.id, value)
   }
 })
 
-
 const clearBlurGraceTimer = () => {
-  if (blurGraceTimer) {
-    window.clearTimeout(blurGraceTimer)
-    blurGraceTimer = null
-  }
+  if (blurGraceTimer) { window.clearTimeout(blurGraceTimer); blurGraceTimer = null }
 }
 
 const syncDeviceStatusToBackend = async () => {
   if (!attemptId.value || isPracticeExam.value || isSuspended.value) return
-  try {
-    await updateDeviceStatus(attemptId.value, cameraReady.value, micReady.value)
-  } catch {
-    // ignore
-  }
+  try { await updateDeviceStatus(attemptId.value, cameraReady.value, micReady.value) } catch {}
 }
 
 const toggleCamera = () => {
-  const stream = mediaStreamRef.value
-  const videoTrack = stream?.getVideoTracks()[0]
+  const videoTrack = mediaStreamRef.value?.getVideoTracks()[0]
   if (!videoTrack) return
   videoTrack.enabled = !videoTrack.enabled
   cameraReady.value = videoTrack.enabled
@@ -554,8 +614,7 @@ const toggleCamera = () => {
 }
 
 const toggleMic = () => {
-  const stream = mediaStreamRef.value
-  const audioTrack = stream?.getAudioTracks()[0]
+  const audioTrack = mediaStreamRef.value?.getAudioTracks()[0]
   if (!audioTrack) return
   audioTrack.enabled = !audioTrack.enabled
   micReady.value = audioTrack.enabled
@@ -563,72 +622,31 @@ const toggleMic = () => {
 }
 
 const checkDevices = async () => {
-  if (!shouldCheckDevices.value) {
-    cameraReady.value = true
-    micReady.value = true
-    deviceError.value = ''
-    return
-  }
-  if (!navigator?.mediaDevices?.getUserMedia) {
-    cameraReady.value = false
-    micReady.value = false
-    deviceError.value = 'Trình duyệt không hỗ trợ kiểm tra camera/micro.'
-    return
-  }
-
-  isCheckingDevices.value = true
-  deviceError.value = ''
+  if (!shouldCheckDevices.value) { cameraReady.value = true; micReady.value = true; deviceError.value = ''; return }
+  if (!navigator?.mediaDevices?.getUserMedia) { cameraReady.value = false; micReady.value = false; deviceError.value = 'Trình duyệt không hỗ trợ.'; return }
+  isCheckingDevices.value = true; deviceError.value = ''
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    const videoTrack = stream.getVideoTracks()[0]
-    const audioTrack = stream.getAudioTracks()[0]
-    cameraReady.value = Boolean(videoTrack?.enabled)
-    micReady.value = Boolean(audioTrack?.enabled)
+    const vt = stream.getVideoTracks()[0]; const at = stream.getAudioTracks()[0]
+    cameraReady.value = Boolean(vt?.enabled); micReady.value = Boolean(at?.enabled)
     mediaStreamRef.value = stream
-
-    const onTrackEnded = () => {
-      cameraReady.value = Boolean(stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live'))
-      micReady.value = Boolean(stream.getAudioTracks().some((t) => t.enabled && t.readyState === 'live'))
-      syncDeviceStatusToBackend()
-    }
-    videoTrack?.addEventListener('ended', onTrackEnded)
-    audioTrack?.addEventListener('ended', onTrackEnded)
-
-    await syncDeviceStatusToBackend()
     deviceStatusInterval = setInterval(syncDeviceStatusToBackend, 15000)
+    await syncDeviceStatusToBackend()
   } catch (error) {
-    cameraReady.value = false
-    micReady.value = false
-    deviceError.value = error?.name === 'NotAllowedError'
-      ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
-      : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
-  } finally {
-    isCheckingDevices.value = false
-  }
+    cameraReady.value = false; micReady.value = false
+    deviceError.value = error?.name === 'NotAllowedError' ? 'Cần cấp quyền camera và micro.' : 'Không truy cập được thiết bị.'
+  } finally { isCheckingDevices.value = false }
 }
 
 const stopMediaStream = () => {
-  if (deviceStatusInterval) {
-    clearInterval(deviceStatusInterval)
-    deviceStatusInterval = null
-  }
-  const stream = mediaStreamRef.value
-  if (stream) {
-    stream.getTracks().forEach((t) => t.stop())
-    mediaStreamRef.value = null
-  }
-  if (cameraPreviewRef.value) {
-    cameraPreviewRef.value.srcObject = null
-  }
+  if (deviceStatusInterval) { clearInterval(deviceStatusInterval); deviceStatusInterval = null }
+  if (mediaStreamRef.value) { mediaStreamRef.value.getTracks().forEach(t => t.stop()); mediaStreamRef.value = null }
+  if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
 }
 
 watch(mediaStreamRef, (stream) => {
   if (!stream) return
-  nextTick(() => {
-    if (cameraPreviewRef.value) {
-      cameraPreviewRef.value.srcObject = stream
-    }
-  })
+  nextTick(() => { if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = stream })
 })
 
 const syncRiskState = (payload) => {
@@ -636,11 +654,7 @@ const syncRiskState = (payload) => {
   const nextRiskScore = typeof payload.riskScore === 'number' ? payload.riskScore : payload.score
   const nextRiskLevel = payload.riskLevel || payload.level
   if (typeof nextRiskScore === 'number') {
-    examSessionStore.setRiskState({
-      riskScore: nextRiskScore,
-      riskLevel: nextRiskLevel || examSessionStore.riskState.riskLevel,
-      status: payload.status || attemptStatus.value
-    })
+    examSessionStore.setRiskState({ riskScore: nextRiskScore, riskLevel: nextRiskLevel || examSessionStore.riskState.riskLevel, status: payload.status || attemptStatus.value })
   }
 }
 
@@ -659,127 +673,68 @@ const handleProctorActions = (actions = [], payload = {}) => {
 const buildDeviceFingerprintSeed = () => JSON.stringify({
   screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
-  language: navigator.language || '',
-  platform: navigator.platform || '',
-  userAgent: navigator.userAgent || ''
+  language: navigator.language || '', platform: navigator.platform || '', userAgent: navigator.userAgent || ''
 })
 
 const getHeartbeatPayload = () => ({
-  fullscreen: Boolean(document.fullscreenElement),
-  visibility: document.visibilityState || 'visible',
-  cameraOn: cameraReady.value,
-  micOn: micReady.value,
-  screenMetrics: {
-    screenWidth: window.screen?.width || null,
-    screenHeight: window.screen?.height || null,
-    availWidth: window.screen?.availWidth || null,
-    availHeight: window.screen?.availHeight || null,
-    viewportWidth: window.innerWidth || null,
-    viewportHeight: window.innerHeight || null
-  }
+  fullscreen: Boolean(document.fullscreenElement), visibility: document.visibilityState || 'visible',
+  cameraOn: cameraReady.value, micOn: micReady.value,
+  screenMetrics: { screenWidth: window.screen?.width || null, screenHeight: window.screen?.height || null,
+    availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null }
 })
 
-const {
-  queueEvent,
-  flush: flushQueuedViolations,
-  syncHeartbeat,
-  startHeartbeat,
-  stopHeartbeat
-} = useProctoringSession({
-  getAttemptId: () => attemptId.value,
-  getDeviceFingerprint: buildDeviceFingerprintSeed,
-  getHeartbeatPayload,
-  onRiskUpdate: syncRiskState,
-  onActionRequired: handleProctorActions,
-  batchWindowMs: 1200,
-  heartbeatIntervalMs: 15000
+const { queueEvent, flush: flushQueuedViolations, syncHeartbeat, startHeartbeat, stopHeartbeat } = useProctoringSession({
+  getAttemptId: () => attemptId.value, getDeviceFingerprint: buildDeviceFingerprintSeed, getHeartbeatPayload,
+  onRiskUpdate: syncRiskState, onActionRequired: handleProctorActions, batchWindowMs: 1200, heartbeatIntervalMs: 15000
 })
 
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
   if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
-  if (!examConfig.value || examConfig.value.monitorFastSubmit === false && eventType === 'FAST_SUBMIT') return
-  if (examConfig.value.monitorTabSwitch === false && eventType === 'TAB_SWITCH') return
-  if (examConfig.value.monitorBlur === false && eventType === 'BLUR') return
-  if (examConfig.value.monitorExitFullscreen === false && eventType === 'EXIT_FULLSCREEN') return
-  if (examConfig.value.monitorCopyPaste === false && eventType === 'COPY_PASTE') return
-  if (examConfig.value.monitorIdleTime === false && eventType === 'IDLE_TIME') return
-  if (examConfig.value.monitorDevtools === false && eventType === 'DEVTOOLS_OPEN') return
-  if (examConfig.value.monitorRightClick === false && eventType === 'RIGHT_CLICK') return
-  if (examConfig.value.monitorPrintScreen === false && eventType === 'PRINT_SCREEN') return
-  if (examConfig.value.monitorRapidQuestionSwitch === false && eventType === 'RAPID_QUESTION_SWITCH') return
-  if (examConfig.value.monitorMultiMonitor === false && eventType === 'MULTI_MONITOR') return
-
+  const cfg = examConfig.value
+  const monitorMap = { TAB_SWITCH: 'monitorTabSwitch', BLUR: 'monitorBlur', EXIT_FULLSCREEN: 'monitorExitFullscreen', COPY_PASTE: 'monitorCopyPaste', IDLE_TIME: 'monitorIdleTime', DEVTOOLS_OPEN: 'monitorDevtools', RIGHT_CLICK: 'monitorRightClick', PRINT_SCREEN: 'monitorPrintScreen', RAPID_QUESTION_SWITCH: 'monitorRapidQuestionSwitch', MULTI_MONITOR: 'monitorMultiMonitor', FAST_SUBMIT: 'monitorFastSubmit' }
+  const prop = monitorMap[eventType]
+  if (prop && cfg[prop] === false) return
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
   if (now - lastAt < cooldownMs) return
-
-  lastViolationAtByType.value = {
-    ...lastViolationAtByType.value,
-    [eventType]: now
-  }
-
-  try {
-    queueEvent(eventType, details, { questionIndex: currentIndex.value + 1 })
-  } catch {
-    // ignore monitoring send failures and keep exam flow stable
-  }
+  lastViolationAtByType.value = { ...lastViolationAtByType.value, [eventType]: now }
+  try { queueEvent(eventType, details, { questionIndex: currentIndex.value + 1 }) } catch {}
 }
 
 const applyAttemptStatus = (status, message = '') => {
   const normalized = String(status || '').toUpperCase() || 'IN_PROGRESS'
   attemptStatus.value = normalized
   examSessionStore.setRiskState({ status: normalized })
-
   if (normalized === 'STOPPED' || normalized === 'PAUSED') {
     isSuspended.value = true
-    if (message) {
-      suspensionMessage.value = message
-    } else if (normalized === 'PAUSED') {
-      suspensionMessage.value = 'Phiên thi đang được tạm dừng để giám thị kiểm tra.'
-    }
+    if (message) suspensionMessage.value = message
+    else if (normalized === 'PAUSED') suspensionMessage.value = 'Phiên thi đang được tạm dừng để giám thị kiểm tra.'
     showSubmitModal.value = false
     stopMediaStream()
     return
   }
-
   isSuspended.value = false
 }
 
 const enforceDeviceAccess = async () => {
   if (isPracticeExam.value) return
   if (mediaStreamRef.value) {
-    const videoTrack = mediaStreamRef.value.getVideoTracks()[0]
-    const audioTrack = mediaStreamRef.value.getAudioTracks()[0]
-    const videoEnded = !videoTrack || videoTrack.readyState === 'ended'
-    const audioEnded = !audioTrack || audioTrack.readyState === 'ended'
-    if (videoEnded || audioEnded) {
-      isSuspended.value = true
-      suspensionMessage.value = 'Camera hoặc micro đã bị thu hồi. Vui lòng tải lại trang và cấp quyền lại.'
-      return
-    }
-    cameraReady.value = Boolean(videoTrack?.enabled)
-    micReady.value = Boolean(audioTrack?.enabled)
+    const vt = mediaStreamRef.value.getVideoTracks()[0]; const at = mediaStreamRef.value.getAudioTracks()[0]
+    const ve = !vt || vt.readyState === 'ended'; const ae = !at || at.readyState === 'ended'
+    if (ve || ae) { isSuspended.value = true; suspensionMessage.value = 'Camera hoặc micro đã bị thu hồi. Vui lòng tải lại trang.'; return }
+    cameraReady.value = Boolean(vt?.enabled); micReady.value = Boolean(at?.enabled)
     await syncDeviceStatusToBackend()
     return
   }
   await checkDevices()
-  if (!devicesReady.value) {
-    isSuspended.value = true
-    suspensionMessage.value = deviceError.value || 'Bạn cần cấp quyền camera và micro để tiếp tục làm bài.'
-  }
+  if (!devicesReady.value) { isSuspended.value = true; suspensionMessage.value = deviceError.value || 'Cần cấp quyền camera và micro.' }
 }
 
 const requestExamFullscreen = async () => {
   if (isPracticeExam.value) return
   if (!document.documentElement?.requestFullscreen) return
-  try {
-    await document.documentElement.requestFullscreen()
-    isFullscreenActive.value = true
-    showFullscreenPrompt.value = false
-    examSessionStore.setFullscreenState({ required: true, active: true })
-  } catch {
-    showFullscreenPrompt.value = true
-  }
+  try { await document.documentElement.requestFullscreen(); isFullscreenActive.value = true; showFullscreenPrompt.value = false; examSessionStore.setFullscreenState({ required: true, active: true }) }
+  catch { showFullscreenPrompt.value = true }
 }
 
 const syncAttemptStatus = async () => {
@@ -787,190 +742,91 @@ const syncAttemptStatus = async () => {
   try {
     const detail = await getAttemptDetail(attemptId.value)
     applyAttemptStatus(detail?.status || 'IN_PROGRESS')
-    if (typeof detail?.riskScore === 'number') {
-      examSessionStore.setRiskState({
-        riskScore: detail.riskScore,
-        riskLevel: detail.riskLevel || examSessionStore.riskState.riskLevel,
-        status: detail.status || attemptStatus.value
-      })
-    }
-    // Đồng bộ thời gian còn lại từ server (tránh lệch do client)
+    if (typeof detail?.riskScore === 'number') examSessionStore.setRiskState({ riskScore: detail.riskScore, riskLevel: detail.riskLevel || examSessionStore.riskState.riskLevel, status: detail.status || attemptStatus.value })
     if (typeof detail?.remainingSeconds === 'number' && detail.remainingSeconds >= 0) {
       const diff = Math.abs(remainingSeconds.value - detail.remainingSeconds)
       if (diff > 5) remainingSeconds.value = Math.max(0, detail.remainingSeconds)
     }
-  } catch {
-    // ignore status sync errors
-  }
+  } catch {}
 }
 
 const connectProctorRealtime = async () => {
   if (isPracticeExam.value || !attemptId.value) return
   await realtimeChannel.connect({
     reconnectDelay: 5000,
-    topics: [
-      {
-        destination: `/topic/attempts/${attemptId.value}/proctor-actions`,
-        handler: (payload) => {
-          const type = String(payload?.type || '').toUpperCase()
-          if (type === 'TEACHER_WARNING') {
-            teacherWarningMessage.value = payload.message || 'Bạn đang bị cảnh báo bởi giám thị. Vui lòng tuân thủ quy định phòng thi.'
-            showTeacherWarningModal.value = true
-            toast.warning(teacherWarningMessage.value)
-          }
-          if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
-            applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'),
-              payload.message || 'Bài thi đã bị đình chỉ.')
-          }
-          if (type === 'RISK_UPDATE') {
-            syncRiskState({
-              riskScore: payload.riskScore,
-              riskLevel: payload.riskLevel,
-              status: payload.status
-            })
-            handleProctorActions([payload.actionTaken], payload)
-          }
+    topics: [{
+      destination: `/topic/attempts/${attemptId.value}/proctor-actions`,
+      handler: (payload) => {
+        const type = String(payload?.type || '').toUpperCase()
+        if (type === 'TEACHER_WARNING') {
+          teacherWarningMessage.value = payload.message || 'Bạn đang bị cảnh báo bởi giám thị.'
+          showTeacherWarningModal.value = true
+          toast.warning(teacherWarningMessage.value)
+        }
+        if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
+          applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'), payload.message || 'Bài thi đã bị đình chỉ.')
+        }
+        if (type === 'RISK_UPDATE') {
+          syncRiskState({ riskScore: payload.riskScore, riskLevel: payload.riskLevel, status: payload.status })
+          handleProctorActions([payload.actionTaken], payload)
         }
       }
-    ]
+    }]
   })
 }
 
 const setupBlockBackButton = () => {
   history.pushState({ examInProgress: true }, '', window.location.href)
-  blockBackHandler = () => {
-    history.pushState({ examInProgress: true }, '', window.location.href)
-    toast.warning('Không thể quay lại khi đang làm bài thi. Vui lòng nộp bài để thoát.')
-  }
+  blockBackHandler = () => { history.pushState({ examInProgress: true }, '', window.location.href); toast.warning('Không thể quay lại khi đang làm bài thi.') }
   window.addEventListener('popstate', blockBackHandler)
 }
-
-const teardownBlockBackButton = () => {
-  if (blockBackHandler) {
-    window.removeEventListener('popstate', blockBackHandler)
-    blockBackHandler = null
-  }
-}
+const teardownBlockBackButton = () => { if (blockBackHandler) { window.removeEventListener('popstate', blockBackHandler); blockBackHandler = null } }
 
 const handleVisibilityChange = () => {
-  if (document.hidden) {
-    pendingViolationByType.value = {
-      ...pendingViolationByType.value,
-      TAB_SWITCH: true
-    }
-    void reportViolation('TAB_SWITCH', 'TAB_SWITCH')
-  } else if (pendingViolationByType.value.TAB_SWITCH) {
-    pendingViolationByType.value = {
-      ...pendingViolationByType.value,
-      TAB_SWITCH: false
-    }
-  }
+  if (document.hidden) { pendingViolationByType.value = { ...pendingViolationByType.value, TAB_SWITCH: true }; void reportViolation('TAB_SWITCH', 'TAB_SWITCH') }
+  else if (pendingViolationByType.value.TAB_SWITCH) pendingViolationByType.value = { ...pendingViolationByType.value, TAB_SWITCH: false }
 }
 
 const handleWindowBlur = () => {
   clearBlurGraceTimer()
-  blurGraceTimer = window.setTimeout(() => {
-    pendingViolationByType.value = {
-      ...pendingViolationByType.value,
-      BLUR: true
-    }
-    void reportViolation('BLUR', 'Cửa sổ mất tiêu điểm trong phòng thi')
-  }, BLUR_GRACE_MS)
+  blurGraceTimer = window.setTimeout(() => { pendingViolationByType.value = { ...pendingViolationByType.value, BLUR: true }; void reportViolation('BLUR', 'Cửa sổ mất tiêu điểm') }, BLUR_GRACE_MS)
 }
-
-const handleWindowFocus = () => {
-  clearBlurGraceTimer()
-  if (pendingViolationByType.value.BLUR) {
-    pendingViolationByType.value = {
-      ...pendingViolationByType.value,
-      BLUR: false
-    }
-  }
-}
+const handleWindowFocus = () => { clearBlurGraceTimer(); if (pendingViolationByType.value.BLUR) pendingViolationByType.value = { ...pendingViolationByType.value, BLUR: false } }
 
 const handleFullscreenChange = () => {
-  const inFullscreen = Boolean(document.fullscreenElement)
-  isFullscreenActive.value = inFullscreen
-  examSessionStore.setFullscreenState({ required: true, active: inFullscreen })
-  if (inFullscreen) {
-    pendingViolationByType.value = {
-      ...pendingViolationByType.value,
-      EXIT_FULLSCREEN: false
-    }
-    showFullscreenPrompt.value = false
-    return
-  }
-
-  pendingViolationByType.value = {
-    ...pendingViolationByType.value,
-    EXIT_FULLSCREEN: true
-  }
-  showFullscreenPrompt.value = !isPracticeExam.value
-  void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình trong phòng thi')
+  const inFs = Boolean(document.fullscreenElement); isFullscreenActive.value = inFs; examSessionStore.setFullscreenState({ required: true, active: inFs })
+  if (inFs) { pendingViolationByType.value = { ...pendingViolationByType.value, EXIT_FULLSCREEN: false }; showFullscreenPrompt.value = false; return }
+  pendingViolationByType.value = { ...pendingViolationByType.value, EXIT_FULLSCREEN: true }; showFullscreenPrompt.value = !isPracticeExam.value; void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình')
 }
 
 const resetIdleTimer = () => {
   if (idleTimer) window.clearTimeout(idleTimer)
-  idleTimer = window.setTimeout(() => {
-    void reportViolation('IDLE_TIME', `Idle for ${Math.round(IDLE_THRESHOLD_MS / 60000)} minutes`, LONG_VIOLATION_COOLDOWN_MS)
-  }, IDLE_THRESHOLD_MS)
+  idleTimer = window.setTimeout(() => { void reportViolation('IDLE_TIME', `Idle ${Math.round(IDLE_THRESHOLD_MS / 60000)} phút`, LONG_VIOLATION_COOLDOWN_MS) }, IDLE_THRESHOLD_MS)
 }
 
 const handleCopyPaste = (event) => {
   const target = event?.target
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
-  const clipboardText = event?.clipboardData?.getData?.('text') || ''
-  const summary = clipboardText.length > 50
-    ? `${event.type} ${clipboardText.length} ký tự`
-    : `Phát hiện ${event.type} trong phòng thi`
+  const txt = event?.clipboardData?.getData?.('text') || ''
+  const summary = txt.length > 50 ? `${event.type} ${txt.length} ký tự` : `Phát hiện ${event.type}`
   void reportViolation('COPY_PASTE', summary, LONG_VIOLATION_COOLDOWN_MS)
 }
 
-const detectDevToolsOpen = () => {
-  if (document.hidden) return false
-  const widthGap = Math.abs(window.outerWidth - window.innerWidth)
-  const heightGap = Math.abs(window.outerHeight - window.innerHeight)
-  return widthGap > DEVTOOLS_GAP_PX || heightGap > DEVTOOLS_GAP_PX
-}
-
-const scheduleDevToolsCheck = () => {
-  if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer)
-  devtoolsCheckTimer = window.setInterval(() => {
-    if (detectDevToolsOpen()) {
-      void reportViolation('DEVTOOLS_OPEN', 'DevTools được phát hiện trong phòng thi', LONG_VIOLATION_COOLDOWN_MS)
-    }
-  }, 5000)
-}
+const detectDevToolsOpen = () => { if (document.hidden) return false; const wg = Math.abs(window.outerWidth - window.innerWidth); const hg = Math.abs(window.outerHeight - window.innerHeight); return wg > DEVTOOLS_GAP_PX || hg > DEVTOOLS_GAP_PX }
+const scheduleDevToolsCheck = () => { if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer); devtoolsCheckTimer = window.setInterval(() => { if (detectDevToolsOpen()) void reportViolation('DEVTOOLS_OPEN', 'DevTools được phát hiện', LONG_VIOLATION_COOLDOWN_MS) }, 5000) }
 
 const checkRapidQuestionSwitch = () => {
   const now = Date.now()
-  questionSwitchTimestamps.value = [...questionSwitchTimestamps.value, now].filter(
-    (t) => now - t <= RAPID_SWITCH_WINDOW_MS
-  )
-  if (questionSwitchTimestamps.value.length >= RAPID_SWITCH_THRESHOLD) {
-    void reportViolation(
-      'RAPID_QUESTION_SWITCH',
-      `${questionSwitchTimestamps.value.length} lần đổi câu trong ${RAPID_SWITCH_WINDOW_MS / 1000}s`,
-      VIOLATION_COOLDOWN_MS
-    )
-    questionSwitchTimestamps.value = []
-  }
+  questionSwitchTimestamps.value = [...questionSwitchTimestamps.value, now].filter(t => now - t <= RAPID_SWITCH_WINDOW_MS)
+  if (questionSwitchTimestamps.value.length >= RAPID_SWITCH_THRESHOLD) { void reportViolation('RAPID_QUESTION_SWITCH', `${questionSwitchTimestamps.value.length} lần đổi câu trong ${RAPID_SWITCH_WINDOW_MS / 1000}s`); questionSwitchTimestamps.value = [] }
 }
 
 const selectQuestion = (index) => {
   if (isSuspended.value) return
-  if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) {
-    checkRapidQuestionSwitch()
-  }
+  if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
   currentIndex.value = index
-  const question = questions.value[index]
-  if (question?.id != null) {
-    visitedQuestions.value = {
-      ...visitedQuestions.value,
-      [String(question.id)]: true
-    }
-    examSessionStore.setCurrentQuestion(question.id)
-  }
+  const q = questions.value[index]
+  if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
 }
 
 const goPrevious = () => {
@@ -978,14 +834,8 @@ const goPrevious = () => {
   if (currentIndex.value > 0) {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value -= 1
-    const question = questions.value[currentIndex.value]
-    if (question?.id != null) {
-      visitedQuestions.value = {
-        ...visitedQuestions.value,
-        [String(question.id)]: true
-      }
-      examSessionStore.setCurrentQuestion(question.id)
-    }
+    const q = questions.value[currentIndex.value]
+    if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
   }
 }
 
@@ -994,428 +844,193 @@ const goNext = () => {
   if (currentIndex.value < questions.value.length - 1) {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value += 1
-    const question = questions.value[currentIndex.value]
-    if (question?.id != null) {
-      visitedQuestions.value = {
-        ...visitedQuestions.value,
-        [String(question.id)]: true
-      }
-      examSessionStore.setCurrentQuestion(question.id)
-    }
+    const q = questions.value[currentIndex.value]
+    if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
   }
 }
 
-const handleRightClick = (e) => {
-  if (examConfig.value.monitorRightClick !== false) {
-    e.preventDefault()
-    e.stopPropagation()
-    void reportViolation('RIGHT_CLICK', 'Chuột phải bị chặn trong phòng thi', VIOLATION_COOLDOWN_MS)
-  }
-}
+const handleRightClick = (e) => { if (examConfig.value.monitorRightClick !== false) { e.preventDefault(); e.stopPropagation(); void reportViolation('RIGHT_CLICK', 'Chuột phải bị chặn', VIOLATION_COOLDOWN_MS) } }
 
-const handlePrintScreen = (e) => {
-  if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) {
-    e.preventDefault()
-    void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS)
-  }
-}
+const handlePrintScreen = (e) => { if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) { e.preventDefault(); void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS) } }
 
 const checkMultiMonitor = () => {
   if (examConfig.value.monitorMultiMonitor === false) return
-  const screenW = window.screen?.width || 0
-  const screenH = window.screen?.height || 0
-  const availW = window.screen?.availWidth || 0
-  const availH = window.screen?.availHeight || 0
-  if (screenW > 0 && availW > 0 && (screenW - availW > 100 || screenH - availH > 100)) {
-    void reportViolation('MULTI_MONITOR', 'Có thể sử dụng nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS)
-  }
+  const sw = window.screen?.width || 0; const sh = window.screen?.height || 0; const aw = window.screen?.availWidth || 0; const ah = window.screen?.availHeight || 0
+  if (sw > 0 && aw > 0 && (sw - aw > 100 || sh - ah > 100)) void reportViolation('MULTI_MONITOR', 'Nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS)
 }
 
 const persistDraftToServer = async () => {
   if (!attemptId.value || isSuspended.value) return
-  const payload = Object.entries(answers.value)
-    .filter(([, selectedAnswer]) => hasAnswerValue(selectedAnswer))
-    .map(([questionId, selectedAnswer]) => {
-      const question = questions.value.find((item) => Number(item.id) === Number(questionId))
-      return {
-        questionId: Number(questionId),
-        selectedAnswer: serializeAnswerValue(question, selectedAnswer)
-      }
-    })
+  const payload = Object.entries(answers.value).filter(([, v]) => hasAnswerValue(v)).map(([questionId, selectedAnswer]) => {
+    const q = questions.value.find(item => Number(item.id) === Number(questionId))
+    return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
+  })
   if (!payload.length) return
   await saveDraftAnswers(attemptId.value, payload)
 }
 
-const { saveStatus, lastSavedAt, hasPendingChanges, schedule, forceSave, mergeLocalIntoAnswers } = useAutoSaveDraft({
-  getAnswers: () => answers.value,
-  getAttemptId: () => attemptId.value,
-  saveToServer: persistDraftToServer,
-  debounceMs: 30000
-})
+const { saveStatus, lastSavedAt, hasPendingChanges, schedule, forceSave, mergeLocalIntoAnswers } = useAutoSaveDraft({ getAnswers: () => answers.value, getAttemptId: () => attemptId.value, saveToServer: persistDraftToServer, debounceMs: 30000 })
 
 const saveStatusLabel = computed(() => {
-  if (hasPendingChanges.value && saveStatus.value === 'idle') {
-    return 'Có thay đổi chưa đồng bộ'
-  }
+  if (hasPendingChanges.value && saveStatus.value === 'idle') return 'Có thay đổi chưa đồng bộ'
   switch (saveStatus.value) {
-    case 'saving':
-      return 'Đang lưu...'
-    case 'saved':
-      return lastSavedAt.value
-        ? `Đã lưu lúc ${new Date(lastSavedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-        : 'Đã lưu'
-    case 'error':
-      return 'Lỗi lưu — bài vẫn an toàn'
-    default:
-      return lastSavedAt.value
-        ? `Đã lưu lúc ${new Date(lastSavedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-        : ''
+    case 'saving': return 'Đang lưu...'
+    case 'saved': return lastSavedAt.value ? `Đã lưu ${new Date(lastSavedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Đã lưu'
+    case 'error': return 'Lỗi lưu'
+    default: return lastSavedAt.value ? `Đã lưu ${new Date(lastSavedAt.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''
   }
 })
 
 const onSelectAnswer = (questionId, selectedAnswer) => {
   if (isSuspended.value) return
-
-  answers.value = {
-    ...answers.value,
-    [questionId]: selectedAnswer
-  }
-  visitedQuestions.value = {
-    ...visitedQuestions.value,
-    [String(questionId)]: true
-  }
+  answers.value = { ...answers.value, [questionId]: selectedAnswer }
+  visitedQuestions.value = { ...visitedQuestions.value, [String(questionId)]: true }
   examSessionStore.setAnswer(questionId, selectedAnswer)
-
   schedule()
 }
 
 const toggleMarkCurrentQuestion = () => {
-  const question = currentQuestion.value
-  if (!question) return
-  const key = String(question.id)
-  markedQuestions.value = {
-    ...markedQuestions.value,
-    [key]: !markedQuestions.value[key]
-  }
-  examSessionStore.toggleMarked(question.id)
+  const q = currentQuestion.value
+  if (!q) return
+  const key = String(q.id)
+  markedQuestions.value = { ...markedQuestions.value, [key]: !markedQuestions.value[key] }
+  examSessionStore.toggleMarked(q.id)
 }
 
 const manualSaveDraft = async () => {
-  try {
-    await forceSave()
-    toast.success('Đã lưu bài làm thủ công.')
-  } catch {
-    toast.error('Không thể lưu bài lúc này.')
-  }
+  try { await forceSave(); showSuccessPopup.value = true; successPopupMessage.value = 'Đã lưu bài làm thành công!' } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không lưu được. Vui lòng thử lại.' }
 }
 
-const buildSubmitPayload = () => Object.entries(answers.value)
-  .filter(([, selectedAnswer]) => hasAnswerValue(selectedAnswer))
-  .map(([questionId, selectedAnswer]) => {
-    const question = questions.value.find((item) => Number(item.id) === Number(questionId))
-    return {
-      questionId: Number(questionId),
-      selectedAnswer: serializeAnswerValue(question, selectedAnswer)
-    }
-  })
+const buildSubmitPayload = () => Object.entries(answers.value).filter(([, v]) => hasAnswerValue(v)).map(([questionId, selectedAnswer]) => {
+  const q = questions.value.find(item => Number(item.id) === Number(questionId))
+  return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
+})
 
-const openSubmitModal = () => {
-  if (isSuspended.value) return
-  showSubmitModal.value = true
-}
-
-const closeSubmitModal = () => {
-  showSubmitModal.value = false
-}
+const openSubmitModal = () => { if (isSuspended.value) return; showSubmitModal.value = true }
+const closeSubmitModal = () => { showSubmitModal.value = false }
 
 const autoSubmitOnTimeUp = async () => {
   if (!attemptId.value || isSuspended.value || isSubmitting.value) return
   isSubmitting.value = true
-  try {
-    await forceSave()
-  } catch {
-    /* local backup đã có */
-  }
-  toast.info('Hết giờ làm bài. Đang tự động nộp bài...')
+  try { await forceSave() } catch {}
+  toast.info('Hết giờ. Đang nộp...')
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({
-      path: '/student/submission-confirmation',
-      query: {
-        exam: examTitle.value,
-        attemptId: attemptId.value,
-        score: Math.round(Number(result?.score || 0)),
-        submittedAt: result?.submittedAt || ''
-      }
-    })
-  } catch (error) {
-    toast.error('Không thể tự động nộp bài. Vui lòng thử nộp thủ công.')
-  } finally {
-    isSubmitting.value = false
-  }
+    router.push({ path: '/student/submission-confirmation', query: { exam: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' } })
+  } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp tự động được. Vui lòng thử nộp lại.' } finally { isSubmitting.value = false }
 }
 
 const submitExamAction = async () => {
   if (!attemptId.value || isSuspended.value) return
-
   isSubmitting.value = true
-  try {
-    await forceSave()
-  } catch {
-    /* vẫn nộp với đáp án local */
-  }
+  try { await forceSave() } catch {}
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({
-      path: '/student/submission-confirmation',
-      query: {
-        exam: examTitle.value,
-        attemptId: attemptId.value,
-        score: Math.round(Number(result?.score || 0)),
-        submittedAt: result?.submittedAt || ''
-      }
-    })
-  } catch (error) {
-    toast.error('Không thể nộp bài lúc này.')
-  } finally {
-    isSubmitting.value = false
-  }
+    router.push({ path: '/student/submission-confirmation', query: { exam: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' } })
+  } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp được. Vui lòng thử lại.' } finally { isSubmitting.value = false }
 }
 
 const questionButtonClass = (index) => {
-  const question = questions.value[index]
-  if (!question) return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-  const key = String(question.id)
+  const q = questions.value[index]
+  if (!q) return 'ei-q-grid-btn--default'
+  const key = String(q.id)
   const answered = hasAnswerValue(answers.value[key])
   const marked = Boolean(markedQuestions.value[key])
   const visited = Boolean(visitedQuestions.value[key])
-
-  if (index === currentIndex.value) {
-    return 'border-2 border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
-  }
-
-  if (marked && answered) {
-    return 'bg-amber-500 text-white border-2 border-amber-500'
-  }
-
-  if (marked) {
-    return 'bg-amber-100 text-amber-700 border-2 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700'
-  }
-
-  if (answered) {
-    return 'bg-primary text-white border-2 border-primary'
-  }
-
-  if (visited) {
-    return 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-600'
-  }
-
-  return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600'
+  if (index === currentIndex.value) return 'ei-q-grid-btn--active'
+  if (marked && answered) return 'ei-q-grid-btn--mark-done'
+  if (marked) return 'ei-q-grid-btn--mark'
+  if (answered) return 'ei-q-grid-btn--done'
+  if (visited) return 'ei-q-grid-btn--skip'
+  return 'ei-q-grid-btn--default'
 }
 
-const handleBeforeUnload = (e) => {
-  if (isSubmitting.value) return
-  if (!attemptId.value) return
-  if (Object.keys(answers.value).length === 0) return
-  e.preventDefault()
-  e.returnValue = ''
-}
+const handleBeforeUnload = (e) => { if (isSubmitting.value || !attemptId.value || Object.keys(answers.value).length === 0) return; e.preventDefault(); e.returnValue = '' }
 
 const handleExamKeydown = (e) => {
   if (isSuspended.value) return
-  if (e.key === 'F12' || (e.ctrlKey && ['c', 'v', 'u'].includes(String(e.key || '').toLowerCase()))) {
-    e.preventDefault()
-    void reportViolation('DEVTOOLS_OPEN', `Phát hiện phím tắt: ${e.key}`, LONG_VIOLATION_COOLDOWN_MS)
-    return
-  }
+  if (e.key === 'F12' || (e.ctrlKey && ['c', 'v', 'u'].includes(String(e.key || '').toLowerCase()))) { e.preventDefault(); void reportViolation('DEVTOOLS_OPEN', `Phát hiện phím tắt: ${e.key}`, LONG_VIOLATION_COOLDOWN_MS); return }
   if (!e.ctrlKey) return
-  if (e.key === 'ArrowLeft') {
-    e.preventDefault()
-    goPrevious()
-  } else if (e.key === 'ArrowRight') {
-    e.preventDefault()
-    goNext()
-  }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevious() }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
 }
 
-onBeforeRouteLeave(() => {
-  if (isSubmitting.value) return true
-  if (isPracticeExam.value) return true
-  return window.confirm('Bạn có chắc muốn rời khỏi bài thi? Đáp án đã lưu cục bộ trên thiết bị.')
-})
+onBeforeRouteLeave(() => { if (isSubmitting.value) return true; if (isPracticeExam.value) return true; return window.confirm('Chắc rời? Đáp án đã lưu cục bộ.') })
 
 onMounted(async () => {
   try {
-    if (!examId.value || !attemptId.value) {
-      toast.error('Thiếu thông tin bài thi/lượt làm bài.')
-      examLoadFailed.value = true
-      examSurfaceReady.value = true
-      return
-    }
+    if (!examId.value || !attemptId.value) { showErrorPopup.value = true; errorPopupMessage.value = 'Thiếu thông tin bài thi. Vui lòng quay lại và thử lại.'; examLoadFailed.value = true; examSurfaceReady.value = true; return }
 
-    const [{ getExamDetail }] = await Promise.all([
-      import('../../services/examService')
-    ])
-
-    const [questionList, draftData, examDetail] = await Promise.all([
-      listExamQuestions(examId.value),
-      getDraftAnswers(attemptId.value),
-      getExamDetail(examId.value)
-    ])
+    const [{ getExamDetail }] = await Promise.all([import('../../services/examService')])
+    const [questionList, draftData, examDetail] = await Promise.all([listExamQuestions(examId.value), getDraftAnswers(attemptId.value), getExamDetail(examId.value)])
 
     examConfig.value = {
-      monitorTabSwitch: examDetail?.monitorTabSwitch !== false,
-      monitorBlur: examDetail?.monitorBlur !== false,
-      monitorExitFullscreen: examDetail?.monitorExitFullscreen !== false,
-      monitorCopyPaste: examDetail?.monitorCopyPaste !== false,
-      monitorIdleTime: examDetail?.monitorIdleTime !== false,
-      monitorDevtools: examDetail?.monitorDevtools !== false,
-      monitorDuplicateIp: examDetail?.monitorDuplicateIp !== false,
-      monitorFastSubmit: examDetail?.monitorFastSubmit !== false,
-      monitorRightClick: examDetail?.monitorRightClick !== false,
-      monitorPrintScreen: examDetail?.monitorPrintScreen !== false,
+      monitorTabSwitch: examDetail?.monitorTabSwitch !== false, monitorBlur: examDetail?.monitorBlur !== false,
+      monitorExitFullscreen: examDetail?.monitorExitFullscreen !== false, monitorCopyPaste: examDetail?.monitorCopyPaste !== false,
+      monitorIdleTime: examDetail?.monitorIdleTime !== false, monitorDevtools: examDetail?.monitorDevtools !== false,
+      monitorDuplicateIp: examDetail?.monitorDuplicateIp !== false, monitorFastSubmit: examDetail?.monitorFastSubmit !== false,
+      monitorRightClick: examDetail?.monitorRightClick !== false, monitorPrintScreen: examDetail?.monitorPrintScreen !== false,
       monitorRapidQuestionSwitch: examDetail?.monitorRapidQuestionSwitch !== false,
-      monitorMultiMonitor: examDetail?.monitorMultiMonitor !== false,
-      requireCameraMic: examDetail?.requireCameraMic !== false
+      monitorMultiMonitor: examDetail?.monitorMultiMonitor !== false, requireCameraMic: examDetail?.requireCameraMic !== false
     }
 
-    questions.value = questionList.map((item) => ({
-      id: item.id,
-      content: item.content,
-      type: item.type || 'SINGLE_CHOICE',
-      options: parseQuestionOptions(item.options),
-      metadata: parseQuestionJson(item.metadata, null),
-      attachments: parseQuestionJson(item.attachments, [])
-    }))
+    questions.value = questionList.map(item => ({ id: item.id, content: item.content, type: item.type || 'SINGLE_CHOICE', options: parseQuestionOptions(item.options), metadata: parseQuestionJson(item.metadata, null), attachments: parseQuestionJson(item.attachments, []) }))
     examSurfaceReady.value = true
 
     const serverAnswers = (draftData?.answers || []).reduce((acc, answer) => {
-      const question = questions.value.find((item) => Number(item.id) === Number(answer.questionId))
-      acc[answer.questionId] = deserializeAnswerValue(question, answer.selectedAnswer)
+      const q = questions.value.find(item => Number(item.id) === Number(answer.questionId))
+      acc[answer.questionId] = deserializeAnswerValue(q, answer.selectedAnswer)
       return acc
     }, {})
     answers.value = mergeLocalIntoAnswers(serverAnswers)
-    const answeredQuestionKeys = Object.keys(answers.value).reduce((acc, key) => {
-      acc[String(key)] = true
-      return acc
-    }, {})
-    examSessionStore.hydrateSession({
-      attempt: { id: attemptId.value, status: draftData?.status || 'IN_PROGRESS' },
-      exam: { id: examId.value, title: examTitle.value },
-      questions: questions.value,
-      answers: answers.value
-    })
-    if (questions.value[0]?.id != null) {
-      visitedQuestions.value = {
-        [String(questions.value[0].id)]: true,
-        ...answeredQuestionKeys
-      }
-      examSessionStore.setCurrentQuestion(questions.value[0].id)
-    }
+    const answeredQuestionKeys = Object.keys(answers.value).reduce((acc, key) => { acc[String(key)] = true; return acc }, {})
+    examSessionStore.hydrateSession({ attempt: { id: attemptId.value, status: draftData?.status || 'IN_PROGRESS' }, exam: { id: examId.value, title: examTitle.value }, questions: questions.value, answers: answers.value })
+    if (questions.value[0]?.id != null) { visitedQuestions.value = { [String(questions.value[0].id)]: true, ...answeredQuestionKeys }; examSessionStore.setCurrentQuestion(questions.value[0].id) }
 
     applyAttemptStatus(draftData?.status || 'IN_PROGRESS')
 
-    // Thời gian làm bài tính từ lúc sinh viên tham gia (startAttempt). Đồng bộ từ backend.
-    const serverRemaining = draftData?.remainingSeconds
-    const serverDeadline = draftData?.deadlineAt || route.query.deadlineAt
-    if (typeof serverRemaining === 'number' && serverRemaining >= 0) {
-      remainingSeconds.value = Math.max(0, serverRemaining)
-    } else if (serverDeadline) {
-      const deadlineMs = new Date(String(serverDeadline)).getTime()
-      remainingSeconds.value = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000))
+    if (typeof draftData?.remainingSeconds === 'number' && draftData.remainingSeconds >= 0) remainingSeconds.value = Math.max(0, draftData.remainingSeconds)
+    else if (draftData?.deadlineAt || route.query.deadlineAt) {
+      const dlDate = parseBackendDate(String(draftData?.deadlineAt || route.query.deadlineAt))
+      if (dlDate) remainingSeconds.value = Math.max(0, Math.floor((dlDate.getTime() - Date.now()) / 1000))
     }
-
     initialRemainingForProgress.value = Math.max(remainingSeconds.value, 1)
 
-    if (remainingSeconds.value <= 0 && !isPracticeExam.value) {
-      void autoSubmitOnTimeUp()
-      return
-    }
+    if (remainingSeconds.value <= 0 && !isPracticeExam.value) { void autoSubmitOnTimeUp(); return }
 
     timerId = window.setInterval(() => {
       if (remainingSeconds.value > 0) {
         remainingSeconds.value -= 1
-        if (remainingSeconds.value === 0) {
-          if (timerId) {
-            clearInterval(timerId)
-            timerId = null
-          }
-          void autoSubmitOnTimeUp()
-        }
+        if (remainingSeconds.value === 0) { clearInterval(timerId); timerId = null; void autoSubmitOnTimeUp() }
       }
     }, 1000)
 
     await enforceDeviceAccess()
-
-    if (!devicesReady.value) {
-      if (!shouldCheckDevices.value) {
-        isSuspended.value = false
-      } else {
-        toast.error(suspensionMessage.value)
-        return
-      }
-    }
-
+    if (!devicesReady.value && shouldCheckDevices.value) { showErrorPopup.value = true; errorPopupMessage.value = suspensionMessage.value || 'Thiết bị của bạn chưa sẵn sàng. Vui lòng kiểm tra camera và micro.'; return }
     isSuspended.value = false
     isFullscreenActive.value = Boolean(document.fullscreenElement)
-    if (!isPracticeExam.value && examConfig.value.monitorExitFullscreen !== false && !isFullscreenActive.value) {
-      showFullscreenPrompt.value = true
-      await requestExamFullscreen()
-    }
+    if (!isPracticeExam.value && examConfig.value.monitorExitFullscreen !== false && !isFullscreenActive.value) { showFullscreenPrompt.value = true; await requestExamFullscreen() }
 
     setupBlockBackButton()
-
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('keydown', handleExamKeydown)
 
     if (!isPracticeExam.value) {
       await connectProctorRealtime()
-      startHeartbeat()
-      void syncHeartbeat()
-      attemptStatusTimer = window.setInterval(() => {
-        syncAttemptStatus()
-        enforceDeviceAccess()
-      }, 5000)
-
-      if (examConfig.value.monitorIdleTime !== false) {
-        resetIdleTimer()
-        window.addEventListener('mousemove', resetIdleTimer)
-        window.addEventListener('keydown', resetIdleTimer)
-        window.addEventListener('scroll', resetIdleTimer)
-      }
-
-      if (examConfig.value.monitorDevtools !== false) {
-        scheduleDevToolsCheck()
-      }
-
-      if (examConfig.value.monitorTabSwitch !== false) {
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-      }
-      if (examConfig.value.monitorBlur !== false) {
-        window.addEventListener('blur', handleWindowBlur)
-        window.addEventListener('focus', handleWindowFocus)
-      }
-      if (examConfig.value.monitorExitFullscreen !== false) {
-        document.addEventListener('fullscreenchange', handleFullscreenChange)
-      }
-      if (examConfig.value.monitorCopyPaste !== false) {
-        document.addEventListener('copy', handleCopyPaste)
-        document.addEventListener('paste', handleCopyPaste)
-      }
-      if (examConfig.value.monitorPrintScreen !== false) {
-        document.addEventListener('keydown', handlePrintScreen)
-      }
-      if (examConfig.value.monitorMultiMonitor !== false) {
-        setTimeout(checkMultiMonitor, 3000)
-      }
+      startHeartbeat(); void syncHeartbeat()
+      attemptStatusTimer = window.setInterval(() => { syncAttemptStatus(); enforceDeviceAccess() }, 5000)
+      if (examConfig.value.monitorIdleTime !== false) { resetIdleTimer(); window.addEventListener('mousemove', resetIdleTimer); window.addEventListener('keydown', resetIdleTimer); window.addEventListener('scroll', resetIdleTimer) }
+      if (examConfig.value.monitorDevtools !== false) scheduleDevToolsCheck()
+      if (examConfig.value.monitorTabSwitch !== false) document.addEventListener('visibilitychange', handleVisibilityChange)
+      if (examConfig.value.monitorBlur !== false) { window.addEventListener('blur', handleWindowBlur); window.addEventListener('focus', handleWindowFocus) }
+      if (examConfig.value.monitorExitFullscreen !== false) document.addEventListener('fullscreenchange', handleFullscreenChange)
+      if (examConfig.value.monitorCopyPaste !== false) { document.addEventListener('copy', handleCopyPaste); document.addEventListener('paste', handleCopyPaste) }
+      if (examConfig.value.monitorPrintScreen !== false) document.addEventListener('keydown', handlePrintScreen)
+      if (examConfig.value.monitorMultiMonitor !== false) setTimeout(checkMultiMonitor, 3000)
     }
-  } catch (error) {
-    examLoadFailed.value = true
-    examSurfaceReady.value = true
-    toast.error('Không thể tải nội dung bài thi.')
-  }
+  } catch { examLoadFailed.value = true; examSurfaceReady.value = true; showErrorPopup.value = true; errorPopupMessage.value = 'Không tải được nội dung bài thi. Vui lòng làm mới trang.' }
 })
 
 onUnmounted(() => {
@@ -1425,120 +1040,909 @@ onUnmounted(() => {
   stopMediaStream()
   stopHeartbeat()
   void flushQueuedViolations().catch(() => {})
-  if (timerId) window.clearInterval(timerId)
-  if (attemptStatusTimer) window.clearInterval(attemptStatusTimer)
-  if (idleTimer) window.clearTimeout(idleTimer)
-  if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer)
+  if (timerId) clearInterval(timerId)
+  if (attemptStatusTimer) clearInterval(attemptStatusTimer)
+  if (idleTimer) clearTimeout(idleTimer)
+  if (devtoolsCheckTimer) clearInterval(devtoolsCheckTimer)
   clearBlurGraceTimer()
   realtimeChannel.disconnect()
   if (!isPracticeExam.value) {
-    if (examConfig.value.monitorTabSwitch !== false) {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-    if (examConfig.value.monitorBlur !== false) {
-      window.removeEventListener('blur', handleWindowBlur)
-      window.removeEventListener('focus', handleWindowFocus)
-    }
-    if (examConfig.value.monitorExitFullscreen !== false) {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-    if (examConfig.value.monitorCopyPaste !== false) {
-      document.removeEventListener('copy', handleCopyPaste)
-      document.removeEventListener('paste', handleCopyPaste)
-    }
-    if (examConfig.value.monitorPrintScreen !== false) {
-      document.removeEventListener('keydown', handlePrintScreen)
-    }
-    if (examConfig.value.monitorIdleTime !== false) {
-      window.removeEventListener('mousemove', resetIdleTimer)
-      window.removeEventListener('keydown', resetIdleTimer)
-      window.removeEventListener('scroll', resetIdleTimer)
-    }
+    if (examConfig.value.monitorTabSwitch !== false) document.removeEventListener('visibilitychange', handleVisibilityChange)
+    if (examConfig.value.monitorBlur !== false) { window.removeEventListener('blur', handleWindowBlur); window.removeEventListener('focus', handleWindowFocus) }
+    if (examConfig.value.monitorExitFullscreen !== false) document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    if (examConfig.value.monitorCopyPaste !== false) { document.removeEventListener('copy', handleCopyPaste); document.removeEventListener('paste', handleCopyPaste) }
+    if (examConfig.value.monitorPrintScreen !== false) document.removeEventListener('keydown', handlePrintScreen)
+    if (examConfig.value.monitorIdleTime !== false) { window.removeEventListener('mousemove', resetIdleTimer); window.removeEventListener('keydown', resetIdleTimer); window.removeEventListener('scroll', resetIdleTimer) }
   }
 })
 </script>
 
 <style scoped>
-.font-display {
-  font-family: 'Public Sans', sans-serif;
+/* ── Root ─────────────────────────────────────────────── */
+.ei-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--ds-bg);
 }
 
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Top Bar ──────────────────────────────────────────── */
+.ei-topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
+.ei-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
+.ei-topbar__exam-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.875rem;
+  background: var(--ds-primary-soft);
+  border: 1px solid var(--ds-primary-border);
+  border-radius: var(--ds-radius-full);
+  color: var(--ds-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
+.ei-topbar__exam-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
+.ei-topbar__devices {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
+.ei-device {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--ds-radius-md);
+  transition: all 0.2s ease;
 }
 
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
+.ei-device--on { background: var(--ds-success-soft); color: var(--ds-success); }
+.ei-device--off { background: var(--ds-danger-soft); color: var(--ds-danger); }
+
+.ei-conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ei-conn-dot--on { background: var(--ds-success); box-shadow: 0 0 0 2px var(--ds-success-soft); animation: eiPulse 2s ease-in-out infinite; }
+.ei-conn-dot--off { background: var(--ds-gray-300); }
+
+@keyframes eiPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(22,163,74,0.2); }
+  50% { box-shadow: 0 0 0 4px rgba(22,163,74,0.1); }
 }
 
-.exam-timer-progress {
-  transition: opacity var(--duration-normal, 250ms) var(--easing-default, ease);
+/* Timer — Circular countdown */
+.ei-topbar__timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.375rem 1rem;
+  background: var(--ds-gray-50);
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  transition: all 0.3s ease;
+  min-width: 130px;
 }
 
-.exam-timer--warning {
-  accent-color: var(--color-warning);
+.ei-timer--warn {
+  border-color: rgba(245,158,11,0.4);
+  background: rgba(245,158,11,0.06);
 }
 
-.exam-timer--danger {
-  accent-color: var(--color-danger);
+.ei-timer--danger {
+  border-color: rgba(220,38,38,0.4);
+  background: rgba(220,38,38,0.06);
+  animation: eiTimerBorderPulse 1s ease-in-out infinite;
 }
 
-@keyframes exam-timer-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.65;
-  }
+@keyframes eiTimerBorderPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(220,38,38,0); }
 }
 
-.exam-timer--pulse {
-  animation: exam-timer-pulse 1s ease-in-out infinite;
+/* Circular ring */
+.ei-timer-ring-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .exam-timer--pulse {
-    animation: none;
-  }
+.ei-timer-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.ei-timer-ring-bg {
+  fill: none;
+  stroke: var(--ds-gray-200);
+  stroke-width: 4;
+}
+
+.dark .ei-timer-ring-bg { stroke: rgba(79,70,229,0.15); }
+
+.ei-timer-ring-prog {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+}
+
+.ei-timer .ei-timer-ring-prog { stroke: var(--ds-primary); }
+.ei-timer--warn .ei-timer-ring-prog { stroke: var(--ds-warning); }
+.ei-timer--danger .ei-timer-ring-prog { stroke: var(--ds-danger); }
+
+.ei-timer-ring-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ei-timer-digits {
+  font-family: var(--ds-font-display);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--ds-text);
+}
+
+.ei-timer--warn .ei-timer-digits { color: var(--ds-warning); }
+.ei-timer--danger .ei-timer-digits { color: var(--ds-danger); }
+
+.dark .ei-timer-digits { color: var(--ds-text); }
+
+/* Progress bar below */
+.ei-timer-progress {
+  width: 100%;
+  height: 3px;
+  background: var(--ds-gray-200);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dark .ei-timer-progress { background: rgba(79,70,229,0.15); }
+
+.ei-timer-progress__fill {
+  height: 100%;
+  background: var(--ds-primary);
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.ei-timer--warn .ei-timer-progress__fill { background: var(--ds-warning); }
+.ei-timer--danger .ei-timer-progress__fill { background: var(--ds-danger); }
+
+/* Right actions */
+.ei-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.ei-save-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+}
+
+.ei-save-icon--spin { animation: eiSpin 1s linear infinite; color: var(--ds-info); }
+.ei-save-icon--ok { color: var(--ds-success); }
+.ei-save-icon--pending { color: var(--ds-warning); }
+.ei-save-icon--err { color: var(--ds-danger); }
+
+@keyframes eiSpin { to { transform: rotate(360deg); } }
+
+/* Buttons */
+.ei-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--ds-radius-xl);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1.5px solid transparent;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.ei-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ei-btn--outline {
+  background: var(--ds-surface);
+  border-color: var(--ds-border);
+  color: var(--ds-text-secondary);
+}
+.ei-btn--outline:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); background: var(--ds-primary-soft); }
+
+.ei-btn--primary {
+  background: var(--ds-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(79,70,229,0.3);
+}
+.ei-btn--primary:hover:not(:disabled) { background: var(--edu-primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.4); }
+
+/* ── Fullscreen warning ─────────────────────────────── */
+.ei-fs-warn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--ds-warning-soft);
+  border-bottom: 1px solid var(--ds-warning-border, rgba(217,119,6,0.3));
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-warning);
+}
+
+.ei-fs-warn__btn {
+  padding: 0.3rem 0.875rem;
+  border-radius: var(--ds-radius-full);
+  border: 1.5px solid var(--ds-warning);
+  background: transparent;
+  color: var(--ds-warning);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.ei-fs-warn__btn:hover { background: var(--ds-warning); color: white; }
+
+/* ── Suspended Overlay ──────────────────────────── */
+.ei-suspend-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.ei-suspend-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  background: var(--ds-surface);
+  border: 2px solid var(--ds-danger);
+  border-radius: var(--ds-radius-2xl);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.ei-suspend-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.ei-suspend-title {
+  font-family: var(--ds-font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--ds-text);
+  margin: 0 0 0.75rem;
+}
+
+.ei-suspend-desc {
+  font-size: 0.9rem;
+  color: var(--ds-text-muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Modal ─────────────────────────────────────────── */
+.ei-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.ei-modal {
+  max-width: 520px;
+  width: 100%;
+  background: var(--ds-surface);
+  border-radius: var(--ds-radius-2xl);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.ei-modal--warn { border: 2px solid var(--ds-warning); }
+.ei-modal--error { border: 2px solid var(--ds-danger); }
+.ei-modal--success { border: 2px solid var(--ds-success); }
+.ei-modal--info { border: 2px solid var(--ds-info); }
+
+.ei-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ei-modal__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ds-radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ei-modal__icon--warn { background: var(--ds-warning-soft); color: var(--ds-warning); }
+.ei-modal__icon--error { background: var(--ds-danger-soft); color: var(--ds-danger); }
+.ei-modal__icon--success { background: var(--ds-success-soft); color: var(--ds-success); }
+.ei-modal__icon--info { background: var(--ds-info-soft); color: var(--ds-info); }
+
+.ei-modal__title {
+  font-family: var(--ds-font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ds-text);
+  margin: 0;
+}
+.ei-modal__sub { font-size: 0.78rem; color: var(--ds-text-muted); margin: 0.25rem 0 0; }
+
+.ei-modal__body { padding: 1.25rem 1.5rem; }
+
+.ei-modal__msg {
+  font-size: 0.9rem;
+  color: var(--ds-text);
+  line-height: 1.6;
+  padding: 1rem;
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: var(--ds-radius-xl);
+  margin: 0;
+}
+
+.ei-modal__confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: calc(100% - 3rem);
+  margin: 0 1.5rem 1.5rem;
+  padding: 0.75rem;
+  border-radius: var(--ds-radius-xl);
+  border: none;
+  background: var(--ds-warning);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.ei-modal__confirm:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
+.ei-modal__confirm--error { background: var(--ds-danger); }
+.ei-modal__confirm--error:hover { background: var(--ds-danger-hover); }
+.ei-modal__confirm--success { background: var(--ds-success); }
+.ei-modal__confirm--success:hover { background: var(--ds-success-hover); }
+.ei-modal__confirm--info { background: var(--ds-info); }
+.ei-modal__confirm--info:hover { background: var(--ds-info-hover); }
+
+/* ── Main Layout ────────────────────────────────────── */
+.ei-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ei-main { grid-template-columns: 1fr; }
+  .ei-sidebar { order: -1; }
+}
+
+/* ── Empty States ─────────────────────────────────── */
+.ei-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 4rem 2rem;
+  text-align: center;
+  background: var(--ds-surface);
+  border: 1.5px dashed var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+}
+
+.ei-empty-icon { color: var(--ds-text-muted); opacity: 0.5; }
+.ei-empty-title { font-size: 1rem; font-weight: 700; color: var(--ds-text); margin: 0; }
+.ei-empty-desc { font-size: 0.8rem; color: var(--ds-text-muted); margin: 0; max-width: 280px; }
+
+/* ── Question Card ─────────────────────────────────── */
+.ei-question-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ei-q-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--ds-border);
+  background: var(--ds-gray-50);
+}
+
+/* Question progress ring */
+.ei-q-progress-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ei-q-ring-svg { transform: rotate(-90deg); }
+
+.ei-q-ring-bg {
+  fill: none;
+  stroke: var(--ds-gray-200);
+  stroke-width: 2.5;
+}
+
+.dark .ei-q-ring-bg { stroke: rgba(79,70,229,0.2); }
+
+.ei-q-ring-prog {
+  fill: none;
+  stroke: var(--ds-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.ei-q-ring-label {
+  position: absolute;
+  font-family: var(--ds-font-display);
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--ds-primary);
+}
+
+.dark .ei-q-ring-label { color: var(--ds-primary-soft, #818cf8); }
+
+.ei-q-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+}
+
+.ei-mark-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.875rem;
+  border: 1.5px solid var(--ds-border);
+  background: var(--ds-surface);
+  border-radius: var(--ds-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.ei-mark-btn:hover:not(:disabled) { border-color: var(--ds-warning); color: var(--ds-warning); background: var(--ds-warning-soft); }
+.ei-mark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ei-mark-btn--sm { font-size: 0.7rem; padding: 0.3rem 0.75rem; }
+
+.ei-q-content {
+  padding: 1.5rem 1.25rem 1rem;
+}
+
+.ei-q-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ds-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ei-q-answer {
+  padding: 0 1.25rem 1rem;
+}
+
+.ei-q-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--ds-border);
+  background: var(--ds-gray-50);
+}
+
+.ei-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--ds-radius-xl);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  border: 1.5px solid var(--ds-border);
+}
+.ei-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ei-nav-btn--prev { background: var(--ds-surface); color: var(--ds-text-secondary); }
+.ei-nav-btn--prev:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); }
+.ei-nav-btn--next { background: var(--ds-primary); color: white; border-color: var(--ds-primary); box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+.ei-nav-btn--next:hover:not(:disabled) { background: var(--edu-primary-hover); transform: translateY(-1px); }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.ei-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  position: sticky;
+  top: 80px;
+}
+
+/* Camera card */
+.ei-cam-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ei-cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ei-cam-label { font-size: 0.72rem; font-weight: 700; color: var(--ds-text-muted); }
+
+.ei-cam-actions { display: flex; gap: 0.375rem; }
+
+.ei-cam-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ds-radius-md);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ei-cam-btn--on { background: var(--ds-success-soft); color: var(--ds-success); }
+.ei-cam-btn--off { background: var(--ds-gray-100); color: var(--ds-text-muted); }
+.ei-cam-btn--on:hover { background: rgba(22,163,74,0.2); }
+.ei-cam-btn--off:hover { background: var(--ds-gray-200); }
+
+.ei-cam-preview {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: var(--ds-gray-900);
+  border-radius: 0 0 var(--ds-radius-2xl) var(--ds-radius-2xl);
+  overflow: hidden;
+}
+
+.ei-cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  transition: opacity 0.3s ease;
+}
+.ei-cam-video--hidden { opacity: 0; }
+
+.ei-cam-off {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(20,20,30,0.85) 100%);
+  color: var(--ds-gray-500);
+  transition: opacity 0.3s ease;
+}
+
+/* Progress card */
+.ei-prog-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ei-prog-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  color: var(--ds-text-secondary);
+}
+
+.ei-prog-title { font-size: 0.75rem; font-weight: 700; color: var(--ds-text-muted); flex: 1; }
+.ei-prog-pct { font-family: var(--ds-font-display); font-size: 1.1rem; font-weight: 900; color: var(--ds-primary); }
+
+.ei-prog-bar {
+  height: 6px;
+  background: var(--ds-gray-100);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.625rem;
+}
+.ei-prog-bar__fill { height: 100%; background: var(--ds-primary); border-radius: 3px; transition: width 0.5s ease; }
+
+.ei-prog-stats {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.ei-prog-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+}
+
+.ei-prog-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ei-prog-dot--done { background: var(--ds-primary); }
+.ei-prog-dot--skip { background: var(--ds-gray-300); }
+
+.ei-prog-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+
+.ei-prog-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+.ei-prog-tag--mark { background: var(--ds-warning-soft); color: var(--ds-warning); border: 1px solid rgba(245,158,11,0.2); }
+.ei-prog-tag--skip { background: var(--ds-gray-100); color: var(--ds-text-muted); border: 1px solid var(--ds-border); }
+
+/* Question Navigator Card */
+.ei-nav-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ei-nav-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.ei-nav-card__count {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+}
+
+.ei-q-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.375rem;
+  margin-bottom: 0.625rem;
+}
+
+.ei-q-grid-btn {
+  aspect-ratio: 1;
+  border-radius: var(--ds-radius-lg);
+  border: 1.5px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ei-q-grid-btn--default { background: var(--ds-gray-100); color: var(--ds-text-muted); border-color: var(--ds-border); }
+.ei-q-grid-btn--active {
+  background: var(--ds-primary);
+  color: white;
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 2px rgba(79,70,229,0.3), 0 4px 12px rgba(79,70,229,0.3);
+  transform: scale(1.05);
+}
+.ei-q-grid-btn--done { background: var(--ds-primary); color: white; border-color: var(--ds-primary); }
+.ei-q-grid-btn--mark { background: var(--ds-warning-soft); color: var(--ds-warning); border-color: rgba(245,158,11,0.4); }
+.ei-q-grid-btn--mark-done { background: var(--ds-warning); color: white; border-color: var(--ds-warning); }
+.ei-q-grid-btn--skip { background: var(--ds-gray-200); color: var(--ds-text-secondary); border-color: var(--ds-gray-300); }
+.ei-q-grid-btn:hover:not(:disabled) { transform: scale(1.08); }
+.ei-q-grid-btn--active:hover { transform: scale(1.1); }
+
+.ei-q-legend {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.ei-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+}
+
+.ei-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ei-legend-dot--done { background: var(--ds-primary); }
+.ei-legend-dot--mark { background: var(--ds-warning); }
+.ei-legend-dot--skip { background: var(--ds-gray-300); }
+
+/* ── Submit Modal Content ─────────────────────────────── */
+.ei-submit-info { padding: 0.25rem 0; }
+
+.ei-submit-count {
+  font-size: 0.9rem;
+  color: var(--ds-text);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+.ei-submit-warn { color: var(--ds-warning); font-weight: 700; }
+
+.ei-submit-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+
+.ei-submit-stat {
+  padding: 0.75rem;
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-xl);
+  text-align: center;
+}
+.ei-submit-stat__label { font-size: 0.65rem; font-weight: 600; color: var(--ds-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+.ei-submit-stat__val { font-family: var(--ds-font-display); font-size: 1.25rem; font-weight: 900; color: var(--ds-text); }
+.ei-submit-stat__val--warn { color: var(--ds-warning); }
+
+.ei-submit-note { font-size: 0.8rem; color: var(--ds-text-muted); margin: 0 0 1rem; }
+
+.ei-submit-unanswered {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: var(--ds-radius-xl);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-warning);
+  line-height: 1.4;
+}
+
+.ei-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  width: 100%;
+}
+
+/* ── Transitions ────────────────────────────────────── */
+.ei-fade-enter-active, .ei-fade-leave-active { transition: opacity 0.2s ease; }
+.ei-fade-enter-from, .ei-fade-leave-to { opacity: 0; }
+
+.ei-slide-down-enter-active, .ei-slide-down-leave-active { transition: all 0.25s ease; }
+.ei-slide-down-enter-from, .ei-slide-down-leave-to { transform: translateY(-100%); opacity: 0; }
+
+/* Question slide transition */
+.ei-q-slide-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ei-q-slide-leave-active {
+  transition: all 0.2s ease-in;
+}
+.ei-q-slide-enter-from {
+  opacity: 0;
+  transform: translateX(24px);
+}
+.ei-q-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-24px);
 }
 </style>

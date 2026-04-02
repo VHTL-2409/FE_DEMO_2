@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ApiError } from '../../services/apiClient'
 import { listExamAttempts } from '../../services/attemptService'
 import { getQuestionWrongStats } from '../../services/examService'
@@ -221,10 +221,10 @@ const resultStudents = computed(() => submittedAttempts.value.map((attempt) => {
     userName: attempt.student || 'Sinh viên không rõ',
     fullName: attempt.student || '',
     email: attempt.email || '',
-    studentCode: `AT-${attempt.id}`,
+    studentCode: attempt.studentCode || (attempt.studentId ? `SV-${attempt.studentId}` : `AT-${attempt.id}`),
     score,
     scoreDisplay: (score / 10).toFixed(1),
-    warningCount: attempt.warningCount || 0,
+    warningCount: attempt.warningCount ?? attempt.riskScore ?? 0,
     status: String(attempt.status || '').toUpperCase(),
     startedAt: attempt.startedAt,
     submittedAt: attempt.submittedAt,
@@ -320,8 +320,15 @@ const loadAttempts = async () => {
       listExamAttempts(examId.value),
       getQuestionWrongStats(examId.value)
     ])
-    attempts.value = attemptsData
-    questionWrongStats.value = wrongStats
+    attempts.value = attemptsData.map(a => ({
+      ...a,
+      warningCount: a.warningCount ?? a.riskScore ?? 0,
+      wrongRate: (a.wrongRatePercent ?? a.wrongRate ?? a.errorRate ?? 0) / 100
+    }))
+    questionWrongStats.value = wrongStats.map(q => ({
+      ...q,
+      wrongRate: (q.wrongRatePercent ?? q.wrongRate ?? q.errorRate ?? 0) / 100
+    }))
   } catch (error) {
     console.error('Failed to load exam attempts:', error)
   } finally {
@@ -330,4 +337,11 @@ const loadAttempts = async () => {
 }
 
 onMounted(loadAttempts)
+
+watch(
+  () => route.query.examId,
+  () => {
+    loadAttempts()
+  }
+)
 </script>

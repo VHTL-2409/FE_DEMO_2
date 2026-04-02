@@ -1,7 +1,8 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="portal-viewport portal-shell-bg flex h-full min-h-0 flex-col font-display text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+    class="portal-viewport flex h-full min-h-0 flex-col font-display"
+    style="background: var(--glass-bg)"
     @contextmenu="handleRightClick"
   >
     <div class="shrink-0">
@@ -16,7 +17,8 @@
       <template #rightActions>
         <div
           v-if="shouldCheckDevices"
-          class="hidden shrink-0 items-center gap-1 rounded-lg border border-[#ba1a1a]/20 bg-[#ffdad6]/40 px-1.5 py-0.5 md:flex dark:bg-rose-950/40"
+          class="hidden shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 md:flex"
+          style="border-color: var(--glass-danger-border); background: var(--glass-danger-soft)"
         >
           <span class="stitch-proctoring-pulse relative inline-flex text-[#ba1a1a] dark:text-rose-400">
             <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1">videocam</span>
@@ -24,14 +26,14 @@
           <span class="text-[8px] font-bold uppercase tracking-tight text-[#ba1a1a] dark:text-rose-300">Giám sát</span>
         </div>
         <div class="hidden shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] font-medium lg:flex xl:gap-2 xl:text-xs">
-          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">videocam</span>
-          <span :class="cameraReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ cameraReady ? 'Camera bật' : 'Camera tắt' }}</span>
-          <span :class="micReady ? 'bg-emerald-400' : 'bg-rose-500'" class="h-1 w-1 shrink-0 rounded-full"></span>
-          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'" class="material-symbols-outlined text-sm leading-none">mic</span>
-          <span :class="micReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'">{{ micReady ? 'Mic bật' : 'Mic tắt' }}</span>
-          <span class="h-1 w-1 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-          <span class="material-symbols-outlined text-sm leading-none text-slate-500">wifi</span>
-          <span class="text-slate-500">Đã kết nối</span>
+          <span :style="cameraReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'" class="material-symbols-outlined text-sm leading-none">videocam</span>
+          <span :style="cameraReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'">{{ cameraReady ? 'Camera bật' : 'Camera tắt' }}</span>
+          <span class="h-1 w-1 shrink-0 rounded-full" :style="micReady ? 'background: var(--glass-success)' : 'background: var(--glass-danger)'" />
+          <span :style="micReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'" class="material-symbols-outlined text-sm leading-none">mic</span>
+          <span :style="micReady ? 'color: var(--glass-success)' : 'color: var(--glass-danger)'">{{ micReady ? 'Mic bật' : 'Mic tắt' }}</span>
+          <span class="h-1 w-1 shrink-0 rounded-full" style="background: var(--glass-border)" />
+          <span class="material-symbols-outlined text-sm leading-none" style="color: var(--glass-text-muted)">wifi</span>
+          <span style="color: var(--glass-text-muted)">Đã kết nối</span>
         </div>
         <div
           v-if="initialRemainingForProgress > 0"
@@ -90,13 +92,27 @@
         </div>
         <div
           v-if="examSurfaceReady && questions.length"
-          class="student-exam-focus-center inline-flex max-w-[min(100vw-5rem,48rem)] shrink-0 flex-row flex-nowrap items-center gap-2 rounded-xl border border-[#dbc2b0]/30 bg-[#f4f4f0] px-2 py-1 dark:border-slate-600/50 dark:bg-slate-800/90 sm:gap-2.5 sm:px-2.5 sm:py-1 md:gap-3 md:px-3"
+          class="student-exam-focus-center glass gs-card--glass inline-flex max-w-[min(100vw-5rem,48rem)] shrink-0 flex-row flex-nowrap items-center gap-2 rounded-xl border border-[#dbc2b0]/30 px-2 py-1 dark:border-slate-600/50 sm:gap-2.5 sm:px-2.5 sm:py-1 md:gap-3 md:px-3"
         >
-          <div class="flex shrink-0 items-center gap-1">
-            <span class="material-symbols-outlined shrink-0 text-base text-primary">timer</span>
-            <span class="stitch-font-headline text-sm font-bold tabular-nums text-[#1b1c1a] dark:text-slate-100 md:text-base">
-              {{ timerHours }}:{{ timerMinutes }}:{{ timerSeconds }}
-            </span>
+          <!-- Circular Timer -->
+          <div class="exam-timer relative inline-flex items-center justify-center">
+            <svg class="exam-timer__ring" width="48" height="48" viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--glass-border)" stroke-width="3" />
+              <circle
+                cx="24" cy="24" r="20"
+                fill="none"
+                stroke="var(--glass-amber)"
+                stroke-width="3"
+                stroke-linecap="round"
+                :stroke-dasharray="examCircumference"
+                :stroke-dashoffset="examProgressOffset"
+                transform="rotate(-90 24 24)"
+                class="transition-all duration-1000"
+              />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span class="font-display text-xs font-bold tabular-nums text-[--glass-text]">{{ timerMinutes }}:{{ timerSeconds }}</span>
+            </div>
           </div>
           <div
             v-if="initialRemainingForProgress > 0"
@@ -105,7 +121,7 @@
             aria-label="Thời gian còn lại"
           >
             <progress
-              class="exam-timer-progress h-1 w-full rounded-full overflow-hidden accent-[color:var(--color-primary)]"
+              class="exam-timer-progress h-1 w-full rounded-full overflow-hidden accent-[color:var(--glass-amber)]"
               :class="timerBarAccentClass"
               :value="remainingSeconds"
               :max="initialRemainingForProgress || 1"
@@ -116,13 +132,14 @@
             />
           </div>
           <div class="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
-            <div class="h-1 w-14 rounded-full bg-[#e3e2df] dark:bg-slate-700 sm:w-20">
+            <div class="h-1 w-14 rounded-full sm:w-20" style="background: var(--glass-border)">
               <div
-                class="h-full rounded-full bg-primary transition-all duration-300"
+                class="h-full rounded-full transition-all duration-300"
+                style="background: linear-gradient(90deg, var(--glass-amber), var(--glass-amber-hover))"
                 :style="{ width: `${questionNavigatePercent}%` }"
               />
             </div>
-            <span class="shrink-0 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide text-[#887364] dark:text-slate-400 sm:text-[10px]">
+            <span class="shrink-0 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide sm:text-[10px]" style="color: var(--glass-text-muted)">
               Câu {{ currentIndex + 1 }}/{{ questions.length }}
             </span>
           </div>
@@ -165,39 +182,42 @@
     <main class="relative flex w-full min-h-0 flex-1 flex-col gap-3 overflow-x-hidden p-3 sm:p-4 md:gap-4 lg:flex-row lg:gap-4">
       <div
         v-if="showFullscreenPrompt && !isPracticeExam && !isSuspended"
-        class="absolute inset-x-4 top-0 z-30 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-3 shadow-lg backdrop-blur dark:border-amber-800 dark:bg-amber-900/70 sm:inset-x-6"
+          class="absolute inset-x-4 top-0 z-30 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur sm:inset-x-6"
+          style="border-color: var(--glass-amber-border); background: var(--glass-amber-soft)"
       >
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p class="text-sm font-bold text-amber-800 dark:text-amber-200">Yêu cầu toàn màn hình đang tắt</p>
-            <p class="text-xs text-amber-700 dark:text-amber-300">Bấm vào để tiếp tục làm bài trong chế độ toàn màn hình.</p>
+            <p class="text-sm font-bold" style="color: var(--glass-amber)">Yêu cầu toàn màn hình đang tắt</p>
+            <p class="text-xs" style="color: var(--glass-amber)">Bấm vào để tiếp tục làm bài trong chế độ toàn màn hình.</p>
           </div>
           <BaseButton type="button" size="sm" @click="requestExamFullscreen">Vào toàn màn hình</BaseButton>
         </div>
       </div>
-      <div v-if="isSuspended" class="absolute inset-0 z-20 bg-black/60 backdrop-blur-[1px] flex items-center justify-center px-4">
-        <div class="portal-panel max-w-lg w-full rounded-2xl p-6 text-center shadow-2xl">
-          <h2 class="text-2xl font-bold text-rose-700 mb-2">{{ attemptStatus === 'PAUSED' ? 'Phiên thi đang tạm dừng' : 'Bài thi đã bị đình chỉ' }}</h2>
-          <p class="text-sm text-slate-600">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
+      <div v-if="isSuspended" class="absolute inset-0 z-20 flex items-center justify-center px-4" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px)">
+        <div class="glass-card max-w-lg w-full rounded-2xl p-6 text-center shadow-2xl">
+          <h2 class="text-xl font-bold mb-2" style="color: var(--glass-danger)">{{ attemptStatus === 'PAUSED' ? 'Phiên thi đang tạm dừng' : 'Bài thi đã bị đình chỉ' }}</h2>
+          <p class="text-sm" style="color: var(--glass-text-secondary)">{{ suspensionMessage || 'Giám thị đã hủy hiệu lực bài thi của bạn.' }}</p>
         </div>
       </div>
 
       <!-- Modal cảnh báo từ giám thị -->
-      <div v-if="showTeacherWarningModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-amber-900/40 backdrop-blur-sm" @click.self="showTeacherWarningModal = false">
-        <div class="max-w-lg w-full rounded-2xl border-2 border-amber-400 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-fade-up ring-4 ring-amber-500/30">
+      <div v-if="showTeacherWarningModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-sm" style="background: rgba(180,120,0,0.2)" @click.self="showTeacherWarningModal = false">
+        <div class="glass-card max-w-lg w-full rounded-2xl border p-6 shadow-2xl gs-scale" style="border-color: var(--glass-amber-border)">
           <div class="flex items-center gap-4 mb-4">
-            <div class="size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-3xl">warning</span>
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style="background: var(--glass-amber-soft)">
+              <span class="material-symbols-outlined text-3xl" style="color: var(--glass-amber)">warning</span>
             </div>
             <div>
-              <h2 class="text-xl font-bold text-amber-800 dark:text-amber-200">Cảnh báo từ giám thị</h2>
-              <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
+              <h2 class="text-xl font-bold" style="color: var(--glass-amber)">Cảnh báo từ giám thị</h2>
+              <p class="text-sm mt-1" style="color: var(--glass-text-secondary)">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
             </div>
           </div>
-          <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 mb-6">
-            <p class="text-slate-800 dark:text-slate-200 font-medium">{{ teacherWarningMessage }}</p>
+          <div class="rounded-xl p-4 mb-6" style="background: var(--glass-amber-soft); border: 1px solid var(--glass-amber-border)">
+            <p class="font-medium" style="color: var(--glass-text)">{{ teacherWarningMessage }}</p>
           </div>
-          <button type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center gap-2" @click="showTeacherWarningModal = false">
+          <button type="button" class="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all gs-spring"
+            style="background: linear-gradient(135deg, var(--glass-amber) 0%, var(--glass-amber-hover) 100%); color: white"
+            @click="showTeacherWarningModal = false">
             <span class="material-symbols-outlined">check_circle</span>
             Tôi đã hiểu
           </button>
@@ -207,49 +227,52 @@
 
         <div
           v-if="!examSurfaceReady"
-          class="staff-surface-strong flex min-h-[min(50dvh,20rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-10 dark:bg-slate-900"
+          class="glass-card flex min-h-[min(50dvh,20rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl px-4 py-10"
         >
-          <span class="material-symbols-outlined mb-3 animate-spin text-4xl text-primary">progress_activity</span>
-          <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Đang tải đề thi…</p>
-          <p class="mt-1 max-w-xs text-center text-xs text-slate-500 dark:text-slate-400">Vui lòng đợi trong giây lát.</p>
+          <span class="material-symbols-outlined mb-3 animate-spin text-4xl gs-pulse" style="color: var(--glass-amber)">progress_activity</span>
+          <p class="text-sm font-semibold" style="color: var(--glass-text)">Đang tải đề thi…</p>
+          <p class="mt-1 max-w-xs text-center text-xs" style="color: var(--glass-text-muted)">Vui lòng đợi trong giây lát.</p>
         </div>
 
         <div
           v-else-if="examSurfaceReady && examLoadFailed"
-          class="staff-surface-strong flex min-h-[min(40dvh,16rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
+          class="glass-card flex min-h-[min(40dvh,16rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl px-4 py-8 text-center"
         >
-          <span class="material-symbols-outlined mb-2 text-4xl text-rose-300 dark:text-rose-700">error</span>
-          <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không tải được đề thi</p>
-          <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Vui lòng làm mới trang hoặc quay lại sau.</p>
+          <span class="material-symbols-outlined mb-2 text-4xl" style="color: var(--glass-danger)">error</span>
+          <p class="text-sm font-bold" style="color: var(--glass-text)">Không tải được đề thi</p>
+          <p class="mt-1 max-w-sm text-xs" style="color: var(--glass-text-muted)">Vui lòng làm mới trang hoặc quay lại sau.</p>
         </div>
 
         <div
           v-else-if="examSurfaceReady && !questions.length"
-          class="staff-surface-strong flex min-h-[min(45dvh,18rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-[1.25rem] px-4 py-8 text-center dark:bg-slate-900"
+          class="glass-card flex min-h-[min(45dvh,18rem)] flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl px-4 py-8 text-center"
         >
-          <span class="material-symbols-outlined mb-2 text-4xl text-slate-300 dark:text-slate-600">quiz</span>
-          <p class="text-sm font-bold text-slate-800 dark:text-slate-100">Không có câu hỏi</p>
-          <p class="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
+          <span class="material-symbols-outlined mb-2 text-4xl" style="color: var(--glass-text-muted)">quiz</span>
+          <p class="text-sm font-bold" style="color: var(--glass-text)">Không có câu hỏi</p>
+          <p class="mt-1 max-w-sm text-xs" style="color: var(--glass-text-muted)">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
         </div>
 
         <div
           v-else-if="currentQuestion"
-          class="student-exam-focus-shell portal-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.4rem] border border-[#dbc2b0]/20 dark:border-slate-700/60"
+          class="glass-card gs-scale flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border"
+          style="border-color: var(--glass-border)"
         >
           <div
             class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:gap-0"
           >
             <div
-              class="student-exam-focus-stem min-h-0 flex-1 border-[#dbc2b0]/25 bg-[#faf9f5] p-4 sm:p-6 md:p-7 lg:max-w-[58%] lg:border-r dark:border-slate-700/50 dark:bg-slate-900/40"
+              class="student-exam-focus-stem min-h-0 flex-1 p-5 sm:p-6 md:p-7 lg:max-w-[58%] lg:border-r"
+              style="background: var(--glass-bg-warm); border-color: var(--glass-border)"
             >
               <div class="mb-6 flex shrink-0 items-center justify-between gap-2">
-                <span class="portal-chip inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-primary">
+                <span class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold" style="background: var(--glass-amber-soft); color: var(--glass-amber)">
                   <span class="material-symbols-outlined text-base">quiz</span>
                   Câu {{ currentIndex + 1 }} / {{ questions.length }}
                 </span>
                 <button
                   type="button"
-                  class="portal-panel-soft inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600 dark:text-slate-300 dark:hover:border-amber-600 dark:hover:text-amber-300"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl border transition-all gs-spring"
+                  style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-secondary)"
                   :disabled="isSuspended"
                   @click="toggleMarkCurrentQuestion"
                 >
@@ -260,42 +283,41 @@
                 </button>
               </div>
               <div class="prose dark:prose-invert max-w-none">
-                <h2
-                  class="stitch-font-headline text-xl font-semibold leading-relaxed text-slate-900 dark:text-slate-100 sm:text-2xl"
-                >
+                <h2 class="text-xl font-semibold leading-relaxed sm:text-2xl" style="font-family: 'DM Sans', serif; color: var(--glass-text)">
                   {{ currentQuestion.content }}
                 </h2>
               </div>
             </div>
             <div
-              class="student-exam-focus-answer min-h-0 flex-1 bg-[#f4f4f0] p-4 sm:p-6 md:p-7 dark:bg-slate-900/55 lg:max-w-[42%]"
+              class="student-exam-focus-answer min-h-0 flex-1 p-5 sm:p-6 md:p-7"
+              style="background: var(--glass-bg); color: var(--glass-text)"
             >
-              <p
-                class="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#887364] dark:text-slate-500"
-              >
-                Phần trả lời
-              </p>
+              <p class="text-xs font-bold uppercase tracking-wider mb-4" style="color: var(--glass-text-muted)">Phần trả lời</p>
               <QuestionRenderer :question="currentQuestion" v-model="currentQuestionAnswer" :disabled="isSuspended" />
             </div>
           </div>
 
-          <div class="shrink-0 border-t border-white/70 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6 sm:py-4">
+          <div class="shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4" style="background: var(--glass-surface); border-color: var(--glass-border)">
             <div class="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-              <button @click="goPrevious" :disabled="currentIndex === 0" class="portal-panel-soft flex items-center justify-center gap-2 px-5 py-3 font-bold text-slate-700 transition-all duration-200 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-800" type="button">
+              <button @click="goPrevious" :disabled="currentIndex === 0" class="flex items-center justify-center gap-2 px-5 py-3 font-bold rounded-xl border transition-all gs-spring disabled:cursor-not-allowed disabled:opacity-40"
+                style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-secondary)" type="button">
                 <span class="material-symbols-outlined text-xl">arrow_back</span>
                 Câu trước
               </button>
               <div class="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="button"
-                  class="portal-panel-soft flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600 dark:text-slate-300 dark:hover:border-amber-600 dark:hover:text-amber-300"
+                  class="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl border transition-all gs-spring"
+                  style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-secondary)"
                   :disabled="isSuspended"
                   @click="toggleMarkCurrentQuestion"
                 >
                   <span class="material-symbols-outlined text-lg">bookmark</span>
                   {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
                 </button>
-                <button @click="goNext" :disabled="currentIndex >= questions.length - 1" class="app-shell-cta flex flex-1 items-center justify-center gap-2 px-6 py-3 font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:flex-initial" type="button">
+                <button @click="goNext" :disabled="currentIndex >= questions.length - 1"
+                  class="flex items-center justify-center gap-2 px-6 py-3 font-bold rounded-xl transition-all gs-spring disabled:cursor-not-allowed disabled:opacity-40 sm:flex-initial"
+                  style="background: linear-gradient(135deg, var(--glass-amber) 0%, var(--glass-amber-hover) 100%); color: white; border: none" type="button">
                 Câu tiếp theo
                 <span class="material-symbols-outlined text-xl">arrow_forward</span>
                 </button>
@@ -309,14 +331,14 @@
         class="relative flex w-full shrink-0 flex-col gap-3 lg:w-[min(100%,20rem)] lg:max-h-full lg:min-h-0"
         :class="{ 'opacity-90': !examSurfaceReady }"
       >
-        <div v-if="shouldCheckDevices && mediaStreamRef" class="staff-surface overflow-hidden rounded-[1.25rem] dark:bg-slate-900">
-          <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Camera của bạn</span>
+        <div v-if="shouldCheckDevices && mediaStreamRef" class="glass-card overflow-hidden rounded-2xl">
+          <div class="px-3 py-2 border-b flex items-center justify-between gap-2" style="border-color: var(--glass-border)">
+            <span class="text-xs font-bold" style="color: var(--glass-text)">Camera của bạn</span>
             <div class="flex items-center gap-1">
               <button
                 :disabled="isSuspended"
                 :title="cameraReady ? 'Tắt camera' : 'Bật camera'"
-                :class="cameraReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
+                :style="cameraReady ? 'background: var(--glass-success-soft); color: var(--glass-success)' : 'background: var(--glass-danger-soft); color: var(--glass-danger)'"
                 class="p-2 rounded-lg transition-all disabled:opacity-50"
                 type="button"
                 @click="toggleCamera"
@@ -326,7 +348,7 @@
               <button
                 :disabled="isSuspended"
                 :title="micReady ? 'Tắt micro' : 'Bật micro'"
-                :class="micReady ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'"
+                :style="micReady ? 'background: var(--glass-success-soft); color: var(--glass-success)' : 'background: var(--glass-danger-soft); color: var(--glass-danger)'"
                 class="p-2 rounded-lg transition-all disabled:opacity-50"
                 type="button"
                 @click="toggleMic"
@@ -335,97 +357,99 @@
               </button>
             </div>
           </div>
-          <div class="relative aspect-video bg-slate-900">
+          <div class="relative aspect-video" style="background: var(--glass-bg-mid)">
             <video ref="cameraPreviewRef" autoplay playsinline muted class="w-full h-full object-cover" :class="{ 'opacity-0': !cameraReady }" />
-            <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center bg-slate-800/90">
-              <span class="material-symbols-outlined text-4xl text-slate-500">videocam_off</span>
+            <div v-if="!cameraReady" class="absolute inset-0 flex items-center justify-center" style="background: rgba(0,0,0,0.7)">
+              <span class="material-symbols-outlined text-4xl" style="color: var(--glass-text-muted)">videocam_off</span>
             </div>
           </div>
         </div>
-        <div v-if="examSurfaceReady" class="staff-surface rounded-[1.25rem] p-4 dark:bg-slate-900 sm:p-5">
+        <div v-if="examSurfaceReady" class="glass gs-card rounded-[1.25rem] p-4 dark:bg-slate-900 sm:p-5">
           <div class="flex justify-between items-center mb-3">
-            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-lg">trending_up</span>
+            <h3 class="gs-heading-serif font-bold text-sm text-[--glass-text] flex items-center gap-2">
+              <span class="material-symbols-outlined text-[--glass-amber] text-lg">trending_up</span>
               Tiến độ làm bài
             </h3>
-            <span class="text-lg font-bold text-primary tabular-nums">{{ progressPercent }}%</span>
+            <span class="gs-stat__value text-lg tabular-nums">{{ progressPercent }}%</span>
           </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-            <div class="bg-primary h-full rounded-full transition-all duration-500" :style="{ width: `${progressPercent}%` }"></div>
+          <div class="w-full h-2.5 rounded-full overflow-hidden" style="background: var(--glass-bg-mid)">
+            <div class="h-full rounded-full transition-all duration-500" style="background: linear-gradient(90deg, var(--glass-amber), var(--glass-amber-hover))" :style="{ width: `${progressPercent}%` }"></div>
           </div>
-          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary"></span> Đã làm: {{ answeredCount }}</span>
+          <div class="mt-3 flex items-center justify-between text-xs text-[--glass-text-secondary]">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[--glass-amber]"></span> Đã làm: {{ answeredCount }}</span>
             <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Chưa làm: {{ unansweredCount }}</span>
           </div>
-          <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Đánh dấu: {{ markedCount }}</span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Bỏ qua: {{ skippedCount }}</span>
+          <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-[--glass-text-muted]">
+            <span class="gs-badge gs-badge--amber">Đánh dấu: {{ markedCount }}</span>
+            <span class="gs-badge gs-badge--neutral">Bỏ qua: {{ skippedCount }}</span>
           </div>
         </div>
 
         <div
           v-if="examSurfaceReady"
-          class="portal-scrollbar flex min-h-0 max-h-[min(52dvh,28rem)] flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5 lg:max-h-none"
+          class="glass gs-card portal-scrollbar flex min-h-0 max-h-[min(52dvh,28rem)] flex-1 overflow-y-auto rounded-2xl lg:max-h-none"
         >
-          <div class="flex w-full min-w-0 flex-col">
+          <div class="flex w-full min-w-0 flex-col p-4 sm:p-5">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-lg">list</span>
+            <h3 class="gs-heading-serif font-bold text-sm text-[--glass-text] flex items-center gap-2">
+              <span class="material-symbols-outlined text-[--glass-amber] text-lg">list</span>
               Danh sách câu hỏi
             </h3>
-            <span class="text-xs text-slate-500 font-medium">{{ questions.length }} câu</span>
+            <span class="text-xs text-[--glass-text-muted] font-medium">{{ questions.length }} câu</span>
           </div>
           <div class="grid grid-cols-5 gap-2 pb-2 overscroll-contain">
             <button
               v-for="(question, idx) in questions"
               :key="question.id"
-              :class="questionButtonClass(idx)"
-              class="aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105"
+              :style="questionButtonStyle(idx)"
+              class="gs-spring aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105"
               type="button"
               @click="selectQuestion(idx)"
             >
               {{ idx + 1 }}
             </button>
           </div>
-          <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary"></span> Đã làm</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-amber-400"></span> Đánh dấu</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Bỏ qua</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-transparent border border-slate-400"></span> Chưa mở</span>
+          <div class="mt-3 grid grid-cols-2 gap-2 text-[11px]" style="color: var(--glass-text-muted)">
+            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--glass-amber)"></span> Đã làm</span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--glass-amber-hover)"></span> Đánh dấu</span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--glass-border)"></span> Bỏ qua</span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full border" style="border-color: var(--glass-text-muted)"></span> Chưa mở</span>
           </div>
           </div>
         </div>
       </aside>
     </main>
 
-    <footer class="shrink-0 border-t border-slate-200/80 bg-slate-50/60 px-3 py-1.5 text-center text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400 sm:px-4">
+    <footer class="shrink-0 border-t px-3 py-2 text-center text-[11px]" style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-muted)">
       Hỗ trợ:
-      <span class="cursor-pointer font-semibold text-primary hover:underline">support@edu-portal.com</span>
+      <span class="cursor-pointer font-semibold" style="color: var(--glass-amber)">support@edu-portal.com</span>
     </footer>
 
     <BaseModal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
-      <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-        Đã trả lời <strong>{{ answeredCount }}</strong> / {{ questions.length }} câu.
-        <span v-if="unansweredCount > 0" class="text-[color:var(--color-warning)] font-semibold">
-          Còn {{ unansweredCount }} câu chưa trả lời.
-        </span>
-      </p>
-      <div class="mb-4 grid grid-cols-2 gap-3 text-xs">
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-          <p class="text-slate-500 dark:text-slate-400">Đánh dấu xem lại</p>
-          <p class="mt-1 text-lg font-bold text-amber-600 dark:text-amber-300">{{ markedCount }}</p>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-          <p class="text-slate-500 dark:text-slate-400">Đã mở nhưng bỏ qua</p>
-          <p class="mt-1 text-lg font-bold text-slate-700 dark:text-slate-100">{{ skippedCount }}</p>
-        </div>
-      </div>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
-      <div v-if="unansweredCount > 0" class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4">
-        <p class="text-sm font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-          <span class="material-symbols-outlined text-lg" aria-hidden="true">warning</span>
-          Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.
+      <div class="space-y-4">
+        <p class="text-sm text-[--glass-text-secondary]">
+          Đã trả lời <strong class="text-[--glass-text]">{{ answeredCount }}</strong> / {{ questions.length }} câu.
+          <span v-if="unansweredCount > 0" class="text-[--glass-warning] font-semibold">
+            Còn {{ unansweredCount }} câu chưa trả lời.
+          </span>
         </p>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="gs-card p-4">
+            <p class="text-[--glass-text-muted]">Đánh dấu xem lại</p>
+            <p class="gs-stat__value mt-1 text-lg text-[--glass-amber]">{{ markedCount }}</p>
+          </div>
+          <div class="gs-card p-4">
+            <p class="text-[--glass-text-muted]">Đã mở nhưng bỏ qua</p>
+            <p class="gs-stat__value mt-1 text-lg text-[--glass-text]">{{ skippedCount }}</p>
+          </div>
+        </div>
+        <p class="text-sm text-[--glass-text-muted]">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
+        <div v-if="unansweredCount > 0" class="glass-soft rounded-xl p-4">
+          <p class="text-sm font-semibold text-[--glass-warning] flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg" aria-hidden="true">warning</span>
+            Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.
+          </p>
+        </div>
       </div>
       <template #footer>
         <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
@@ -583,6 +607,15 @@ const questionNavigatePercent = computed(() => {
   if (!questions.value.length) return 0
   return Math.round(((currentIndex.value + 1) / questions.value.length) * 100)
 })
+
+// Circular timer computed properties
+const examCircumference = 2 * Math.PI * 20 // r=20 for header timer
+const examProgressOffset = computed(() => {
+  if (!initialRemainingForProgress.value) return 0
+  const ratio = remainingSeconds.value / initialRemainingForProgress.value
+  return examCircumference * (1 - ratio)
+})
+
 const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 3600)).padStart(2, '0'))
 const timerMinutes = computed(() => String(Math.floor((remainingSeconds.value % 3600) / 60)).padStart(2, '0'))
 const timerSeconds = computed(() => String(remainingSeconds.value % 60).padStart(2, '0'))
@@ -1284,35 +1317,45 @@ const submitExamAction = async () => {
   }
 }
 
-const questionButtonClass = (index) => {
+const questionButtonStyle = (index) => {
   const question = questions.value[index]
-  if (!question) return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+  if (!question) return { background: 'var(--glass-bg-mid)', color: 'var(--glass-text-muted)', borderColor: 'var(--glass-border)' }
   const key = String(question.id)
   const answered = hasAnswerValue(answers.value[key])
   const marked = Boolean(markedQuestions.value[key])
   const visited = Boolean(visitedQuestions.value[key])
 
   if (index === currentIndex.value) {
-    return 'border-2 border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+    return { background: 'var(--glass-amber-soft)', color: 'var(--glass-amber)', borderColor: 'var(--glass-amber)' }
   }
-
   if (marked && answered) {
-    return 'bg-amber-500 text-white border-2 border-amber-500'
+    return { background: 'var(--glass-amber)', color: 'white', borderColor: 'var(--glass-amber)' }
   }
-
   if (marked) {
-    return 'bg-amber-100 text-amber-700 border-2 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700'
+    return { background: 'var(--glass-amber-soft)', color: 'var(--glass-amber)', borderColor: 'var(--glass-amber-border)' }
   }
-
   if (answered) {
-    return 'bg-primary text-white border-2 border-primary'
+    return { background: 'var(--glass-amber)', color: 'white', borderColor: 'var(--glass-amber)' }
   }
-
   if (visited) {
-    return 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-600'
+    return { background: 'var(--glass-bg-mid)', color: 'var(--glass-text-secondary)', borderColor: 'var(--glass-border)' }
   }
+  return { background: 'var(--glass-bg-mid)', color: 'var(--glass-text-muted)', borderColor: 'var(--glass-border)' }
+}
 
-  return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600'
+const questionButtonClass = (index) => {
+  if (index === currentIndex.value) {
+    return 'border-2 text-sm font-bold bg-[var(--glass-amber-soft)] text-[var(--glass-amber)] border-[var(--glass-amber)]'
+  }
+  const question = questions.value[index]
+  if (!question) return 'border-2 text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600'
+  const key = String(question.id)
+  const answered = hasAnswerValue(answers.value[key])
+  const marked = Boolean(markedQuestions.value[key])
+  if (marked && answered) return 'border-2 text-sm font-bold bg-[var(--glass-amber)] text-white border-[var(--glass-amber)]'
+  if (marked) return 'border-2 text-sm font-bold bg-[var(--glass-amber-soft)] text-[var(--glass-amber)] border-[var(--glass-amber-border)]'
+  if (answered) return 'border-2 text-sm font-bold bg-[var(--glass-amber)] text-white border-[var(--glass-amber)]'
+  return 'border-2 text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600'
 }
 
 const handleBeforeUnload = (e) => {
@@ -1610,16 +1653,24 @@ onUnmounted(() => {
   animation: floatDelay 8s ease-in-out infinite;
 }
 
+/* Circular Timer Styles */
+.exam-timer__ring {
+  filter: drop-shadow(0 2px 8px var(--glass-amber-glow));
+}
+.exam-timer .transition-all {
+  transition: stroke-dashoffset 1s linear, stroke 0.3s;
+}
+
 .exam-timer-progress {
   transition: opacity var(--duration-normal, 250ms) var(--easing-default, ease);
 }
 
 .exam-timer--warning {
-  accent-color: var(--color-warning);
+  accent-color: var(--glass-warning);
 }
 
 .exam-timer--danger {
-  accent-color: var(--color-danger);
+  accent-color: var(--glass-danger);
 }
 
 @keyframes exam-timer-pulse {

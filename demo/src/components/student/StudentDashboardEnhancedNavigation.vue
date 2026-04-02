@@ -174,7 +174,7 @@ import { useToast } from '../../composables/useToast'
 import StudentTopHeader from './StudentTopHeader.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import EmptyState from '../shared/EmptyState.vue'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 import SkeletonLoader from '../shared/SkeletonLoader.vue'
 
 const router = useRouter()

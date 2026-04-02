@@ -1,0 +1,784 @@
+/**
+ * ============================================
+ * DEMO2 LIQUID — Role-specific Overrides
+ * Consolidates all role tokens under liquid neural
+ * ============================================
+ */
+
+/* ── Global Liquid Neural Body ── */
+html[data-demo2='1'] body {
+  min-height: 100dvh;
+  font-family: var(--ln-font);
+  scroll-behavior: smooth;
+  background: var(--ln-bg-0);
+  color: var(--ln-text);
+}
+
+/* ── Route host ── */
+html[data-demo2='1'] .app-route-host {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ln-mesh-bg);
+}
+
+/* ── Route loading bar — Cyan gradient ── */
+html[data-demo2='1'] .route-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ln-cyan), var(--ln-violet), var(--ln-cyan));
+  width: 0;
+  z-index: var(--ln-z-toast);
+  transition: width 0.3s var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .route-loading-bar--active {
+  width: 85%;
+  animation: lnRouteLoading 1.5s ease-in-out infinite;
+}
+
+@keyframes lnRouteLoading {
+  0% { width: 0; opacity: 1; }
+  80% { width: 85%; opacity: 1; }
+  100% { width: 85%; opacity: 0; }
+}
+
+/* ── Teacher Portal ── */
+html[data-demo2='1'] .teacher-portal-stitch {
+  --role-primary: var(--ln-cyan);
+  --role-primary-hover: var(--ln-cyan-hover);
+  --role-primary-soft: var(--ln-cyan-soft);
+  --role-primary-border: var(--ln-cyan-border);
+  --role-surface: var(--ln-surface);
+  --role-surface-raised: var(--ln-surface-raised);
+  --role-surface-muted: var(--ln-surface-muted);
+  --role-border: var(--ln-border);
+  --role-border-hover: var(--ln-border-hover);
+  --role-text: var(--ln-text);
+  --role-text-secondary: var(--ln-text-secondary);
+  --role-text-muted: var(--ln-text-muted);
+  --font-display: var(--ln-font-display);
+  --font-serif: var(--ln-font-serif);
+}
+
+/* ── Student Portal ── */
+html[data-demo2='1'] .student-portal-stitch {
+  --role-primary: var(--ln-cyan);
+  --role-primary-hover: var(--ln-cyan-hover);
+  --role-primary-soft: var(--ln-cyan-soft);
+  --role-primary-border: var(--ln-cyan-border);
+  --role-surface: var(--ln-surface);
+  --role-surface-raised: var(--ln-surface-raised);
+  --role-surface-muted: var(--ln-surface-muted);
+  --role-border: var(--ln-border);
+  --role-border-hover: var(--ln-border-hover);
+  --role-text: var(--ln-text);
+  --role-text-secondary: var(--ln-text-secondary);
+  --role-text-muted: var(--ln-text-muted);
+  --font-display: var(--ln-font-display);
+  --font-serif: var(--ln-font-serif);
+}
+
+/* ── Admin Portal ── */
+html[data-demo2='1'] .admin-portal-stitch {
+  --role-primary: var(--ln-cyan);
+  --role-primary-hover: var(--ln-cyan-hover);
+  --role-primary-soft: var(--ln-cyan-soft);
+  --role-surface: var(--ln-surface);
+  --role-surface-raised: var(--ln-surface-raised);
+  --role-border: var(--ln-border);
+  --role-text: var(--ln-text);
+  --font-display: var(--ln-font-display);
+  --font-serif: var(--ln-font-serif);
+}
+
+/* ── Portal Layouts flex ── */
+html[data-demo2='1'] .teacher-portal-stitch,
+html[data-demo2='1'] .student-portal-stitch {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+html[data-demo2='1'] .route-layout-portal,
+html[data-demo2='1'] .route-layout-monitoring,
+html[data-demo2='1'] .route-layout-exam {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Teacher page shell ── */
+html[data-demo2='1'] .teacher-portal-stitch .teacher-page-shell {
+  background: var(--ln-mesh-bg);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+}
+
+html[data-demo2='1'] .student-portal-stitch .teacher-page-shell.student-stitch-main {
+  background: var(--ln-mesh-bg);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Sidebar offsets ── */
+@media (min-width: 768px) {
+  html[data-demo2='1'] .teacher-portal-stitch main.teacher-stitch-main {
+    margin-left: var(--demo2-sidebar-offset, 16rem);
+    width: calc(100% - var(--demo2-sidebar-offset, 16rem));
+  }
+  html[data-demo2='1'] .student-portal-stitch main.student-stitch-main {
+    margin-left: var(--demo2-sidebar-offset, 18rem);
+    width: calc(100% - var(--demo2-sidebar-offset, 18rem));
+  }
+}
+
+/* ── App Shell Sidebar ── */
+html[data-demo2='1'] .app-shell-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18rem;
+  background: rgba(10, 14, 24, 0.92);
+  backdrop-filter: blur(var(--ln-blur-xl));
+  -webkit-backdrop-filter: blur(var(--ln-blur-xl));
+  border-right: 1px solid var(--ln-border);
+  box-shadow: var(--ln-shadow-lg);
+  z-index: var(--ln-z-sticky);
+  transition: width 0.3s var(--ln-ease-out), transform 0.3s var(--ln-ease-out);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html[data-demo2='1'] .app-shell-sidebar--rail {
+  width: 4.5rem;
+}
+
+html[data-demo2='1'] .app-shell-sidebar--hidden {
+  transform: translateX(-100%);
+}
+
+html[data-demo2='1'] .app-shell-sidebar--open {
+  transform: translateX(0);
+}
+
+/* ── App Shell Topbar ── */
+html[data-demo2='1'] .app-shell-topbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--demo2-sidebar-offset, 18rem);
+  height: 3.5rem;
+  background: rgba(10, 14, 24, 0.88);
+  backdrop-filter: blur(var(--ln-blur-xl));
+  -webkit-backdrop-filter: blur(var(--ln-blur-xl));
+  border-bottom: 1px solid var(--ln-border);
+  box-shadow: var(--ln-shadow-xs);
+  z-index: var(--ln-z-sticky);
+  transition: left 0.3s var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .app-shell-topbar--expanded {
+  left: 4.5rem;
+}
+
+/* ── App Shell Brand ── */
+html[data-demo2='1'] .app-shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+html[data-demo2='1'] .app-shell-brand-mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--ln-radius-sm);
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-violet) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: var(--ln-shadow-cyan), var(--ln-shadow-sm);
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+
+/* ── App Shell Nav Link ── */
+html[data-demo2='1'] .app-shell-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--ln-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ln-text-secondary);
+  text-decoration: none;
+  transition:
+    background var(--ln-dur-fast) var(--ln-ease-out),
+    color var(--ln-dur-fast) var(--ln-ease-out),
+    transform var(--ln-dur-fast) var(--ln-ease-out);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+html[data-demo2='1'] .app-shell-nav-link:hover {
+  background: var(--ln-cyan-soft);
+  color: var(--ln-cyan);
+  transform: translateX(3px);
+}
+
+html[data-demo2='1'] .app-shell-nav-link.is-active {
+  background: var(--ln-cyan-soft);
+  color: var(--ln-cyan);
+  font-weight: 700;
+  position: relative;
+}
+
+html[data-demo2='1'] .app-shell-nav-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(180deg, var(--ln-cyan), var(--ln-violet));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── CTA Button ── */
+html[data-demo2='1'] .app-shell-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--ln-radius-pill);
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-cyan-hover) 100%);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--ln-shadow-md), 0 0 16px rgba(6, 182, 212, 0.2);
+  transition:
+    transform var(--ln-dur-base) var(--ln-ease-spring),
+    box-shadow var(--ln-dur-base) var(--ln-ease-smooth),
+    background var(--ln-dur-base) var(--ln-ease-smooth);
+}
+
+html[data-demo2='1'] .app-shell-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ln-shadow-lg), 0 0 24px rgba(6, 182, 212, 0.3);
+  background: linear-gradient(135deg, var(--ln-cyan-hover) 0%, var(--ln-cyan-deep) 100%);
+}
+
+html[data-demo2='1'] .app-shell-cta:active {
+  transform: scale(0.97) translateY(0);
+}
+
+/* ── Portal Panel ── */
+html[data-demo2='1'] .portal-panel {
+  background: var(--ln-surface-raised);
+  border: 1px solid var(--ln-border);
+  border-radius: var(--ln-radius-lg);
+  box-shadow: var(--ln-shadow-lg);
+}
+
+html[data-demo2='1'] .portal-panel-soft {
+  background: var(--ln-surface-muted);
+  border: 1px solid var(--ln-border);
+  border-radius: var(--ln-radius-pill);
+}
+
+/* ── Portal Scrollbar ── */
+html[data-demo2='1'] .portal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ln-border-hover) transparent;
+}
+
+html[data-demo2='1'] .portal-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+html[data-demo2='1'] .portal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-demo2='1'] .portal-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--ln-border-hover);
+  border-radius: 3px;
+}
+
+/* ── Staff Surfaces ── */
+html[data-demo2='1'] .staff-surface {
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
+  border-radius: var(--ln-radius-lg);
+  box-shadow: var(--ln-shadow-xs);
+}
+
+html[data-demo2='1'] .staff-surface-strong {
+  background: var(--ln-surface-raised);
+  border: 1px solid var(--ln-border);
+  border-radius: var(--ln-radius-lg);
+  box-shadow: var(--ln-shadow-sm);
+}
+
+/* ── Teacher Page Title ── */
+html[data-demo2='1'] .teacher-page-title {
+  font-family: var(--ln-font-display);
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--ln-text);
+}
+
+html[data-demo2='1'] .teacher-page-lead {
+  font-size: 0.9rem;
+  color: var(--ln-text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Stitch Chart Card ── */
+html[data-demo2='1'] .stitch-chart-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ln-radius-lg);
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-raised);
+  box-shadow: var(--ln-shadow-sm);
+  overflow: hidden;
+  transition:
+    border-color var(--ln-dur-base) var(--ln-ease-out),
+    box-shadow var(--ln-dur-base) var(--ln-ease-out),
+    transform var(--ln-dur-base) var(--ln-ease-spring);
+}
+
+html[data-demo2='1'] .stitch-chart-card:hover {
+  border-color: var(--ln-border-hover);
+  box-shadow: var(--ln-shadow-lg);
+  transform: translateY(-3px);
+}
+
+html[data-demo2='1'] .stitch-chart-card__head {
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--ln-border);
+  background: var(--ln-surface);
+}
+
+html[data-demo2='1'] .stitch-chart-card__body {
+  flex: 1;
+  padding: 1.25rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-demo2='1'] .stitch-chart-well {
+  flex: 1;
+  min-height: 240px;
+  border: 1px solid var(--ln-border);
+  border-radius: var(--ln-radius-sm);
+  background: var(--ln-surface-muted);
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+/* ── Student Paper BG ── */
+html[data-demo2='1'] .student-stitch-paper-bg {
+  background-color: var(--ln-bg-1);
+}
+
+/* ── Student Exam Topbar ── */
+html[data-demo2='1'] .student-exam-topbar {
+  background: var(--ln-surface) !important;
+  backdrop-filter: blur(var(--ln-blur-xl)) !important;
+  -webkit-backdrop-filter: blur(var(--ln-blur-xl)) !important;
+}
+
+/* ── Student Exam Focus Shell ── */
+html[data-demo2='1'] .student-exam-focus-shell {
+  box-shadow: var(--ln-shadow-xl) !important;
+}
+
+/* ── Bento Card Hover ── */
+html[data-demo2='1'] .stitch-bento-card {
+  transition:
+    border-color var(--ln-dur-base) var(--ln-ease-out),
+    box-shadow var(--ln-dur-base) var(--ln-ease-out),
+    transform var(--ln-dur-base) var(--ln-ease-spring),
+    background var(--ln-dur-base) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .stitch-bento-card:hover {
+  border-color: var(--ln-cyan-border);
+  box-shadow: var(--ln-shadow-xl);
+  transform: translateY(-5px);
+}
+
+/* ── Student Segment ── */
+html[data-demo2='1'] .student-stitch-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: var(--ln-radius-pill);
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-muted);
+}
+
+html[data-demo2='1'] .student-stitch-segment__btn {
+  position: relative;
+  z-index: 1;
+  min-height: 2.5rem;
+  flex: 1 1 auto;
+  border: none;
+  border-radius: var(--ln-radius-pill);
+  padding: 0.5rem 1rem;
+  font-family: var(--ln-font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ln-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--ln-dur-fast) var(--ln-ease-out),
+    background var(--ln-dur-fast) var(--ln-ease-out),
+    box-shadow var(--ln-dur-fast) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .student-stitch-segment__btn:hover:not(.student-stitch-segment__btn--active) {
+  color: var(--ln-text-secondary);
+}
+
+html[data-demo2='1'] .student-stitch-segment__btn--active {
+  color: var(--ln-cyan);
+  background: var(--ln-surface);
+  box-shadow: var(--ln-shadow-sm);
+}
+
+/* ── Choice Cards ── */
+html[data-demo2='1'] .student-choice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  border-radius: var(--ln-radius);
+  border: 1px solid var(--ln-border);
+  padding: 1rem;
+  cursor: pointer;
+  transition:
+    border-color var(--ln-dur-fast) var(--ln-ease-out),
+    background var(--ln-dur-fast) var(--ln-ease-out),
+    box-shadow var(--ln-dur-fast) var(--ln-ease-out),
+    transform var(--ln-dur-fast) var(--ln-ease-spring);
+  background: var(--ln-surface);
+}
+
+html[data-demo2='1'] .student-choice-card:hover {
+  border-color: var(--ln-cyan-border);
+  box-shadow: var(--ln-shadow-sm);
+  transform: translateY(-1px);
+}
+
+html[data-demo2='1'] .student-choice-card--active {
+  border-color: var(--ln-cyan-border) !important;
+  background: var(--ln-cyan-soft) !important;
+  box-shadow: var(--ln-shadow-md) !important;
+}
+
+/* ── Filter Chip ── */
+html[data-demo2='1'] .stitch-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 1rem;
+  border-radius: var(--ln-radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-muted);
+  color: var(--ln-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--ln-dur-fast) var(--ln-ease-out),
+    color var(--ln-dur-fast) var(--ln-ease-out),
+    border-color var(--ln-dur-fast) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .stitch-filter-chip:hover {
+  background: var(--ln-cyan-soft);
+  color: var(--ln-cyan);
+  border-color: var(--ln-cyan-border);
+}
+
+html[data-demo2='1'] .stitch-filter-chip--active {
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-cyan-hover) 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: var(--ln-shadow-sm);
+}
+
+/* ── Stitch Table ── */
+html[data-demo2='1'] .teacher-stitch-table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(72vh, calc(100dvh - 10rem));
+  -webkit-overflow-scrolling: touch;
+}
+
+html[data-demo2='1'] .teacher-stitch-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ln-surface-muted);
+  box-shadow: 0 1px 0 var(--ln-border);
+}
+
+/* ── Admin Dark Overrides ── */
+html[data-demo2='1'] .admin-portal-stitch.admin-shell {
+  background: var(--ln-bg-0);
+  color: var(--ln-text);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-sidebar-stitch {
+  border-color: var(--ln-border);
+  background: rgba(10, 14, 24, 0.92);
+  box-shadow: none;
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-route-host {
+  border-top: none;
+  background: var(--ln-bg-0);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-brand-mark {
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-violet) 100%);
+  box-shadow: var(--ln-shadow-cyan), var(--ln-shadow-sm);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-nav-link {
+  border: 1px solid transparent;
+  color: var(--ln-text-secondary);
+  transition:
+    background-color var(--ln-dur-fast) var(--ln-ease-out),
+    color var(--ln-dur-fast) var(--ln-ease-out),
+    transform var(--ln-dur-fast) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-nav-link:hover {
+  background: var(--ln-cyan-soft);
+  color: var(--ln-cyan);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-nav-link.is-active {
+  background: var(--ln-cyan-soft);
+  color: var(--ln-cyan);
+  border-color: var(--ln-cyan-border);
+  transform: translateX(2px);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-kpi-card {
+  background: var(--ln-surface-raised);
+  border: 1px solid var(--ln-border);
+  box-shadow: var(--ln-shadow-xs);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-page-title {
+  font-family: var(--ln-font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ln-text);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ln-cyan);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-search-input {
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-muted);
+  color: var(--ln-text);
+  border-radius: var(--ln-radius-sm);
+  padding: 0.625rem 1rem;
+  transition:
+    border-color var(--ln-dur-fast) var(--ln-ease-out),
+    box-shadow var(--ln-dur-fast) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-search-input:focus {
+  outline: none;
+  border-color: var(--ln-cyan);
+  box-shadow: 0 0 0 3px var(--ln-cyan-soft);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-toolbar {
+  border-bottom-color: var(--ln-border);
+  background: var(--ln-surface-muted);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-action-btn-primary {
+  border: 1px solid var(--ln-cyan-border);
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-cyan-hover) 100%);
+  color: white;
+  border-radius: var(--ln-radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--ln-dur-base) var(--ln-ease-spring),
+    box-shadow var(--ln-dur-base) var(--ln-ease-smooth);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-action-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--ln-shadow-lg), var(--ln-shadow-cyan);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-action-btn-neutral {
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface);
+  color: var(--ln-text-secondary);
+  border-radius: var(--ln-radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-action-btn-neutral:hover {
+  border-color: var(--ln-border-hover);
+  background: var(--ln-surface-hover);
+  color: var(--ln-text);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .staff-table tbody tr:hover {
+  background: var(--ln-cyan-soft);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-breadcrumb a {
+  color: var(--ln-cyan);
+}
+
+html[data-demo2='1'] .admin-portal-stitch .admin-stitch-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* ── Hero Action Card ── */
+html[data-demo2='1'] .student-hero-action-card {
+  border-radius: var(--ln-radius-2xl);
+  box-shadow: var(--ln-shadow-lg);
+  transition:
+    box-shadow var(--ln-dur-base) var(--ln-ease-out),
+    transform var(--ln-dur-base) var(--ln-ease-spring);
+}
+
+html[data-demo2='1'] .student-hero-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ln-shadow-xl);
+}
+
+html[data-demo2='1'] .student-hero-action-card--exam {
+  background: var(--ln-surface-raised);
+  border: 1px solid var(--ln-border);
+}
+
+html[data-demo2='1'] .student-hero-action-card--practice {
+  background: linear-gradient(135deg, var(--ln-cyan) 0%, var(--ln-violet) 100%);
+  color: white;
+  border: none;
+}
+
+/* ── Result Row ── */
+html[data-demo2='1'] .student-result-row {
+  border-radius: var(--ln-radius-2xl);
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-raised);
+  transition: box-shadow var(--ln-dur-base) var(--ln-ease-out);
+}
+
+html[data-demo2='1'] .student-result-row:hover {
+  box-shadow: var(--ln-shadow-lg);
+}
+
+/* ── Search Field ── */
+html[data-demo2='1'] .stitch-registry-search {
+  border: none !important;
+  background: var(--ln-surface-muted) !important;
+  border-radius: var(--ln-radius-sm) !important;
+  padding: 0.625rem 1rem !important;
+  box-shadow: none !important;
+}
+
+html[data-demo2='1'] .stitch-registry-search:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ln-cyan-soft) !important;
+  background: var(--ln-surface-hover) !important;
+}
+
+/* ── Help Center Glass Header ── */
+html[data-demo2='1'] .help-center-glass-header {
+  background: var(--ln-surface);
+  backdrop-filter: blur(var(--ln-blur-xl));
+  -webkit-backdrop-filter: blur(var(--ln-blur-xl));
+  border-bottom: 1px solid var(--ln-border);
+}
+
+/* ── Stat Bento ── */
+html[data-demo2='1'] .stitch-stat-bento {
+  border-radius: var(--ln-radius);
+  border: 1px solid var(--ln-border);
+  background: var(--ln-surface-raised);
+  padding: 1.5rem;
+  box-shadow: var(--ln-shadow-xs);
+}
+
+/* ── Responsive Sidebar Toggle ── */
+@media (max-width: 767px) {
+  html[data-demo2='1'] .app-shell-sidebar {
+    transform: translateX(-100%);
+    z-index: var(--ln-z-overlay);
+    width: 18rem;
+    box-shadow: var(--ln-shadow-float);
+  }
+  html[data-demo2='1'] .app-shell-sidebar--open {
+    transform: translateX(0);
+  }
+  html[data-demo2='1'] .app-shell-topbar {
+    left: 0 !important;
+  }
+}
+
+/* ── Route Layout Base ── */
+html[data-demo2='1'] .route-layout {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  background: var(--ln-mesh-bg);
+}

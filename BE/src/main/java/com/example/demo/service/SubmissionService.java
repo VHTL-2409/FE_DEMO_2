@@ -14,6 +14,7 @@ import com.example.demo.api.dto.submission.SubmitAttemptRequest;
 import com.example.demo.api.dto.submission.SubmitAttemptResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.common.DateTimeUtils;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
@@ -39,6 +40,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -60,7 +62,7 @@ public class SubmissionService {
 
     @Transactional
     public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
-        LocalDateTime nowInExamZone = LocalDateTime.now(DateTimeUtils.toZoneId(exam.getTimezone()));
+        LocalDateTime nowInExamZone = VietNamTime.now();
         examService.validateExamAvailability(exam, nowInExamZone);
 
         ExamAttempt existing = examAttemptRepository
@@ -82,7 +84,7 @@ public class SubmissionService {
                 ExamAttempt.builder()
                         .exam(exam)
                         .student(student)
-                        .startedAt(LocalDateTime.now())
+                        .startedAt(VietNamTime.now())
                         .status(AttemptStatus.IN_PROGRESS)
                         .score(0.0)
                         .riskScore(0)
@@ -91,8 +93,8 @@ public class SubmissionService {
                         .clientIp(normalizedIp)
                         .sessionTokenVersion(1)
                         .fullscreenRequired(true)
-                        .lastHeartbeatAt(LocalDateTime.now())
-                        .lastIntegrityCheckAt(LocalDateTime.now())
+                        .lastHeartbeatAt(VietNamTime.now())
+                        .lastIntegrityCheckAt(VietNamTime.now())
                         .build());
 
         duplicateIpDetectionService.detect(saved);
@@ -110,13 +112,20 @@ public class SubmissionService {
         }
 
         if (attempt.getStatus() == AttemptStatus.STOPPED) {
+            if (VietNamTime.now().isAfter(submissionHelper.deadlineAt(attempt))) {
+                attempt.setScore(submissionHelper.calculateScore(attempt));
+                attempt.setSubmittedAt(VietNamTime.now());
+                attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
+                examAttemptRepository.save(attempt);
+                return toSubmitResponse(attempt);
+            }
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt has been suspended by proctor");
         }
         if (attempt.getStatus() == AttemptStatus.PAUSED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt is paused pending proctor review");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         Exam exam = attempt.getExam();
         if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
@@ -156,7 +165,7 @@ public class SubmissionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
 
         // Use Helper - khi hết hạn: lưu đáp án rồi tự động nộp, không throw
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
@@ -164,7 +173,7 @@ public class SubmissionService {
             autoSubmitFromDraft(attempt, now);
             return DraftSaveResponse.builder()
                     .attemptId(attempt.getId())
-                    .savedAt(DateTimeUtils.toOffset(now, attempt.getExam().getTimezone()))
+                    .savedAt(DateTimeUtils.toOffset(now, VietNamTime.zone()))
                     .answeredCount(answerRepository.findByAttempt(attempt).size())
                     .remainingSeconds(0L)
                     .build();
@@ -172,7 +181,6 @@ public class SubmissionService {
 
         String normalizedIp = normalizeClientIp(clientIp);
         enforceIpConsistency(attempt, normalizedIp);
-
         submissionHelper.saveAnswers(attempt, answers);
         if (shouldRunIntegrityCheck(attempt, now)) {
             duplicateIpDetectionService.detect(attempt);
@@ -186,7 +194,7 @@ public class SubmissionService {
 
         return DraftSaveResponse.builder()
                 .attemptId(attempt.getId())
-                .savedAt(DateTimeUtils.toOffset(now, attempt.getExam().getTimezone()))
+                .savedAt(DateTimeUtils.toOffset(now, VietNamTime.zone()))
                 .answeredCount(answeredCount)
                 .remainingSeconds(remainingSeconds)
                 .build();
@@ -207,7 +215,7 @@ public class SubmissionService {
         return DraftAnswersResponse.builder()
                 .attemptId(attempt.getId())
                 .status(attempt.getStatus().name())
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), attempt.getExam().getTimezone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .answers(answers)
                 .build();
@@ -221,7 +229,6 @@ public class SubmissionService {
         int answeredCount = answerRepository.findByAttempt(attempt).size();
         int totalQuestions = questionRepository.findByExam(attempt.getExam()).size();
 
-        String tz = attempt.getExam().getTimezone();
         return AttemptDetailResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -230,9 +237,9 @@ public class SubmissionService {
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
-                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), VietNamTime.zone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .examTitle(attempt.getExam().getTitle())
                 .answeredCount(answeredCount)
@@ -262,7 +269,6 @@ public class SubmissionService {
                         .build())
                 .toList();
 
-        String tz = attempt.getExam().getTimezone();
         return AttemptReportResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -271,9 +277,9 @@ public class SubmissionService {
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
-                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), VietNamTime.zone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .answeredCount(answers.size())
                 .correctCount(correctCount)
@@ -344,10 +350,10 @@ public class SubmissionService {
         java.time.LocalDateTime sessionTo = exam.getEndTime();
 
         Page<ExamAttempt> filteredPage = examAttemptRepository.searchByExam(
-                exam,
+                exam.getId(),
                 sessionFrom,
                 sessionTo,
-                parsedStatus,
+                parsedStatus != null ? parsedStatus.name() : null,
                 suspicious,
                 studentKeyword,
                 riskMin,
@@ -380,20 +386,23 @@ public class SubmissionService {
 
     public AttemptSummaryResponse toSummary(ExamAttempt attempt) {
         boolean isPractice = attempt.getExam().getCreatedBy().getId().equals(attempt.getStudent().getId());
-        String tz = attempt.getExam().getTimezone();
+        int warningCount = (attempt.getSuspicious() != null && attempt.getSuspicious() ? 1 : 0)
+                + (attempt.getRiskScore() != null ? attempt.getRiskScore() : 0);
         return AttemptSummaryResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
                 .examTitle(attempt.getExam().getTitle())
                 .isPractice(isPractice)
                 .student(attempt.getStudent().getUsername())
+                .email(attempt.getStudent().getEmail())
                 .status(attempt.getStatus().name())
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
-                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
+                .warningCount(warningCount)
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), VietNamTime.zone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .cameraOn(attempt.getCameraOn())
                 .micOn(attempt.getMicOn())
@@ -434,26 +443,24 @@ public class SubmissionService {
     }
 
     private StartAttemptResponse toStartResponse(ExamAttempt attempt) {
-        String tz = attempt.getExam().getTimezone();
         return StartAttemptResponse.builder()
                 .attemptId(attempt.getId())
                 .examId(attempt.getExam().getId())
-                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), tz))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
+                .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .status(attempt.getStatus().name())
                 .build();
     }
 
     private SubmitAttemptResponse toSubmitResponse(ExamAttempt attempt) {
-        String tz = attempt.getExam().getTimezone();
         return SubmitAttemptResponse.builder()
                 .attemptId(attempt.getId())
                 .score(attempt.getScore())
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
-                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), tz))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), tz))
+                .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), VietNamTime.zone()))
+                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .status(attempt.getStatus().name())
                 .build();

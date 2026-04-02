@@ -50,6 +50,7 @@ router.onError(() => { isNavigating.value = false })
 const activeSection = computed(() => {
   const path = route.path || ''
   if (path.startsWith('/student/dashboard')) return 'dashboard'
+  if (path.startsWith('/student/classes')) return 'classes'
   if (path.startsWith('/student/exam-join')) return 'join'
   if (path.startsWith('/student/exam-waiting-room')) return 'waiting'
   if (path.startsWith('/student/study-history')) return 'history'
@@ -60,6 +61,7 @@ const activeSection = computed(() => {
 
 const studentSidebarItems = [
   { section: 'dashboard', to: '/student/dashboard', icon: 'home', label: 'Trang chủ' },
+  { section: 'classes', to: '/student/classes', icon: 'school', label: 'Lớp học' },
   { section: 'join', to: '/student/exam-join', icon: 'login', label: 'Vào thi' },
   { section: 'history', to: '/student/study-history', icon: 'history', label: 'Lịch sử' },
   { section: 'results', to: '/student/exam-result', icon: 'grade', label: 'Kết quả' },

@@ -6,6 +6,8 @@ import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
 import com.example.demo.api.dto.exam.BulkExamRequest;
 import com.example.demo.api.dto.exam.PracticeExamRequest;
+import com.example.demo.api.dto.exam.QuestionWrongStatsItem;
+import com.example.demo.api.dto.exam.WaitingStudentResponse;
 import com.example.demo.service.AnswerSimilarityService;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamService;
@@ -165,5 +167,12 @@ public class ExamController {
         var user = currentUserService.requireCurrentUser();
         examService.bulkDelete(request.getExamIds(), user);
         return ApiResponse.success(null, "Đã xóa các đề thi được chọn.");
+    }
+
+    @GetMapping("/{examId}/waiting-students")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ApiResponse<List<WaitingStudentResponse>> getWaitingStudents(@PathVariable Long examId) {
+        var user = currentUserService.requireCurrentUser();
+        return ApiResponse.success(examService.getWaitingStudents(examId, user));
     }
 }

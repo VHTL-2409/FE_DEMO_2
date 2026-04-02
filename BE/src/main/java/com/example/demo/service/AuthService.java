@@ -111,7 +111,7 @@ public class AuthService {
         User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
-        if (!user.isEmailVerified()) {
+        if (!user.getEmailVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED: Email chưa được xác minh. Vui lòng kiểm tra hộp thư.");
         }
 
@@ -183,7 +183,7 @@ public class AuthService {
     @Transactional
     public ResendVerificationResponse resendVerificationEmail(String email) {
         User user = userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
-        if (user == null || user.isEmailVerified()) {
+        if (user == null || user.getEmailVerified()) {
             return null;
         }
         verificationTokenRepository.deleteByUser(user);

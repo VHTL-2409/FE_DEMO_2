@@ -5,7 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -17,9 +18,10 @@ public class AdminExamListItemResponse {
     private String code;
     private Integer durationMinutes;
     private Boolean isActive;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private String timezone;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+    private OffsetDateTime startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+    private OffsetDateTime endTime;
     private String createdByUsername;
     private long questionCount;
     private long attemptCount;

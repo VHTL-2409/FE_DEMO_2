@@ -232,7 +232,7 @@ import {
   deleteAdminTeacher
 } from '../../services/adminService'
 import { useToast } from '../../composables/useToast'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 
 const toast = useToast()
 

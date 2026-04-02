@@ -46,22 +46,43 @@
       <!-- Online -->
       <div class="rsc__stat" :class="{ 'rsc__stat--success': onlineCount > 0 }">
         <LucideIcon name="group" />
-        <span class="rsc__stat-val">{{ onlineCount }}</span>
-        <span class="rsc__stat-label">/ {{ totalCount }} online</span>
+        <div class="rsc__stat-body-col">
+          <span class="rsc__stat-val">{{ onlineCount }}</span>
+          <span class="rsc__stat-label">/ {{ totalCount }} online</span>
+        </div>
+        <!-- Mini progress -->
+        <div class="rsc__mini-bar">
+          <div class="rsc__mini-bar-fill rsc__mini-bar-fill--success"
+            :style="{ width: totalCount ? (onlineCount / totalCount * 100) + '%' : '0%' }" />
+        </div>
       </div>
 
       <!-- Alerts -->
       <div class="rsc__stat" :class="{ 'rsc__stat--warning': alertCount > 0 }">
         <LucideIcon name="warning" />
-        <span class="rsc__stat-val">{{ alertCount }}</span>
-        <span class="rsc__stat-label">cảnh báo</span>
+        <div class="rsc__stat-body-col">
+          <span class="rsc__stat-val">{{ alertCount }}</span>
+          <span class="rsc__stat-label">cảnh báo</span>
+        </div>
+        <!-- Mini progress for alerts -->
+        <div class="rsc__mini-bar">
+          <div class="rsc__mini-bar-fill rsc__mini-bar-fill--warn"
+            :style="{ width: totalCount ? Math.min(alertCount / totalCount * 100, 100) + '%' : '0%' }" />
+        </div>
       </div>
 
       <!-- Offline -->
       <div class="rsc__stat" :class="{ 'rsc__stat--danger': offlineCount > 0 }">
         <LucideIcon :name="offlineCount > 0 ? 'wifi_off' : 'wifi'" />
-        <span class="rsc__stat-val">{{ offlineCount }}</span>
-        <span class="rsc__stat-label">offline</span>
+        <div class="rsc__stat-body-col">
+          <span class="rsc__stat-val">{{ offlineCount }}</span>
+          <span class="rsc__stat-label">offline</span>
+        </div>
+        <!-- Mini progress -->
+        <div class="rsc__mini-bar">
+          <div class="rsc__mini-bar-fill rsc__mini-bar-fill--danger"
+            :style="{ width: totalCount ? (offlineCount / totalCount * 100) + '%' : '0%' }" />
+        </div>
       </div>
     </div>
 
@@ -223,11 +244,12 @@ const timeColor = computed(() => {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
+  min-height: 200px;
 }
 
 .dark .rsc {
@@ -291,7 +313,7 @@ const timeColor = computed(() => {
 
 .rsc__status-dot--attention {
   background: rgba(234, 179, 8, 0.1);
-  color: #d97706;
+  color: var(--ds-warning);
 }
 
 .rsc__status-dot--critical {
@@ -333,7 +355,7 @@ const timeColor = computed(() => {
   -webkit-box-orient: vertical;
 }
 
-.dark .rsc__exam-name { color: #f1f5f9; }
+.dark .rsc__exam-name { color: var(--ds-text); }
 
 .rsc__exam-meta {
   font-size: 0.7rem;
@@ -378,7 +400,7 @@ const timeColor = computed(() => {
 
 .rsc__time-badge--warning {
   background: rgba(234, 179, 8, 0.1);
-  color: #d97706;
+  color: var(--ds-warning);
 }
 
 .rsc__time-badge--success {
@@ -417,30 +439,42 @@ const timeColor = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
+  padding: 0.5rem 0.625rem;
   border-radius: var(--ds-radius-lg);
   background: var(--ds-gray-50);
   font-size: 0.75rem;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   transition: all 0.15s ease;
 }
 
 .dark .rsc__stat { background: var(--ds-gray-800); }
 
-.rsc__stat--success { background: var(--ds-success-soft); }
-.rsc__stat--warning { background: rgba(234, 179, 8, 0.08); }
-.rsc__stat--danger { background: var(--ds-danger-soft); }
-
-.rsc__stat-icon {
+/* Inline row within stat */
+.rsc__stat > .lucide {
   font-size: 0.875rem;
   color: var(--ds-text-muted);
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-bottom: 0.25rem;
 }
 
-.rsc__stat--success .rsc__stat-icon { color: var(--ds-success); }
-.rsc__stat--warning .rsc__stat-icon { color: var(--ds-warning); }
-.rsc__stat--danger .rsc__stat-icon { color: var(--ds-danger); }
+/* Body column */
+.rsc__stat-body-col {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.rsc__stat--success > .lucide { color: var(--ds-success); }
+.rsc__stat--warning > .lucide { color: var(--ds-warning); }
+.rsc__stat--danger > .lucide { color: var(--ds-danger); }
+.rsc__stat--success { background: var(--ds-success-soft); }
+.rsc__stat--warning { background: rgba(234, 179, 8, 0.08); }
+.rsc__stat--danger { background: var(--ds-danger-soft); }
 
 .rsc__stat-val {
   font-weight: 900;
@@ -450,7 +484,7 @@ const timeColor = computed(() => {
   flex-shrink: 0;
 }
 
-.dark .rsc__stat-val { color: #f1f5f9; }
+.dark .rsc__stat-val { color: var(--ds-text); }
 .rsc__stat--success .rsc__stat-val { color: var(--ds-success); }
 .rsc__stat--warning .rsc__stat-val { color: var(--ds-warning); }
 .rsc__stat--danger .rsc__stat-val { color: var(--ds-danger); }
@@ -460,6 +494,27 @@ const timeColor = computed(() => {
   font-weight: 500;
   font-size: 0.65rem;
 }
+
+/* Mini progress bar */
+.rsc__mini-bar {
+  height: 3px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.375rem;
+}
+
+.dark .rsc__mini-bar { background: rgba(255,255,255,0.08); }
+
+.rsc__mini-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.rsc__mini-bar-fill--success { background: var(--ds-success); }
+.rsc__mini-bar-fill--warn { background: var(--ds-warning); }
+.rsc__mini-bar-fill--danger { background: var(--ds-danger); }
 
 /* Risk section (larger full-width bar) */
 .rsc__risk-section {
@@ -483,8 +538,8 @@ const timeColor = computed(() => {
 }
 
 .rsc__risk-fill--clean { background: var(--ds-success); }
-.rsc__risk-fill--suspicious { background: #eab308; }
-.rsc__risk-fill--high_risk { background: #d97706; }
+.rsc__risk-fill--suspicious { background: var(--ds-warning); }
+.rsc__risk-fill--high_risk { background: var(--ds-warning); }
 .rsc__risk-fill--critical { background: var(--ds-danger); }
 
 .rsc__risk-meta {
@@ -505,7 +560,7 @@ const timeColor = computed(() => {
 .rsc__risk-icon { font-size: 0.875rem; }
 
 .rsc__risk-label--clean { color: var(--ds-success); }
-.rsc__risk-label--suspicious { color: #d97706; }
+.rsc__risk-label--suspicious { color: var(--ds-warning); }
 .rsc__risk-label--high_risk { color: var(--ds-danger); }
 .rsc__risk-label--critical { color: var(--ds-danger); }
 
@@ -517,7 +572,7 @@ const timeColor = computed(() => {
 }
 
 .rsc__risk-score--clean { color: var(--ds-success); }
-.rsc__risk-score--suspicious { color: #d97706; }
+.rsc__risk-score--suspicious { color: var(--ds-warning); }
 .rsc__risk-score--high_risk { color: var(--ds-danger); }
 .rsc__risk-score--critical { color: var(--ds-danger); }
 
@@ -550,7 +605,7 @@ const timeColor = computed(() => {
 .dark .rsc__action-btn {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #94a3b8;
+  color: var(--ds-text-muted);
 }
 
 .rsc__action-btn:hover {
@@ -570,7 +625,7 @@ const timeColor = computed(() => {
 }
 
 .rsc__action-btn--primary:hover {
-  background: var(--ds-primary-hover, #4338ca);
+  background: var(--ds-primary-hover);
   color: white;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
@@ -588,27 +643,11 @@ const timeColor = computed(() => {
 
 .rsc__action-btn--danger:hover {
   background: rgba(234, 179, 8, 0.15);
-  border-color: #d97706;
-  color: #d97706;
-}
-
-/* Connection banner */
-.rsc__connection-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: white;
-}
-
-
-.rsc__connection-banner--offline {
-  background: var(--ds-gray-500);
+  border-color: var(--ds-warning);
+  color: var(--ds-warning);
 }
 
 .rsc__connection-banner--degraded {
-  background: #d97706;
+  background: var(--ds-warning);
 }
 </style>

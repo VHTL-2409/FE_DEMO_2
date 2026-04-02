@@ -5,6 +5,7 @@ import com.example.demo.api.dto.monitoring.EventBatchResponse;
 import com.example.demo.api.dto.monitoring.HeartbeatRequest;
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.ExamEvent;
@@ -116,7 +117,7 @@ public class ExamEventService {
         String normalizedFingerprint = normalizeFingerprint(attempt, request.getDeviceFingerprint(), null);
         applyFingerprintConsistency(attempt, normalizedFingerprint, "heartbeat");
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
         attempt.setMicOn(request.getMicOn());
@@ -152,7 +153,7 @@ public class ExamEventService {
     @Transactional
     public RiskScoreResponse recordSystemSignal(ExamAttempt attempt, String signalType, String details, SignalSeverity severity) {
         ensureAttemptTracked(attempt);
-        saveLegacyMonitoringEvent(attempt, signalType, details, LocalDateTime.now());
+        saveLegacyMonitoringEvent(attempt, signalType, details, VietNamTime.now());
         fraudSignalService.recordServerSignal(attempt, signalType, severity,
                 0.9, Map.of("source", "system", "details", details));
         return riskScoringService.recomputeRisk(attempt);
@@ -175,7 +176,7 @@ public class ExamEventService {
             String normalizedFingerprint,
             Long sequenceNo
     ) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         Map<String, Object> eventData = new LinkedHashMap<>();
         eventData.put("details", details);
         eventData.put("payload", payload);
@@ -209,7 +210,7 @@ public class ExamEventService {
         if (attempt.getLastHeartbeatAt() == null) {
             return;
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         if (attempt.getLastHeartbeatAt().isAfter(now.minusSeconds(Math.max(heartbeatStaleSeconds, 1)))) {
             return;
         }
@@ -235,7 +236,7 @@ public class ExamEventService {
         return examEventRepository.existsByAttemptAndEventTypeAndCreatedAtAfter(
                 attempt,
                 eventType,
-                LocalDateTime.now().minusSeconds(eventDedupeSeconds));
+                VietNamTime.now().minusSeconds(eventDedupeSeconds));
     }
 
     private void applyFingerprintConsistency(ExamAttempt attempt, String normalizedFingerprint, String source) {
@@ -244,18 +245,23 @@ public class ExamEventService {
             return;
         }
         if (attempt.getDeviceFingerprint() == null || attempt.getDeviceFingerprint().isBlank()) {
+            // First time: preserve as both current and original
             attempt.setDeviceFingerprint(normalizedFingerprint);
+            attempt.setOriginalDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
             return;
         }
         if (!attempt.getDeviceFingerprint().equals(normalizedFingerprint)) {
+            // Fingerprint changed: update current but preserve original for forensics
             attempt.setDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
             fraudSignalService.recordServerSignal(attempt,
                     "DEVICE_FINGERPRINT_CHANGED",
                     SignalSeverity.HIGH,
                     0.95,
-                    Map.of("source", source, "attemptId", attempt.getId()));
+                    Map.of("source", source, "attemptId", attempt.getId(),
+                            "original", attempt.getOriginalDeviceFingerprint(),
+                            "new", normalizedFingerprint));
         }
     }
 

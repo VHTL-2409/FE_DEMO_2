@@ -17,5 +17,4 @@ public class NewSessionRequest {
     private LocalDateTime endTime;
 
     private Integer durationMinutes;
-    private String timezone;
 }

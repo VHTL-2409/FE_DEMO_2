@@ -19,11 +19,11 @@ public class AttemptReportResponse {
     private Double score;
     private Integer riskScore;
     private Boolean suspicious;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime startedAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime submittedAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime deadlineAt;
     private Long remainingSeconds;
     private Integer answeredCount;

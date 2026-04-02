@@ -18,14 +18,16 @@
       <div v-if="nextAction" class="sh__next-action" @click="$emit('action-click', nextAction.action)">
         <LucideIcon :name="nextAction.icon" />
         <span>{{ nextAction.label }}</span>
-        <LucideIcon name="chevron_right" sh__next-arrow />
+        <LucideIcon name="chevron-right" class="sh__next-arrow" />
       </div>
     </div>
 
     <!-- Right: stats summary -->
     <div class="sh__right">
       <div class="sh__stat-item" v-if="examCount > 0">
-        <LucideIcon name="quiz" />
+        <div class="sh__stat-icon-wrap sh__stat-icon-wrap--primary">
+          <LucideIcon name="quiz" />
+        </div>
         <div>
           <span class="sh__stat-val">{{ examCount }}</span>
           <span class="sh__stat-lbl">Kỳ thi sắp tới</span>
@@ -33,7 +35,9 @@
       </div>
 
       <div class="sh__stat-item" v-if="pendingCount > 0">
-        <LucideIcon name="pending" />
+        <div class="sh__stat-icon-wrap sh__stat-icon-wrap--warning">
+          <LucideIcon name="pending_actions" />
+        </div>
         <div>
           <span class="sh__stat-val">{{ pendingCount }}</span>
           <span class="sh__stat-lbl">Chưa hoàn thành</span>
@@ -41,7 +45,9 @@
       </div>
 
       <div class="sh__stat-item" v-if="newScoreCount > 0">
-        <LucideIcon name="star" />
+        <div class="sh__stat-icon-wrap sh__stat-icon-wrap--success">
+          <LucideIcon name="star" />
+        </div>
         <div>
           <span class="sh__stat-val">{{ newScoreCount }}</span>
           <span class="sh__stat-lbl">Điểm mới</span>
@@ -49,7 +55,9 @@
       </div>
 
       <div class="sh__stat-item" v-if="totalAttempts > 0">
-        <LucideIcon name="history" />
+        <div class="sh__stat-icon-wrap sh__stat-icon-wrap--info">
+          <LucideIcon name="history" />
+        </div>
         <div>
           <span class="sh__stat-val">{{ totalAttempts }}</span>
           <span class="sh__stat-lbl">Bài thi đã làm</span>
@@ -210,7 +218,7 @@ const nextAction = computed(() => {
 }
 
 .dark .sh__headline {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 /* Next action chip */
@@ -262,6 +270,7 @@ const nextAction = computed(() => {
   border: 1px solid var(--ds-border);
   backdrop-filter: blur(4px);
   box-shadow: var(--ds-shadow-xs);
+  transition: all 0.2s ease;
 }
 
 .dark .sh__stat-item {
@@ -269,11 +278,36 @@ const nextAction = computed(() => {
   border-color: var(--ds-border-strong);
 }
 
+.sh__stat-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--ds-shadow-sm);
+}
+
 .sh__stat-item > div {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
+
+.sh__stat-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ds-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sh__stat-item:hover .sh__stat-icon-wrap {
+  transform: scale(1.1);
+}
+
+.sh__stat-icon-wrap--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
+.sh__stat-icon-wrap--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
+.sh__stat-icon-wrap--success { background: var(--ds-success-soft); color: var(--ds-success); }
+.sh__stat-icon-wrap--info { background: var(--ds-info-soft); color: var(--ds-info); }
 
 .sh__stat-icon {
   font-size: 1.25rem;
@@ -294,7 +328,7 @@ const nextAction = computed(() => {
 }
 
 .dark .sh__stat-val {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .sh__stat-lbl {
@@ -307,12 +341,9 @@ const nextAction = computed(() => {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sh {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1.25rem;
-    gap: 1rem;
+    padding: 1.25rem 1.5rem;
   }
 
   .sh__right {
@@ -324,13 +355,57 @@ const nextAction = computed(() => {
 
   .sh__stat-item {
     flex: 1;
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sh {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .sh__right {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sh__stat-item {
+    flex: 1;
     min-width: 120px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .sh__headline {
+    max-width: 100%;
   }
 }
 
 @media (max-width: 480px) {
+  .sh {
+    padding: 1rem;
+  }
+
   .sh__right {
     flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sh__stat-item {
+    width: 100%;
+    flex: none;
+  }
+
+  .sh__greeting-row {
+    gap: 0.625rem;
+  }
+
+  .sh__wave-icon {
+    width: 40px;
+    height: 40px;
   }
 }
 </style>

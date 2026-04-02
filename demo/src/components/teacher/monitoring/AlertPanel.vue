@@ -36,23 +36,17 @@
       </div>
     </div>
 
-    <!-- Filter tabs -->
-    <div class="ap__filter-tabs">
-      <button
-        v-for="tab in severityTabs"
-        :key="tab.value"
-        type="button"
-        class="ap__filter-tab"
-        :class="[
-          `ap__filter-tab--${tab.color}`,
-          { 'ap__filter-tab--active': localSeverity === tab.value }
-        ]"
-        @click="localSeverity = tab.value"
-      >
-        <LucideIcon :name="tab.icon" />
-        {{ tab.label }}
-        <span v-if="tab.count > 0" class="ap__filter-tab-count">{{ tab.count }}</span>
-      </button>
+    <!-- Filter select -->
+    <div class="ap__filter-row">
+      <div class="ap__filter-select-wrap">
+        <LucideIcon name="filter_list" class="ap__filter-icon" />
+        <select v-model="localSeverity" class="ap__filter-select">
+          <option v-for="tab in severityTabs" :key="tab.value" :value="tab.value">
+            {{ tab.label }} ({{ tab.count }})
+          </option>
+        </select>
+        <LucideIcon name="expand_more" class="ap__filter-arrow" />
+      </div>
     </div>
 
     <!-- Scrollable alert list -->
@@ -361,6 +355,8 @@ const groupedAlerts = computed(() => {
   overflow: hidden;
   min-height: 200px;
   transition: border-color 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dark .ap {
@@ -484,120 +480,85 @@ const groupedAlerts = computed(() => {
 .ap__mark-read:hover { background: var(--ds-gray-100); color: var(--ds-primary); }
 .dark .ap__mark-read:hover { background: var(--ds-gray-700); }
 
-/* Filter tabs */
-.ap__filter-tabs {
-  display: flex;
-  gap: 0.375rem;
+/* Filter row */
+.ap__filter-row {
   padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--ds-border);
   flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.ap__filter-tabs::-webkit-scrollbar { display: none; }
+.dark .ap__filter-row { border-bottom-color: var(--ds-border-strong); }
 
-.dark .ap__filter-tabs { border-bottom-color: var(--ds-border-strong); }
-
-.ap__filter-tab {
+.ap__filter-select-wrap {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.3rem 0.625rem;
-  border-radius: var(--ds-radius-full);
-  border: 1.5px solid var(--ds-border);
-  background: transparent;
+}
+
+.ap__filter-icon {
+  position: absolute;
+  left: 0.625rem;
+  width: 16px;
+  height: 16px;
   color: var(--ds-text-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ap__filter-arrow {
+  position: absolute;
+  right: 0.625rem;
+  width: 16px;
+  height: 16px;
+  color: var(--ds-text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ap__filter-select {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 2.25rem;
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
+  appearance: none;
+  outline: none;
   transition: all 0.15s ease;
-  white-space: nowrap;
   font-family: inherit;
 }
 
-.dark .ap__filter-tab {
+.dark .ap__filter-select {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
+  color: var(--ds-text);
 }
 
-
-.ap__filter-tab-count {
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  background: var(--ds-gray-200);
-  font-size: 0.6rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-  color: var(--ds-text-muted);
+.ap__filter-select:hover {
+  border-color: var(--ds-primary-border);
 }
 
-.dark .ap__filter-tab-count { background: var(--ds-gray-700); }
-
-/* Tab active + color states */
-.ap__filter-tab--active {
-  border-color: transparent;
-  color: white;
-}
-
-.ap__filter-tab--active .ap__filter-tab-count {
-  background: rgba(255,255,255,0.25);
-  color: white;
-}
-
-.ap__filter-tab--default.ap__filter-tab--active {
-  background: var(--ds-primary);
-}
-.ap__filter-tab--danger.ap__filter-tab--active {
-  background: var(--ds-danger);
-  border-color: var(--ds-danger);
-}
-.ap__filter-tab--warning.ap__filter-tab--active {
-  background: #d97706;
-  border-color: #d97706;
-}
-.ap__filter-tab--caution.ap__filter-tab--active {
-  background: #ca8a04;
-  border-color: #ca8a04;
-  color: white;
-}
-
-/* Hover (non-active) */
-.ap__filter-tab--default:not(.ap__filter-tab--active):hover {
+.ap__filter-select:focus {
   border-color: var(--ds-primary);
-  color: var(--ds-primary);
-  background: var(--ds-primary-soft);
-}
-.dark .ap__filter-tab--default:not(.ap__filter-tab--active):hover { background: rgba(79, 70, 229, 0.1); }
-
-.ap__filter-tab--danger:not(.ap__filter-tab--active):hover {
-  border-color: var(--ds-danger);
-  color: var(--ds-danger);
-  background: var(--ds-danger-soft);
-}
-
-.ap__filter-tab--warning:not(.ap__filter-tab--active):hover {
-  border-color: #d97706;
-  color: #d97706;
-  background: rgba(234, 179, 8, 0.08);
-}
-
-.ap__filter-tab--caution:not(.ap__filter-tab--active):hover {
-  border-color: #ca8a04;
-  color: #ca8a04;
-  background: rgba(202, 138, 4, 0.08);
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
 }
 
 /* List */
 .ap__list {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--ds-gray-300) transparent;
+}
+
+.ap__group {
+  padding: 0.375rem 0;
+  overflow: visible;
 }
 
 .ap__list::-webkit-scrollbar { width: 4px; }
@@ -644,10 +605,12 @@ const groupedAlerts = computed(() => {
   align-items: flex-start;
   gap: 0.625rem;
   padding: 0.625rem 0.875rem;
+  padding-right: 1.5rem;
   cursor: pointer;
   transition: background 0.1s ease;
   position: relative;
   border-left: 4px solid transparent;
+  overflow: visible;
 }
 
 .ap__alert-item:hover {
@@ -837,8 +800,8 @@ const groupedAlerts = computed(() => {
 /* Unread dot */
 .ap__unread-dot {
   position: absolute;
-  top: 0.625rem;
-  right: 0.5rem;
+  top: 0.5rem;
+  right: 0.75rem;
   width: 6px;
   height: 6px;
   border-radius: 50%;

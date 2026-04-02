@@ -23,17 +23,6 @@
 
     <!-- Stats Row -->
     <div class="mch__stats">
-      <!-- Rooms -->
-      <div class="mch__stat" :class="{ 'mch__stat--active': roomsCount > 0 }">
-        <div class="mch__stat-icon-wrap mch__stat-icon-wrap--primary">
-          <LucideIcon name="meeting_room" />
-        </div>
-        <div class="mch__stat-body">
-          <p class="mch__stat-val">{{ roomsCount }}</p>
-          <p class="mch__stat-label">Phòng thi</p>
-        </div>
-      </div>
-
       <!-- Online Students -->
       <div class="mch__stat" :class="{ 'mch__stat--success': onlineCount > 0 }">
         <div class="mch__stat-icon-wrap mch__stat-icon-wrap--success">
@@ -48,10 +37,7 @@
       <!-- Alerts -->
       <div
         class="mch__stat"
-        :class="{
-          'mch__stat--danger': alertCount > 0,
-          'mch__stat--warning': alertCount === 0 && alertCount !== null
-        }"
+        :class="{ 'mch__stat--danger': alertCount > 0 }"
       >
         <div class="mch__stat-icon-wrap" :class="alertCount > 0 ? 'mch__stat-icon-wrap--danger' : 'mch__stat-icon-wrap--muted'">
           <LucideIcon name="warning" />
@@ -60,29 +46,17 @@
           <p class="mch__stat-val">{{ alertCount }}</p>
           <p class="mch__stat-label">Cảnh báo</p>
         </div>
-        <!-- Alert pulse ring -->
         <span v-if="alertCount > 0" class="mch__stat-pulse" />
       </div>
 
-      <!-- Issues / Offline -->
-      <div class="mch__stat" :class="{ 'mch__stat--danger': issueCount > 0 }">
-        <div class="mch__stat-icon-wrap" :class="issueCount > 0 ? 'mch__stat-icon-wrap--danger' : 'mch__stat-icon-wrap--muted'">
-          <LucideIcon :name="issueCount > 0 ? 'wifi_off' : 'wifi'" />
+      <!-- Total Students -->
+      <div class="mch__stat">
+        <div class="mch__stat-icon-wrap mch__stat-icon-wrap--primary">
+          <LucideIcon name="people" />
         </div>
         <div class="mch__stat-body">
-          <p class="mch__stat-val">{{ issueCount }}</p>
-          <p class="mch__stat-label">Vấn đề</p>
-        </div>
-      </div>
-
-      <!-- Connection % -->
-      <div class="mch__stat" :class="healthColorClass">
-        <div class="mch__stat-icon-wrap" :class="healthIconWrapClass">
-          <LucideIcon :name="healthIcon" />
-        </div>
-        <div class="mch__stat-body">
-          <p class="mch__stat-val">{{ onlinePercent }}%</p>
-          <p class="mch__stat-label">Kết nối</p>
+          <p class="mch__stat-val">{{ totalCount }}</p>
+          <p class="mch__stat-label">Tổng</p>
         </div>
       </div>
     </div>

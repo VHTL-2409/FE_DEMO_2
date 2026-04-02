@@ -13,7 +13,7 @@
       @close-mobile="mobileOpen = false"
     />
 
-    <!-- Main content -->
+    <!-- Main content — GPU-accelerated transform transition instead of margin reflow -->
     <main
       class="app-shell__main flex-1 overflow-y-auto"
       :class="showSidebar ? (sidebarCollapsed ? 'app-shell__main--collapsed' : 'app-shell__main--expanded') : ''"
@@ -79,16 +79,16 @@ watch(sidebarCollapsed, (val) => {
   background: var(--ds-bg);
   height: 100dvh;
   overflow-y: auto;
+  will-change: margin;
+  transition: margin 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-shell__main--expanded {
   margin-left: var(--ds-sidebar-width);
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-shell__main--collapsed {
   margin-left: var(--ds-sidebar-collapsed);
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrollbar */

@@ -8,12 +8,11 @@
     />
   </Teleport>
 
-  <!-- Sidebar -->
+  <!-- Sidebar — GPU-composited via clip-path, zero layout reflow -->
   <aside
     :class="[
       'ds-sidebar fixed left-0 top-0 z-40 flex h-full flex-col border-r border-[var(--ds-border)] bg-[var(--ds-surface)]',
-      collapsed ? 'ds-sidebar--collapsed' : 'ds-sidebar--expanded',
-      mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      collapsed ? 'ds-sidebar--collapsed' : 'ds-sidebar--expanded'
     ]"
   >
     <!-- Header: logo + brand -->
@@ -234,11 +233,12 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-/* ── Sidebar width transitions ── */
+/* ── Sidebar width transitions — GPU-optimized via will-change ── */
 .ds-sidebar {
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   white-space: nowrap;
+  will-change: width;
 }
 
 .ds-sidebar--expanded {
@@ -249,24 +249,26 @@ const handleLogout = () => {
   width: var(--ds-sidebar-collapsed, 64px);
 }
 
-/* ── Nav label transitions — mượt khi expand/collapse, ẩn bằng CSS thay vì v-show ── */
+/* ── Nav label transitions — opacity fade, max-width collapse, zero reflow ── */
 .ds-sidebar-nav-label {
   overflow: hidden;
   opacity: 1;
-  flex-shrink: 1;
+  flex-shrink: 0;
   flex-grow: 0;
-  transition: opacity 0.25s ease, width 0.3s ease, max-width 0.3s ease;
+  transition:
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   width: auto;
   max-width: 200px;
+  transform: translateX(0);
 }
 
 .ds-sidebar--collapsed .ds-sidebar-nav-label {
   opacity: 0;
   max-width: 0;
-  width: 0;
-  flex-shrink: 1 !important;
-  min-width: 0;
   pointer-events: none;
+  transform: translateX(-8px);
 }
 
 /* ── Nav item: icon centered when collapsed ── */
@@ -278,54 +280,42 @@ const handleLogout = () => {
   padding-right: 0 !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
-  width: 100% !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Nav icon wrapper: ensure perfect centering ── */
-.ds-sidebar-nav-icon-wrap {
+/* ── Nav icon: stable sizing, fade opacity ── */
+.ds-sidebar-nav-icon {
   flex-shrink: 0;
-  transition: color 0.15s ease;
+  transition: opacity 0.25s ease, color 0.15s ease, transform 0.2s ease;
 }
 
-.ds-sidebar--collapsed .ds-sidebar-nav-item .ds-sidebar-nav-icon-wrap {
-  color: inherit;
-}
-
-/* ── Nav icon: đảm bảo không bị collapse khi sidebar thu gọn ── */
-.ds-sidebar-nav-icon,
-.ds-sidebar-nav-icon svg,
-.ds-sidebar-nav-icon > * {
-  flex-shrink: 0 !important;
-  min-width: 20px !important;
-  width: 20px !important;
-  height: 20px !important;
-  min-height: 20px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  transition: opacity 0.25s ease, color 0.15s ease;
-}
-
-/* Override icon styles specifically for collapsed state */
 .ds-sidebar--collapsed .ds-sidebar-nav-icon-wrap {
-  margin: 0 auto !important;
-  width: 20px !important;
-  height: 20px !important;
-  flex-shrink: 0 !important;
+  margin: 0 auto;
 }
 
 .ds-sidebar--collapsed .ds-sidebar-nav-icon {
-  width: 20px !important;
-  height: 20px !important;
-  flex-shrink: 0 !important;
+  opacity: 1;
 }
 
-/* ── Brand transitions ── */
+.ds-sidebar-nav-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ds-sidebar-nav-item:hover {
+  transform: translateX(4px);
+}
+
+.ds-sidebar--collapsed .ds-sidebar-nav-item:hover {
+  transform: translateX(0) scale(1.05);
+}
+
+/* ── Brand: fade + collapse when collapsed ── */
 .ds-sidebar__brand {
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.25s ease, max-width 0.3s ease;
+  transition:
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: 200px;
 }
 
@@ -339,7 +329,7 @@ const handleLogout = () => {
   pointer-events: none;
   opacity: 0;
   transform: translateX(-4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .ds-sidebar-nav-item:hover .ds-sidebar-tooltip {

@@ -12,10 +12,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class AssignmentService {
+
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
+
+    private static OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt == null ? null : ldt.atZone(VN).toOffsetDateTime();
+    }
 
     private final AssignmentRepository assignmentRepository;
 
@@ -91,18 +99,17 @@ public class AssignmentService {
     }
 
     private AssignmentResponse toResponse(Assignment assignment) {
-        String tz = assignment.getExam() != null ? assignment.getExam().getTimezone() : null;
         return AssignmentResponse.builder()
             .id(assignment.getId())
             .examId(assignment.getExam().getId())
             .title(assignment.getTitle())
-            .openAt(DateTimeUtils.toOffset(assignment.getOpenAt(), tz))
-            .closeAt(DateTimeUtils.toOffset(assignment.getCloseAt(), tz))
+            .openAt(toOffset(assignment.getOpenAt()))
+            .closeAt(toOffset(assignment.getCloseAt()))
             .maxAttempts(assignment.getMaxAttempts())
             .allowReviewAfterSubmit(assignment.getAllowReviewAfterSubmit())
             .isPublished(assignment.getIsPublished())
             .createdBy(assignment.getCreatedBy() == null ? null : assignment.getCreatedBy().getUsername())
-            .createdAt(DateTimeUtils.toOffset(assignment.getCreatedAt(), tz))
+            .createdAt(toOffset(assignment.getCreatedAt()))
             .build();
     }
 }

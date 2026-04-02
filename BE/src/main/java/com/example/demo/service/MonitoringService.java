@@ -6,6 +6,7 @@ import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamEvent;
 import com.example.demo.domain.entity.ExamAttempt;
@@ -116,17 +117,22 @@ public class MonitoringService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Cannot stop an already submitted attempt");
         }
 
+        String invalidateMessage = (reason == null || reason.isBlank())
+                ? "Bài thi đã bị đình chỉ bởi giám thị."
+                : reason.trim();
+
         if (attempt.getStatus() != AttemptStatus.STOPPED) {
             attempt.setStatus(AttemptStatus.STOPPED);
             examAttemptRepository.save(attempt);
         }
 
-        String invalidateMessage = (reason == null || reason.isBlank())
-                ? "Bài thi đã bị đình chỉ bởi giám thị."
-                : reason.trim();
-
+        if (attempt.getStatus() == AttemptStatus.PAUSED) {
+            auditLogService.logTeacherInvalidate(attempt, actor,
+                    "[PROCTOR_STOPPED_AFTER_PAUSE] " + invalidateMessage);
+        } else {
+            auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
+        }
         realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
-        auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
         RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
         return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
     }
@@ -182,13 +188,14 @@ public class MonitoringService {
         if (!attempt.getStudent().getId().equals(actor.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only the student can update their own device status");
         }
-        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
-            return;
+        // Allow heartbeat to be updated even for PAUSED attempts
+        boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.IN_PROGRESS;
+        if (allowFullUpdate) {
+            attempt.setCameraOn(cameraOn);
+            attempt.setMicOn(micOn);
         }
-        attempt.setCameraOn(cameraOn);
-        attempt.setMicOn(micOn);
-        attempt.setDeviceCheckedAt(LocalDateTime.now());
-        attempt.setLastHeartbeatAt(LocalDateTime.now());
+        attempt.setDeviceCheckedAt(VietNamTime.now());
+        attempt.setLastHeartbeatAt(VietNamTime.now());
         examAttemptRepository.save(attempt);
     }
 
@@ -216,7 +223,7 @@ public class MonitoringService {
         if (eventRateLimitWindowSeconds <= 0 || eventRateLimitMax <= 0) {
             return;
         }
-        LocalDateTime cutoff = LocalDateTime.now().minusSeconds(eventRateLimitWindowSeconds);
+        LocalDateTime cutoff = VietNamTime.now().minusSeconds(eventRateLimitWindowSeconds);
         long recent = monitoringEventRepository.countByAttemptAndCreatedAtAfter(attempt, cutoff);
         if (recent >= eventRateLimitMax) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Too many monitoring events. Please slow down.");

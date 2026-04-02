@@ -5,5 +5,6 @@ public enum RiskActionType {
     WARNING_SENT,
     REVIEW_REQUIRED,
     ATTEMPT_PAUSED,
+    ATTEMPT_RESUMED,
     ATTEMPT_INVALIDATED
 }

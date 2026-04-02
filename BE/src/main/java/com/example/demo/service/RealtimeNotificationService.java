@@ -81,6 +81,16 @@ public class RealtimeNotificationService {
         );
     }
 
+    public void notifyAttemptResumed(ExamAttempt attempt, String message) {
+        teacherAlertGateway.publishAttemptResumed(
+                attempt.getExam().getId(),
+                attempt.getId(),
+                attempt.getStudent().getUsername(),
+                attempt.getRiskScore(),
+                message
+        );
+    }
+
     public void notifyDraftSaved(ExamAttempt attempt, Integer answeredCount, Long remainingSeconds) {
         teacherAlertGateway.publishDraftSaved(
             attempt.getExam().getId(),

@@ -6,7 +6,7 @@
       </div>
       <div>
         <h3 class="ec-section__title">Thông tin đề thi</h3>
-        <p class="ec-section__desc">Tiêu đề, môn học và lớp học</p>
+        <p class="ec-section__desc">Tiêu đề và thông tin cơ bản</p>
       </div>
     </div>
 
@@ -34,32 +34,49 @@
         </div>
       </div>
 
-      <!-- Subject + Class row -->
-      <div class="ec-field-row">
-        <div class="ec-field ec-field--half">
-          <label class="ec-field__label">
-            Môn học
-            <span class="ec-field__required">*</span>
-          </label>
-          <input
-            v-model="localSubject"
-            type="text"
-            class="ec-input"
-            placeholder="VD: Toán học"
-          />
-        </div>
+      <!-- Subject (for free exam) -->
+      <div v-if="examType === 'free'" class="ec-field">
+        <label class="ec-field__label">
+          Môn học
+          <span class="ec-field__required">*</span>
+        </label>
+        <input
+          v-model="localSubject"
+          type="text"
+          class="ec-input"
+          placeholder="VD: Toán học"
+        />
+      </div>
 
-        <div class="ec-field ec-field--half">
-          <label class="ec-field__label">
-            Lớp / Section
-            <span class="ec-field__required">*</span>
-          </label>
-          <input
-            v-model="localClassName"
-            type="text"
-            class="ec-input"
-            placeholder="VD: 12A1"
-          />
+      <!-- Class selector (for private exam) -->
+      <div v-if="examType === 'private'" class="ec-field">
+        <label class="ec-field__label">
+          Lớp học
+          <span class="ec-field__required">*</span>
+        </label>
+        <div class="ec-class-select">
+          <select
+            v-model="localClassId"
+            class="ec-input ec-input--select"
+            :disabled="isLoadingClasses"
+          >
+            <option value="" disabled>
+              <template v-if="isLoadingClasses">Đang tải lớp học...</template>
+              <template v-else-if="availableClasses.length === 0">Chưa có lớp học nào</template>
+              <template v-else>— Chọn lớp học —</template>
+            </option>
+            <option
+              v-for="cls in availableClasses"
+              :key="cls.id"
+              :value="cls.id"
+            >
+              {{ cls.name }}
+            </option>
+          </select>
+          <p v-if="localClassId" class="ec-field__hint ec-field__hint--success">
+            <LucideIcon name="check_circle" size="13" />
+            Đề thi sẽ chỉ hiển thị với học sinh trong lớp đã chọn
+          </p>
         </div>
       </div>
 
@@ -107,11 +124,19 @@ import { computed } from 'vue'
 const props = defineProps({
   title: { type: String, default: '' },
   subject: { type: String, default: '' },
-  className: { type: String, default: '' },
-  description: { type: String, default: '' }
+  description: { type: String, default: '' },
+  examType: { type: String, default: 'free' },
+  classId: { type: [String, Number], default: '' },
+  availableClasses: { type: Array, default: () => [] },
+  isLoadingClasses: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:title', 'update:subject', 'update:className', 'update:description'])
+const emit = defineEmits([
+  'update:title',
+  'update:subject',
+  'update:description',
+  'update:classId'
+])
 
 const localTitle = computed({
   get: () => props.title,
@@ -123,27 +148,38 @@ const localSubject = computed({
   set: (v) => emit('update:subject', v)
 })
 
-const localClassName = computed({
-  get: () => props.className,
-  set: (v) => emit('update:className', v)
-})
-
 const localDescription = computed({
   get: () => props.description,
   set: (v) => emit('update:description', v)
 })
 
-const templates = [
-  { title: 'Giữa kỳ', icon: 'history_edu', subject: 'Toán học', className: '10A1', description: 'Đề thi giữa học kỳ I, phạm vi chương 1-3' },
-  { title: 'Cuối kỳ', icon: 'school', subject: 'Vật lý', className: '11A2', description: 'Đề thi cuối học kỳ II, toàn bộ chương trình' },
-  { title: '15 phút', icon: 'timer', subject: 'Hóa học', className: '12A3', description: 'Đề thi 15 phút, chương Kim loại' },
-  { title: 'Thực hành', icon: 'science', subject: 'Sinh học', className: '10B1', description: 'Đề thi thực hành, phòng lab' }
-]
+const localClassId = computed({
+  get: () => props.classId,
+  set: (v) => emit('update:classId', v)
+})
+
+const templates = computed(() => {
+  if (props.examType === 'private') {
+    return [
+      { title: 'Giữa kỳ', icon: 'history_edu', description: 'Đề thi giữa học kỳ I, phạm vi chương 1-3' },
+      { title: 'Cuối kỳ', icon: 'school', description: 'Đề thi cuối học kỳ II, toàn bộ chương trình' },
+      { title: '15 phút', icon: 'timer', description: 'Đề thi 15 phút, chương Kim loại' },
+      { title: 'Thực hành', icon: 'science', description: 'Đề thi thực hành, phòng lab' }
+    ]
+  }
+  return [
+    { title: 'Giữa kỳ', icon: 'history_edu', subject: 'Toán học', description: 'Đề thi giữa học kỳ I, phạm vi chương 1-3' },
+    { title: 'Cuối kỳ', icon: 'school', subject: 'Vật lý', description: 'Đề thi cuối học kỳ II, toàn bộ chương trình' },
+    { title: '15 phút', icon: 'timer', subject: 'Hóa học', description: 'Đề thi 15 phút, chương Kim loại' },
+    { title: 'Thực hành', icon: 'science', subject: 'Sinh học', description: 'Đề thi thực hành, phòng lab' }
+  ]
+})
 
 const applyTemplate = (tpl) => {
-  localSubject.value = tpl.subject
-  localClassName.value = tpl.className
   localDescription.value = tpl.description
+  if (props.examType === 'free' && tpl.subject) {
+    localSubject.value = tpl.subject
+  }
 }
 </script>
 
@@ -178,7 +214,6 @@ const applyTemplate = (tpl) => {
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
 }
 
-
 .ec-section__title {
   font-family: var(--ds-font-display);
   font-size: 1.05rem;
@@ -189,7 +224,7 @@ const applyTemplate = (tpl) => {
 }
 
 .dark .ec-section__title {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .ec-section__desc {
@@ -205,23 +240,10 @@ const applyTemplate = (tpl) => {
   gap: 1.25rem;
 }
 
-/* Field */
 .ec-field {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.ec-field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 480px) {
-  .ec-field-row {
-    grid-template-columns: 1fr;
-  }
 }
 
 .ec-field__label {
@@ -231,7 +253,7 @@ const applyTemplate = (tpl) => {
 }
 
 .dark .ec-field__label {
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .ec-field__required {
@@ -245,15 +267,36 @@ const applyTemplate = (tpl) => {
   font-size: 0.75rem;
 }
 
+.ec-field__hint {
+  font-size: 0.7rem;
+  color: var(--ds-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ec-field__hint--error {
+  color: var(--ds-danger);
+}
+
+.ec-field__hint--success {
+  color: var(--ds-success);
+}
+
+.ec-field__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .ec-input {
   width: 100%;
-  padding: 0.6875rem 1rem;
+  padding: 0.75rem 1.25rem;
   background: var(--ds-surface);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  font-size: 0.875rem;
+  border: 2px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  font-size: 0.9375rem;
   color: var(--ds-text);
-  transition: all 0.15s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
@@ -261,15 +304,21 @@ const applyTemplate = (tpl) => {
   color: var(--ds-text-muted);
 }
 
+.ec-input:hover {
+  border-color: var(--ds-primary-border);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+}
+
 .ec-input:focus {
   border-color: var(--ds-primary);
-  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+  box-shadow: 0 0 0 4px var(--ds-primary-ring), 0 8px 24px rgba(79, 70, 229, 0.15);
+  transform: translateY(-1px);
 }
 
 .dark .ec-input {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #f1f5f9;
+  color: var(--ds-text);
 }
 
 .dark .ec-input::placeholder {
@@ -278,27 +327,19 @@ const applyTemplate = (tpl) => {
 
 .ec-input--textarea {
   resize: vertical;
-  min-height: 80px;
-  line-height: 1.5;
+  min-height: 100px;
+  line-height: 1.6;
+  border-radius: var(--ds-radius-xl);
 }
 
-.ec-field__footer {
+.ec-input--select {
+  cursor: pointer;
+}
+
+.ec-class-select {
   display: flex;
-  justify-content: flex-end;
-}
-
-.ec-field__hint {
-  font-size: 0.7rem;
-  color: var(--ds-text-muted);
-}
-
-.ec-field__hint--error {
-  color: var(--ds-danger);
-}
-
-/* Templates */
-.ec-field__label {
-  margin-bottom: 0.25rem;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .ec-templates {
@@ -336,9 +377,5 @@ const applyTemplate = (tpl) => {
 
 .dark .ec-template-btn:hover {
   background: rgba(79, 70, 229, 0.15);
-}
-
-.ec-template-btn__icon {
-  font-size: 1rem;
 }
 </style>

@@ -1,188 +1,380 @@
 <template>
-  <div
-    :class="isDark ? 'dark' : 'light'"
-    class="flex h-full min-h-0 flex-1 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
-  >
-    <div class="layout-container flex min-h-0 flex-1 grow flex-col">
-      <TeacherTopHeader active-section="review" />
+  <div class="bg-[var(--ds-bg)] min-h-full">
+    <div class="mx-auto max-w-5xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
-      <main class="teacher-stitch-main teacher-page-shell relative mx-auto w-full max-w-none min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4 sm:py-5 lg:px-5">
-
-        <header class="relative mb-8 w-full max-w-screen-2xl animate-fade-up">
-          <p class="portal-kicker mb-2">
-            <RouterLink to="/teacher/dashboard" class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400">Trang chủ</RouterLink>
-            <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-            <RouterLink class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400" to="/teacher/exams">Đề thi</RouterLink>
-            <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-            <span class="font-semibold text-[var(--role-primary)]">Báo cáo thí sinh</span>
-          </p>
-
-          <h1 class="stitch-font-headline text-3xl font-bold tracking-tight text-amber-900 dark:text-amber-100 md:text-5xl">
-            {{ studentName }} — Chi tiết báo cáo
-          </h1>
-          <p class="mt-0.5 truncate text-xs text-[var(--role-on-surface-variant)] dark:text-slate-400">{{ examTitle }} · {{ studentId }}</p>
-        </header>
-
-        <div class="mb-8 grid grid-cols-1 gap-4 animate-fade-up-delay sm:grid-cols-3">
-          <div class="stitch-stat-bento">
-            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Điểm</p>
-            <p class="stitch-font-headline mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ score }}</p>
-          </div>
-          <div class="stitch-stat-bento">
-            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Độ chính xác</p>
-            <p class="stitch-font-headline mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ accuracy }}</p>
-          </div>
-          <div class="stitch-stat-bento">
-            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Thời gian làm bài</p>
-            <p class="stitch-font-headline mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">{{ timeSpent }}</p>
-          </div>
+      <!-- Breadcrumb -->
+      <div class="mb-4 ds-animate-fade-up">
+        <div class="flex items-center gap-2 text-sm" style="color: var(--ds-text-muted)">
+          <RouterLink
+            class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
+            style="color: var(--ds-text-muted)"
+            to="/teacher/exams"
+          >
+            <LucideIcon name="assignment" size="16" />
+            Đề thi
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <RouterLink
+            class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
+            style="color: var(--ds-text-muted)"
+            :to="{ path: '/teacher/exams/review/summary', query: { examId, title: examTitle } }"
+          >
+            Tổng quan điểm
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <span class="font-medium" style="color: var(--ds-text)">Chi tiết sinh viên</span>
         </div>
+      </div>
 
-        <div class="stitch-ambient-shadow overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white shadow-sm animate-fade-up-delay dark:bg-slate-900">
-          <div class="border-b border-[color:rgba(219,194,176,0.4)] px-4 py-3 dark:border-slate-800">
-            <h2 class="text-sm font-bold md:text-base">Câu trả lời</h2>
+      <!-- Page Header -->
+      <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.05s">
+        <PageHeader
+          :eyebrow="'Báo cáo chi tiết'"
+          :title="examTitle"
+          :subtitle="'Xem chi tiết kết quả làm bài của sinh viên'"
+        >
+          <template #actions>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5"
+              style="background-color: var(--ds-surface); color: var(--ds-text); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)"
+              @click="goBack"
+            >
+              <LucideIcon name="arrow_back" size="18" />
+              <span>Quay lại</span>
+            </button>
+          </template>
+        </PageHeader>
+      </div>
+
+      <!-- Student Info Header -->
+      <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.1s">
+        <DsCard padding="lg">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-4">
+              <div
+                class="flex size-14 items-center justify-center rounded-full text-xl font-bold"
+                style="background-color: var(--ds-primary); color: white"
+              >
+                {{ studentInitials }}
+              </div>
+              <div>
+                <h2 class="text-xl font-bold" style="color: var(--ds-text)">{{ studentInfo.name }}</h2>
+                <p class="text-sm" style="color: var(--ds-text-muted)">Mã sinh viên: {{ studentInfo.studentId }}</p>
+                <p class="text-xs" style="color: var(--ds-text-secondary)">{{ studentInfo.email }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <StatusChip :status="studentInfo.statusKey" :label="studentInfo.status" />
+            </div>
           </div>
-          <p v-if="isLoading" class="p-6 text-sm text-slate-500">Đang tải…</p>
-          <p v-else-if="!answerRows.length" class="p-6 text-sm text-slate-500">Không có dữ liệu.</p>
-          <div v-else class="teacher-stitch-table-scroll">
-            <table class="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr class="teacher-stitch-table-head border-b border-[color:rgba(219,194,176,0.15)] dark:border-slate-800">
-                  <th class="w-12 px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">#</th>
-                  <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Kết quả</th>
-                  <th class="min-w-[12rem] px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Câu hỏi</th>
-                  <th class="min-w-[8rem] px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Trả lời</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[color:rgba(219,194,176,0.12)] dark:divide-slate-800">
-                <tr
-                  v-for="item in answerRows"
-                  :key="item.questionId"
-                  :class="item.correct ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-rose-50/50 dark:bg-rose-950/15'"
-                  class="align-top"
-                >
-                  <td class="px-3 py-3 font-mono text-xs text-slate-500">{{ item.index }}</td>
-                  <td class="px-3 py-3">
-                    <span
-                      :class="item.correct
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                        : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'"
-                      class="inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase"
-                    >
-                      {{ item.correct ? 'Đúng' : 'Sai' }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-3 text-slate-800 dark:text-slate-200">
-                    <span class="line-clamp-3 break-words leading-snug">{{ item.question }}</span>
-                  </td>
-                  <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
-                    <span class="line-clamp-2 break-words text-xs leading-snug">{{ item.selectedAnswer || '—' }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        </DsCard>
+      </div>
+
+      <!-- Score Summary Cards -->
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ds-animate-fade-up" style="animation-delay: 0.15s">
+        <DsStatCard
+          :label="'Điểm tổng'"
+          :value="scoreSummary.totalScore"
+          :sub-value="'/ 10'"
+          :icon="'grade'"
+          :badge="'Điểm'"
+          :badge-variant="scoreSummary.badgeVariant"
+        />
+        <DsStatCard
+          :label="'Độ chính xác'"
+          :value="scoreSummary.accuracy"
+          :sub-value="'%'"
+          :icon="'verified'"
+          :sub="scoreSummary.accuracyNote"
+        />
+        <DsStatCard
+          :label="'Thời gian làm bài'"
+          :value="scoreSummary.timeSpent"
+          :icon="'timer'"
+          :sub="'Tối đa: ' + scoreSummary.maxTime"
+        />
+        <DsStatCard
+          :label="'Xếp hạng'"
+          :value="scoreSummary.rank"
+          :sub-value="'trên ' + scoreSummary.totalStudents"
+          :icon="'leaderboard'"
+          :sub="'Lớp ' + scoreSummary.className"
+        />
+      </div>
+
+      <!-- Questions Review Table -->
+      <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.2s">
+        <DsCard padding="none">
+          <template #header>
+            <div class="flex items-center justify-between px-5 pt-5">
+              <div class="flex items-center gap-2">
+                <LucideIcon name="quiz" />
+                <h3 class="text-lg font-bold" style="color: var(--ds-text)">Chi tiết câu hỏi</h3>
+              </div>
+              <div class="flex items-center gap-4 text-sm">
+                <span class="flex items-center gap-1.5">
+                  <span class="size-2 rounded-full" style="background-color: var(--ds-success)"></span>
+                  <span style="color: var(--ds-text-muted)">Đúng</span>
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="size-2 rounded-full" style="background-color: var(--ds-danger)"></span>
+                  <span style="color: var(--ds-text-muted)">Sai</span>
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="size-2 rounded-full" style="background-color: var(--ds-warning)"></span>
+                  <span style="color: var(--ds-text-muted)">Bỏ qua</span>
+                </span>
+              </div>
+            </div>
+          </template>
+          <DataTable
+            :columns="questionColumns"
+            :data="questionsData"
+            :row-key="'id'"
+          >
+            <template #cell-status="{ row }">
+              <span
+                class="inline-flex items-center justify-center size-7 rounded-full text-xs font-bold"
+                :style="{
+                  backgroundColor: getStatusBg(row.status),
+                  color: getStatusColor(row.status)
+                }"
+              >
+                <LucideIcon :name="getStatusIcon(row.status)" size="14" />
+              </span>
+            </template>
+            <template #cell-selectedAnswer="{ row }">
+              <span v-if="row.selectedAnswer" class="text-sm" style="color: var(--ds-text)">
+                {{ row.selectedAnswer }}
+              </span>
+              <span v-else class="text-sm italic" style="color: var(--ds-text-muted)">Không chọn</span>
+            </template>
+            <template #cell-correctAnswer="{ row }">
+              <span class="text-sm font-semibold" style="color: var(--ds-success)">
+                {{ row.correctAnswer }}
+              </span>
+            </template>
+          </DataTable>
+        </DsCard>
+      </div>
+
+      <!-- Answer Distribution Chart (optional) -->
+      <div class="ds-animate-fade-up" style="animation-delay: 0.25s">
+        <DsCard padding="lg">
+          <template #header>
+            <div class="flex items-center gap-2">
+              <LucideIcon name="pie_chart" />
+              <h3 class="text-lg font-bold" style="color: var(--ds-text)">Phân bố câu trả lời</h3>
+            </div>
+          </template>
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div
+              class="rounded-lg p-4"
+              style="background-color: var(--ds-success-bg); border: 1px solid rgba(22, 163, 74, 0.2)"
+            >
+              <p class="text-3xl font-extrabold" style="color: var(--ds-success)">{{ answerStats.correct }}</p>
+              <p class="text-sm font-medium" style="color: var(--ds-success)">Câu đúng</p>
+            </div>
+            <div
+              class="rounded-lg p-4"
+              style="background-color: var(--ds-danger-bg); border: 1px solid rgba(220, 38, 38, 0.2)"
+            >
+              <p class="text-3xl font-extrabold" style="color: var(--ds-danger)">{{ answerStats.wrong }}</p>
+              <p class="text-sm font-medium" style="color: var(--ds-danger)">Câu sai</p>
+            </div>
+            <div
+              class="rounded-lg p-4"
+              style="background-color: var(--ds-warning-bg); border: 1px solid rgba(245, 158, 11, 0.2)"
+            >
+              <p class="text-3xl font-extrabold" style="color: var(--ds-warning)">{{ answerStats.skipped }}</p>
+              <p class="text-sm font-medium" style="color: var(--ds-warning)">Bỏ qua</p>
+            </div>
           </div>
-        </div>
-      </main>
+        </DsCard>
+      </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
-import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { useToast } from '../../composables/useToast'
-import TeacherTopHeader from './TeacherTopHeader.vue'
+import { computed, ref } from 'vue'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
+import PageHeader from '../ui/PageHeader.vue'
+import DsCard from '../ui/DsCard.vue'
+import DsStatCard from '../ui/DsStatCard.vue'
+import DataTable from '../ui/DataTable.vue'
+import StatusChip from '../ui/StatusChip.vue'
 
-const route = useRoute()
 const router = useRouter()
-const isDark = ref(false)
-const isLoading = ref(false)
-const detail = ref(null)
-const report = ref(null)
-const toast = useToast()
+const route = useRoute()
 
-const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
-const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
-const examTitle = computed(() => detail.value?.examTitle || route.query.title || 'Đề thi đã chọn')
-const studentName = computed(() => report.value?.student || detail.value?.student || 'Sinh viên')
-const studentId = computed(() => attemptId.value ? `AT-${attemptId.value}` : 'N/A')
+const examId = computed(() => route.query.examId || '')
+const examTitle = computed(() => route.query.title || 'Đề thi')
 
-const score = computed(() => {
-  const scoreValue = Number(report.value?.score ?? detail.value?.score)
-  if (Number.isNaN(scoreValue)) return 'Không có'
-  return `${(scoreValue / 10).toFixed(1)} / 10`
+// Mock student data
+const studentInfo = computed(() => ({
+  name: 'Trần Minh Đức',
+  studentId: 'SV2024001',
+  email: 'tranminhduc@student.edu.vn',
+  status: 'Hoàn thành',
+  statusKey: 'active'
+}))
+
+const studentInitials = computed(() => {
+  const parts = studentInfo.value.name.split(' ')
+  return parts[parts.length - 1].charAt(0) + parts[0].charAt(0)
 })
 
-const accuracy = computed(() => {
-  const correctCount = Number(report.value?.correctCount ?? 0)
-  const answeredCount = Number(report.value?.answeredCount ?? detail.value?.answeredCount ?? 0)
-  if (!answeredCount) return '-'
-  const percent = (correctCount / answeredCount) * 100
-  return `${percent.toFixed(0)}%`
+const scoreSummary = computed(() => {
+  const totalScore = 8.5
+  const badgeVariant = totalScore >= 8 ? 'success' : totalScore >= 5 ? 'warning' : 'danger'
+  return {
+    totalScore: totalScore.toFixed(1),
+    badgeVariant,
+    accuracy: '85',
+    accuracyNote: '17/20 câu',
+    timeSpent: '15 phút',
+    maxTime: '30 phút',
+    rank: '3',
+    totalStudents: '45',
+    className: '22IT1'
+  }
 })
 
-const timeSpent = computed(() => {
-  const startedAt = detail.value?.startedAt || report.value?.startedAt
-  const submittedAt = detail.value?.submittedAt || report.value?.submittedAt
-  if (!startedAt || !submittedAt) return '-'
+const answerStats = computed(() => ({
+  correct: 17,
+  wrong: 2,
+  skipped: 1
+}))
 
-  const diffMs = new Date(String(submittedAt)).getTime() - new Date(String(startedAt)).getTime()
-  if (Number.isNaN(diffMs) || diffMs < 0) return '-'
+const questionColumns = [
+  { key: 'number', label: '#', width: '60px', align: 'center' },
+  { key: 'content', label: 'Câu hỏi' },
+  { key: 'selectedAnswer', label: 'Câu trả lời của bạn' },
+  { key: 'correctAnswer', label: 'Đáp án đúng' },
+  { key: 'status', label: 'Kết quả', width: '80px', align: 'center' }
+]
 
-  const totalMinutes = Math.floor(diffMs / 60000)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-})
+const questionsData = computed(() => [
+  {
+    id: 1,
+    number: 1,
+    content: 'Giải phương trình: x² - 5x + 6 = 0',
+    selectedAnswer: 'A. x = 2 hoặc x = 3',
+    correctAnswer: 'A. x = 2 hoặc x = 3',
+    status: 'correct'
+  },
+  {
+    id: 2,
+    number: 2,
+    content: 'Đạo hàm của f(x) = x³ + 2x là?',
+    selectedAnswer: 'B. 3x² + 2',
+    correctAnswer: 'B. 3x² + 2',
+    status: 'correct'
+  },
+  {
+    id: 3,
+    number: 3,
+    content: 'Tích phân ∫x dx = ?',
+    selectedAnswer: 'D. x²/2 + C',
+    correctAnswer: 'C. x²/2',
+    status: 'wrong'
+  },
+  {
+    id: 4,
+    number: 4,
+    content: 'Giới hạn lim(x→0) sin(x)/x = ?',
+    selectedAnswer: 'A. 1',
+    correctAnswer: 'A. 1',
+    status: 'correct'
+  },
+  {
+    id: 5,
+    number: 5,
+    content: 'Ma trận đơn vị cấp 3 có dạng?',
+    selectedAnswer: 'B. Ma trận có đường chéo chính bằng 1',
+    correctAnswer: 'B. Ma trận có đường chéo chính bằng 1',
+    status: 'correct'
+  },
+  {
+    id: 6,
+    number: 6,
+    content: 'Số phức liên hợp của z = 3 + 4i là?',
+    selectedAnswer: 'Không chọn',
+    correctAnswer: 'C. 3 - 4i',
+    status: 'skipped'
+  },
+  {
+    id: 7,
+    number: 7,
+    content: 'Diện tích hình tròn bán kính r là?',
+    selectedAnswer: 'B. πr²',
+    correctAnswer: 'B. πr²',
+    status: 'correct'
+  },
+  {
+    id: 8,
+    number: 8,
+    content: 'Nghiệm của phương trình 2ˣ = 8 là?',
+    selectedAnswer: 'C. x = 3',
+    correctAnswer: 'C. x = 3',
+    status: 'correct'
+  },
+  {
+    id: 9,
+    number: 9,
+    content: 'Vector (1, 2, 3) có độ dài là?',
+    selectedAnswer: 'A. √14',
+    correctAnswer: 'B. √12',
+    status: 'wrong'
+  },
+  {
+    id: 10,
+    number: 10,
+    content: 'Hàm số f(x) = eˣ có đạo hàm là?',
+    selectedAnswer: 'C. eˣ',
+    correctAnswer: 'C. eˣ',
+    status: 'correct'
+  }
+])
 
-const answerRows = computed(() => (report.value?.answers || []).map((answer, index) => ({
-  index: index + 1,
-  questionId: answer.questionId,
-  question: answer.question || 'Câu hỏi',
-  selectedAnswer: answer.selectedAnswer,
-  correct: Boolean(answer.correct)
-})))
+const getStatusBg = (status) => {
+  const bgs = {
+    correct: 'var(--ds-success-bg)',
+    wrong: 'var(--ds-danger-bg)',
+    skipped: 'var(--ds-warning-bg)'
+  }
+  return bgs[status] || 'var(--ds-gray-100)'
+}
+
+const getStatusColor = (status) => {
+  const colors = {
+    correct: 'var(--ds-success)',
+    wrong: 'var(--ds-danger)',
+    skipped: 'var(--ds-warning)'
+  }
+  return colors[status] || 'var(--ds-text-muted)'
+}
+
+const getStatusIcon = (status) => {
+  const icons = {
+    correct: 'check',
+    wrong: 'close',
+    skipped: 'remove'
+  }
+  return icons[status] || 'help'
+}
 
 const goBack = () => {
-  router.push({
-    path: '/teacher/exams/review/summary',
-    query: {
-      examId: examId.value,
-      title: examTitle.value
-    }
-  })
+  router.back()
 }
-
-const loadAttemptData = async () => {
-  if (!attemptId.value) {
-    toast.error('Thiếu mã lượt làm bài. Vui lòng mở trang này từ tổng quan điểm.')
-    return
-  }
-
-  isLoading.value = true
-  try {
-    const [detailPayload, reportPayload] = await Promise.all([
-      getAttemptDetail(attemptId.value),
-      getAttemptReport(attemptId.value)
-    ])
-    detail.value = detailPayload
-    report.value = reportPayload
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : 'Không thể tải chi tiết báo cáo sinh viên.')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-onMounted(loadAttemptData)
 </script>
 
 <style scoped>
-.font-display {
-  font-family: 'Inter', sans-serif;
+.ds-animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
 }
 
 @keyframes fadeUp {
@@ -194,41 +386,5 @@ onMounted(loadAttemptData)
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
-  }
-}
-
-@keyframes floatDelay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 12px, 0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
-
-.animate-fade-up-delay {
-  animation: fadeUp 0.65s ease-out;
-}
-
-.animate-float-slow {
-  animation: floatSlow 7s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: floatDelay 8s ease-in-out infinite;
 }
 </style>

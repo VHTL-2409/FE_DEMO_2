@@ -61,7 +61,7 @@
               </div>
             </div>
           </template>
-          <div ref="performanceChartRef" class="h-72 w-full"></div>
+          <div ref="performanceChartRef" class="h-80 w-full"></div>
         </DsCard>
       </div>
 

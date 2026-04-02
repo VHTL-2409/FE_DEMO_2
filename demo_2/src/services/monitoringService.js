@@ -61,3 +61,21 @@ export const invalidateAttempt = async (attemptId, reason = '') => {
   })
   return unwrapApiData(payload)
 }
+
+export const fetchExamAnomalies = async (examId) => {
+  try {
+    const payload = await apiRequest(`/api/v1/ai/anomalies/exam/${examId}`)
+    return unwrapApiData(payload) || []
+  } catch {
+    return []
+  }
+}
+
+export const fetchStudentAnomalyHistory = async (attemptId) => {
+  try {
+    const payload = await apiRequest(`/api/v1/ai/anomalies/student/${attemptId}`)
+    return unwrapApiData(payload) || []
+  } catch {
+    return []
+  }
+}

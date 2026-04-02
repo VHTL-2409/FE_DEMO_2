@@ -79,7 +79,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { fetchAdminDashboardStats } from '../../services/adminService'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 
 const quickLinks = [
   { to: '/admin/students', label: 'Học sinh', hint: 'Tìm, xem chi tiết, xóa tài khoản', icon: 'school' },

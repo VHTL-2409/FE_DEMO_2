@@ -1,469 +1,578 @@
 <template>
-  <div class="portal-viewport landing-page font-display text-slate-900">
-    <div class="flex min-h-0 flex-1 flex-col overflow-x-hidden">
-      <header
-        class="landing-nav-amber sticky top-0 z-50 border-b border-amber-200/25 bg-[#faf9f5]/85 px-4 py-3 backdrop-blur-xl sm:px-8 dark:border-amber-900/30 dark:bg-slate-950/85"
-      >
-        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <RouterLink to="/" class="flex min-w-0 items-center gap-3 text-amber-900 transition-opacity hover:opacity-90 dark:text-amber-100">
-            <div
-              class="flex size-11 items-center justify-center rounded-[1.1rem] bg-[linear-gradient(135deg,#8d4b00_0%,#b15f00_100%)] text-sm font-black text-white shadow-[0_18px_30px_-18px_rgba(141,75,0,0.4)]"
-            >
-              E
-            </div>
-            <div class="min-w-0">
-              <div class="truncate text-[1.08rem] font-black leading-tight tracking-[-0.02em] sm:text-[1.12rem]">EduExam Platform</div>
-              <div class="hidden text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500 md:block">
-                Thi trực tuyến, giám sát tập trung, vận hành rõ ràng
-              </div>
-            </div>
+  <div class="landing-root cosmos-aurora-bg cosmos-hex-pattern">
+    <!-- Starfield canvas -->
+    <canvas ref="starfieldCanvas" class="starfield-canvas" aria-hidden="true" />
+
+    <!-- Floating Aurora Orbs -->
+    <div class="cosmos-orb cosmos-orb--1" aria-hidden="true" />
+    <div class="cosmos-orb cosmos-orb--2" aria-hidden="true" />
+    <div class="cosmos-orb cosmos-orb--3" aria-hidden="true" />
+    <div class="cosmos-orb cosmos-orb--rose" aria-hidden="true" />
+
+    <!-- Navigation -->
+    <nav class="cosmos-nav--floating cosmos-reveal" style="z-index: 100;">
+      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <RouterLink to="/" class="cosmos-nav__brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="url(#brandGrad)" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="12" r="4" fill="url(#brandGrad)"/>
+              <circle cx="12" cy="12" r="7" stroke="url(#brandGrad)" stroke-width="0.5" fill="none" stroke-dasharray="2 2"/>
+              <defs>
+                <linearGradient id="brandGrad" x1="0" y1="0" x2="24" y2="24">
+                  <stop offset="0%" stop-color="#06b6d4"/>
+                  <stop offset="50%" stop-color="#d946ef"/>
+                  <stop offset="100%" stop-color="#f59e0b"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span class="brand-name">EduExam <span class="cosmos-text-prismatic">Cosmos</span></span>
+        </RouterLink>
+        <div class="flex gap-3 items-center">
+          <RouterLink to="/login" class="cosmos-btn cosmos-btn--ghost cosmos-btn--sm">Đăng nhập</RouterLink>
+          <RouterLink to="/register" class="cosmos-btn cosmos-btn--primary cosmos-btn--sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Bắt đầu
           </RouterLink>
+        </div>
+      </div>
+    </nav>
 
-          <nav
-            class="hidden items-center gap-1 rounded-full border border-amber-200/40 bg-white/80 px-1.5 py-1 text-[0.88rem] font-semibold text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-300 md:flex"
-          >
-            <a
-              v-for="link in navLinks"
-              :key="link.href"
-              :href="link.href"
-              class="rounded-full px-3 py-1.5 whitespace-nowrap transition-colors hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-slate-700 dark:hover:text-amber-100"
-            >
-              {{ link.label }}
-            </a>
-            <RouterLink
-              class="rounded-full px-3 py-1.5 transition-colors hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-slate-700 dark:hover:text-amber-100"
-              to="/help-center"
-            >
-              Trợ giúp
-            </RouterLink>
-          </nav>
+    <!-- Hero Section -->
+    <section class="hero-section relative overflow-hidden">
+      <div class="max-w-6xl mx-auto px-6 pt-36 pb-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+        <!-- Left: Text -->
+        <div class="flex-1 text-center lg:text-left">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 cosmos-reveal cosmos-glass--teal" style="border: 1px solid var(--cosmos-teal-border);">
+            <span class="w-2 h-2 rounded-full cosmos-pulse" style="background: var(--cosmos-teal);" />
+            <span class="text-xs font-bold uppercase tracking-widest" style="color: var(--cosmos-teal);">
+              Nền tảng thi thông minh 2026
+            </span>
+          </div>
 
-          <div class="flex items-center gap-2 sm:gap-3">
-            <RouterLink to="/login" class="landing-btn landing-btn-secondary landing-btn-header-secondary">
-              Đăng nhập
+          <h1 class="text-5xl lg:text-7xl font-black leading-[1.05] mb-6 cosmos-heading-display cosmos-reveal" style="animation-delay: 100ms;">
+            Thi trắc nghiệm<br />
+            <span class="cosmos-text-prismatic">vũ trụ số</span><br />
+            thông minh hơn
+          </h1>
+
+          <p class="text-lg mb-10 max-w-lg mx-auto lg:mx-0 leading-relaxed cosmos-reveal" style="animation-delay: 200ms; color: var(--cosmos-text-secondary);">
+            EduExam Cosmos mang đến trải nghiệm thi trắc nghiệm với AI, giám sát realtime và phân tích chấm đẹp. Từ tạo đề đến kết quả — một luồng liên tục.
+          </p>
+
+          <div class="flex flex-wrap gap-4 justify-center lg:justify-start cosmos-reveal" style="animation-delay: 300ms;">
+            <RouterLink to="/login" class="cosmos-btn cosmos-btn--primary cosmos-btn--lg cosmos-btn--prismatic">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
+              Khám phá ngay
             </RouterLink>
-            <RouterLink :to="primaryCta.to" class="landing-btn landing-btn-primary">{{ primaryCta.label }}</RouterLink>
+            <RouterLink to="/register" class="cosmos-btn cosmos-btn--outline cosmos-btn--lg">
+              Tìm hiểu thêm
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </RouterLink>
           </div>
         </div>
-      </header>
 
-      <main class="portal-main-scroll portal-scrollbar min-h-0 flex-1">
-        <section id="overview" class="px-4 pb-12 pt-10 sm:px-8 lg:px-12 lg:pb-16 lg:pt-14">
-          <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12">
-            <div>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="badge in heroBadges" :key="badge" class="landing-chip">{{ badge }}</span>
-              </div>
-
-              <h1 class="landing-headline-serif mt-6 max-w-4xl text-[#1b1c1a] dark:text-slate-100">
-                Thi trực tuyến
-                <span class="landing-accent-text">gọn, rõ</span>
-                và dễ kiểm soát.
-              </h1>
-
-              <p class="portal-subtitle mt-5 max-w-xl text-[#554336] dark:text-slate-300">
-                Một nơi để tạo đề, giám sát kỳ thi, import câu hỏi và xem kết quả mà không phải chuyển qua nhiều màn hình rời rạc.
-              </p>
-
-              <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <RouterLink to="/help-center" class="landing-btn landing-btn-secondary max-w-fit">
-                  Xem hướng dẫn
-                </RouterLink>
-                <p v-if="!authStore.isAuthenticated" class="text-sm text-slate-600">
-                  <span class="text-slate-500">Chưa có tài khoản?</span>
-                  <RouterLink to="/register" class="ml-1.5 font-bold text-amber-800 underline-offset-4 hover:underline dark:text-amber-300">
-                    Đăng ký
-                  </RouterLink>
-                  <span class="mx-1.5 text-slate-300">·</span>
-                  <RouterLink to="/login" class="font-semibold text-slate-700 underline-offset-4 hover:underline">
-                    Đăng nhập
-                  </RouterLink>
-                </p>
-                <RouterLink
-                  v-else
-                  :to="primaryCta.to"
-                  class="text-sm font-semibold text-amber-800 underline-offset-4 hover:underline dark:text-amber-300"
-                >
-                  → {{ primaryCta.label }}
-                </RouterLink>
-              </div>
-
-              <div class="mt-8 grid gap-3 sm:grid-cols-3">
-                <div v-for="stat in heroStats" :key="stat.label" class="landing-stat-card landing-surface-card rounded-2xl px-4 py-3.5">
-                  <div class="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-[#8d4b00] dark:text-amber-300/90">
-                    {{ stat.value }}
-                  </div>
-                  <div class="mt-1 text-[0.9rem] font-semibold leading-snug text-[#554336] dark:text-slate-300">
-                    {{ stat.label }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="relative mx-auto w-full max-w-lg lg:max-w-none">
-              <div
-                class="aspect-[4/5] overflow-hidden rounded-[2rem] shadow-2xl shadow-amber-900/10 transition-transform duration-700 ease-out hover:rotate-0 lg:rotate-2"
-              >
-                <img
-                  src="/images/hero-academic-amber.svg"
-                  width="800"
-                  height="1000"
-                  class="h-full w-full object-cover"
-                  alt="Minh họa không gian học thuật tông nâu cam"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-              <div
-                class="absolute -bottom-6 left-0 max-w-xs rounded-xl border border-[#dbc2b0]/30 bg-white/95 p-6 shadow-lg backdrop-blur-sm dark:border-slate-600 dark:bg-slate-900/95 sm:-left-6"
-              >
-                <span class="material-symbols-outlined mb-3 text-4xl text-[#8d4b00]" style="font-variation-settings: 'FILL' 1">verified</span>
-                <h4 class="font-semibold text-lg text-[#1b1c1a] dark:text-slate-100">Chất lượng thẩm định</h4>
-                <p class="mt-2 text-sm leading-relaxed text-[#554336] dark:text-slate-400">
-                  Luồng thi và lưu trữ dữ liệu rõ ràng cho đơn vị đào tạo.
-                </p>
-              </div>
+        <!-- Right: Prismatic Dashboard Preview -->
+        <div class="flex-1 hidden lg:block relative w-full max-w-lg" style="height: 520px;">
+          <!-- Floating prism decoration -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="prism-decoration" aria-hidden="true">
+              <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="100,10 190,160 10,160" stroke="url(#prismGrad)" stroke-width="1" fill="none" opacity="0.3"/>
+                <polygon points="100,30 175,155 25,155" stroke="url(#prismGrad)" stroke-width="0.5" fill="none" opacity="0.2"/>
+                <defs>
+                  <linearGradient id="prismGrad" x1="0" y1="0" x2="200" y2="200">
+                    <stop offset="0%" stop-color="#06b6d4"/>
+                    <stop offset="50%" stop-color="#d946ef"/>
+                    <stop offset="100%" stop-color="#f59e0b"/>
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
           </div>
 
-          <div class="mx-auto mt-12 max-w-7xl md:mt-14">
-            <div class="mb-4 text-center md:text-left">
-              <div class="portal-kicker">Tính năng</div>
-              <h2 class="mt-2 text-xl font-black tracking-[-0.03em] text-slate-950 sm:text-2xl">
-                Một luồng cho giảng viên, học sinh và quản trị
-              </h2>
-            </div>
-            <div class="grid gap-4 sm:grid-cols-3">
-              <article
-                v-for="feat in featureHighlights"
-                :key="feat.title"
-                class="landing-surface-card flex flex-col rounded-2xl p-5 text-left"
-              >
-                <span
-                  class="material-symbols-outlined mb-3 text-3xl text-[#8d4b00] dark:text-amber-300"
-                  aria-hidden="true"
-                  >{{ feat.icon }}</span
-                >
-                <h3 class="text-base font-black text-slate-950 dark:text-slate-100">{{ feat.title }}</h3>
-                <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  {{ feat.text }}
-                </p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section id="experience" class="px-4 py-10 sm:px-8 lg:px-12 lg:py-14">
-          <div class="mx-auto max-w-7xl">
-            <div class="max-w-3xl">
-              <div class="portal-kicker">3 góc nhìn chính</div>
-              <h2 class="mt-3 text-[clamp(1.9rem,3.2vw,2.85rem)] font-black leading-[1.04] tracking-[-0.04em] text-slate-950">
-                Ít mô tả hơn, nhìn vào là hiểu luồng sản phẩm.
-              </h2>
-            </div>
-
-            <div class="mt-8 grid gap-4 xl:grid-cols-3">
-              <article v-for="card in visualCards" :key="card.title" class="landing-surface-card rounded-2xl p-5">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="text-[1.02rem] font-black tracking-[-0.03em] text-slate-950">{{ card.title }}</div>
-                  <div class="shrink-0 text-[0.72rem] font-bold uppercase tracking-[0.14em]" :class="card.tagTone">
-                    {{ card.tag }}
-                  </div>
-                </div>
-                <p class="mt-2 text-[0.86rem] leading-6 text-slate-600 dark:text-slate-400">{{ card.copy }}</p>
-                <ul class="mt-4 space-y-2 border-t border-slate-200/80 pt-4 dark:border-slate-600/80">
-                  <li
-                    v-for="(line, idx) in card.bullets"
-                    :key="idx"
-                    class="flex gap-2 text-[0.84rem] leading-relaxed text-slate-600 dark:text-slate-400"
-                  >
-                    <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#b15f00]/70 dark:bg-amber-400/80" aria-hidden="true" />
-                    <span>{{ line }}</span>
-                  </li>
-                </ul>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="px-4 py-12 sm:px-8 lg:px-12 lg:py-16">
-          <div class="landing-cta-panel relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] px-6 py-8 text-white sm:px-10 sm:py-10">
-            <div class="landing-cta-panel__bg pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
-            <div class="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <!-- Card 1: AI Create -->
+          <div class="cosmos-glow-card absolute top-0 right-0 w-72 p-5 cosmos-scale" style="animation-delay: 0.3s">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: var(--cosmos-teal-soft)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
               <div>
-                <div class="text-[0.78rem] font-bold uppercase tracking-[0.18em] text-amber-100/95">Sẵn sàng bắt đầu?</div>
-                <h2 class="mt-3 text-[clamp(1.95rem,3vw,3rem)] font-black leading-[1.04] tracking-[-0.04em]">
-                  Dùng EduExam để vận hành kỳ thi online gọn hơn, rõ hơn và nhẹ đầu hơn.
-                </h2>
-                <p class="mt-4 max-w-2xl text-[0.95rem] leading-7 text-slate-300">
-                  Từ tạo đề, import file, làm bài đến giám sát và hậu kiểm, mọi bước đều nằm trong một luồng đồng nhất.
-                </p>
+                <p class="font-bold text-sm" style="color: var(--cosmos-text)">Tạo đề với AI</p>
+                <p class="text-xs" style="color: var(--cosmos-text-muted)">Nhanh chóng</p>
               </div>
+            </div>
+            <div class="h-2 rounded-full overflow-hidden cosmos-progress mb-2">
+              <div class="cosmos-progress__bar" style="width: 78%; animation: cosmosShimmer 2s infinite;" />
+            </div>
+            <p class="text-xs" style="color: var(--cosmos-text-muted);">Đang sinh câu hỏi...</p>
+          </div>
 
-              <div class="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
-                <RouterLink to="/help-center" class="landing-btn landing-btn-secondary landing-btn-on-dark max-w-full sm:max-w-none">
-                  Mở trung tâm trợ giúp
-                </RouterLink>
-                <RouterLink
-                  v-if="!authStore.isAuthenticated"
-                  to="/login"
-                  class="text-center text-sm font-semibold text-white/90 underline-offset-4 hover:text-white hover:underline"
-                >
-                  Đã có tài khoản? Đăng nhập
-                </RouterLink>
-                <RouterLink
-                  v-else
-                  :to="primaryCta.to"
-                  class="landing-btn landing-btn-primary landing-btn-on-dark max-w-full sm:max-w-none"
-                >
-                  {{ primaryCta.label }}
-                </RouterLink>
+          <!-- Card 2: Live Monitoring -->
+          <div class="cosmos-glow-card absolute top-40 left-0 w-64 p-5 cosmos-scale" style="animation-delay: 0.5s">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center cosmos-ring is-live" style="background: var(--cosmos-rose-soft)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-rose)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div>
+                <p class="font-bold text-sm" style="color: var(--cosmos-text)">Giám sát realtime</p>
+                <p class="text-xs" style="color: var(--cosmos-text-muted)">24/7</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div class="cosmos-avatar cosmos-avatar--sm" style="border-color: var(--cosmos-teal-border);">T</div>
+                <div class="cosmos-avatar cosmos-avatar--sm" style="border-color: var(--cosmos-rose-border); background: var(--cosmos-rose-soft); color: var(--cosmos-rose);">H</div>
+                <div class="cosmos-avatar cosmos-avatar--sm" style="border-color: var(--cosmos-success-border); background: var(--cosmos-success-soft); color: var(--cosmos-success);">M</div>
+              </div>
+              <span class="text-xs font-medium" style="color: var(--cosmos-success);">+28 thí sinh online</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Results -->
+          <div class="cosmos-glow-card absolute bottom-8 right-4 w-72 p-5 cosmos-scale" style="animation-delay: 0.7s">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: var(--cosmos-success-soft)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <div>
+                <p class="font-bold text-sm" style="color: var(--cosmos-text)">Phân tích kết quả</p>
+                <p class="text-xs" style="color: var(--cosmos-text-muted)">Chi tiết</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-1 text-center py-2 rounded-lg" style="background: var(--cosmos-bg-3)">
+                <p class="text-lg font-black" style="color: var(--cosmos-teal); font-family: var(--cosmos-font-mono);">94%</p>
+                <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--cosmos-text-muted);">Đạt</p>
+              </div>
+              <div class="flex-1 text-center py-2 rounded-lg" style="background: var(--cosmos-bg-3)">
+                <p class="text-lg font-black" style="color: var(--cosmos-rose); font-family: var(--cosmos-font-mono);">156</p>
+                <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--cosmos-text-muted);">Thí sinh</p>
+              </div>
+              <div class="flex-1 text-center py-2 rounded-lg" style="background: var(--cosmos-bg-3)">
+                <p class="text-lg font-black" style="color: var(--cosmos-success); font-family: var(--cosmos-font-mono);">8.4</p>
+                <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--cosmos-text-muted);">Điểm TB</p>
               </div>
             </div>
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Counter Row -->
+    <section class="py-16 px-6" style="background: rgba(6, 11, 24, 0.5);">
+      <div class="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div
+          v-for="(stat, i) in stats"
+          :key="i"
+          class="cosmos-card p-6 text-center cosmos-reveal cosmos-lift"
+          :style="{ animationDelay: `${i * 80}ms` }"
+        >
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" :style="`background: ${stat.bg};`">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" :stroke="stat.color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ stat.iconPath }}</svg>
+          </div>
+          <p class="text-3xl font-black mb-1" :style="`color: var(--cosmos-text); font-family: var(--cosmos-font-mono);`">{{ stat.value }}</p>
+          <p class="text-sm font-semibold" style="color: var(--cosmos-text-muted);">{{ stat.label }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section - Bento Grid -->
+    <section class="py-24 px-6 cosmos-mesh">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-14 cosmos-reveal">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5 cosmos-glass--rose" style="border: 1px solid var(--cosmos-rose-border);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-rose)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span class="text-xs font-bold uppercase tracking-widest" style="color: var(--cosmos-rose);">Tính năng nổi bật</span>
+          </div>
+          <h2 class="text-4xl lg:text-5xl font-black leading-tight mb-4 cosmos-heading-display">
+            Mọi thứ bạn cần
+          </h2>
+          <p class="text-lg max-w-2xl mx-auto" style="color: var(--cosmos-text-secondary);">
+            Từ tạo đề đến chấm điểm — một hệ thống hoàn chỉnh, không thiếu sót.
+          </p>
+        </div>
+
+        <!-- Bento Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Large: AI Question Generation -->
+          <div class="md:col-span-2 cosmos-glow-card cosmos-spring p-8 cosmos-reveal cosmos-tilt">
+            <div class="flex items-start gap-4 mb-6">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--cosmos-teal-soft), var(--cosmos-rose-soft));">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold mb-2 cosmos-heading-display" style="color: var(--cosmos-text);">Sinh câu hỏi bằng AI</h3>
+                <p class="leading-relaxed" style="color: var(--cosmos-text-secondary);">Tạo ra câu hỏi tự động từ nội dung bài giảng. Hỗ trợ nhiều định dạng, tự luận, trắc nghiệm, và câu hỏi tình huống.</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="cosmos-card p-3 text-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <p class="text-xs font-bold" style="color: var(--cosmos-text);">100+ câu hỏi</p>
+              </div>
+              <div class="cosmos-card p-3 text-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-rose)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                <p class="text-xs font-bold" style="color: var(--cosmos-text);">AI thông minh</p>
+              </div>
+              <div class="cosmos-card p-3 text-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <p class="text-xs font-bold" style="color: var(--cosmos-text);">Chỉ 30 giây</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Small: Realtime Monitoring -->
+          <div class="cosmos-card cosmos-spring p-7 cosmos-reveal cosmos-tilt" style="animation-delay: 100ms;">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 cosmos-ring is-live" style="background: var(--cosmos-rose-soft);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-rose)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-3 cosmos-heading-display" style="color: var(--cosmos-text);">Giám sát realtime</h3>
+            <p class="leading-relaxed mb-4" style="color: var(--cosmos-text-secondary);">Theo dõi tiến độ làm bài, phát hiện hành vi bất thường và cảnh báo kịp thời.</p>
+            <span class="cosmos-badge cosmos-badge--success">
+              <span class="cosmos-badge__dot" />
+              Đang hoạt động
+            </span>
+          </div>
+
+          <!-- Small: Analytics -->
+          <div class="cosmos-card cosmos-spring p-7 cosmos-reveal cosmos-tilt" style="animation-delay: 150ms;">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style="background: var(--cosmos-success-soft);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-3 cosmos-heading-display" style="color: var(--cosmos-text);">Thống kê chi tiết</h3>
+            <p class="leading-relaxed mb-4" style="color: var(--cosmos-text-secondary);">Báo cáo kết quả thi, phân tích điểm số và xuất dữ liệu theo nhiều định dạng.</p>
+            <div class="flex -space-x-1">
+              <div class="w-6 h-6 rounded-full" style="background: var(--cosmos-teal);" />
+              <div class="w-6 h-6 rounded-full" style="background: var(--cosmos-rose);" />
+              <div class="w-6 h-6 rounded-full" style="background: var(--cosmos-success);" />
+            </div>
+          </div>
+
+          <!-- Small: Security -->
+          <div class="cosmos-card cosmos-spring p-7 cosmos-reveal cosmos-tilt" style="animation-delay: 200ms;">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style="background: var(--cosmos-warning-soft);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-3 cosmos-heading-display" style="color: var(--cosmos-text);">Bảo mật cao cấp</h3>
+            <p class="leading-relaxed mb-4" style="color: var(--cosmos-text-secondary);">Mã hóa dữ liệu, xác thực hai yếu tố và kiểm soát truy cập theo vai trò.</p>
+            <div class="flex gap-2">
+              <span class="cosmos-tag cosmos-tag--teal">AES-256</span>
+              <span class="cosmos-tag cosmos-tag--rose">2FA</span>
+            </div>
+          </div>
+
+          <!-- Small: Multi-platform -->
+          <div class="cosmos-card cosmos-spring p-7 cosmos-reveal cosmos-tilt" style="animation-delay: 250ms;">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style="background: rgba(59, 130, 246, 0.1);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-3 cosmos-heading-display" style="color: var(--cosmos-text);">Đa nền tảng</h3>
+            <p class="leading-relaxed mb-4" style="color: var(--cosmos-text-secondary);">Truy cập từ mọi thiết bị: máy tính, máy tính bảng và điện thoại thông minh.</p>
+            <div class="flex items-center gap-2 text-xs" style="color: var(--cosmos-text-muted);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Responsive 100%
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Role Cards Section -->
+    <section class="py-24 px-6" style="background: rgba(6, 11, 24, 0.5);">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-14 cosmos-reveal">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5 cosmos-glass--success" style="border: 1px solid var(--cosmos-success-border);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="text-xs font-bold uppercase tracking-widest" style="color: var(--cosmos-success);">3 vai trò chính</span>
+          </div>
+          <h2 class="text-4xl lg:text-5xl font-black leading-tight mb-4 cosmos-heading-display">
+            Phù hợp với mọi người
+          </h2>
+          <p class="text-lg max-w-2xl mx-auto" style="color: var(--cosmos-text-secondary);">
+            Học sinh, giáo viên và quản trị — mỗi người có không gian riêng.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div
+            v-for="(role, i) in roles"
+            :key="i"
+            class="cosmos-glow-card cosmos-lift p-8 text-center cosmos-reveal cosmos-tilt"
+            :style="{ animationDelay: `${(i + 1) * 120}ms` }"
+          >
+            <div class="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 cosmos-spring transition-all"
+              :style="`background: ${role.bg}; box-shadow: 0 0 40px ${role.color}33;`">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" :stroke="role.color" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" v-html="role.iconPath" />
+            </div>
+            <h3 class="text-2xl font-black mb-3 cosmos-heading-display" style="color: var(--cosmos-text);">{{ role.title }}</h3>
+            <p class="mb-7 leading-relaxed" style="color: var(--cosmos-text-secondary);">{{ role.desc }}</p>
+            <RouterLink
+              :to="role.ctaLink"
+              class="cosmos-btn cosmos-btn--primary cosmos-btn--md"
+            >
+              {{ role.ctaText }}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 px-6 cosmos-mesh">
+      <div class="max-w-4xl mx-auto">
+        <div class="cosmos-glow-card relative overflow-hidden p-14 lg:p-20 text-center cosmos-reveal">
+          <!-- Decorative orbs -->
+          <div class="cosmos-orb cosmos-orb--1 opacity-20" style="top: -120px; left: -100px; width: 350px; height: 350px;" />
+          <div class="cosmos-orb cosmos-orb--2 opacity-20" style="bottom: -100px; right: -80px; width: 300px; height: 300px;" />
+
+          <div class="relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 cosmos-glass--teal" style="border: 1px solid var(--cosmos-teal-border);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cosmos-teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 14 10 14 10 20 4 20 4 14"/><line x1="1" y1="10" x2="7" y2="10"/></svg>
+              <span class="text-xs font-bold uppercase tracking-widest" style="color: var(--cosmos-teal);">Sẵn sàng bắt đầu?</span>
+            </div>
+
+            <h2 class="text-4xl lg:text-5xl font-black leading-tight mb-6 cosmos-heading-display">
+              Tham gia cùng <span class="cosmos-text-prismatic">hàng nghìn</span> người dùng
+            </h2>
+
+            <p class="text-lg mb-10 max-w-2xl mx-auto leading-relaxed" style="color: var(--cosmos-text-secondary);">
+              Đăng ký ngay hôm nay và trải nghiệm nền tảng thi trực tuyến hiện đại nhất.
+            </p>
+
+            <RouterLink
+              v-if="!authStore.isAuthenticated"
+              to="/register"
+              class="cosmos-btn cosmos-btn--primary cosmos-btn--lg cosmos-btn--prismatic"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              Đăng ký miễn phí
+            </RouterLink>
+            <RouterLink
+              v-else
+              :to="primaryCta.to"
+              class="cosmos-btn cosmos-btn--primary cosmos-btn--lg"
+            >
+              {{ primaryCta.label }}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 px-6 border-t" style="background: rgba(3, 7, 18, 0.9); border-color: var(--cosmos-border);">
+      <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <RouterLink to="/" class="flex items-center gap-2">
+          <div class="brand-icon" style="width:1.75rem;height:1.75rem; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="url(#footerGrad)" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="12" r="4" fill="url(#footerGrad)"/>
+              <defs>
+                <linearGradient id="footerGrad" x1="0" y1="0" x2="24" y2="24">
+                  <stop offset="0%" stop-color="#06b6d4"/>
+                  <stop offset="100%" stop-color="#d946ef"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span class="font-black text-base" style="font-family: var(--cosmos-font-display); color: var(--cosmos-teal);">EduExam Cosmos</span>
+        </RouterLink>
+        <p class="text-sm" style="color: var(--cosmos-text-muted);">
+          2026 EduExam Cosmos Platform. Mọi quyền được bảo lưu.
+        </p>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
 authStore.syncFromStorage()
 
+const starfieldCanvas = ref(null)
+
 const primaryCta = computed(() => {
   if (authStore.isAuthenticated) {
-    return {
-      to: authStore.dashboardPath || '/select-role',
-      label: 'Vào bảng điều khiển'
-    }
+    return { to: authStore.dashboardPath || '/select-role', label: 'Vào bảng điều khiển' }
   }
-
-  return {
-    to: '/register',
-    label: 'Bắt đầu ngay'
-  }
+  return { to: '/register', label: 'Bắt đầu ngay' }
 })
 
-const navLinks = [
-  { label: 'Tổng quan', href: '#overview' },
-  { label: 'Trải nghiệm', href: '#experience' }
-]
-
-const heroBadges = [
-  'Online Exam Platform',
-  'Realtime Monitoring',
-  'Import Ready'
-]
-
-const heroStats = [
-  { value: 'Một luồng', label: 'Từ tạo đề đến kết quả, không nhảy màn rời rạc' },
-  { value: 'Theo dõi', label: 'Giám sát và cảnh báo gom về một dashboard' },
-  { value: 'Kiểm duyệt', label: 'Import có preview trước khi công bố' }
-]
-
-const featureHighlights = [
+const stats = [
   {
-    icon: 'school',
-    title: 'Giảng viên & giám thị',
-    text: 'Tạo kỳ thi, lịch, theo dõi tiến độ và xử lý cảnh báo trong cùng một không gian làm việc.'
+    iconPath: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    value: '10,000+', label: 'Học sinh',
+    bg: 'var(--cosmos-teal-soft)', color: 'var(--cosmos-teal)'
   },
   {
-    icon: 'edit_note',
+    iconPath: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+    value: '5,000+', label: 'Kỳ thi',
+    bg: 'var(--cosmos-rose-soft)', color: 'var(--cosmos-rose)'
+  },
+  {
+    iconPath: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    value: '200+', label: 'Lớp học',
+    bg: 'var(--cosmos-success-soft)', color: 'var(--cosmos-success)'
+  },
+  {
+    iconPath: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    value: '98%', label: 'Hài lòng',
+    bg: 'var(--cosmos-amber-soft)', color: 'var(--cosmos-amber)'
+  }
+]
+
+const roles = [
+  {
+    iconPath: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
     title: 'Học sinh',
-    text: 'Làm bài tập trung, đánh dấu câu, auto-save và xem lại trước khi nộp — ít nhiễu, dễ đọc.'
+    desc: 'Làm bài thi tập trung với giao diện thiên nhiên, theo dõi tiến độ và xem kết quả ngay.',
+    ctaLink: '/login',
+    ctaText: 'Làm bài thi',
+    bg: 'var(--cosmos-teal-soft)',
+    color: 'var(--cosmos-teal)'
   },
   {
-    icon: 'admin_panel_settings',
+    iconPath: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
+    title: 'Giáo viên',
+    desc: 'Tạo và quản lý kỳ thi, theo dõi giám sát, xem báo cáo chi tiết về kết quả thi.',
+    ctaLink: '/login',
+    ctaText: 'Tạo kỳ thi',
+    bg: 'var(--cosmos-rose-soft)',
+    color: 'var(--cosmos-rose)'
+  },
+  {
+    iconPath: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
     title: 'Quản trị',
-    text: 'Import câu hỏi có bước review, cấu hình tổng thể và hỗ trợ vận hành demo/đào tạo.'
+    desc: 'Quản lý người dùng, cấu hình hệ thống, import câu hỏi và theo dõi hoạt động.',
+    ctaLink: '/login',
+    ctaText: 'Quản lý hệ thống',
+    bg: 'var(--cosmos-success-soft)',
+    color: 'var(--cosmos-success)'
   }
 ]
 
-const visualCards = [
-  {
-    title: 'Màn hình làm bài',
-    tag: 'Học sinh',
-    tagTone: 'text-primary-600',
-    copy: 'Tập trung vào đề, timer và trạng thái từng câu.',
-    bullets: ['Sidebar tiến độ / đánh dấu', 'Timer và ngưỡng màu', 'Auto-save + xác nhận trước khi nộp']
-  },
-  {
-    title: 'Giám sát realtime',
-    tag: 'Giám thị',
-    tagTone: 'text-amber-600',
-    copy: 'Điểm rủi ro và sự kiện được gom để xử lý nhanh.',
-    bullets: ['Risk score và timeline', 'Danh sách thí sinh theo phiên', 'Hành động hàng loạt khi cần']
-  },
-  {
-    title: 'Import đề thi',
-    tag: 'Quản trị',
-    tagTone: 'text-emerald-600',
-    copy: 'Không publish thẳng từ file — luôn có bước kiểm.',
-    bullets: ['Upload nhiều định dạng phổ biến', 'Preview và danh sách issue', 'Chỉ lưu sau khi duyệt']
+// Starfield animation
+onMounted(() => {
+  const canvas = starfieldCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  let w, h, stars
+
+  const resize = () => {
+    w = canvas.width = window.innerWidth
+    h = canvas.height = window.innerHeight
+    stars = Array.from({ length: 200 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 1.5 + 0.5,
+      speed: Math.random() * 0.3 + 0.1,
+      opacity: Math.random()
+    }))
   }
-]
+
+  resize()
+  window.addEventListener('resize', resize)
+
+  const animate = () => {
+    ctx.clearRect(0, 0, w, h)
+    stars.forEach(star => {
+      star.opacity += (Math.random() - 0.5) * 0.05
+      star.opacity = Math.max(0.1, Math.min(1, star.opacity))
+      ctx.beginPath()
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,255,255,${star.opacity * 0.6})`
+      ctx.fill()
+    })
+    requestAnimationFrame(animate)
+  }
+  animate()
+
+  // Scroll reveal
+  if (typeof IntersectionObserver !== 'undefined') {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+          }
+        })
+      },
+      { threshold: 0.1 }
+    )
+    document.querySelectorAll('.cosmos-scroll-reveal').forEach((el) => observer.observe(el))
+  }
+})
 </script>
 
 <style scoped>
-.landing-page {
-  background:
-    radial-gradient(circle at top right, rgba(141, 75, 0, 0.07), transparent 24%),
-    radial-gradient(circle at left center, rgba(255, 183, 125, 0.12), transparent 20%),
-    linear-gradient(180deg, #faf9f5 0%, #ffffff 38%, #f4f4f0 100%);
-}
-
-.landing-headline-serif {
-  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
-}
-
-.landing-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  border: 1px solid rgba(219, 194, 176, 0.55);
-  background: rgba(255, 255, 255, 0.88);
-  padding: 0.52rem 0.92rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #8d4b00;
-  box-shadow: 0 16px 28px -24px rgba(141, 75, 0, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.landing-accent-text {
-  background: linear-gradient(135deg, #b15f00 0%, #8d4b00 52%, #6e3900 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.landing-surface-card {
-  border: 1px solid rgba(219, 194, 176, 0.45);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 249, 245, 0.96) 100%);
-  box-shadow: 0 28px 58px -42px rgba(27, 28, 26, 0.12), 0 18px 36px -30px rgba(141, 75, 0, 0.1);
-}
-
-.landing-stat-card {
+.landing-root {
+  min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
-.landing-stat-card::after {
-  content: '';
-  position: absolute;
-  inset: auto -1rem -1rem auto;
-  width: 5rem;
-  height: 5rem;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(177, 95, 0, 0.12), transparent 72%);
-}
-
-.landing-btn {
-  display: inline-flex;
-  min-height: 3rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 1.05rem;
-  padding: 0.82rem 1.28rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
-}
-
-.landing-btn:hover {
-  transform: translateY(-1px);
-}
-
-.landing-btn-primary {
-  border: 1px solid rgba(141, 75, 0, 0.22);
-  background: linear-gradient(135deg, #b15f00 0%, #8d4b00 52%, #6e3900 100%);
-  color: white;
-  box-shadow: 0 20px 38px -24px rgba(141, 75, 0, 0.4);
-}
-
-.landing-btn-secondary {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.84);
-  color: #0f172a;
-}
-
-/* Header: vừa mobile, tránh chồng hai nút full-width */
-.landing-btn-header-secondary {
-  min-height: 2.65rem;
-  padding: 0.62rem 0.95rem;
-  font-size: 0.88rem;
-}
-
-@media (min-width: 640px) {
-  .landing-btn-header-secondary {
-    min-height: 3rem;
-    padding: 0.82rem 1.28rem;
-    font-size: 0.95rem;
-  }
-}
-
-/* Nút phụ trên nền tối (khối CTA cuối) — không lặp style nút sáng */
-.landing-btn-on-dark.landing-btn-secondary {
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.landing-btn-on-dark.landing-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.landing-btn-on-dark.landing-btn-primary {
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: linear-gradient(135deg, #fff 0%, #faf9f5 100%);
-  color: #6e3900;
-  box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.35);
-}
-
-.landing-cta-panel__bg {
-  background-image: url('/images/cta-academic-amber.svg');
-  background-size: cover;
-  background-position: center;
-  opacity: 0.35;
-}
-
-.landing-cta-panel__bg::after {
-  content: '';
-  position: absolute;
+.starfield-canvas {
+  position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, rgba(141, 75, 0, 0.88) 0%, rgba(110, 57, 0, 0.92) 50%, rgba(74, 40, 0, 0.94) 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.landing-cta-panel {
-  box-shadow: 0 40px 84px -48px rgba(74, 40, 0, 0.45);
+.hero-section {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-icon {
+  background: linear-gradient(135deg, var(--cosmos-teal) 0%, var(--cosmos-rose) 100%);
+  box-shadow: var(--cosmos-shadow-teal);
+}
+
+.brand-name {
+  font-family: var(--cosmos-font-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+  color: var(--cosmos-text);
+}
+
+.prism-decoration {
+  animation: prismRotate 20s linear infinite;
+  opacity: 0.4;
+}
+
+@keyframes prismRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-btn {
-    transition: none;
+  .cosmos-reveal,
+  .cosmos-scale,
+  .cosmos-spring,
+  .cosmos-lift,
+  .cosmos-orb,
+  .cosmos-tilt,
+  .prism-decoration {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
   }
 
-  .landing-btn:hover {
-    transform: none;
+  .cosmos-nav-link::before {
+    transform: none !important;
   }
-}
 
-@media (max-width: 1023px) {
-  .landing-page {
-    background:
-      radial-gradient(circle at top right, rgba(141, 75, 0, 0.06), transparent 28%),
-      linear-gradient(180deg, #faf9f5 0%, #ffffff 32%, #f4f4f0 100%);
+  .cosmos-orb {
+    display: none;
   }
 }
 </style>

@@ -168,22 +168,26 @@ onUnmounted(() => {
 }
 
 
-.ccl__sidebar-toggle:hover
-
 /* Sidebar content */
 .ccl__sidebar-content {
   flex: 1;
   min-width: 0;
-  padding: 1.25rem 1rem 1.25rem 0.75rem;
+  padding: 1rem 0.75rem 1rem 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 1rem;
+  overflow-x: hidden;
   overflow-y: auto;
   max-height: 100vh;
   position: sticky;
   top: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--ds-gray-200) transparent;
+}
+
+.ccl__sidebar-content > * {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ccl__sidebar-content::-webkit-scrollbar { width: 3px; }

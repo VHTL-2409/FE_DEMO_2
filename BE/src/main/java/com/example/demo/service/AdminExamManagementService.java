@@ -16,6 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,12 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminExamManagementService {
+
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
+
+    private static OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt == null ? null : ldt.atZone(VN).toOffsetDateTime();
+    }
 
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
@@ -53,9 +62,8 @@ public class AdminExamManagementService {
                             .code(ex.getCode())
                             .durationMinutes(ex.getDurationMinutes())
                             .isActive(ex.getIsActive())
-                            .startTime(ex.getStartTime())
-                            .endTime(ex.getEndTime())
-                            .timezone(ex.getTimezone())
+                            .startTime(toOffset(ex.getStartTime()))
+                            .endTime(toOffset(ex.getEndTime()))
                             .createdByUsername(creator)
                             .questionCount(q)
                             .attemptCount(a)

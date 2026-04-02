@@ -180,10 +180,10 @@ const eventIcon = (event) => {
 }
 
 const eventText = (event) => {
-  const type = event.type || event.eventType || event.action || event.message || ''
+  const type = (event.type || event.eventType || event.action || event.message || '').toUpperCase()
   if (type.includes('ENTER') || type.includes('JOIN')) return ' vào phòng thi'
   if (type.includes('EXIT') || type.includes('LEAVE')) return ' rời phòng thi'
-  if (type.includes('START')) return ' bắt đầu làm bài'
+  if (type.includes('START') || type.includes('BEGIN')) return ' bắt đầu làm bài'
   if (type.includes('TAB') || type.includes('SWITCH')) return ' chuyển tab'
   if (type.includes('DEVTOOLS')) return ' mở DevTools'
   if (type.includes('COPY')) return ' copy nội dung'
@@ -198,8 +198,11 @@ const eventText = (event) => {
   if (type.includes('RESUME')) return ' tiếp tục làm bài'
   if (type.includes('CAMERA')) return ' tắt camera'
   if (type.includes('MIC')) return ' tắt microphone'
+  if (type.includes('REFRESH') || type.includes('SYNC')) return ' dữ liệu được cập nhật'
   if (type.includes('TEACHER') || type.includes('ADMIN')) return ' tham gia giám sát'
-  return ' ' + type.toLowerCase()
+  // Fallback to message if available
+  if (event.message) return ': ' + event.message
+  return ''
 }
 
 const eventTypeShort = (event) => {
@@ -229,12 +232,20 @@ const getIconClass = (event) => {
   return `lef__icon--${color}`
 }
 
-// Auto-scroll on new events
+// Auto-scroll on new events - with debounce
+let scrollTimeout = null
 watch(() => props.events.length, () => {
   if (autoScroll.value && !pauseScroll.value && listEl.value) {
-    nextTick(() => {
-      listEl.value.scrollTop = 0
-    })
+    // Clear existing timeout
+    if (scrollTimeout) clearTimeout(scrollTimeout)
+    // Debounce scroll to avoid multiple jumps
+    scrollTimeout = setTimeout(() => {
+      nextTick(() => {
+        if (listEl.value) {
+          listEl.value.scrollTop = 0
+        }
+      })
+    }, 100)
   }
 })
 </script>
@@ -242,10 +253,15 @@ watch(() => props.events.length, () => {
 
 <style scoped>
 .lef {
+  display: flex;
+  flex-direction: column;
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
+  min-height: 200px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dark .lef {
@@ -366,6 +382,7 @@ watch(() => props.events.length, () => {
 /* List */
 .lef__list {
   max-height: 280px;
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--ds-gray-200) transparent;
@@ -384,6 +401,8 @@ watch(() => props.events.length, () => {
   padding: 0.5rem 0.875rem;
   transition: background 0.1s ease;
   border-left: 3px solid transparent;
+  min-height: 48px;
+  flex-shrink: 0;
 }
 
 .lef__event-item:hover {

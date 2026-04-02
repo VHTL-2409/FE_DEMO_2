@@ -1,97 +1,122 @@
 <template>
   <div
     :class="isDark ? 'dark' : 'light'"
-    class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
+    class="portal-viewport flex h-full min-h-0 flex-col"
+    style="background: var(--glass-bg)"
   >
     <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
       <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
         <StudentTopHeader active-section="dashboard" class="shrink-0" />
 
         <main
-          class="teacher-page-shell student-stitch-main student-dashboard-shell relative flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col overflow-hidden"
+          class="student-page-shell relative flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col overflow-hidden"
         >
           <div
-            class="student-stitch-paper-bg portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain dark:bg-background-dark"
+            class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+            style="background: var(--glass-bg)"
           >
             <div class="w-full px-3 pb-12 pt-5 sm:px-5 lg:px-8">
-              <!-- Tiêu đề — gọn, tách biệt phong cách GV -->
-              <header class="mb-6 border-b border-[#dbc2b0]/25 pb-5 dark:border-slate-700">
-                <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary dark:text-amber-400/90">
-                  Bảng điều khiển học sinh
-                </p>
-                <h1 class="stitch-font-headline text-2xl font-bold tracking-tight text-amber-950 dark:text-amber-100 md:text-3xl">
-                  Xin chào, <span class="text-[var(--role-primary)]">{{ displayName }}</span>
-                </h1>
-                <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  Theo dõi điểm số và hoạt động — dữ liệu từ các lượt thi / luyện tập đã ghi nhận.
-                </p>
+
+              <!-- Page Header -->
+              <header class="glass-card mb-6 p-5 gs-reveal">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-xs font-bold uppercase tracking-widest mb-1" style="color: var(--glass-text-muted)">Bảng điều khiển</p>
+                    <h1 class="text-2xl lg:text-3xl font-black leading-tight" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">
+                      Xin chào, <span style="color: var(--glass-amber)">{{ displayName }}</span>
+                    </h1>
+                    <p class="mt-1 text-sm leading-relaxed" style="color: var(--glass-text-secondary)">
+                      Theo dõi điểm số và hoạt động — dữ liệu từ các lượt thi / luyện tập đã ghi nhận.
+                    </p>
+                  </div>
+                  <!-- Avatar chip -->
+                  <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end">
+                      <p class="text-sm font-bold" style="color: var(--glass-text)">{{ displayName }}</p>
+                      <p class="text-xs" style="color: var(--glass-text-muted)">Học sinh</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-full overflow-hidden border-2 shrink-0" style="border-color: var(--glass-amber)">
+                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=student" alt="Avatar" class="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                </div>
               </header>
 
-              <!-- Hành động nhanh: thanh ngang, không dùng hero 2 cột kiểu GV -->
-              <section
-                class="mb-8 flex flex-col gap-3 rounded-2xl border border-[#dbc2b0]/30 bg-white/90 p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900/70 sm:flex-row sm:items-stretch sm:gap-4"
-              >
-                <div class="flex min-h-[3rem] min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                  <label class="sr-only" for="student-dash-quick-code">Mã hoặc mã bài thi</label>
-                  <input
-                    id="student-dash-quick-code"
-                    v-model="dashboardQuickCode"
-                    type="text"
-                    autocomplete="off"
-                    maxlength="120"
-                    class="min-h-[48px] w-full flex-1 rounded-xl border border-[#dbc2b0]/40 bg-[#faf9f5] px-4 text-sm text-[#191c1e] placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="Nhập mã bài thi…"
-                    @keyup.enter="quickJoinExam"
-                  />
+              <!-- Quick Join Bar -->
+              <section class="glass-card mb-8 p-4 gs-reveal">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label class="sr-only" for="student-dash-quick-code">Mã bài thi</label>
+                  <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style="color: var(--glass-text-muted)">qr_code_scanner</span>
+                    <input
+                      id="student-dash-quick-code"
+                      v-model="dashboardQuickCode"
+                      type="text"
+                      autocomplete="off"
+                      maxlength="120"
+                      class="gs-input min-h-[48px] w-full pl-10"
+                      placeholder="Nhập mã bài thi để vào thi ngay…"
+                      @keyup.enter="quickJoinExam"
+                    />
+                  </div>
                   <button
                     type="button"
-                    class="silk-press-gradient inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
+                    class="gs-btn-primary min-h-[48px] px-6 inline-flex items-center justify-center gap-2 text-sm font-bold rounded-xl"
                     :disabled="isQuickJoining"
                     @click="quickJoinExam"
                   >
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings:'FILL'1">login</span>
                     {{ isQuickJoining ? 'Đang…' : 'Vào phòng thi' }}
                   </button>
                 </div>
-                <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:border-l sm:border-[#dbc2b0]/30 sm:pl-4 dark:sm:border-slate-600">
+                <div class="flex flex-wrap gap-2 mt-3">
                   <RouterLink
                     to="/student/exam-join"
-                    class="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#dbc2b0]/50 px-4 text-sm font-bold text-[#191c1e] transition hover:bg-[#f4f4f0] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                    style="background: var(--glass-surface); border-color: var(--glass-border); color: var(--glass-text-secondary)"
                   >
+                    <span class="material-symbols-outlined text-sm">login</span>
                     Trang nhập mã
                   </RouterLink>
                   <RouterLink
                     to="/student/generate-practice-test"
-                    class="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#efeeea] px-4 text-sm font-bold text-[#191c1e] transition hover:bg-[#e5e2dc] dark:bg-slate-800 dark:text-amber-100 dark:hover:bg-slate-700"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                    style="background: var(--glass-violet-soft); border-color: var(--glass-violet-border); color: var(--glass-violet)"
                   >
+                    <span class="material-symbols-outlined text-sm">auto_awesome</span>
                     Tạo luyện tập
                   </RouterLink>
                 </div>
               </section>
 
-              <!-- Chỉ số tóm tắt (dữ liệu thật) -->
-              <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <!-- KPI Cards -->
+              <section class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <div
-                  v-for="k in summaryKpis"
+                  v-for="(k, i) in summaryKpis"
                   :key="k.label"
-                  class="rounded-xl border border-[#dbc2b0]/20 bg-white/95 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60"
+                  :style="{ animationDelay: `${i * 80}ms` }"
+                  class="glass-card p-5 gs-reveal gs-spring group"
                 >
-                  <p class="stitch-font-headline text-2xl font-bold tabular-nums text-primary dark:text-amber-200">
-                    {{ k.value }}
-                  </p>
-                  <p class="mt-0.5 text-[11px] font-medium leading-tight text-slate-500 dark:text-slate-400">
-                    {{ k.label }}
-                  </p>
+                  <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110" :style="`background: ${k.bg}`">
+                    <span class="material-symbols-outlined text-xl" :style="`color: ${k.color}`">{{ k.icon }}</span>
+                  </div>
+                  <p class="text-2xl lg:text-3xl font-black mb-1" :style="`color: var(--glass-text); font-family: 'Space Grotesk', monospace`">{{ k.value }}</p>
+                  <p class="text-xs font-semibold leading-tight" style="color: var(--glass-text-muted)">{{ k.label }}</p>
                 </div>
               </section>
 
-              <!-- Biểu đồ -->
+              <!-- Charts Row -->
               <section class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <div
-                  class="flex min-h-0 flex-col rounded-2xl border border-[#dbc2b0]/25 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-5"
-                >
-                  <div class="mb-2 flex items-center justify-between gap-2">
-                    <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100">Điểm các lượt gần đây</h2>
-                    <span class="text-[11px] text-slate-400">Thang 10</span>
+                <!-- Trend Chart -->
+                <div class="glass-card p-5 gs-reveal">
+                  <div class="flex items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h2 class="text-sm font-bold" style="color: var(--glass-text)">Điểm các lượt gần đây</h2>
+                      <p class="text-xs" style="color: var(--glass-text-muted)">Thang 10 điểm</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--glass-amber-soft)">
+                      <span class="material-symbols-outlined text-lg" style="color: var(--glass-amber)">show_chart</span>
+                    </div>
                   </div>
                   <div
                     ref="chartTrendRef"
@@ -99,16 +124,21 @@
                     role="img"
                     aria-label="Biểu đồ điểm theo lượt"
                   />
-                  <p v-if="!trendHasData" class="mt-2 text-center text-xs text-slate-500">
+                  <p v-if="!trendHasData" class="mt-4 text-center text-xs" style="color: var(--glass-text-muted)">
                     Chưa có đủ lượt có điểm để vẽ biểu đồ.
                   </p>
                 </div>
-                <div
-                  class="flex min-h-0 flex-col rounded-2xl border border-[#dbc2b0]/25 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-5"
-                >
-                  <div class="mb-2">
-                    <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100">Bài thi và luyện tập</h2>
-                    <p class="text-[11px] text-slate-500">Tỷ lệ theo số lượt đã ghi nhận</p>
+
+                <!-- Donut Chart -->
+                <div class="glass-card p-5 gs-reveal">
+                  <div class="flex items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h2 class="text-sm font-bold" style="color: var(--glass-text)">Bài thi & Luyện tập</h2>
+                      <p class="text-xs" style="color: var(--glass-text-muted)">Phân bổ theo lượt đã ghi nhận</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--glass-violet-soft)">
+                      <span class="material-symbols-outlined text-lg" style="color: var(--glass-violet)">donut_large</span>
+                    </div>
                   </div>
                   <div
                     ref="chartDonutRef"
@@ -119,10 +149,18 @@
                 </div>
               </section>
 
+              <!-- Monthly Activity Chart -->
               <section class="mb-8">
-                <div class="mb-3 flex min-h-0 flex-col rounded-2xl border border-[#dbc2b0]/25 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-5">
-                  <h2 class="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100">Hoạt động 6 tháng gần nhất</h2>
-                  <p class="mb-3 text-[11px] text-slate-500">Số lượt đã nộp theo tháng</p>
+                <div class="glass-card p-5 gs-reveal">
+                  <div class="flex items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h2 class="text-sm font-bold" style="color: var(--glass-text)">Hoạt động 6 tháng gần nhất</h2>
+                      <p class="text-xs" style="color: var(--glass-text-muted)">Số lượt đã nộp theo tháng</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--glass-success-soft)">
+                      <span class="material-symbols-outlined text-lg" style="color: var(--glass-success)">bar_chart</span>
+                    </div>
+                  </div>
                   <div
                     ref="chartBarRef"
                     class="student-dash-chart h-[240px] w-full max-w-full shrink-0 overflow-hidden sm:h-[260px]"
@@ -132,15 +170,16 @@
                 </div>
               </section>
 
-              <!-- Lịch sử gần đây (dữ liệu thật) -->
+              <!-- Recent Activity -->
               <section>
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 class="stitch-font-headline text-lg font-bold text-amber-950 dark:text-amber-100">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h2 class="text-lg font-black" style="font-family: 'Playfair Display', serif; color: var(--glass-text)">
                     Hoạt động gần đây
                   </h2>
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline dark:text-amber-300"
+                    class="inline-flex items-center gap-1 text-sm font-semibold transition-colors"
+                    style="color: var(--glass-amber)"
                     @click="goToStudyHistory"
                   >
                     Xem toàn bộ lịch sử
@@ -148,75 +187,77 @@
                   </button>
                 </div>
 
+                <!-- Loading state -->
                 <div v-if="isLoadingAttempts" class="space-y-2" aria-busy="true">
                   <SkeletonLoader variant="table-row" />
                   <SkeletonLoader variant="table-row" />
                 </div>
+
+                <!-- Empty state -->
                 <div
                   v-else-if="!recentRows.length"
-                  class="rounded-xl border border-dashed border-[#dbc2b0]/50 bg-[#faf9f5]/80 px-6 py-10 text-center dark:border-slate-600 dark:bg-slate-900/40"
+                  class="glass-card text-center py-12 px-6"
                 >
-                  <p class="text-sm text-slate-600 dark:text-slate-400">Chưa có lượt thi hoặc luyện tập nào.</p>
+                  <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--glass-bg-mid)">
+                    <span class="material-symbols-outlined text-3xl" style="color: var(--glass-text-muted)">history_edu</span>
+                  </div>
+                  <p class="text-sm font-semibold mb-4" style="color: var(--glass-text-secondary)">Chưa có lượt thi hoặc luyện tập nào.</p>
                   <RouterLink
                     to="/student/exam-join"
-                    class="mt-4 inline-block text-sm font-bold text-primary hover:underline dark:text-amber-300"
+                    class="gs-btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                   >
+                    <span class="material-symbols-outlined text-base" style="font-variation-settings:'FILL'1">login</span>
                     Tham gia bài thi
                   </RouterLink>
                 </div>
-                <div
-                  v-else
-                  class="overflow-hidden rounded-2xl border border-[#dbc2b0]/25 bg-[#f3f1ec]/40 p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900/35 sm:p-3"
-                >
-                  <ul role="list" class="space-y-2">
-                    <li
-                      v-for="item in recentRows"
-                      :key="item.attemptId"
-                      class="group cursor-pointer rounded-xl border border-[#e4ddd4]/90 bg-white p-3.5 shadow-sm transition hover:border-primary/30 hover:shadow-md dark:border-slate-700/90 dark:bg-slate-900/65 sm:p-4"
-                      @click="goToExamResult(item)"
-                    >
-                      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+
+                <!-- History list -->
+                <div v-else class="space-y-3">
+                  <div
+                    v-for="(item, i) in recentRows"
+                    :key="item.attemptId"
+                    :style="{ animationDelay: `${i * 60}ms` }"
+                    class="glass-card p-4 gs-reveal gs-spring group cursor-pointer"
+                    @click="goToExamResult(item)"
+                  >
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex items-start gap-3 flex-1 min-w-0">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                          :style="item.isPractice ? 'background: var(--glass-violet-soft)' : 'background: var(--glass-amber-soft)'">
+                          <span class="material-symbols-outlined text-lg"
+                            :style="item.isPractice ? 'color: var(--glass-violet)' : 'color: var(--glass-amber)'">
+                            {{ item.isPractice ? 'auto_awesome' : 'assignment' }}
+                          </span>
+                        </div>
                         <div class="min-w-0 flex-1">
-                          <div class="flex items-start justify-between gap-2">
-                            <h3
-                              class="stitch-font-headline line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-[#191c1e] group-hover:text-primary dark:text-slate-100"
-                            >
-                              {{ item.title }}
-                            </h3>
-                            <span
-                              class="material-symbols-outlined shrink-0 text-lg text-slate-300 transition group-hover:text-primary/70 dark:text-slate-600"
-                              aria-hidden="true"
-                            >
-                              chevron_right
-                            </span>
-                          </div>
-                          <div
-                            class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] leading-relaxed text-slate-500 dark:text-slate-400"
-                          >
-                            <span
-                              class="inline-flex items-center rounded-md bg-[#f4f4f0] px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                            >
+                          <h3 class="text-sm font-bold leading-snug truncate" style="color: var(--glass-text)">
+                            {{ item.title }}
+                          </h3>
+                          <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                              :style="item.isPractice
+                                ? 'background: var(--glass-violet-soft); color: var(--glass-violet)'
+                                : 'background: var(--glass-amber-soft); color: var(--glass-amber)'">
                               {{ item.kind }}
                             </span>
-                            <span class="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
-                            <span class="tabular-nums">{{ item.time }}</span>
-                            <span class="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
-                            <span class="tabular-nums">{{ item.date }}</span>
+                            <span class="text-xs" style="color: var(--glass-text-muted)">{{ item.time }}</span>
+                            <span class="text-xs" style="color: var(--glass-text-muted)">·</span>
+                            <span class="text-xs" style="color: var(--glass-text-muted)">{{ item.date }}</span>
                           </div>
                         </div>
-                        <div
-                          class="flex shrink-0 items-baseline gap-0.5 border-t border-[#eee9e2] pt-2.5 sm:border-t-0 sm:pt-0 sm:pl-2 dark:border-slate-700"
-                        >
-                          <span class="stitch-font-headline text-2xl font-bold tabular-nums text-primary dark:text-amber-200">
-                            {{ item.score }}
-                          </span>
-                          <span class="text-xs font-medium text-slate-400">/10</span>
-                        </div>
                       </div>
-                    </li>
-                  </ul>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <span class="text-2xl font-black" :style="`font-family: 'Space Grotesk', monospace; color: ${item.scoreColor}`">
+                          {{ item.score }}
+                        </span>
+                        <span class="text-xs font-medium" style="color: var(--glass-text-muted)">/10</span>
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1" style="color: var(--glass-text-muted)">chevron_right</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
+
             </div>
           </div>
         </main>
@@ -234,7 +275,6 @@ import { displayNameFromMe, fetchMyProfile } from '../../services/authService'
 import { joinExamByCode } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import { scoreOnTenDisplay } from '../../utils/scoreDisplay'
-import { createRafThrottle } from '../../utils/chartResizeThrottle'
 import StudentTopHeader from './StudentTopHeader.vue'
 import SkeletonLoader from '../shared/SkeletonLoader.vue'
 
@@ -256,8 +296,9 @@ let chartBar = null
 
 const displayName = computed(() => displayNameFromMe(profile.value) || 'Học sinh')
 
-const PRIMARY = '#8d4b00'
+const AMBER = '#d97706'
 const AMBER_LIGHT = '#f59e0b'
+const VIOLET = '#7c3aed'
 const MUTED = '#94a3b8'
 
 function parseScoreNum(attempt) {
@@ -267,19 +308,26 @@ function parseScoreNum(attempt) {
   return Number.isFinite(n) ? n : null
 }
 
+function scoreColor(score) {
+  if (score === null || score === undefined) return 'var(--glass-text-muted)'
+  const n = Number(score)
+  if (n >= 8) return 'var(--glass-success)'
+  if (n >= 5) return 'var(--glass-amber)'
+  return 'var(--glass-danger)'
+}
+
 const summaryKpis = computed(() => {
   const list = attempts.value || []
   const n = list.length
   const scored = list.map(parseScoreNum).filter((x) => x !== null)
-  const avg =
-    scored.length > 0 ? (scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1) : '—'
+  const avg = scored.length > 0 ? (scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1) : '—'
   const examN = list.filter((a) => !a.isPractice).length
   const prN = list.filter((a) => a.isPractice).length
   return [
-    { label: 'Tổng lượt đã ghi nhận', value: n ? String(n) : '0' },
-    { label: 'Điểm trung bình (có chấm)', value: avg },
-    { label: 'Bài thi chính thức', value: String(examN) },
-    { label: 'Luyện tập', value: String(prN) }
+    { label: 'Tổng lượt đã ghi nhận', value: n ? String(n) : '0', icon: 'history', bg: 'var(--glass-amber-soft)', color: 'var(--glass-amber)' },
+    { label: 'Điểm trung bình', value: avg, icon: 'trending_up', bg: 'var(--glass-success-soft)', color: 'var(--glass-success)' },
+    { label: 'Bài thi chính thức', value: String(examN), icon: 'assignment', bg: 'var(--glass-violet-soft)', color: 'var(--glass-violet)' },
+    { label: 'Luyện tập', value: String(prN), icon: 'auto_awesome', bg: 'var(--glass-rose-soft)', color: 'var(--glass-rose)' }
   ]
 })
 
@@ -347,9 +395,9 @@ function applyCharts() {
     if (!chartTrend) chartTrend = echarts.init(chartTrendRef.value, undefined, { renderer: 'canvas' })
     chartTrend.setOption(
       {
-        color: [PRIMARY],
-        grid: { left: 48, right: 16, top: 28, bottom: 40 },
-        tooltip: { trigger: 'axis' },
+        color: [AMBER],
+        grid: { left: 48, right: 16, top: 20, bottom: 36 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0', textStyle: { color: '#334155' } },
         xAxis: {
           type: 'category',
           data: labels,
@@ -373,7 +421,7 @@ function applyCharts() {
             connectNulls: false,
             data: values,
             lineStyle: { width: 3 },
-            areaStyle: { color: 'rgba(141, 75, 0, 0.14)' }
+            areaStyle: { color: 'rgba(217, 119, 6, 0.12)' }
           }
         ]
       },
@@ -386,8 +434,8 @@ function applyCharts() {
     const empty = examCount === 0 && practiceCount === 0
     chartDonut.setOption(
       {
-        color: [PRIMARY, AMBER_LIGHT],
-        tooltip: { trigger: 'item' },
+        color: [AMBER, VIOLET],
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0', textStyle: { color: '#334155' } },
         legend: {
           bottom: 0,
           textStyle: { color: textColor, fontSize: 11 }
@@ -417,9 +465,9 @@ function applyCharts() {
     if (!chartBar) chartBar = echarts.init(chartBarRef.value, undefined, { renderer: 'canvas' })
     chartBar.setOption(
       {
-        color: [PRIMARY],
+        color: [AMBER],
         grid: { left: 40, right: 16, top: 20, bottom: 32 },
-        tooltip: { trigger: 'axis' },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0', textStyle: { color: '#334155' } },
         xAxis: {
           type: 'category',
           data: month.labels,
@@ -479,18 +527,23 @@ const recentRows = computed(() =>
       return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
     })
     .slice(0, 5)
-    .map((attempt) => ({
-      title: attempt.examTitle || 'Bài thi',
-      kind: attempt.isPractice ? 'Luyện tập' : 'Bài thi',
-      score: scoreOnTenDisplay(attempt.score),
-      date: attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString('vi-VN') : '—',
-      attemptId: attempt.id,
-      examId: attempt.examId,
-      time:
-        attempt.startedAt && attempt.submittedAt
-          ? `${Math.max(1, Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000))} phút`
-          : '—'
-    }))
+    .map((attempt) => {
+      const scoreVal = scoreOnTenDisplay(attempt.score)
+      return {
+        title: attempt.examTitle || 'Bài thi',
+        kind: attempt.isPractice ? 'Luyện tập' : 'Bài thi',
+        isPractice: !!attempt.isPractice,
+        score: scoreVal,
+        scoreColor: scoreColor(parseScoreNum(attempt)),
+        date: attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString('vi-VN') : '—',
+        attemptId: attempt.id,
+        examId: attempt.examId,
+        time:
+          attempt.startedAt && attempt.submittedAt
+            ? `${Math.max(1, Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000))} phút`
+            : '—'
+      }
+    })
 )
 
 const quickJoinExam = async () => {
@@ -568,4 +621,47 @@ onUnmounted(() => {
 })
 </script>
 
-e>
+<style scoped>
+.portal-viewport {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.gs-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--radius-glass-pill);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--glass-amber) 0%, var(--glass-amber-hover) 100%);
+  color: white;
+  box-shadow: var(--shadow-glass-md);
+  transition: all var(--duration-base) var(--ease-spring);
+  border: none;
+  cursor: pointer;
+}
+.gs-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glass-xl);
+  color: white;
+}
+.gs-btn-primary:active {
+  transform: scale(0.97);
+}
+.gs-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-reveal,
+  .gs-spring {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+</style>

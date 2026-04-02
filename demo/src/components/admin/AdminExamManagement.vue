@@ -64,17 +64,16 @@
                 <button
                   type="button"
                   :disabled="togglingId === row.id"
-                  class="staff-action-btn disabled:opacity-50"
-                  :class="
-                    row.isActive
-                      ? 'border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
-                      : 'border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  "
+                  class="exam-toggle-btn"
+                  :class="{
+                    'exam-toggle-btn--active': row.isActive,
+                    'exam-toggle-btn--inactive': !row.isActive
+                  }"
                   @click="toggleActive(row)"
                 >
                   <span
-                    class="size-1.5 rounded-full"
-                    :class="row.isActive ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-slate-500'"
+                    class="exam-toggle-btn__dot"
+                    :class="row.isActive ? 'exam-toggle-btn__dot--active' : 'exam-toggle-btn__dot--inactive'"
                   />
                   {{ row.isActive ? 'Bật' : 'Tắt' }}
                 </button>
@@ -84,7 +83,6 @@
                 <div class="text-slate-600">→</div>
                 <div>{{ formatDt(row.endTime) }}</div>
               </td>
-              <td class="text-slate-500 text-xs">{{ row.timezone || '—' }}</td>
               <td class="font-mono text-xs text-slate-500">{{ row.createdByUsername }}</td>
               <td class="tabular-nums text-slate-700 dark:text-slate-300 text-xs">
                 {{ row.questionCount }} / {{ row.attemptCount }}
@@ -130,7 +128,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { fetchAdminExams, patchAdminExamActive } from '../../services/adminService'
-import PageHeader from '../shared/PageHeader.vue'
+import PageHeader from '../ui/PageHeader.vue'
 import { useToast } from '../../composables/useToast'
 
 const toast = useToast()
@@ -194,3 +192,101 @@ const toggleActive = async (row) => {
 
 onMounted(load)
 </script>
+
+<style scoped>
+/* Exam Toggle Button */
+.exam-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid transparent;
+}
+
+.exam-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exam-toggle-btn--active {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #059669;
+}
+
+.dark .exam-toggle-btn--active {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.exam-toggle-btn--active:hover:not(:disabled) {
+  background: rgba(52, 211, 153, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25);
+}
+
+.exam-toggle-btn--inactive {
+  background: var(--ds-gray-100);
+  border-color: var(--ds-border);
+  color: var(--ds-text-muted);
+}
+
+.dark .exam-toggle-btn--inactive {
+  background: var(--ds-gray-700);
+  border-color: var(--ds-border-strong);
+  color: #94a3b8;
+}
+
+.exam-toggle-btn--inactive:hover:not(:disabled) {
+  background: var(--ds-gray-200);
+  color: var(--ds-text);
+  transform: translateY(-1px);
+}
+
+.dark .exam-toggle-btn--inactive:hover:not(:disabled) {
+  background: var(--ds-gray-600);
+  color: #f1f5f9;
+}
+
+.exam-toggle-btn__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.exam-toggle-btn__dot--active {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse-green 2s infinite;
+}
+
+.dark .exam-toggle-btn__dot--active {
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+}
+
+.exam-toggle-btn__dot--inactive {
+  background: var(--ds-gray-400);
+}
+
+.dark .exam-toggle-btn__dot--inactive {
+  background: var(--ds-gray-500);
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  }
+}
+</style>

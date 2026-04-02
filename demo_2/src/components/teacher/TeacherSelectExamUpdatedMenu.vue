@@ -1,199 +1,169 @@
 <template>
-  <div :class="isDark ? 'dark' : 'light'" class="flex h-full min-h-0 flex-1 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100">
-    <div class="layout-container flex min-h-0 flex-1 grow flex-col">
-      <TeacherTopHeader active-section="monitoring" />
+  <div class="bg-[var(--ds-bg)] min-h-full">
+    <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
-      <main class="teacher-stitch-main teacher-page-shell portal-scrollbar relative min-h-0 w-full max-w-none flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-4 lg:px-5">
-        <div class="monitoring-pick-shell w-full max-w-screen-2xl space-y-4 sm:space-y-5">
-        <header class="relative flex w-full flex-wrap items-end justify-between gap-3 animate-fade-up">
-          <div class="min-w-0">
-            <p class="portal-kicker mb-1">
-              <RouterLink to="/teacher/dashboard" class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400">Trang chủ</RouterLink>
-              <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-              <span class="font-semibold text-[var(--role-primary)]">Giám sát</span>
-            </p>
-            <h1 class="stitch-font-headline text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100 md:text-3xl lg:text-4xl">
-              Đề đang diễn ra
-            </h1>
-          </div>
-          <button
-            type="button"
-            class="shrink-0 rounded-xl border border-primary/25 bg-white/80 px-4 py-2 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/10 dark:bg-slate-900/60"
-            @click="goToExamBank"
-          >
-            Ngân hàng đề
-          </button>
-        </header>
+      <div class="mb-5 ds-animate-fade-up">
+        <div class="mb-2 flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
+          <RouterLink to="/teacher/dashboard" class="flex items-center gap-1 hover:text-[var(--ds-primary)] transition-colors">
+            <LucideIcon name="home" size="16" />
+            Trang chủ
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <RouterLink to="/teacher/live-monitoring" class="flex items-center gap-1 hover:text-[var(--ds-primary)] transition-colors">
+            <LucideIcon name="live_tv" size="16" />
+            Giám sát
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <span class="text-[var(--ds-text)] font-medium">Chọn đề thi</span>
+        </div>
+        <PageHeader
+          title="Giám sát trực tiếp"
+          subtitle="Chọn một đề thi đang trong thời gian thi để giám sát."
+          size="default"
+        />
+      </div>
 
-        <div class="relative animate-fade-up-delay">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/50">search</span>
+      <div class="mb-5 ds-animate-fade-up" style="animation-delay: 0.05s">
+        <div class="relative">
+          <LucideIcon name="search" />
           <input
             v-model="search"
-            class="stitch-registry-search w-full rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all dark:text-white"
-            placeholder="Tìm tiêu đề hoặc mã…"
             type="text"
+            placeholder="Tìm đề thi theo tiêu đề hoặc mã..."
+            class="ds-input w-full pl-12 pr-4 py-3 rounded-[var(--ds-radius-xl)] text-sm shadow-[var(--ds-shadow-sm)]"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5 ds-animate-fade-up" style="animation-delay: 0.08s">
+        <div v-if="isLoading" class="col-span-full flex flex-col items-center justify-center gap-3 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] py-16 text-center">
+          <LucideIcon name="progress_activity" size="24" />
+          <p class="text-sm text-[var(--ds-text-muted)]">Đang tải danh sách đề thi…</p>
+        </div>
+
+        <div v-else-if="!filteredExams.length" class="col-span-full">
+          <EmptyState
+            icon="monitoring"
+            title="Không có đề thi đang diễn ra"
+            description="Hiện không có kỳ thi nào trong khung giờ. Thử tìm kiếm khác hoặc quay lại sau."
+            action-label="Mở ngân hàng đề"
+            fill
+            dense
+            @action="goToExamBank"
           />
         </div>
 
-        <div class="stitch-ambient-shadow overflow-hidden rounded-xl border border-[color:rgba(219,194,176,0.12)] bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div v-if="isLoading" class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            <span class="material-symbols-outlined mb-2 inline-block animate-spin text-xl text-primary">progress_activity</span>
-            <p>Đang tải…</p>
-          </div>
-          <div v-else-if="!filteredExams.length" class="p-8">
-            <EmptyState
-              class="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40"
-              icon="monitoring"
-              title="Không có đề trong giờ thi"
-              description=""
-              action-label="Ngân hàng đề"
-              dense
-              fill
-              @action="goToExamBank"
-            />
-          </div>
-          <div v-else class="teacher-stitch-table-scroll">
-            <table class="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr class="teacher-stitch-table-head border-b border-[color:rgba(219,194,176,0.15)] dark:border-slate-800">
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">TT</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">ID</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Đề thi</th>
-                  <th class="hidden px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 sm:table-cell">Câu</th>
-                  <th class="hidden px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 md:table-cell">Kết thúc</th>
-                  <th class="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[color:rgba(219,194,176,0.12)] dark:divide-slate-800">
-                <tr
-                  v-for="exam in filteredExams"
-                  :key="exam.id"
-                  :class="exam.cardBorder"
-                  class="border-l-4 border-l-transparent transition-colors hover:bg-amber-50/40 dark:hover:bg-slate-800/30"
-                >
-                  <td class="px-4 py-3">
-                    <span :class="exam.statusClass" class="inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">{{ exam.status }}</span>
-                  </td>
-                  <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ exam.id }}</td>
-                  <td class="max-w-[min(100%,20rem)] px-4 py-3">
-                    <span class="font-semibold leading-snug text-slate-900 dark:text-white">{{ exam.title }}</span>
-                  </td>
-                  <td class="hidden px-4 py-3 tabular-nums text-slate-600 dark:text-slate-300 sm:table-cell">{{ exam.students }}</td>
-                  <td class="hidden whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-300 md:table-cell">{{ exam.timeValue }}</td>
-                  <td class="px-4 py-3 text-right">
-                    <button
-                      :class="exam.actionClass"
-                      class="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-all"
-                      type="button"
-                      @click="openLiveSession(exam)"
-                    >
-                      <span class="material-symbols-outlined text-base">{{ exam.actionIcon }}</span>
-                      {{ exam.actionLabel }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div
+          v-for="exam in filteredExams"
+          :key="exam.id"
+          class="bg-[var(--ds-surface)] rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] border-l-4 border-l-[var(--ds-accent)] shadow-[var(--ds-shadow-sm)] overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--ds-shadow-lg)] cursor-pointer"
+          @click="goToMonitoring(exam)"
+        >
+          <div class="p-5 flex-1">
+            <div class="mb-3 flex items-start justify-between gap-2">
+              <StatusChip :status="exam.statusChip" size="sm" />
+              <span class="text-[11px] font-mono text-[var(--ds-text-muted)]">ID: {{ exam.id }}</span>
+            </div>
+            <h3 class="text-lg font-bold text-[var(--ds-text)] mb-2 leading-snug">{{ exam.title }}</h3>
+            <div class="flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
+              <LucideIcon name="meeting_room" size="16" />
+              {{ exam.location }}
+            </div>
 
-        <p v-if="monitoringCards.length" class="text-left text-xs font-medium text-slate-500 dark:text-slate-400">
-          {{ monitoringCards.length }} đề đang mở
-        </p>
+            <div class="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--ds-border)] pt-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-text-muted)]">{{ exam.leftLabel }}</p>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <LucideIcon name="group" size="16" />
+                  <span class="text-lg font-bold text-[var(--ds-text)]">{{ exam.students }}</span>
+                </div>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-text-muted)]">{{ exam.timeLabel }}</p>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <LucideIcon name="schedule" size="16" />
+                  <span class="text-lg font-bold text-[var(--ds-text)]">{{ exam.timeLeft }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-[var(--ds-border)] px-5 py-3">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-[var(--ds-radius-lg)] bg-[var(--ds-primary)] py-2 text-sm font-bold text-white transition-all hover:bg-[var(--ds-primary-hover)]"
+            >
+              <LucideIcon name="monitoring" size="18" />
+              Giám sát
+            </button>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ApiError } from '../../services/apiClient'
+import { useRouter } from 'vue-router'
 import { listExams } from '../../services/examService'
-import { RouterLink, useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
-import TeacherTopHeader from './TeacherTopHeader.vue'
-import EmptyState from '../shared/EmptyState.vue'
+import PageHeader from '../ui/PageHeader.vue'
+import StatusChip from '../ui/StatusChip.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 const router = useRouter()
-const isDark = ref(false)
-const search = ref('')
-const exams = ref([])
-const isLoading = ref(false)
 const toast = useToast()
-
-const formatDateTime = (value) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString()
-}
-
-const isExamOngoing = (exam, nowMs) => {
-  const startMs = new Date(exam.startTime || '').getTime()
-  const endMs = new Date(exam.endTime || '').getTime()
-  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return false
-  return Boolean(exam.isActive) && startMs <= nowMs && nowMs <= endMs
-}
-
-const monitoringCards = computed(() => {
-  const nowMs = Date.now()
-  return exams.value
-    .filter((exam) => isExamOngoing(exam, nowMs))
-    .map((exam) => ({
-      id: exam.id,
-      examId: exam.id,
-      examCode: exam.code || '',
-      title: exam.title,
-      durationMinutes: exam.durationMinutes,
-      location: exam.description || 'Đề thi trực tuyến',
-      sessionMeta: `Bắt đầu: ${formatDateTime(exam.startTime)} • Kết thúc: ${formatDateTime(exam.endTime)}`,
-      status: 'Live',
-      statusClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      students: `${exam.questionCount || 0}`,
-      leftLabel: 'Số câu hỏi',
-      timeLabel: 'Kết thúc',
-      timeIcon: 'timer',
-      timeIconClass: 'text-orange-500',
-      timeValue: formatDateTime(exam.endTime),
-      actionLabel: 'Theo dõi',
-      actionIcon: 'visibility',
-      actionClass: 'bg-primary text-white hover:bg-primary/90',
-      cardBorder: 'border-l-green-500'
-    }))
-})
+const isLoading = ref(false)
+const exams = ref([])
+const search = ref('')
 
 const filteredExams = computed(() => {
-  const keyword = search.value.trim().toLowerCase()
-  if (!keyword) return monitoringCards.value
-  return monitoringCards.value.filter(
-    (exam) =>
-      exam.title.toLowerCase().includes(keyword) || String(exam.examCode || '').toLowerCase().includes(keyword)
-  )
+  const q = search.value.trim().toLowerCase()
+  return exams.value
+    .filter(exam => exam.isActive && exam.startTime && exam.endTime)
+    .filter(exam => {
+      const now = Date.now()
+      const start = new Date(exam.startTime).getTime()
+      const end = new Date(exam.endTime).getTime()
+      return now >= start && now <= end
+    })
+    .filter(exam => !q || exam.title?.toLowerCase().includes(q) || exam.code?.toLowerCase().includes(q))
+    .map(exam => {
+      const now = Date.now()
+      const start = new Date(exam.startTime).getTime()
+      const end = new Date(exam.endTime).getTime()
+      const elapsed = Math.floor((now - start) / 60000)
+      const total = Math.floor((end - start) / 60000)
+      return {
+        id: exam.id,
+        title: exam.title || '—',
+        location: 'Trực tuyến',
+        code: exam.code || '',
+        students: exam.participantCount || 0,
+        timeLeft: `${Math.max(0, total - elapsed)} phút`,
+        leftLabel: 'Đang có mặt',
+        timeLabel: 'Còn lại',
+        statusChip: 'Đang diễn ra'
+      }
+    })
 })
 
-const goToExamBank = () => {
-  router.push('/teacher/exams')
-}
-
-const openLiveSession = (exam) => {
+const goToMonitoring = (exam) => {
   router.push({
     path: '/teacher/live-monitoring/session',
-    query: {
-      examId: exam.examId,
-      title: exam.title,
-      code: exam.examCode || '',
-      meta: exam.sessionMeta,
-      durationMinutes: exam.durationMinutes || ''
-    }
+    query: { examId: exam.id, title: exam.title, code: exam.code }
   })
 }
+
+const goToExamBank = () => router.push('/teacher/exams/list')
 
 const loadExams = async () => {
   isLoading.value = true
   try {
     exams.value = await listExams()
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : 'Không thể tải danh sách đề thi.')
+    toast.error('Không thể tải danh sách đề thi.')
   } finally {
     isLoading.value = false
   }
@@ -201,3 +171,18 @@ const loadExams = async () => {
 
 onMounted(loadExams)
 </script>
+
+<style scoped>
+.ds-input {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ds-input::placeholder { color: var(--ds-text-muted); }
+.ds-input:focus {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+</style>

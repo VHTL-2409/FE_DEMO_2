@@ -16,7 +16,6 @@ public class ExamRequest {
     private String description;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private String timezone;
     @NotNull
     @Positive
     private Integer durationMinutes;

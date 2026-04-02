@@ -2,9 +2,8 @@
   <component
     :is="iconComponent"
     :stroke-width="strokeWidth"
-    :width="resolvedSize"
-    :height="resolvedSize"
-    :style="{ width: resolvedSize + 'px', height: resolvedSize + 'px' }"
+    :size="resolvedSize"
+    :style="{ minWidth: resolvedSize + 'px', minHeight: resolvedSize + 'px' }"
     :class="$attrs.class"
   />
 </template>
@@ -88,6 +87,14 @@ const NAME_MAP = {
   person: 'User',
   face: 'UserCheck',
   manage_accounts: 'Users',
+  'user-plus': 'UserPlus',
+  'users-plus': 'UserPlus',
+  'user-minus': 'UserMinus',
+  'alert-circle': 'AlertCircle',
+  pencil: 'Pencil',
+  'pencil-2': 'Pencil',
+  'trash-2': 'Trash2',
+  book_open: 'BookOpen',
 
   // Time & Schedule
   schedule: 'Clock',
@@ -935,7 +942,37 @@ const NAME_MAP = {
   class: 'School',
   edit_note: 'FilePen',
   photo_camera: 'Camera',
-  tune: 'SlidersHorizontal'
+  tune: 'SlidersHorizontal',
+  graduation_cap: 'GraduationCap',
+  'graduation-cap': 'GraduationCap',
+  groups: 'Users',
+  users: 'Users',
+  school: 'GraduationCap',
+  'chevron-right': 'ChevronRight',
+  'chevron-left': 'ChevronLeft',
+  'user-plus': 'UserPlus',
+  'user-check': 'UserCheck',
+  'user-x': 'UserX',
+  'arrow_forward': 'ArrowRight',
+  'arrow_back': 'ArrowLeft',
+  'pending_actions': 'Clock',
+  'account_circle': 'User',
+  'upload_file': 'Upload',
+  'cloud_upload': 'UploadCloud',
+  'analytics': 'BarChart3',
+  'schedule': 'Clock',
+  'hourglass_top': 'Hourglass',
+  'summarize': 'FileText',
+  'download': 'Download',
+  'star': 'Star',
+  'grade': 'Star',
+  'waving_hand': 'Hand',
+  'calendar_month': 'CalendarDays',
+  'bar_chart_2': 'BarChart2',
+  'hash': 'Hash',
+  'login': 'LogIn',
+  'alert-triangle': 'AlertTriangle',
+  'check-circle': 'CheckCircle'
 }
 
 const resolvedSize = computed(() => {

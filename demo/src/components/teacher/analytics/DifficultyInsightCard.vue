@@ -84,7 +84,7 @@
     <div v-if="!loading && sortedQuestions.length > displayLimit" class="dic__footer">
       <button type="button" class="dic__show-more" @click="toggleExpand">
         <LucideIcon :name="expanded ? 'expand_less' : 'expand_more'" />
-        {{ expanded ? 'Thu gon' : `Xem ${sortedQuestions.length - displayLimit} cau khac` }}
+        {{ expanded ? 'Thu gọn' : `Xem ${sortedQuestions.length - displayLimit} câu khác` }}
       </button>
     </div>
 
@@ -114,7 +114,8 @@ const expandedId = ref(null)
 
 const sortedQuestions = computed(() => {
   return [...props.questions].sort((a, b) =>
-    (b.wrongRate || b.errorRate || 0) - (a.wrongRate || a.errorRate || 0)
+    (b.wrongRatePercent ?? b.wrongRate ?? b.errorRate ?? 0)
+    - (a.wrongRatePercent ?? a.wrongRate ?? a.errorRate ?? 0)
   )
 })
 

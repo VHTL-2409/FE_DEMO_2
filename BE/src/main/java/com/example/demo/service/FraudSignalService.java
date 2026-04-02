@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.api.dto.monitoring.EventBatchRequest;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.ExamEvent;
 import com.example.demo.domain.entity.FraudSignal;
@@ -65,16 +66,17 @@ public class FraudSignalService {
                 .confidence(normalizeConfidence(confidence, 0.8))
                 .severity(severity)
                 .evidence(writeJson(evidence))
-                .createdAt(LocalDateTime.now())
+                .createdAt(VietNamTime.now())
                 .build());
     }
 
     public List<FraudSignal> latestSignals(ExamAttempt attempt, int limit) {
         List<FraudSignal> latest = fraudSignalRepository.findTop20ByAttemptOrderByCreatedAtDesc(attempt);
-        if (limit >= latest.size()) {
+        int safeLimit = Math.max(limit, 0);
+        if (safeLimit >= latest.size()) {
             return latest;
         }
-        return latest.subList(0, Math.max(limit, 0));
+        return latest.subList(0, safeLimit);
     }
 
     public SignalDescriptor descriptorFor(String eventType) {

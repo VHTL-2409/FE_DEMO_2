@@ -1,353 +1,292 @@
 <template>
-  <div
-    :class="isDark ? 'dark' : 'light'"
-    class="flex h-full min-h-0 flex-1 flex-col bg-background-light font-display text-slate-900 dark:bg-background-dark dark:text-slate-100"
-  >
-    <div class="layout-container flex min-h-0 flex-1 grow flex-col">
-      <TeacherTopHeader active-section="review" />
-
-      <main class="teacher-stitch-main teacher-page-shell portal-scrollbar relative mx-auto w-full max-w-none min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4 lg:px-5">
-
-        <div class="relative mb-6 w-full max-w-screen-2xl animate-fade-up">
-          <p class="portal-kicker mb-2">
-            <RouterLink to="/teacher/dashboard" class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400">Trang chủ</RouterLink>
-            <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-            <RouterLink class="text-slate-500 transition hover:text-[var(--role-primary)] dark:text-slate-400" to="/teacher/exams">Đề thi</RouterLink>
-            <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
-            <span class="font-semibold text-[var(--role-primary)]">Tổng quan gian lận</span>
-          </p>
-          <div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <h1 class="stitch-font-headline text-4xl font-bold tracking-tight text-amber-900 dark:text-amber-100 md:text-5xl">
-                {{ selectedExamTitle }}
-              </h1>
-            </div>
-            <div class="flex gap-2">
-              <button
-                :disabled="isLoadingSimilarity"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 hover:-translate-y-0.5 transition-all duration-200 shadow-sm disabled:opacity-70"
-                type="button"
-                @click="loadAnswerSimilarity"
-              >
-                <span class="material-symbols-outlined text-xl">compare_arrows</span>
-                <span>{{ isLoadingSimilarity ? 'Đang phân tích...' : 'Phân tích tương đồng đáp án' }}</span>
-              </button>
-              <button
-                type="button"
-                @click="downloadReport"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
-              >
-                <span class="material-symbols-outlined text-xl">download</span>
-                <span>Tải báo cáo</span>
-              </button>
-            </div>
-          </div>
+  <div class="bg-[var(--ds-bg)] min-h-full">
+    <div class="mx-auto max-w-[1280px] px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+      <div class="mb-6 ds-animate-fade-up">
+        <div class="flex items-center gap-2 text-sm mb-2" style="color: var(--ds-text-muted)">
+          <RouterLink class="hover:text-[var(--ds-primary)] transition-colors flex items-center gap-1" to="/teacher/exams/list">
+            <LucideIcon name="assignment" size="16" /> Đề thi
+          </RouterLink>
+          <LucideIcon name="chevron_right" size="12" />
+          <span class="font-medium" style="color: var(--ds-text)">Tổng quan gian lận</span>
         </div>
-
-        <div class="mb-6 flex w-full animate-fade-up-delay justify-start">
-          <div class="teacher-stitch-segment inline-flex rounded-xl p-1 shadow-sm">
-            <RouterLink :to="summaryTabLink" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              Tổng quan điểm &amp; báo cáo
-            </RouterLink>
-            <RouterLink :to="incidentTabLink" class="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-white">
-              Tổng quan hành vi gian lận
-            </RouterLink>
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 class="text-3xl font-extrabold tracking-tight" style="color: var(--ds-text)">{{ selectedExamTitle }}</h1>
+            <p class="mt-1" style="color: var(--ds-text-secondary)">Xem xét và xử lý các vi phạm liêm chính học thuật bị gắn cờ trong tất cả phiên đang hoạt động.</p>
           </div>
-        </div>
-
-        <div class="relative mb-8 grid grid-cols-1 gap-4 animate-fade-up-delay sm:grid-cols-2 lg:grid-cols-4">
-          <div class="stitch-stat-bento transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" v-for="card in summaryCards" :key="card.title">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{ card.title }}</p>
-              <span class="material-symbols-outlined text-primary">{{ card.icon }}</span>
-            </div>
-            <div v-if="card.sub" class="flex flex-col">
-              <h3 class="text-2xl font-bold leading-tight text-slate-900 dark:text-slate-100 break-words">{{ card.value }}</h3>
-              <p class="text-slate-400 text-xs mt-1">{{ card.sub }}</p>
-            </div>
-            <div v-else class="flex items-baseline gap-2">
-              <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ card.value }}</h3>
-              <span :class="card.trendClass" class="text-sm font-bold flex items-center">{{ card.trend }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="similarityPairs.length > 0" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl shadow-sm mb-6">
-          <h3 class="font-bold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined">compare_arrows</span>
-            Cặp thí sinh có đáp án tương đồng cao (nghi ngờ gian lận)
-          </h3>
-          <div class="space-y-2">
-            <div
-              v-for="(pair, idx) in similarityPairs"
-              :key="idx"
-              class="flex items-center justify-between gap-4 py-2 px-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800"
+          <div class="flex gap-2">
+            <button
+              :disabled="isLoadingSimilarity"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg hover:-translate-y-0.5 transition-all duration-200 shadow-sm disabled:opacity-70"
+              style="background-color: var(--ds-accent); color: white;"
+              type="button"
+              @click="loadAnswerSimilarity"
             >
-              <span class="font-semibold text-slate-900 dark:text-slate-100">{{ pair.student1 }}</span>
-              <span class="text-amber-600 dark:text-amber-400 font-bold">{{ (pair.similarity * 100).toFixed(1) }}%</span>
-              <span class="font-semibold text-slate-900 dark:text-slate-100">{{ pair.student2 }}</span>
-              <span class="text-xs text-slate-500">{{ pair.sameAnswers }}/{{ pair.commonQuestions }} câu trùng</span>
-            </div>
+              <LucideIcon name="compare_arrows" />
+              <span>{{ isLoadingSimilarity ? 'Đang phân tích...' : 'Phân tích tương đồng đáp án' }}</span>
+            </button>
+            <button
+              type="button"
+              @click="downloadReport"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
+              style="background-color: var(--ds-primary); color: white;"
+            >
+              <LucideIcon name="download" />
+              <span>Tải báo cáo</span>
+            </button>
           </div>
         </div>
+      </div>
 
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Khoảng thời gian</label>
-              <select
-                v-model="filterTimeRange"
-                class="teacher-stitch-field teacher-stitch-select w-full rounded-lg px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100"
-              >
-                <option value="30d">30 ngày gần nhất</option>
-                <option value="7d">7 ngày gần nhất</option>
-                <option value="24h">24 giờ gần nhất</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Loại vi phạm</label>
-              <select
-                v-model="filterViolationType"
-                class="teacher-stitch-field teacher-stitch-select w-full rounded-lg px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100"
-              >
-                <option value="all">Tất cả vi phạm</option>
-                <option value="tab">Chuyển tab</option>
-                <option value="ai">Phát hiện AI</option>
-                <option value="device">Thiết bị ngoài</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5 lg:col-span-2">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tìm kiếm</label>
-              <input
-                v-model.trim="incidentSearch"
-                class="form-input w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
-                placeholder="Tìm tên hoặc mã sinh viên..."
-                type="search"
-                autocomplete="off"
-              />
-            </div>
-          </div>
+      <div class="mb-6 ds-animate-fade-up-delay">
+        <div class="inline-flex rounded-xl p-1 border" style="border-color: var(--ds-border); background-color: var(--ds-surface)">
+          <RouterLink :to="summaryTabLink" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" style="color: var(--ds-text-secondary)">
+            Tổng quan điểm &amp; báo cáo
+          </RouterLink>
+          <RouterLink :to="incidentTabLink" class="px-4 py-2 rounded-lg text-sm font-bold" style="background-color: var(--ds-primary); color: white">
+            Tổng quan hành vi gian lận
+          </RouterLink>
         </div>
+      </div>
 
-        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div class="teacher-stitch-table-scroll teacher-stitch-table-scroll--slate-head">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sinh viên</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thời điểm vi phạm</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Loại vi phạm</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Xử lý</th>
-                  <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                <tr v-if="isLoading">
-                  <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-500">Đang tải sự cố...</td>
-                </tr>
-                <tr v-else-if="loadError">
-                  <td colspan="6" class="px-6 py-10 text-center text-sm text-rose-600">{{ loadError }}</td>
-                </tr>
-                <tr v-else-if="!filteredIncidents.length">
-                  <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-500">Không có sự cố nào khớp bộ lọc hoặc đề thi này chưa có dữ liệu.</td>
-                </tr>
-                <template v-else>
-                  <tr v-for="incident in paginatedIncidents" :key="incident.attemptId" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td class="px-6 py-4 text-sm font-bold text-slate-900 dark:text-slate-100">{{ incident.student }}</td>
-                    <td class="px-6 py-4 text-xs text-slate-500">{{ incident.studentId }}</td>
-                    <td class="px-6 py-4">
-                      <div class="flex flex-col">
-                        <span class="text-sm text-slate-900 dark:text-slate-100">{{ incident.date }}</span>
-                        <span class="text-xs text-slate-500">{{ incident.time }}</span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4">
-                      <span :class="incident.violationClass" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border">
-                        {{ incident.violation }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 italic">{{ incident.action }}</td>
-                    <td class="px-6 py-4 text-right">
-                      <button class="text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg text-sm font-bold transition-all inline-flex items-center gap-1 bg-primary/5" type="button" @click="openIncidentReport(incident)">
-                        <span>Xem xét</span>
-                        <span class="material-symbols-outlined text-lg">open_in_new</span>
-                      </button>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
+      <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 ds-animate-fade-up-delay">
+        <DsStatCard
+          v-for="card in summaryCards"
+          :key="card.title"
+          :label="card.title"
+          :value="card.value"
+          :sub="card.sub || card.trend"
+          :icon="card.icon"
+        />
+      </div>
+
+      <div v-if="similarityPairs.length > 0" class="mb-6 p-4 ds-animate-fade-up-delay" style="background-color: var(--ds-accent-bg); border: 1px solid var(--ds-accent-border); border-radius: var(--ds-radius-xl); box-shadow: var(--ds-shadow-sm)">
+        <h3 class="font-bold mb-3 flex items-center gap-2" style="color: var(--ds-accent)">
+          <LucideIcon name="compare_arrows" />
+          Cặp thí sinh có đáp án tương đồng cao (nghi ngờ gian lận)
+        </h3>
+        <div class="space-y-2">
           <div
-            v-if="filteredIncidents.length > INC_PAGE_SIZE"
-            class="flex flex-col gap-2 border-t border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/30 sm:flex-row sm:items-center sm:justify-between"
+            v-for="(pair, idx) in similarityPairs"
+            :key="idx"
+            class="flex items-center justify-between gap-4 py-2 px-3 rounded-lg"
+            style="background-color: var(--ds-surface); border: 1px solid var(--ds-accent-border)"
           >
-            <p class="text-xs text-slate-500">
-              {{ filteredIncidents.length }} sự cố · trang {{ pageIncidents }} / {{ totalPagesIncidents }}
-            </p>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800"
-                :disabled="pageIncidents <= 1"
-                @click="pageIncidents--"
-              >
-                Trước
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800"
-                :disabled="pageIncidents >= totalPagesIncidents"
-                @click="pageIncidents++"
-              >
-                Sau
-              </button>
-            </div>
+            <span class="font-semibold" style="color: var(--ds-text)">{{ pair.student1 }}</span>
+            <span class="font-bold" style="color: var(--ds-accent)">{{ (pair.similarity * 100).toFixed(1) }}%</span>
+            <span class="font-semibold" style="color: var(--ds-text)">{{ pair.student2 }}</span>
+            <span class="text-xs" style="color: var(--ds-text-muted)">{{ pair.sameAnswers }}/{{ pair.commonQuestions }} câu trùng</span>
           </div>
         </div>
-      </main>
+      </div>
+
+      <div class="mb-6 p-4 ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Khoảng thời gian</label>
+            <select class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)">
+              <option>30 ngày gần nhất</option>
+              <option>7 ngày gần nhất</option>
+              <option>24 giờ gần nhất</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Loại vi phạm</label>
+            <select class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)">
+              <option>Tất cả vi phạm</option>
+              <option>Chuyển tab</option>
+              <option>Phát hiện gian lận bằng AI</option>
+              <option>Thiết bị không được phép</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5 lg:col-span-2">
+            <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tìm kiếm</label>
+            <input class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)" placeholder="Tìm tên hoặc mã sinh viên..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)">
+        <DataTable
+          :columns="incidentColumns"
+          :data="incidents"
+          :row-key="'attemptId'"
+          :loading="isLoading"
+          :empty-text="loadError || 'Không tìm thấy sự cố đáng ngờ nào cho đề thi này.'"
+          :loading-text="'Đang tải sự cố...'"
+        >
+          <template #cell-student="{ value }">
+            <span class="text-sm font-bold" style="color: var(--ds-text)">{{ value }}</span>
+          </template>
+          <template #cell-studentId="{ value }">
+            <span class="text-xs" style="color: var(--ds-text-muted)">{{ value }}</span>
+          </template>
+          <template #cell-datetime="{ row }">
+            <div class="flex flex-col">
+              <span class="text-sm" style="color: var(--ds-text)">{{ row.date }}</span>
+              <span class="text-xs" style="color: var(--ds-text-muted)">{{ row.time }}</span>
+            </div>
+          </template>
+          <template #cell-violation="{ row }">
+            <span :class="row.violationClass" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border">
+              {{ row.violation }}
+            </span>
+          </template>
+          <template #cell-action="{ value }">
+            <span class="text-sm italic" style="color: var(--ds-text-muted)">{{ value }}</span>
+          </template>
+          <template #row-actions="{ row }">
+            <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold transition-all" style="color: var(--ds-primary); background-color: var(--ds-primary-soft)" type="button" @click="openIncidentReport(row)">
+              <span>Xem xét</span>
+              <LucideIcon name="open_in_new" size="18" />
+            </button>
+          </template>
+        </DataTable>
+      </div>
     </div>
 
-    <div v-if="showIncidentModal && selectedIncident" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="incident-modal-title" @click.self="closeIncidentReport">
-      <div class="modal-content w-full max-w-4xl flex flex-col">
-        <header class="modal-header shrink-0">
-          <div class="flex items-center gap-3">
-            <div class="size-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary dark:text-amber-300 text-xl">report</span>
-            </div>
-            <h2 id="incident-modal-title" class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Báo cáo sự cố: {{ selectedIncident.student }}</h2>
+    <Modal v-model="showIncidentModal" :title="selectedIncident ? `Báo cáo sự cố: ${selectedIncident.student}` : ''" size="xl">
+      <template #header>
+        <div v-if="selectedIncident" class="flex items-center gap-3">
+          <div class="size-10 rounded-xl flex items-center justify-center" style="background-color: var(--ds-primary-soft)">
+            <LucideIcon name="report" />
           </div>
-          <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeIncidentReport">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </header>
-
-        <div class="px-6 pt-4 pb-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-          <div class="flex gap-2">
-            <button type="button" @click="activeReportTab = 'result'" :class="activeReportTab === 'result' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-              Kết quả
-            </button>
-            <button type="button" @click="activeReportTab = 'warnings'" :class="activeReportTab === 'warnings' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-              Số lượt cảnh báo
-            </button>
+          <div>
+            <h2 class="text-xl font-bold leading-tight" style="color: var(--ds-text)">{{ selectedIncident.student }}</h2>
+            <p class="text-sm" style="color: var(--ds-text-muted)">Mã: {{ selectedIncident.studentId }}</p>
           </div>
         </div>
+      </template>
 
-        <div class="modal-body space-y-8 bg-slate-50/30 dark:bg-slate-900/30">
-          <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div class="space-y-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Tên sinh viên</p>
-                <p class="text-slate-900 dark:text-slate-100 font-medium">{{ selectedIncident.student }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Mã sinh viên</p>
-                <p class="text-slate-900 dark:text-slate-100 font-medium">{{ selectedIncident.studentId }}</p>
-              </div>
-              <div class="space-y-1 border-t border-slate-100 dark:border-slate-700 pt-3 mt-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Tiêu đề đề thi</p>
-                <p class="text-slate-900 dark:text-slate-100 font-medium text-sm">{{ selectedExamTitle }}</p>
-              </div>
-              <div class="space-y-1 border-t border-slate-100 dark:border-slate-700 pt-3 mt-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Ngày</p>
-                <p class="text-slate-900 dark:text-slate-100 font-medium">{{ selectedIncident.date }}</p>
-              </div>
-              <div class="space-y-1 border-t border-slate-100 dark:border-slate-700 pt-3 mt-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Tên giám thị</p>
-                <p class="text-slate-900 dark:text-slate-100 font-medium">{{ proctorDisplayName }}</p>
-              </div>
-              <div class="space-y-1 border-t border-slate-100 dark:border-slate-700 pt-3 mt-1">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Kết quả</p>
-                <span :class="selectedIncident.resultClass" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold">
-                  {{ selectedIncident.result }}
-                </span>
-              </div>
-            </div>
-            <div class="flex flex-col gap-4">
-              <div class="flex-1 flex flex-col justify-center items-center gap-1 rounded-xl p-4 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20">
-                <p class="text-red-800 dark:text-red-400 text-xs font-bold uppercase">Mức độ nghiêm trọng</p>
-                <p class="text-red-600 dark:text-red-300 tracking-tight text-2xl font-black">{{ selectedIncident.severity }}</p>
-              </div>
-              <div class="flex-1 flex flex-col justify-center items-center gap-1 rounded-xl p-4 border border-primary/20 bg-primary/5">
-                <p class="text-primary text-xs font-bold uppercase">Loại vi phạm</p>
-                <p class="text-slate-900 dark:text-white text-center text-sm font-bold leading-tight">{{ selectedIncident.violation }}</p>
-              </div>
-            </div>
-          </section>
+      <div v-if="selectedIncident" class="space-y-8">
+        <div class="flex gap-2">
+          <button type="button" @click="activeReportTab = 'result'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" :style="activeReportTab === 'result' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { backgroundColor: 'var(--ds-gray-100)', color: 'var(--ds-text-secondary)' }">
+            Kết quả
+          </button>
+          <button type="button" @click="activeReportTab = 'warnings'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" :style="activeReportTab === 'warnings' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { backgroundColor: 'var(--ds-gray-100)', color: 'var(--ds-text-secondary)' }">
+            Số lượt cảnh báo
+          </button>
+        </div>
 
-          <section v-else class="space-y-4">
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
-              <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 mb-4">
-                <span class="material-symbols-outlined text-primary">timeline</span>
-                Thời điểm vi phạm
-              </h3>
-              <div class="relative space-y-6">
-                <div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-700"></div>
-                <div v-for="event in selectedIncident.warningTimeline" :key="event.time + event.label" class="relative flex gap-4">
-                  <div :class="event.dotClass" class="z-10 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-800">
-                    <span class="material-symbols-outlined text-[14px] text-white">{{ event.icon }}</span>
-                  </div>
-                  <div>
-                    <p :class="event.timeClass" class="text-xs font-bold uppercase tracking-wide">{{ event.time }}</p>
-                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ event.label }}</p>
-                    <p v-if="event.sub" class="text-xs text-slate-500">{{ event.sub }}</p>
-                  </div>
+        <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 p-6" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên sinh viên</p>
+              <p class="font-medium" style="color: var(--ds-text)">{{ selectedIncident.student }}</p>
+            </div>
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Mã sinh viên</p>
+              <p class="font-medium" style="color: var(--ds-text)">{{ selectedIncident.studentId }}</p>
+            </div>
+            <div class="space-y-1 border-t pt-3 mt-1" style="border-color: var(--ds-gray-100)">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tiêu đề đề thi</p>
+              <p class="font-medium text-sm" style="color: var(--ds-text)">{{ selectedExamTitle }}</p>
+            </div>
+            <div class="space-y-1 border-t pt-3 mt-1" style="border-color: var(--ds-gray-100)">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Ngày</p>
+              <p class="font-medium" style="color: var(--ds-text)">{{ selectedIncident.date }}</p>
+            </div>
+            <div class="space-y-1 border-t pt-3 mt-1" style="border-color: var(--ds-gray-100)">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên giám thị</p>
+              <p class="font-medium" style="color: var(--ds-text)">Nguyễn Văn Minh</p>
+            </div>
+            <div class="space-y-1 border-t pt-3 mt-1" style="border-color: var(--ds-gray-100)">
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Kết quả</p>
+              <span :class="selectedIncident.resultClass" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold">
+                {{ selectedIncident.result }}
+              </span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-4">
+            <div class="flex-1 flex flex-col justify-center items-center gap-1 p-4 rounded-xl" style="border: 1px solid var(--ds-danger-border); background-color: var(--ds-danger-bg)">
+              <p class="text-xs font-bold uppercase" style="color: var(--ds-danger)">Mức độ nghiêm trọng</p>
+              <p class="text-2xl font-black" style="color: var(--ds-danger)">{{ selectedIncident.severity }}</p>
+            </div>
+            <div class="flex-1 flex flex-col justify-center items-center gap-1 p-4 rounded-xl text-center" style="border: 1px solid var(--ds-primary-border); background-color: var(--ds-primary-soft)">
+              <p class="text-xs font-bold uppercase" style="color: var(--ds-primary)">Loại vi phạm</p>
+              <p class="text-sm font-bold leading-tight" style="color: var(--ds-text)">{{ selectedIncident.violation }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section v-else class="space-y-4">
+          <div class="p-6" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
+            <h3 class="font-bold flex items-center gap-2 mb-4" style="color: var(--ds-text)">
+              <LucideIcon name="timeline" />
+              Thời điểm vi phạm
+            </h3>
+            <div class="relative space-y-6">
+              <div class="absolute left-[11px] top-2 bottom-2 w-0.5" style="background-color: var(--ds-gray-200)"></div>
+              <div v-for="event in selectedIncident.warningTimeline" :key="event.time + event.label" class="relative flex gap-4">
+                <div class="z-10 w-6 h-6 rounded-full flex items-center justify-center ring-4" :class="event.dotClass" style="ringColor: var(--ds-surface)">
+                  <LucideIcon :name="event.icon" size="14" />
+                </div>
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wide" :class="event.timeClass">{{ event.time }}</p>
+                  <p class="text-sm font-semibold" style="color: var(--ds-text)">{{ event.label }}</p>
+                  <p v-if="event.sub" class="text-xs" style="color: var(--ds-text-muted)">{{ event.sub }}</p>
                 </div>
               </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Tổng cảnh báo</p>
-                <p class="text-3xl font-black text-red-600 mt-1">{{ selectedIncident.warningCount }}</p>
-              </div>
-              <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Cảnh báo đầu tiên</p>
-                <p class="text-lg font-bold mt-1">{{ selectedIncident.warningTimeline[1]?.time ?? '—' }}</p>
-              </div>
-              <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Cảnh báo gần nhất</p>
-                <p class="text-lg font-bold mt-1">{{ selectedIncident.time }}</p>
-              </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-5 rounded-xl text-center" style="background-color: var(--ds-surface); border: 1px solid var(--ds-border)">
+              <p class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tổng cảnh báo</p>
+              <p class="text-3xl font-black mt-1" style="color: var(--ds-danger)">{{ selectedIncident.warningCount }}</p>
             </div>
-          </section>
-        </div>
+            <div class="p-5 rounded-xl text-center" style="background-color: var(--ds-surface); border: 1px solid var(--ds-border)">
+              <p class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Cảnh báo đầu tiên</p>
+              <p class="text-lg font-bold mt-1" style="color: var(--ds-text)">{{ selectedIncident.warningTimeline[1]?.time }}</p>
+            </div>
+            <div class="p-5 rounded-xl text-center" style="background-color: var(--ds-surface); border: 1px solid var(--ds-border)">
+              <p class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Cảnh báo gần nhất</p>
+              <p class="text-lg font-bold mt-1" style="color: var(--ds-text)">{{ selectedIncident.time }}</p>
+            </div>
+          </div>
+        </section>
+      </div>
 
-        <footer class="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-8 py-5 shrink-0 bg-slate-50 dark:bg-slate-900/80">
+      <template #footer>
+        <div class="flex items-center justify-end gap-3">
           <button
             type="button"
             @click="printIncidentReport"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-bold border rounded-lg transition-colors"
+            style="border-color: var(--ds-border); color: var(--ds-text-secondary); background-color: var(--ds-surface)"
           >
-            <span class="material-symbols-outlined text-lg">print</span>
+            <LucideIcon name="print" size="18" />
             In báo cáo
           </button>
           <button
             type="button"
             @click="downloadIncidentPdf"
-            class="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 transition-shadow shadow-sm"
+            class="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-lg shadow-sm transition-shadow"
+            style="background-color: var(--ds-primary); color: white"
           >
-            <span class="material-symbols-outlined text-lg">download</span>
+            <LucideIcon name="download" size="18" />
             Tải PDF
           </button>
-        </footer>
-      </div>
-    </div>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { ApiError, unwrapApiData } from '../../services/apiClient'
-import { displayNameFromMe, fetchMyProfile } from '../../services/authService'
+import { computed, onMounted, ref } from 'vue'
+import { ApiError } from '../../services/apiClient'
 import { getAttemptReport, listExamAttempts } from '../../services/attemptService'
 import { getAnswerSimilarity } from '../../services/examService'
 import { exportToCsv } from '../../utils/reportExport'
 import { RouterLink, useRoute } from 'vue-router'
-import TeacherTopHeader from './TeacherTopHeader.vue'
+import { useScrollToTop } from '../../composables/useScrollToTop'
+import DsStatCard from '../ui/DsStatCard.vue'
+import DataTable from '../ui/DataTable.vue'
+import Modal from '../ui/Modal.vue'
+
+useScrollToTop()
 
 const route = useRoute()
-const isDark = ref(false)
 const showIncidentModal = ref(false)
 const activeReportTab = ref('result')
 const selectedIncident = ref(null)
@@ -357,17 +296,20 @@ const attempts = ref([])
 const reportByAttempt = ref({})
 const similarityPairs = ref([])
 const isLoadingSimilarity = ref(false)
-const filterTimeRange = ref('30d')
-const filterViolationType = ref('all')
-const incidentSearch = ref('')
-const meProfile = ref(null)
-
-const proctorDisplayName = computed(() => displayNameFromMe(meProfile.value) || '—')
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
 const summaryTabLink = computed(() => ({ path: '/teacher/exams/review/summary', query: route.query }))
 const incidentTabLink = computed(() => ({ path: '/teacher/exams/review/incidents', query: route.query }))
+
+const incidentColumns = computed(() => [
+  { key: 'student', label: 'Sinh viên' },
+  { key: 'studentId', label: 'Mã' },
+  { key: 'datetime', label: 'Thời điểm vi phạm' },
+  { key: 'violation', label: 'Loại vi phạm' },
+  { key: 'action', label: 'Xử lý' },
+  { key: '_actions', label: 'Chi tiết', align: 'right' }
+])
 
 const formatDate = (value) => {
   if (!value) return '-'
@@ -390,7 +332,6 @@ const buildIncident = (attempt) => {
   const hasHighRisk = severity === 'CAO'
   const violation = suspicious ? 'Hành vi đáng ngờ' : 'Vượt ngưỡng rủi ro'
   const submittedAt = attempt.submittedAt || attempt.startedAt
-  const submittedAtMs = submittedAt ? new Date(String(submittedAt)).getTime() : 0
   const firstWarningTime = formatTime(attempt.startedAt)
   const latestWarningTime = formatTime(submittedAt)
 
@@ -398,8 +339,6 @@ const buildIncident = (attempt) => {
     attemptId: attempt.id,
     student: attempt.student || 'Sinh viên không rõ',
     studentId: `AT-${attempt.id}`,
-    submittedAtMs,
-    violationKind: suspicious ? 'suspicious' : 'risk',
     date: formatDate(submittedAt),
     time: latestWarningTime,
     violation,
@@ -415,9 +354,9 @@ const buildIncident = (attempt) => {
     warningCount,
     firstWarningTime,
     warningTimeline: [
-      { time: formatTime(attempt.startedAt), label: 'Bắt đầu thi', sub: '', icon: 'play_arrow', dotClass: 'bg-primary', timeClass: 'text-slate-400' },
-      { time: firstWarningTime, label: 'Kích hoạt cờ rủi ro', sub: `Điểm rủi ro: ${riskScore}`, icon: 'warning', dotClass: 'bg-amber-500', timeClass: 'text-amber-500' },
-      { time: latestWarningTime, label: 'Đã nộp bài', sub: report?.status || attempt.status, icon: 'fact_check', dotClass: 'bg-red-500', timeClass: 'text-red-500' }
+      { time: formatTime(attempt.startedAt), label: 'Bắt đầu thi', sub: '', icon: 'play_arrow', dotClass: 'bg-[var(--ds-primary)]', timeClass: 'text-[var(--ds-text-muted)]' },
+      { time: firstWarningTime, label: 'Kích hoạt cờ rủi ro', sub: `Điểm rủi ro: ${riskScore}`, icon: 'warning', dotClass: 'bg-[var(--ds-accent)]', timeClass: 'text-[var(--ds-accent)]' },
+      { time: latestWarningTime, label: 'Đã nộp bài', sub: report?.status || attempt.status, icon: 'fact_check', dotClass: 'bg-[var(--ds-danger)]', timeClass: 'text-[var(--ds-danger)]' }
     ]
   }
 }
@@ -426,54 +365,11 @@ const incidents = computed(() => attempts.value
   .filter((attempt) => Number(attempt.riskScore || 0) > 0 || Boolean(attempt.suspicious))
   .map(buildIncident))
 
-const MS_24H = 24 * 60 * 60 * 1000
-const MS_7D = 7 * MS_24H
-const MS_30D = 30 * MS_24H
-
-const filteredIncidents = computed(() => {
-  const now = Date.now()
-  const windowMs =
-    filterTimeRange.value === '24h' ? MS_24H : filterTimeRange.value === '7d' ? MS_7D : MS_30D
-  const q = incidentSearch.value.trim().toLowerCase()
-
-  return incidents.value.filter((inc) => {
-    if (inc.submittedAtMs > 0 && now - inc.submittedAtMs > windowMs) return false
-
-    const v = filterViolationType.value
-    // BE chỉ có cờ suspicious + riskScore; map UI: tab→đáng ngờ, AI→mức CAO, thiết bị→vượt ngưỡng nhưng chưa CAO
-    if (v === 'tab' && inc.violationKind !== 'suspicious') return false
-    if (v === 'ai' && inc.severity !== 'CAO') return false
-    if (v === 'device' && (inc.violationKind !== 'risk' || inc.severity === 'CAO')) return false
-
-    if (q) {
-      const name = String(inc.student || '').toLowerCase()
-      const id = String(inc.studentId || '').toLowerCase()
-      if (!name.includes(q) && !id.includes(q)) return false
-    }
-    return true
-  })
-})
-
-const INC_PAGE_SIZE = 10
-const pageIncidents = ref(1)
-
-const paginatedIncidents = computed(() => {
-  const list = filteredIncidents.value
-  const start = (pageIncidents.value - 1) * INC_PAGE_SIZE
-  return list.slice(start, start + INC_PAGE_SIZE)
-})
-
-const totalPagesIncidents = computed(() => Math.max(1, Math.ceil(filteredIncidents.value.length / INC_PAGE_SIZE)))
-
-watch([attempts, filterTimeRange, filterViolationType, incidentSearch], () => {
-  pageIncidents.value = 1
-})
-
 const summaryCards = computed(() => {
-  const total = filteredIncidents.value.length
-  const high = filteredIncidents.value.filter((incident) => incident.severity === 'CAO').length
-  const resolved = filteredIncidents.value.filter((incident) => incident.result !== 'Đang xem xét').length
-  const commonViolation = filteredIncidents.value.length ? filteredIncidents.value[0].violation : '-'
+  const total = incidents.value.length
+  const high = incidents.value.filter((incident) => incident.severity === 'HIGH').length
+  const resolved = incidents.value.filter((incident) => incident.result !== 'Đang xem xét').length
+  const commonViolation = incidents.value.length ? incidents.value[0].violation : '-'
   const incidentRate = attempts.value.length ? (total / attempts.value.length) * 100 : 0
 
   return [
@@ -481,8 +377,7 @@ const summaryCards = computed(() => {
       title: 'Tổng sự cố',
       icon: 'warning',
       value: String(total),
-      trend: `${high} mức độ cao`,
-      trendClass: 'text-slate-500 dark:text-slate-400'
+      trend: `${high} mức độ cao`
     },
     {
       title: 'Vi phạm phổ biến',
@@ -494,15 +389,13 @@ const summaryCards = computed(() => {
       title: 'Tỷ lệ sự cố',
       icon: 'analytics',
       value: attempts.value.length ? `${incidentRate.toFixed(1)}%` : '-',
-      trend: `${total}/${attempts.value.length || 0} lượt làm`,
-      trendClass: 'text-slate-500 dark:text-slate-400'
+      trend: `${total}/${attempts.value.length || 0} lượt làm`
     },
     {
       title: 'Sự cố đã xử lý',
       icon: 'check_circle',
       value: String(resolved),
-      trend: `trên ${total} trường hợp`,
-      trendClass: 'text-slate-400'
+      trend: `trên ${total} trường hợp`
     }
   ]
 })
@@ -518,15 +411,11 @@ const downloadReport = () => {
     { key: 'warningCount', label: 'Số cảnh báo' }
   ]
   const safeTitle = (selectedExamTitle.value || 'bao-cao-gian-lan').replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, '-')
-  exportToCsv(filteredIncidents.value, columns, `bao-cao-gian-lan-${safeTitle}.csv`)
+  exportToCsv(incidents.value, columns, `bao-cao-gian-lan-${safeTitle}.csv`)
 }
 
 const printIncidentReport = () => {
-  if (showIncidentModal.value && selectedIncident.value) {
-    window.print()
-  } else {
-    window.print()
-  }
+  window.print()
 }
 
 const downloadIncidentPdf = () => {
@@ -584,14 +473,26 @@ const loadAnswerSimilarity = async () => {
   }
 }
 
-onMounted(async () => {
-  try {
-    const raw = await fetchMyProfile()
-    meProfile.value = unwrapApiData(raw)
-  } catch {
-    meProfile.value = null
-  }
-  await loadIncidentData()
-})
+onMounted(loadIncidentData)
 </script>
 
+<style scoped>
+.ds-animate-fade-up {
+  animation: fadeUp 0.5s ease-out;
+}
+
+.ds-animate-fade-up-delay {
+  animation: fadeUp 0.65s ease-out;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

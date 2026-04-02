@@ -28,9 +28,31 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "email_verified", nullable = false)
+    @Column(name = "email_verified")
     @Builder.Default
-    private boolean emailVerified = true;
+    private Boolean emailVerified = true;
+
+    @Column(length = 100)
+    private String fullName;
+
+    @Column(length = 50)
+    private String studentCode;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 200)
+    private String address;
+
+    @Column(length = 50)
+    private String grade;
+
+    @Column(length = 100)
+    private String faculty;
+
+    @Column(name = "enabled")
+    @Builder.Default
+    private Boolean enabled = true;
 
     /** LAZY + JOIN FETCH ở repository khi cần roles — tránh load roles mọi lúc */
     @ManyToMany(fetch = FetchType.LAZY)

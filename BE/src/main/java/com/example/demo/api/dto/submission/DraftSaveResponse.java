@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class DraftSaveResponse {
     private Long attemptId;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime savedAt;
     private Integer answeredCount;
     private Long remainingSeconds;

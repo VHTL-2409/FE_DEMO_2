@@ -75,6 +75,9 @@ public class ExamAttempt {
     @Column(name = "device_fingerprint", length = 128)
     private String deviceFingerprint;
 
+    @Column(name = "original_device_fingerprint", length = 128)
+    private String originalDeviceFingerprint;
+
     @Column(name = "session_token_version")
     private Integer sessionTokenVersion;
 

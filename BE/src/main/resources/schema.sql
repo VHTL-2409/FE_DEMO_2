@@ -15,6 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(128);
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS original_device_fingerprint VARCHAR(128);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS session_token_version INTEGER;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS fullscreen_required BOOLEAN;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_integrity_check_at TIMESTAMP;
@@ -116,5 +117,52 @@ CREATE INDEX IF NOT EXISTS idx_answers_attempt_question
     ON answers(attempt_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_answers_question
     ON answers(question_id);
+-- =====================================================
+-- USER EXTENDED FIELDS (for student import)
+-- =====================================================
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS full_name VARCHAR(100);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS student_code VARCHAR(50);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS address VARCHAR(200);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS grade VARCHAR(50);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS faculty VARCHAR(100);
+-- Fix NULL values before adding NOT NULL constraint
+UPDATE users SET enabled = TRUE WHERE enabled IS NULL;
+ALTER TABLE IF EXISTS users ALTER COLUMN enabled SET DEFAULT TRUE;
+ALTER TABLE IF EXISTS users ALTER COLUMN enabled SET NOT NULL;
+
+-- =====================================================
+-- CLASS MANAGEMENT TABLES
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS classes (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    subject VARCHAR(100),
+    class_code VARCHAR(8) UNIQUE,
+    teacher_id BIGINT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(teacher_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_classes_teacher_name ON classes(teacher_id, name);
+CREATE INDEX IF NOT EXISTS idx_classes_code ON classes(class_code);
+
+CREATE TABLE IF NOT EXISTS class_students (
+    id BIGSERIAL PRIMARY KEY,
+    class_id BIGINT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(class_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_class_students_class ON class_students(class_id);
+CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_id);
+
+-- =====================================================
+
 CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_created
     ON monitoring_events(attempt_id, created_at DESC);

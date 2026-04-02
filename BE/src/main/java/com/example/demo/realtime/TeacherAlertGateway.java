@@ -100,6 +100,21 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishAttemptResumed(Long examId, Long attemptId, String student, Integer riskScore, String message) {
+        AlertPayload payload = AlertPayload.builder()
+                .type("ATTEMPT_RESUMED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .riskScore(riskScore)
+                .status("IN_PROGRESS")
+                .message(message)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     public void publishDraftSaved(Long examId, Long attemptId, String student, Integer answeredCount, Long remainingSeconds) {
         AlertPayload payload = AlertPayload.builder()
             .type("DRAFT_SAVED")

@@ -70,7 +70,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import LucideIcon from '../common/LucideIcon.vue'
+import LucideIcon from '../../common/LucideIcon.vue'
 
 const props = defineProps({
   attempts: { type: Array, default: () => [] }

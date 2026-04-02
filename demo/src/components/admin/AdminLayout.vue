@@ -78,7 +78,7 @@ const adminSidebarItems = [
 }
 
 .admin-shell.dark .ds-sidebar .text-\[\#94a3b8\] {
-  color: #94a3b8 !important;
+  color: var(--ds-text-muted) !important;
 }
 
 .admin-shell.dark .ds-sidebar .hover\:bg-\[\#94a3b8\] {

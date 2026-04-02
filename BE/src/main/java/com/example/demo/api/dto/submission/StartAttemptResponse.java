@@ -13,9 +13,9 @@ import java.time.OffsetDateTime;
 public class StartAttemptResponse {
     private Long attemptId;
     private Long examId;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime startedAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime deadlineAt;
     private Long remainingSeconds;
     private String status;

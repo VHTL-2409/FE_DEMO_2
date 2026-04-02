@@ -2,17 +2,13 @@
   <div class="elp">
 
     <!-- Page Header -->
-    <div class="elp__header">
-      <div class="elp__header-left">
-        <div class="elp__header-icon">
-          <LucideIcon name="assignment" />
-        </div>
-        <div>
-          <h1 class="elp__header-title">Quản lý đề thi</h1>
-          <p class="elp__header-sub">Tạo, chỉnh sửa và theo dõi các kỳ thi của bạn</p>
-        </div>
-      </div>
-      <div class="elp__header-actions">
+    <TeacherPageHeader
+      icon="assignment"
+      icon-color="primary"
+      title="Quản lý đề thi"
+      subtitle="Tạo, chỉnh sửa và theo dõi các kỳ thi của bạn"
+    >
+      <template #actions>
         <button type="button" class="elp__btn elp__btn--outline" @click="handleExport">
           <LucideIcon name="download" />
           Xuất danh sách
@@ -21,8 +17,8 @@
           <LucideIcon name="add" />
           Tạo đề thi mới
         </button>
-      </div>
-    </div>
+      </template>
+    </TeacherPageHeader>
 
     <!-- Stats bar -->
     <div class="elp__stats">
@@ -123,6 +119,7 @@
     <ExamDetailModal
       v-model="showDetailModal"
       :exam="activeExam"
+      @detail="goToResultAnalysis"
       @edit="editExam"
       @duplicate="duplicateExam"
     />
@@ -147,6 +144,8 @@ import {
   exportExamsAsCsv
 } from '../../../../services/examService'
 import { useToast } from '../../../../composables/useToast'
+import LucideIcon from '../../../common/LucideIcon.vue'
+import TeacherPageHeader from '../../common/TeacherPageHeader.vue'
 import ExamListToolbar from './ExamListToolbar.vue'
 import ExamTable from './ExamTable.vue'
 import BulkActionBar from './BulkActionBar.vue'
@@ -369,6 +368,14 @@ const editExam = (exam) => {
   router.push({ path: `/teacher/exams/${exam.id}` })
 }
 
+const goToResultAnalysis = (exam) => {
+  showDetailModal.value = false
+  router.push({
+    path: '/teacher/exams/review/summary',
+    query: { examId: String(exam.id), title: exam.title || '' }
+  })
+}
+
 const goToSchedule = (exam) => {
   router.push({ path: '/teacher/exams/schedule', query: { examId: exam.id, title: exam.title, mode: 'edit' } })
 }
@@ -511,7 +518,7 @@ onMounted(loadExams)
   line-height: 1.2;
 }
 
-.dark .elp__header-title { color: #f1f5f9; }
+.dark .elp__header-title { color: var(--ds-text); }
 
 .elp__header-sub {
   font-size: 0.8rem;
@@ -564,7 +571,7 @@ onMounted(loadExams)
 }
 
 .elp__stat-icon--total { background: var(--ds-primary-soft); color: var(--ds-primary); }
-.elp__stat-icon--live { background: rgba(245,158,11,0.1); color: #d97706; }
+.elp__stat-icon--live { background: rgba(245,158,11,0.1); color: var(--ds-warning); }
 .elp__stat-icon--upcoming { background: rgba(2,132,199,0.1); color: #0284c7; }
 .elp__stat-icon--students { background: rgba(22,163,74,0.1); color: var(--ds-success); }
 
@@ -576,7 +583,7 @@ onMounted(loadExams)
   line-height: 1;
 }
 
-.dark .elp__stat-val { color: #f1f5f9; }
+.dark .elp__stat-val { color: var(--ds-text); }
 
 .elp__stat-label {
   font-size: 0.7rem;
@@ -621,7 +628,7 @@ onMounted(loadExams)
 .dark .elp__btn--outline {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #94a3b8;
+  color: var(--ds-text-muted);
 }
 
 .elp__btn--outline:hover {
@@ -669,7 +676,7 @@ onMounted(loadExams)
 .dark .elp__page-btn {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
-  color: #94a3b8;
+  color: var(--ds-text-muted);
 }
 
 .elp__page-btn:hover:not(:disabled) {
@@ -685,7 +692,7 @@ onMounted(loadExams)
   font-weight: 600;
 }
 
-.dark .elp__page-info { color: #94a3b8; }
+.dark .elp__page-info { color: var(--ds-text-muted); }
 
 /* Modal */
 .elp-modal-overlay {
@@ -745,7 +752,7 @@ onMounted(loadExams)
   line-height: 1.3;
 }
 
-.dark .elp-modal__title { color: #f1f5f9; }
+.dark .elp-modal__title { color: var(--ds-text); }
 
 .elp-modal__subtitle {
   font-size: 0.8rem;
@@ -791,10 +798,10 @@ onMounted(loadExams)
   line-height: 1.6;
 }
 
-.dark .elp-modal__body { color: #94a3b8; }
+.dark .elp-modal__body { color: var(--ds-text-muted); }
 
 .elp-modal__body strong { color: var(--ds-text); }
-.dark .elp-modal__body strong { color: #f1f5f9; }
+.dark .elp-modal__body strong { color: var(--ds-text); }
 
 .elp-modal__footer {
   display: flex;
@@ -855,7 +862,7 @@ onMounted(loadExams)
   margin: 0.25rem 0 0;
 }
 
-.dark .elp-detail-item__val { color: #f1f5f9; }
+.dark .elp-detail-item__val { color: var(--ds-text); }
 
 .elp-detail-desc {
   padding: 1rem;
@@ -885,7 +892,7 @@ onMounted(loadExams)
   line-height: 1.5;
 }
 
-.dark .elp-detail-desc__val { color: #94a3b8; }
+.dark .elp-detail-desc__val { color: var(--ds-text-muted); }
 
 /* Modal transition */
 .elp-modal-enter-active,

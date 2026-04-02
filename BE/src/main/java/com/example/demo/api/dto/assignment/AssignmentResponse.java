@@ -14,14 +14,14 @@ public class AssignmentResponse {
     private Long id;
     private Long examId;
     private String title;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime openAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime closeAt;
     private Integer maxAttempts;
     private Boolean allowReviewAfterSubmit;
     private Boolean isPublished;
     private String createdBy;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime createdAt;
 }

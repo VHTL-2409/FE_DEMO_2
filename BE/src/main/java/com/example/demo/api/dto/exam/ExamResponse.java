@@ -15,11 +15,10 @@ public class ExamResponse {
     private String code;
     private String title;
     private String description;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime startTime;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime endTime;
-    private String timezone;
     private Integer durationMinutes;
     private Boolean isActive;
     private String createdBy;

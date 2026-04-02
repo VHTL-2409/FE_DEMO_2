@@ -5,10 +5,12 @@ import com.example.demo.api.dto.exam.ExamRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
 import com.example.demo.api.dto.exam.PracticeExamRequest;
 import com.example.demo.api.dto.exam.QuestionWrongStatsItem;
+import com.example.demo.api.dto.exam.WaitingStudentResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.Exam;
+import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
@@ -30,14 +32,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.common.DateTimeUtils;
+import com.example.demo.common.VietNamTime;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +53,10 @@ public class ExamService {
     private static final int EXAM_CODE_LENGTH = 8;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PRACTICE_EXAM_TITLE_PREFIX = "Luyện Tập - ";
+
+    private static OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt == null ? null : ldt.atZone(VN).toOffsetDateTime();
+    }
 
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
@@ -70,8 +80,6 @@ public class ExamService {
                 .description(request.getDescription())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
-                .timezone(request.getTimezone() != null && !request.getTimezone().isBlank()
-                        ? request.getTimezone() : "Asia/Ho_Chi_Minh")
                 .durationMinutes(request.getDurationMinutes())
                 .isActive(request.getIsActive() == null ? Boolean.TRUE : request.getIsActive())
                 .createdBy(teacher)
@@ -313,7 +321,7 @@ public class ExamService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
 
         Exam accessibleExam = requireAccessibleExam(exam.getId(), actor);
-        validateExamJoinable(accessibleExam, LocalDateTime.now(DateTimeUtils.toZoneId(accessibleExam.getTimezone())));
+        validateExamJoinable(accessibleExam, LocalDateTime.now(VietNamTime.zone()));
         return toResponse(accessibleExam);
     }
 
@@ -323,7 +331,7 @@ public class ExamService {
 
         Exam exam = requireManageableExam(examId, actor);
 
-        LocalDateTime nowInExamZone = LocalDateTime.now(DateTimeUtils.toZoneId(exam.getTimezone()));
+        LocalDateTime nowInExamZone = LocalDateTime.now(VietNamTime.zone());
         if (exam.getStartTime() != null && !nowInExamZone.isBefore(exam.getStartTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Không thể chỉnh sửa đề thi đã bắt đầu. Chỉ cho phép sửa đề thi chưa đến thời gian bắt đầu.");
@@ -335,9 +343,6 @@ public class ExamService {
         exam.setDescription(request.getDescription());
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
-        if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
-            exam.setTimezone(request.getTimezone());
-        }
         exam.setDurationMinutes(request.getDurationMinutes());
         exam.setIsActive(request.getIsActive() == null ? exam.getIsActive() : request.getIsActive());
         if (request.getMonitorTabSwitch() != null) {
@@ -443,9 +448,6 @@ public class ExamService {
 
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
-        if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
-            exam.setTimezone(request.getTimezone());
-        }
         exam.setDurationMinutes(duration);
         exam.setIsActive(true);
         examRepository.save(exam);
@@ -510,7 +512,6 @@ public class ExamService {
                 .description(original.getDescription())
                 .startTime(null)
                 .endTime(null)
-                .timezone(original.getTimezone() != null ? original.getTimezone() : "Asia/Ho_Chi_Minh")
                 .durationMinutes(original.getDurationMinutes())
                 .isActive(false)
                 .isArchived(false)
@@ -579,6 +580,45 @@ public class ExamService {
                 deleteExam(id, actor);
             } catch (Exception ignored) { }
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<WaitingStudentResponse> getWaitingStudents(Long examId, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        List<ExamAttempt> attempts = examAttemptRepository.findByExam(exam);
+
+        List<WaitingStudentResponse> waitingStudents = new ArrayList<>();
+        for (ExamAttempt attempt : attempts) {
+            if (attempt.getStudent() == null) continue;
+
+            String statusLabel = switch (attempt.getStatus()) {
+                case IN_PROGRESS -> "Đang thi";
+                case PAUSED -> "Tạm dừng";
+                case SUBMITTED, AUTO_SUBMITTED -> "Đã nộp";
+                case STOPPED -> "Bị dừng";
+            };
+
+            waitingStudents.add(WaitingStudentResponse.builder()
+                    .attemptId(attempt.getId())
+                    .studentId(attempt.getStudent().getId())
+                    .studentName(attempt.getStudent().getFullName() != null ?
+                            attempt.getStudent().getFullName() : attempt.getStudent().getUsername())
+                    .studentEmail(attempt.getStudent().getEmail())
+                    .status(statusLabel)
+                    .riskScore(attempt.getRiskScore())
+                    .suspicious(attempt.getSuspicious())
+                    .joinedAt(attempt.getStartedAt() != null ?
+                            DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()).toString() : null)
+                    .build());
+        }
+
+        waitingStudents.sort((a, b) -> {
+            if (a.getJoinedAt() == null) return 1;
+            if (b.getJoinedAt() == null) return -1;
+            return b.getJoinedAt().compareTo(a.getJoinedAt());
+        });
+
+        return waitingStudents;
     }
 
     public Exam requireExam(Long examId) {
@@ -705,15 +745,16 @@ public class ExamService {
         return toResponse(exam, participantCount, questionRepository.countByExam(exam));
     }
 
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private ExamResponse toResponse(Exam exam, long participantCount, long questionCount) {
         return ExamResponse.builder()
                 .id(exam.getId())
                 .code(exam.getCode())
                 .title(exam.getTitle())
                 .description(exam.getDescription())
-                .startTime(DateTimeUtils.toOffset(exam.getStartTime(), exam.getTimezone()))
-                .endTime(DateTimeUtils.toOffset(exam.getEndTime(), exam.getTimezone()))
-                .timezone(exam.getTimezone() != null ? exam.getTimezone() : "Asia/Ho_Chi_Minh")
+                .startTime(toOffset(exam.getStartTime()))
+                .endTime(toOffset(exam.getEndTime()))
                 .durationMinutes(exam.getDurationMinutes())
                 .isActive(exam.getIsActive())
                 .isArchived(Boolean.TRUE.equals(exam.getIsArchived()))

@@ -100,7 +100,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login, resendVerification, redirectToSiteByDatabaseRole } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
-import LucideIcon from './LucideIcon.vue'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const router = useRouter()
 const username = ref('')

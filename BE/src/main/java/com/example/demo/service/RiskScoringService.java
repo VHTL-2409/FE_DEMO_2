@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
@@ -20,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,12 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class RiskScoringService {
+
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
+
+    private static OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt == null ? null : ldt.atZone(VN).toOffsetDateTime();
+    }
 
     private final FraudSignalRepository fraudSignalRepository;
     private final RiskScoreLogRepository riskScoreLogRepository;
@@ -142,7 +151,7 @@ public class RiskScoringService {
 
     @Transactional
     public RiskScoreResponse recomputeRisk(ExamAttempt attempt) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = VietNamTime.now();
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
         Map<String, Integer> breakdown = new LinkedHashMap<>();
         for (FraudSignal signal : signals) {
@@ -158,6 +167,10 @@ public class RiskScoringService {
         RiskScoreLog previousLog = riskScoreLogRepository.findTop1ByAttemptOrderByCreatedAtDesc(attempt);
         RiskLevel previousLevel = previousLog != null ? previousLog.getLevel() : RiskLevel.CLEAN;
         RiskActionType actionTaken = applyAutomatedAction(attempt, level, previousLevel);
+        RiskActionType resumeAction = applyAutomatedResume(attempt, level, previousLevel);
+        if (resumeAction != RiskActionType.NONE) {
+            actionTaken = resumeAction;
+        }
 
         attempt.setRiskScore(score);
         attempt.setRiskLevel(level);
@@ -223,6 +236,28 @@ public class RiskScoringService {
         return RiskActionType.NONE;
     }
 
+    /**
+     * Tự động khôi phục attempt từ PAUSED → IN_PROGRESS khi risk giảm từ CRITICAL.
+     * Chỉ resume nếu attempt đang ở trạng thái PAUSED và risk level đã giảm khỏi CRITICAL.
+     */
+    private RiskActionType applyAutomatedResume(ExamAttempt attempt, RiskLevel level, RiskLevel previousLevel) {
+        if (attempt.getStatus() != AttemptStatus.PAUSED) {
+            return RiskActionType.NONE;
+        }
+        if (previousLevel != RiskLevel.CRITICAL) {
+            return RiskActionType.NONE;
+        }
+        if (level == RiskLevel.CRITICAL) {
+            return RiskActionType.NONE;
+        }
+        attempt.setStatus(AttemptStatus.IN_PROGRESS);
+        examAttemptRepository.save(attempt);
+        auditLogService.logSystemAttemptResumed(attempt, "Risk score dropped from CRITICAL to " + level.name());
+        realtimeNotificationService.notifyAttemptResumed(attempt,
+                "Rủi ro đã giảm. Phiên thi đã được khôi phục. Vui lòng tiếp tục làm bài.");
+        return RiskActionType.ATTEMPT_RESUMED;
+    }
+
     private boolean shouldPersistSnapshot(
             RiskScoreLog previousLog,
             int score,
@@ -262,7 +297,7 @@ public class RiskScoringService {
                         .confidence(signal.getConfidence())
                         .severity(signal.getSeverity().name())
                         .evidence(signal.getEvidence())
-                        .createdAt(signal.getCreatedAt())
+                        .createdAt(toOffset(signal.getCreatedAt()))
                         .build())
                 .toList();
         return RiskScoreResponse.builder()
@@ -273,7 +308,7 @@ public class RiskScoringService {
                 .actionTaken(actionTaken.name())
                 .breakdown(breakdown)
                 .latestSignals(latestSignals)
-                .updatedAt(now)
+                .updatedAt(toOffset(now))
                 .build();
     }
 

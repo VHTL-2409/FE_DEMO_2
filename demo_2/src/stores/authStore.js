@@ -5,8 +5,8 @@ import {
   getDashboardPathForUser,
   getStoredToken,
   getStoredUser,
-  syncCurrentUserFromDatabase,
-  validateSession
+  getCachedOrRefresh,
+  invalidateSession as authInvalidate
 } from '../services/authService'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
       return null
     }
 
-    const currentUser = force ? await syncCurrentUserFromDatabase() : await validateSession()
+    const currentUser = await getCachedOrRefresh(force)
     token.value = getStoredToken()
     user.value = currentUser
     isBootstrapped.value = true
