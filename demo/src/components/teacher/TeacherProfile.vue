@@ -144,10 +144,16 @@ const handlePersonalSave = async (data) => {
 
 // Professional info save (extended profile)
 const handleProfessionalSave = async (data) => {
-  // Professional info might be stored differently - try updating
   try {
-    // Merge with existing profile data
-    profile.value = { ...profile.value, ...data }
+    const payload = await updateSharedProfile({
+      ...profile.value,
+      subject: data.subject,
+      department: data.department,
+      school: data.school,
+      hireDate: data.hireDate,
+      bio: data.bio
+    })
+    profile.value = { ...profile.value, ...payload }
     toast.success('Đã cập nhật thông tin chuyên môn.')
   } catch {
     toast.error('Không thể cập nhật thông tin chuyên môn.')

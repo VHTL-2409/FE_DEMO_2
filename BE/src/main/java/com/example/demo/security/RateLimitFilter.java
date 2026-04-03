@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,8 +12,10 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -48,11 +51,12 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        String clientIp = resolveClientIp(request);
-        String username = extractUsernameFromBody(request);
+        CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(request);
+        String clientIp = resolveClientIp(cachedRequest);
+        String username = extractUsernameFromBody(cachedRequest);
 
         if (username == null || username.isBlank()) {
-            chain.doFilter(request, response);
+            chain.doFilter(cachedRequest, response);
             return;
         }
 
@@ -73,7 +77,7 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        chain.doFilter(request, response);
+        chain.doFilter(cachedRequest, response);
 
         if (response.getStatus() == HttpStatus.UNAUTHORIZED.value()) {
             incrementAttempt(key, username, clientIp);
@@ -109,8 +113,7 @@ public class RateLimitFilter implements Filter {
 
     private String extractUsernameFromBody(HttpServletRequest request) {
         try {
-            request.setAttribute("rate-limit-body-read", true);
-            String body = new String(request.getInputStream().readAllBytes());
+            String body = StreamUtils.copyToString(request.getInputStream(), StandardCharsets.UTF_8);
             int usernameIdx = body.indexOf("\"username\"");
             if (usernameIdx < 0) return null;
             int colonIdx = body.indexOf(":", usernameIdx);
@@ -154,6 +157,53 @@ public class RateLimitFilter implements Filter {
             long elapsed = System.currentTimeMillis() - firstAttemptMs;
             long remaining = windowMs - elapsed;
             return Math.max(1, remaining / 1000);
+        }
+    }
+
+    private static class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
+        private final byte[] cachedBody;
+
+        public CachedBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            this.cachedBody = StreamUtils.copyToByteArray(request.getInputStream());
+        }
+
+        @Override
+        public ServletInputStream getInputStream() {
+            return new CachedBodyServletInputStream(cachedBody);
+        }
+
+        @Override
+        public BufferedReader getReader() {
+            return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static class CachedBodyServletInputStream extends ServletInputStream {
+        private final ByteArrayInputStream inputStream;
+
+        public CachedBodyServletInputStream(byte[] cachedBody) {
+            this.inputStream = new ByteArrayInputStream(cachedBody);
+        }
+
+        @Override
+        public boolean isFinished() {
+            return inputStream.available() == 0;
+        }
+
+        @Override
+        public boolean isReady() {
+            return true;
+        }
+
+        @Override
+        public void setReadListener(ReadListener listener) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int read() {
+            return inputStream.read();
         }
     }
 }
