@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-shell dark min-h-full">
+  <div class="db-admin-shell">
     <AppShell
       layout="admin"
       :active-section="activeSection"
@@ -34,59 +34,18 @@ const activeSection = computed(() => {
 })
 
 const adminSidebarItems = [
-  { to: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan' },
-  { to: '/admin/users', icon: 'group', label: 'Người dùng' },
-  { to: '/admin/teachers', icon: 'school', label: 'Giáo viên' },
-  { to: '/admin/students', icon: 'person', label: 'Học sinh' },
-  { to: '/admin/exams', icon: 'quiz', label: 'Đề thi' }
+  { to: '/admin/dashboard', icon: 'dashboard', label: 'Tong quan', section: 'dashboard' },
+  { to: '/admin/users', icon: 'group', label: 'Nguoi dung', section: 'users' },
+  { to: '/admin/teachers', icon: 'school', label: 'Giao vien', section: 'teachers' },
+  { to: '/admin/students', icon: 'person', label: 'Hoc sinh', section: 'students' },
+  { to: '/admin/exams', icon: 'quiz', label: 'De thi', section: 'exams' }
 ]
 </script>
 
-<style>
-/* Admin dark sidebar overrides — applied via .admin-shell.dark */
-.admin-shell.dark .ds-sidebar {
-  background: #0f172a;
-  border-right-color: rgba(51, 65, 85, 0.55);
-}
-
-.admin-shell.dark .ds-sidebar .border-b {
-  border-bottom-color: rgba(51, 65, 85, 0.55) !important;
-}
-
-.admin-shell.dark .ds-sidebar .border-t {
-  border-top-color: rgba(51, 65, 85, 0.55) !important;
-}
-
-.admin-shell.dark .ds-sidebar .border-r {
-  border-right-color: rgba(51, 65, 85, 0.55) !important;
-}
-
-.admin-shell.dark .ds-sidebar .text-\[\#64748b\] {
-  color: #64748b !important;
-}
-
-.admin-shell.dark .ds-sidebar .hover\:bg-\[\#e2e8f0\] {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.admin-shell.dark .ds-sidebar .hover\:text-\[\#e2e8f0\] {
-  color: #e2e8f0;
-}
-
-.admin-shell.dark .ds-sidebar .hover\:bg-slate-800 {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.admin-shell.dark .ds-sidebar .text-\[\#94a3b8\] {
-  color: var(--ds-text-muted) !important;
-}
-
-.admin-shell.dark .ds-sidebar .hover\:bg-\[\#94a3b8\] {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* Admin main area dark */
-.admin-shell.dark {
-  background: #0f172a;
+<style scoped>
+.db-admin-shell {
+  min-height: 100vh;
+  background: var(--db-surface-2);
+  font-family: var(--db-font);
 }
 </style>

@@ -3,73 +3,69 @@
   <Teleport to="body">
     <div
       v-if="mobileOpen"
-      class="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm"
+      class="db-sidebar-backdrop"
+      aria-hidden="true"
       @click="$emit('close-mobile')"
     />
   </Teleport>
 
-  <!-- Sidebar — GPU-composited via clip-path, zero layout reflow -->
+  <!-- Sidebar -->
   <aside
     :class="[
-      'ds-sidebar fixed left-0 top-0 z-40 flex h-full flex-col border-r border-[var(--ds-border)] bg-[var(--ds-surface)]',
-      collapsed ? 'ds-sidebar--collapsed' : 'ds-sidebar--expanded'
+      'db-sidebar',
+      collapsed ? 'db-sidebar--collapsed' : 'db-sidebar--expanded'
     ]"
   >
     <!-- Header: logo + brand -->
-    <div class="ds-sidebar__header border-b border-[var(--ds-border)] px-4 py-3">
-      <div class="flex items-center gap-3">
+    <div class="db-sidebar__header">
+      <div class="db-sidebar__brand">
         <!-- Logo -->
-        <div
-          class="flex size-9 shrink-0 items-center justify-center rounded-[var(--ds-radius-lg)] bg-gradient-to-br from-[var(--ds-primary)] to-indigo-600 text-white shadow-md"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 3L1 9L5 11.18V17.18L12 21L19 17.18V11.18L21 10.09V17H23V9L12 3ZM18.82 9L12 12.72L5.18 9L12 5.28L18.82 9ZM17 15.99L12 18.72L7 15.99V12.27L12 15L17 12.27V15.99Z" fill="currentColor"/>
-          </svg>
+        <div class="db-sidebar__logo">
+          <AppLogo size="sm" variant="default" :show-text="false" tag="div" />
         </div>
 
-        <!-- Brand name — animate opacity + width when collapsed -->
-        <div class="ds-sidebar__brand overflow-hidden">
-          <p class="text-sm font-extrabold bg-gradient-to-r from-[var(--ds-primary)] to-indigo-500 bg-clip-text text-transparent font-display tracking-tight whitespace-nowrap">EduExam</p>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--ds-text-muted)] whitespace-nowrap">{{ roleLabel }}</p>
+        <!-- Brand name -->
+        <div class="db-sidebar__brand-text">
+          <p class="db-sidebar__brand-name">EduExam</p>
+          <p class="db-sidebar__brand-sub">{{ roleLabel }}</p>
         </div>
       </div>
     </div>
 
     <!-- Navigation -->
-    <nav class="ds-sidebar-nav flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5">
+    <nav class="db-sidebar__nav" aria-label="Admin navigation">
       <RouterLink
-        v-for="item in items"
+        v-for="(item, idx) in items"
         :key="item.section"
         :to="item.to"
         :class="navItemClass(item.section)"
-        class="ds-sidebar-nav-item group relative flex items-center gap-3 rounded-[var(--ds-radius-xl)] px-3.5 py-2.5 text-sm font-semibold"
+        class="db-sidebar-nav-item"
+        :style="{ animationDelay: `${0.05 + idx * 0.05}s` }"
         @click="$emit('close-mobile')"
       >
-        <!-- Active left bar — only when expanded (overflows when collapsed) -->
+        <!-- Active left bar -->
         <span
           v-if="activeSection === item.section && !collapsed"
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-[var(--ds-primary)]"
+          class="db-sidebar-nav-item__bar"
         />
 
-        <!-- Icon — white when collapsed + active, primary otherwise -->
-        <span class="ds-sidebar-nav-icon-wrap shrink-0 flex items-center justify-center w-5 h-5">
+        <!-- Icon -->
+        <span class="db-sidebar-nav-item__icon">
           <LucideIcon
             :name="item.icon"
             :size="20"
-            class="ds-sidebar-nav-icon"
           />
         </span>
 
-        <!-- Label — CSS transition thay vì v-show để tránh layout reflow -->
-        <span class="ds-sidebar-nav-label shrink-0 truncate leading-snug whitespace-nowrap overflow-hidden">
+        <!-- Label -->
+        <span class="db-sidebar-nav-item__label">
           {{ item.label }}
         </span>
 
         <!-- Badge -->
         <span
           v-if="item.badge && !collapsed"
-          class="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold flex-shrink-0"
-          :class="item.badgeVariant === 'danger' ? 'bg-[var(--ds-danger-soft)] text-[var(--ds-danger)]' : 'bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]'"
+          class="db-sidebar-nav-item__badge"
         >
           {{ item.badge }}
         </span>
@@ -77,102 +73,49 @@
         <!-- Hover tooltip for collapsed -->
         <span
           v-if="collapsed"
-          class="ds-sidebar-tooltip absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 bg-[var(--ds-surface)] border border-[var(--ds-border)] rounded-lg shadow-lg text-xs font-semibold text-[var(--ds-text)] whitespace-nowrap z-50"
+          class="db-sidebar-tooltip"
         >
           {{ item.label }}
         </span>
       </RouterLink>
     </nav>
 
-    <!-- Bottom: notifications + user + collapse toggle -->
-    <div class="border-t border-[var(--ds-border)] p-2.5 space-y-0.5">
-      <!-- Notification bell -->
-      <div class="relative">
-        <button
-          type="button"
-          class="ds-sidebar-nav-item group flex w-full items-center gap-3 rounded-[var(--ds-radius-xl)] px-3.5 py-2.5 text-sm font-semibold text-[var(--ds-text-secondary)]"
-          aria-label="Thông báo"
-          @click="showNotifications = !showNotifications"
-        >
-          <LucideIcon name="notifications" class="ds-sidebar-nav-icon shrink-0 relative" />
-          <span
-            v-if="hasUnread"
-            class="absolute -top-1 -right-1 size-2 rounded-full bg-[var(--ds-danger)]"
-          />
-          <span class="ds-sidebar-nav-label shrink-0 truncate leading-snug whitespace-nowrap overflow-hidden text-left">Thông báo</span>
-        </button>
-
-        <!-- Notification dropdown -->
-        <Teleport to="body">
-          <div
-            v-if="showNotifications"
-            class="ds-notif-dropdown fixed z-[100] w-80 overflow-y-auto rounded-[var(--ds-radius-xl)] shadow-[var(--ds-shadow-lg)] bg-[var(--ds-surface)] border border-[var(--ds-border)]"
-            :style="notifDropdownStyle"
-          >
-            <div class="flex items-center justify-between border-b border-[var(--ds-border)] px-4 py-3">
-              <span class="font-bold text-sm text-[var(--ds-text)]">Thông báo</span>
-              <button
-                v-if="hasUnread"
-                type="button"
-                class="text-[11px] font-semibold text-[var(--ds-primary)] hover:underline"
-                @click="markAllAsRead"
-              >
-                Đánh dấu đã đọc
-              </button>
-            </div>
-            <div class="max-h-64 overflow-y-auto">
-              <div v-if="!notifications.length" class="p-6 text-center text-sm text-[var(--ds-text-muted)]">
-                Chưa có thông báo.
-              </div>
-              <div
-                v-for="n in notifications"
-                :key="n.id"
-                :class="n.read ? '' : 'bg-[var(--ds-primary-soft)]'"
-                class="cursor-pointer border-b border-[var(--ds-border)] px-4 py-3 transition-colors last:border-b-0 hover:bg-[var(--ds-gray-50)]"
-                @click="markAsRead(n.id)"
-              >
-                <p class="text-sm font-semibold text-[var(--ds-text)]">{{ n.title }}</p>
-                <p class="mt-0.5 text-xs text-[var(--ds-text-muted)]">{{ n.message }}</p>
-              </div>
-            </div>
-          </div>
-          <div
-            v-if="showNotifications"
-            class="fixed inset-0 z-[99]"
-            @click="showNotifications = false"
-          />
-        </Teleport>
-      </div>
+    <!-- Bottom section -->
+    <div class="db-sidebar__bottom">
 
       <!-- User section -->
-      <div v-if="user" class="flex items-center gap-2.5 rounded-[var(--ds-radius-xl)] px-3.5 py-2.5 mt-1 hover:bg-[var(--ds-gray-50)] transition-colors">
-        <div class="size-8 shrink-0 rounded-full bg-gradient-to-br from-[var(--ds-primary)] to-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+      <div v-if="user" class="db-sidebar-user">
+        <div class="db-sidebar-user__avatar">
           {{ userInitial }}
         </div>
-        <div class="ds-sidebar-nav-label shrink-0 min-w-0 flex-1 overflow-hidden">
-          <p class="truncate text-xs font-semibold text-[var(--ds-text)]">{{ user.username }}</p>
-          <p class="truncate text-[10px] text-[var(--ds-text-muted)] capitalize">{{ role }}</p>
+        <div class="db-sidebar-user__info">
+          <p class="db-sidebar-user__name">{{ user.username }}</p>
+          <p class="db-sidebar-user__role">{{ role }}</p>
         </div>
         <button
           type="button"
-          class="flex size-6 shrink-0 items-center justify-center rounded-full text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-gray-200)] hover:text-[var(--ds-danger)]"
-          title="Đăng xuất"
+          class="db-sidebar-user__logout"
+          title="Dang xuat"
           @click="handleLogout"
         >
-          <LucideIcon name="logout" size="16" />
+          <LucideIcon name="log_out" :size="16" />
         </button>
       </div>
 
-      <!-- Collapse/expand toggle — bottom of sidebar, sticky -->
+      <!-- Collapse/expand toggle -->
       <button
         type="button"
-        class="ds-sidebar-collapse-btn group flex w-full items-center gap-3 rounded-[var(--ds-radius-xl)] px-3.5 py-2.5 text-sm font-semibold text-[var(--ds-text-muted)] hover:bg-[var(--ds-gray-100)] hover:text-[var(--ds-text)] transition-colors"
-        :aria-label="collapsed ? 'Mở rộng menu' : 'Thu gọn menu'"
-        :title="collapsed ? 'Mở rộng menu' : 'Thu gọn menu'"
+        class="db-sidebar-collapse-btn"
+        :aria-label="collapsed ? 'Mo rong menu' : 'Thu gon menu'"
+        :title="collapsed ? 'Mo rong menu' : 'Thu gon menu'"
         @click="$emit('toggle')"
       >
-        <LucideIcon name="chevron_left" class="shrink-0 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" />
-        <span class="ds-sidebar-nav-label shrink-0 whitespace-nowrap overflow-hidden">Thu gọn menu</span>
+        <LucideIcon
+          name="chevron_left"
+          :size="18"
+          :class="collapsed ? '' : 'rotate-180'"
+        />
+        <span class="db-sidebar-collapse-btn__label">Thu gon</span>
       </button>
     </div>
   </aside>
@@ -182,7 +125,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { clearAuthSession } from '../../services/authService'
-import { useNotifications } from '../../composables/useNotifications'
+import AppLogo from '../common/AppLogo.vue'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -196,11 +139,9 @@ const props = defineProps({
 defineEmits(['toggle', 'close-mobile'])
 
 const router = useRouter()
-const { notifications, hasUnread, markAsRead, markAllAsRead } = useNotifications()
-const showNotifications = ref(false)
 
 const roleLabel = computed(() => {
-  const labels = { teacher: 'Cổng giáo viên', student: 'Cổng học sinh', admin: 'Cổng quản trị' }
+  const labels = { teacher: 'Giao vien', student: 'Hoc sinh', admin: 'Quan tri' }
   return labels[props.role] || props.role
 })
 
@@ -210,21 +151,11 @@ const userInitial = computed(() => {
 })
 
 const navItemClass = (section) => {
-  const base = 'relative overflow-hidden transition-colors duration-150'
   if (props.activeSection === section) {
-    if (props.collapsed) {
-      return `${base} bg-[var(--ds-primary)] text-white`
-    }
-    return `${base} bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]`
+    return 'db-sidebar-nav-item--active'
   }
-  return `${base} text-[var(--ds-text-secondary)] hover:bg-[var(--ds-gray-100)] hover:text-[var(--ds-text)]`
+  return ''
 }
-
-const notifDropdownStyle = computed(() => ({
-  right: '8px',
-  bottom: '80px',
-  width: '320px'
-}))
 
 const handleLogout = () => {
   clearAuthSession()
@@ -233,136 +164,449 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-/* ── Sidebar width transitions — GPU-optimized via will-change ── */
-.ds-sidebar {
+/* ─── Backdrop ─────────────────────────────────────────────────── */
+.db-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.3);
+  z-index: 30;
+  animation: fadeIn 0.2s ease;
+}
+
+/* ─── Sidebar shell ─────────────────────────────────────────────── */
+.db-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  overflow: hidden;
+  will-change: width;
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Light mode */
+  background: var(--db-surface);
+  border-right: 1px solid var(--db-border);
+  box-shadow: 2px 0 12px rgba(15, 23, 42, 0.06);
+
+  /* Entrance animation */
+  animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.db-sidebar--expanded {
+  width: var(--db-sidebar-w);
+}
+
+.db-sidebar--collapsed {
+  width: var(--db-sidebar-collapsed);
+}
+
+/* ─── Header ────────────────────────────────────────────────────── */
+.db-sidebar__header {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid var(--db-border);
+  flex-shrink: 0;
+}
+
+.db-sidebar--collapsed .db-sidebar__header {
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.db-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.db-sidebar--collapsed .db-sidebar__brand {
+  justify-content: center;
+  width: 100%;
+}
+
+.db-sidebar__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--db-radius);
+  background: linear-gradient(135deg, var(--db-primary), #0a4a8a);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(12, 92, 171, 0.3);
+  transition: transform var(--db-transition-spring);
+}
+
+.db-sidebar__brand:hover .db-sidebar__logo {
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.db-sidebar__brand-text {
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 200px;
+}
+
+.db-sidebar--collapsed .db-sidebar__brand-text {
+  display: none;
+}
+
+.db-sidebar__brand-name {
+  font-family: var(--db-font);
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--db-text);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.db-sidebar__brand-sub {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--db-text-muted);
+  margin: 0.125rem 0 0;
+  white-space: nowrap;
+}
+
+/* ─── Nav ──────────────────────────────────────────────────────── */
+.db-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.db-sidebar--collapsed .db-sidebar__nav {
+  padding-left: 0;
+  padding-right: 0;
+  align-items: stretch;
+}
+
+.db-sidebar__nav::-webkit-scrollbar { width: 4px; }
+.db-sidebar__nav::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 999px; }
+.db-sidebar__nav::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+
+/* Nav item */
+.db-sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--db-radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--db-text-muted);
+  text-decoration: none;
+  transition: all var(--db-transition);
   overflow: hidden;
   white-space: nowrap;
-  will-change: width;
+
+  /* Entrance animation */
+  animation: fadeInUp 0.3s ease backwards;
 }
 
-.ds-sidebar--expanded {
-  width: var(--ds-sidebar-width, 256px);
+.db-sidebar-nav-item:hover {
+  color: var(--db-text);
+  background: var(--db-surface-3);
 }
 
-.ds-sidebar--collapsed {
-  width: var(--ds-sidebar-collapsed, 64px);
+.db-sidebar--collapsed .db-sidebar-nav-item {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+  width: 100%;
 }
 
-/* ── Nav label transitions — opacity fade, max-width collapse, zero reflow ── */
-.ds-sidebar-nav-label {
-  overflow: hidden;
-  opacity: 1;
-  flex-shrink: 0;
-  flex-grow: 0;
-  transition:
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  width: auto;
-  max-width: 200px;
-  transform: translateX(0);
+.db-sidebar-nav-item:hover {
+  transform: translateX(3px);
 }
 
-.ds-sidebar--collapsed .ds-sidebar-nav-label {
-  opacity: 0;
-  max-width: 0;
-  pointer-events: none;
-  transform: translateX(-8px);
-}
-
-/* ── Nav item: icon centered when collapsed ── */
-.ds-sidebar--collapsed .ds-sidebar-nav-item {
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ── Nav icon: stable sizing, fade opacity ── */
-.ds-sidebar-nav-icon {
-  flex-shrink: 0;
-  transition: opacity 0.25s ease, color 0.15s ease, transform 0.2s ease;
-}
-
-.ds-sidebar--collapsed .ds-sidebar-nav-icon-wrap {
-  margin: 0 auto;
-}
-
-.ds-sidebar--collapsed .ds-sidebar-nav-icon {
-  opacity: 1;
-}
-
-.ds-sidebar-nav-item {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.ds-sidebar-nav-item:hover {
-  transform: translateX(4px);
-}
-
-.ds-sidebar--collapsed .ds-sidebar-nav-item:hover {
+.db-sidebar--collapsed .db-sidebar-nav-item:hover {
   transform: translateX(0) scale(1.05);
 }
 
-/* ── Brand: fade + collapse when collapsed ── */
-.ds-sidebar__brand {
+/* Active state */
+.db-sidebar-nav-item--active {
+  color: var(--db-primary);
+  background: var(--db-primary-soft);
+  font-weight: 700;
+}
+
+.db-sidebar--collapsed .db-sidebar-nav-item--active {
+  background: var(--db-primary);
+  color: white;
+}
+
+/* Active left bar (only when expanded) */
+.db-sidebar-nav-item__bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--db-primary);
+  animation: slideInLeft 0.2s ease;
+}
+
+.db-sidebar--collapsed .db-sidebar-nav-item__bar {
+  display: none;
+}
+
+/* Icon */
+.db-sidebar-nav-item__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  transition: transform var(--db-transition-spring), color var(--db-transition);
+}
+
+.db-sidebar-nav-item:hover .db-sidebar-nav-item__icon {
+  transform: scale(1.1);
+}
+
+.db-sidebar--collapsed .db-sidebar-nav-item__icon {
+  margin: 0;
+}
+
+/* Label */
+.db-sidebar-nav-item__label {
+  flex: 1;
   overflow: hidden;
   opacity: 1;
-  transition:
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 200px;
+  white-space: nowrap;
+}
+
+.db-sidebar--collapsed .db-sidebar-nav-item__label {
+  display: none;
+}
+
+/* Badge */
+.db-sidebar-nav-item__badge {
+  margin-left: auto;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: var(--db-primary-soft);
+  color: var(--db-primary);
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.db-sidebar--collapsed .db-sidebar-nav-item__badge {
+  display: none;
+}
+
+/* Tooltip */
+.db-sidebar-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 0.375rem 0.75rem;
+  background: var(--db-surface);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--db-text);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 50;
+
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.db-sidebar-nav-item:hover .db-sidebar-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ─── Bottom ────────────────────────────────────────────────────── */
+.db-sidebar__bottom {
+  padding: 0.625rem;
+  border-top: 1px solid var(--db-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* User pill */
+.db-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--db-radius);
+  background: var(--db-surface-2);
+  border: 1px solid var(--db-border);
+  transition: all var(--db-transition);
+  overflow: hidden;
+}
+
+.db-sidebar-user:hover {
+  border-color: var(--db-border-strong);
+  background: var(--db-surface-3);
+}
+
+.db-sidebar-user__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--db-radius-sm);
+  background: linear-gradient(135deg, var(--db-primary), #0a4a8a);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(12, 92, 171, 0.25);
+}
+
+.db-sidebar-user__info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: 200px;
 }
 
-.ds-sidebar--collapsed .ds-sidebar__brand {
-  opacity: 0;
-  max-width: 0;
+.db-sidebar--collapsed .db-sidebar-user__info {
+  display: none;
 }
 
-/* ── Tooltip for collapsed nav items ── */
-.ds-sidebar-tooltip {
-  pointer-events: none;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+.db-sidebar-user__name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--db-text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ds-sidebar-nav-item:hover .ds-sidebar-tooltip {
-  opacity: 1;
-  transform: translateX(0);
+.db-sidebar-user__role {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--db-text-muted);
+  margin: 0.125rem 0 0;
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
-/* ── Nav scrollbar ── */
-.ds-sidebar-nav::-webkit-scrollbar {
-  width: 4px;
-}
-.ds-sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 999px;
-}
-.ds-sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
-}
-
-/* ── Notification dropdown ── */
-.ds-notif-dropdown {
-  animation: ds-dropdown-in 0.15s ease-out;
-}
-
-@keyframes ds-dropdown-in {
-  from { opacity: 0; transform: translateY(4px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ── Header ── */
-.ds-sidebar__header {
+.db-sidebar-user__logout {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--db-radius-sm);
+  background: none;
+  border: none;
+  color: var(--db-text-muted);
+  cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all var(--db-transition);
+  opacity: 0;
+}
+
+.db-sidebar-user:hover .db-sidebar-user__logout {
+  opacity: 1;
+}
+
+.db-sidebar-user__logout:hover {
+  background: var(--db-danger-soft);
+  color: var(--db-danger);
+}
+
+/* Collapse button */
+.db-sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--db-radius);
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--db-text-muted);
+  cursor: pointer;
+  transition: all var(--db-transition);
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.db-sidebar-collapse-btn:hover {
+  color: var(--db-text);
+  background: var(--db-surface-3);
+}
+
+.db-sidebar-collapse-btn .lucide {
   flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.db-sidebar-collapse-btn__label {
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 200px;
+  white-space: nowrap;
+}
+
+.db-sidebar--collapsed .db-sidebar-collapse-btn__label {
+  display: none;
+}
+
+.db-sidebar--collapsed .db-sidebar-collapse-btn {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.db-sidebar--collapsed .db-sidebar__bottom {
+  padding-left: 0;
+  padding-right: 0;
+  align-items: stretch;
+}
+
+.db-sidebar--collapsed .db-sidebar-user {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+
+.db-sidebar--collapsed .db-sidebar-user__logout {
+  display: none;
 }
 </style>

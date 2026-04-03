@@ -15,10 +15,10 @@
     <!-- Empty -->
     <div v-else-if="!sessions.length" class="ehl__empty">
       <div class="ehl__empty-icon">
-        <LucideIcon :name="emptyIcon" />
+        <LucideIcon name="history" />
       </div>
-      <h3 class="ehl__empty-title">{{ emptyTitle }}</h3>
-      <p class="ehl__empty-desc">{{ emptyDesc }}</p>
+      <h3 class="ehl__empty-title">Chưa có bài thi nào</h3>
+      <p class="ehl__empty-desc">Tham gia bài thi để xem kết quả tại đây.</p>
       <button type="button" class="ehl__empty-cta" @click="$emit('go-dashboard')">
         <LucideIcon name="home" />
         Về Dashboard
@@ -31,7 +31,10 @@
         v-for="session in sessions"
         :key="session.attemptId"
         class="ehl__card"
-        :class="{ 'ehl__card--new': session.isNew }"
+        :class="{
+          'ehl__card--new': session.isNew,
+          'ehl__card--selected': selectedId === session.attemptId
+        }"
         @click="$emit('session-click', session)"
       >
         <!-- Type badge -->
@@ -57,12 +60,10 @@
           </div>
         </div>
 
-        <!-- Score -->
-        <div class="ehl__score-col">
-          <div class="ehl__score-ring" :class="scoreRingClass(session.score)">
-            <span class="ehl__score-val">{{ session.score }}</span>
-          </div>
-          <span class="ehl__score-lbl">/ 10</span>
+        <!-- Score badge -->
+        <div class="ehl__score-badge" :class="scoreBadgeClass(session.score)">
+          <span class="ehl__score-val">{{ session.score }}</span>
+          <span class="ehl__score-max">/10</span>
         </div>
 
         <!-- Arrow -->
@@ -104,28 +105,17 @@ import { computed } from 'vue'
 const props = defineProps({
   sessions: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  emptyType: { type: String, default: 'exam' },
   currentPage: { type: Number, default: 1 },
   totalPages: { type: Number, default: 1 },
-  totalCount: { type: Number, default: 0 }
+  totalCount: { type: Number, default: 0 },
+  selectedId: { type: [Number, String], default: null }
 })
 
-defineEmits(['session-click', 'go-dashboard', 'prev-page', 'next-page'])
-
-const emptyConfig = {
-  exam: { icon: 'menu_book', title: 'Chưa có bài thi nào', desc: 'Tham gia bài thi để xem kết quả tại đây.' },
-  practice: { icon: 'model_training', title: 'Chưa có luyện tập nào', desc: 'Bắt đầu luyện tập để xem tiến độ tại đây.' }
-}
-
-const emptyIcon = computed(() => emptyConfig[props.emptyType]?.icon || 'history')
-const emptyTitle = computed(() => emptyConfig[props.emptyType]?.title || 'Không có dữ liệu')
-const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
-
-const scoreRingClass = (score) => {
+const scoreBadgeClass = (score) => {
   const s = Number(score || 0)
-  if (s >= 80) return 'ehl__score-ring--high'
-  if (s >= 50) return 'ehl__score-ring--mid'
-  return 'ehl__score-ring--low'
+  if (s >= 80) return 'ehl__score-badge--high'
+  if (s >= 50) return 'ehl__score-badge--mid'
+  return 'ehl__score-badge--low'
 }
 </script>
 
@@ -167,7 +157,7 @@ const scoreRingClass = (score) => {
 .ehl__skel-body { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
 .ehl__skel--title { height: 14px; width: 55%; }
 .ehl__skel--meta { height: 10px; width: 35%; }
-.ehl__skel--score { width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; }
+.ehl__skel--score { width: 72px; height: 28px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }
 
 /* Empty */
 .ehl__empty {
@@ -255,6 +245,12 @@ const scoreRingClass = (score) => {
 
 .dark .ehl__card--new { background: rgba(79, 70, 229, 0.04); }
 
+.ehl__card--selected {
+  border-color: var(--ds-primary) !important;
+  background: var(--ds-primary-soft) !important;
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+
 /* Type badge */
 .ehl__type-badge {
   width: 48px;
@@ -331,65 +327,55 @@ const scoreRingClass = (score) => {
 }
 
 
-/* Score ring */
-.ehl__score-col {
+/* Score badge */
+.ehl__score-badge {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.125rem;
+  align-items: baseline;
+  gap: 1px;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.ehl__score-ring {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+.ehl__card:hover .ehl__score-badge {
+  transform: scale(1.03);
 }
 
-.ehl__card:hover .ehl__score-ring {
-  transform: scale(1.08);
-}
-
-.ehl__score-ring--high { 
-  border-color: var(--ds-success); 
+.ehl__score-badge--high {
   background: rgba(16, 185, 129, 0.1);
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
 }
-.ehl__score-ring--mid { 
-  border-color: var(--ds-warning); 
-  background: rgba(234, 179, 8, 0.1);
-  box-shadow: 0 0 16px rgba(234, 179, 8, 0.2);
+.ehl__score-badge--mid {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #d97706;
 }
-.ehl__score-ring--low { 
-  border-color: var(--ds-danger); 
-  background: rgba(220, 38, 38, 0.1);
-  box-shadow: 0 0 16px rgba(220, 38, 38, 0.2);
+.ehl__score-badge--low {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.25);
+  color: #dc2626;
 }
-
-.ehl__card:hover .ehl__score-ring--high { box-shadow: 0 0 12px rgba(16, 185, 129, 0.35); }
-.ehl__card:hover .ehl__score-ring--mid { box-shadow: 0 0 12px rgba(234, 179, 8, 0.35); }
-.ehl__card:hover .ehl__score-ring--low { box-shadow: 0 0 12px rgba(220, 38, 38, 0.35); }
 
 .ehl__score-val {
   font-family: var(--ds-font-display);
   font-size: 0.95rem;
   font-weight: 900;
-  color: var(--ds-text);
+  line-height: 1;
 }
 
-.dark .ehl__score-val { color: #f1f5f9; }
-
-.ehl__score-lbl {
-  font-size: 0.6rem;
-  color: var(--ds-text-muted);
-  font-weight: 700;
+.ehl__score-max {
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.7;
 }
+
+.dark .ehl__score-val { color: #6ee7b7; }
+.dark .ehl__score-badge--high { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+.dark .ehl__score-badge--mid { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
+.dark .ehl__score-badge--low { background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35); color: #fca5a5; }
 
 /* Arrow */
 .ehl__arrow { color: var(--ds-text-muted); flex-shrink: 0; }

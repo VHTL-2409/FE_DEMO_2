@@ -99,7 +99,7 @@ const isUploadingAvatar = ref(false)
 
 // Computed profile fields
 const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Giáo viên')
-const profileId = computed(() => profile.value?.id || '—')
+const profileId = computed(() => String(profile.value?.id || ''))
 const profileUsername = computed(() => profile.value?.username || '—')
 const profileEmail = computed(() => profile.value?.email || '—')
 const profilePhone = computed(() => profile.value?.phone || '—')

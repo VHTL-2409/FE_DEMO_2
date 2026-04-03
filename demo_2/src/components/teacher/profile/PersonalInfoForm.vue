@@ -205,13 +205,27 @@ const formatDate = (value) => {
   return new Intl.DateTimeFormat('vi-VN').format(date)
 }
 
+const isValidEmail = (email) => {
+  if (!email) return true
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+const isValidPhone = (phone) => {
+  if (!phone) return true
+  const normalized = phone.replace(/[\s.-]/g, '')
+  return /^(0[1-9][0-9]{8,9})$/.test(normalized)
+}
+
 const validate = () => {
   errors.value = {}
   if (!form.displayName?.trim()) {
     errors.value.displayName = 'Tên hiển thị không được để trống.'
   }
-  if (form.email && !form.email.includes('@')) {
-    errors.value.email = 'Định dạng email không hợp lệ.'
+  if (form.email && !isValidEmail(form.email)) {
+    errors.value.email = 'Định dạng email không hợp lệ. Vui lòng nhập email đúng định dạng (ví dụ: name@example.com).'
+  }
+  if (form.phone && !isValidPhone(form.phone)) {
+    errors.value.phone = 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (VD: 0912345678).'
   }
   return Object.keys(errors.value).length === 0
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell min-h-full bg-[var(--ds-bg)]">
+  <div class="db-app-shell">
     <!-- Sidebar — unified for all layouts -->
     <Sidebar
       v-if="showSidebar"
@@ -13,10 +13,10 @@
       @close-mobile="mobileOpen = false"
     />
 
-    <!-- Main content — GPU-accelerated transform transition instead of margin reflow -->
+    <!-- Main content area -->
     <main
-      class="app-shell__main flex-1 overflow-y-auto"
-      :class="showSidebar ? (sidebarCollapsed ? 'app-shell__main--collapsed' : 'app-shell__main--expanded') : ''"
+      class="db-app-shell__main"
+      :class="showSidebar ? (sidebarCollapsed ? 'db-app-shell__main--collapsed' : 'db-app-shell__main--expanded') : ''"
     >
       <slot />
     </main>
@@ -41,7 +41,6 @@ const props = defineProps({
   brand: { type: Object, default: null }
 })
 
-// Collapse state persisted via sessionStorage — shared across all layouts/routes
 const sidebarCollapsed = ref(
   typeof window !== 'undefined'
     ? sessionStorage.getItem('sidebarCollapsed') === 'true'
@@ -60,7 +59,6 @@ const currentSidebarItems = computed(() => {
   return props.sidebarItems
 })
 
-// Persist collapse state via sessionStorage
 watch(sidebarCollapsed, (val) => {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('sidebarCollapsed', String(val))
@@ -68,42 +66,45 @@ watch(sidebarCollapsed, (val) => {
 })
 </script>
 
-
 <style scoped>
-.app-shell {
+.db-app-shell {
   height: 100dvh;
   overflow: hidden;
+  background: var(--db-surface-2);
+  font-family: var(--db-font);
 }
 
-.app-shell__main {
-  background: var(--ds-bg);
+.db-app-shell__main {
   height: 100dvh;
   overflow-y: auto;
-  will-change: margin;
-  transition: margin 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--db-surface-2);
+  transition: padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: padding-left;
 }
 
-.app-shell__main--expanded {
-  margin-left: var(--ds-sidebar-width);
-}
-
-.app-shell__main--collapsed {
-  margin-left: var(--ds-sidebar-collapsed);
-}
-
-/* Scrollbar */
-.app-shell__main::-webkit-scrollbar {
+.db-app-shell__main::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.app-shell__main::-webkit-scrollbar-track {
+
+.db-app-shell__main::-webkit-scrollbar-track {
   background: transparent;
 }
-.app-shell__main::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+
+.db-app-shell__main::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
   border-radius: 999px;
 }
-.app-shell__main::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+
+.db-app-shell__main::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.db-app-shell__main--expanded {
+  padding-left: var(--db-sidebar-w);
+}
+
+.db-app-shell__main--collapsed {
+  padding-left: var(--db-sidebar-collapsed);
 }
 </style>

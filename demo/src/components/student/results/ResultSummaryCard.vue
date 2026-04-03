@@ -47,7 +47,7 @@
     <div v-if="total > 0" class="rsc__progress-section">
       <div class="rsc__progress-header">
         <span>Tiến độ hoàn thành</span>
-        <span>{{ completedCount }} / {{ total }} bai</span>
+        <span>{{ completedCount }} / {{ total }} bài</span>
       </div>
       <div class="rsc__progress-bar">
         <div class="rsc__progress-fill" :style="{ width: `${completionRate}%` }" />
@@ -110,21 +110,25 @@ const completionRate = computed(() => {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   padding: 1.125rem 1.25rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dark .rsc { border-color: var(--ds-border-strong); }
 
 .rsc__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.25rem, 1fr));
+  gap: 0.625rem;
 }
 
 .rsc__card {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
   border-radius: var(--ds-radius-xl);
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
@@ -139,8 +143,8 @@ const completionRate = computed(() => {
 }
 
 .rsc__card-icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--ds-radius-lg);
   display: flex;
   align-items: center;
@@ -163,7 +167,7 @@ const completionRate = computed(() => {
 .rsc__card-val {
   display: block;
   font-family: var(--ds-font-display);
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 900;
   color: var(--ds-text);
   line-height: 1;
@@ -176,7 +180,7 @@ const completionRate = computed(() => {
 
 .rsc__card-lbl {
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: var(--ds-text-muted);
   text-transform: uppercase;
@@ -257,12 +261,8 @@ const completionRate = computed(() => {
   transition: transform 0.25s ease;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .rsc__grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 480px) {
+/* auto-fit đã bọc hàng; giữ 2 cột tối thiểu trên màn hẹp */
+@media (max-width: 380px) {
   .rsc__grid { grid-template-columns: 1fr; }
 }
 </style>

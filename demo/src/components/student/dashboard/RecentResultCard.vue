@@ -290,36 +290,39 @@ const passChipClass = (score) => {
 .rrc__item:hover { background: var(--ds-gray-50); }
 .dark .rrc__item:hover { background: var(--ds-gray-800); }
 
-/* Score circle */
+/* Score badge */
 .rrc__score-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 1px;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid;
   flex-shrink: 0;
-  border: 2px solid;
+  transition: all 0.2s ease;
 }
 
 .rrc__score-wrap--excellent {
-  border-color: var(--ds-success);
-  background: var(--ds-success-soft);
-  color: var(--ds-success);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
 }
 
 .rrc__score-wrap--pass {
-  border-color: var(--ds-primary-border);
-  background: var(--ds-primary-soft);
+  background: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.25);
   color: var(--ds-primary);
 }
 
 .rrc__score-wrap--fail {
-  border-color: var(--ds-danger-border);
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger);
+  background: rgba(220, 38, 38, 0.07);
+  border-color: rgba(220, 38, 38, 0.22);
+  color: #dc2626;
 }
+
+.dark .rrc__score-wrap--excellent { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+.dark .rrc__score-wrap--pass { background: rgba(79, 70, 229, 0.12); border-color: rgba(79, 70, 229, 0.35); color: #818cf8; }
+.dark .rrc__score-wrap--fail { background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35); color: #fca5a5; }
 
 .rrc__score-val {
   font-family: var(--ds-font-display);
@@ -329,7 +332,7 @@ const passChipClass = (score) => {
 }
 
 .rrc__score-max {
-  font-size: 0.5rem;
+  font-size: 0.6rem;
   font-weight: 600;
   opacity: 0.7;
 }

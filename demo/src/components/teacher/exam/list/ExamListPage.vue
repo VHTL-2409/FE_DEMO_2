@@ -145,7 +145,7 @@ import {
 } from '../../../../services/examService'
 import { useToast } from '../../../../composables/useToast'
 import LucideIcon from '../../../common/LucideIcon.vue'
-import TeacherPageHeader from '../../common/TeacherPageHeader.vue'
+import TeacherPageHeader from '../../../teacher/common/TeacherPageHeader.vue'
 import ExamListToolbar from './ExamListToolbar.vue'
 import ExamTable from './ExamTable.vue'
 import BulkActionBar from './BulkActionBar.vue'

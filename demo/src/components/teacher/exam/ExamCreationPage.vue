@@ -472,12 +472,9 @@ const handlePublish = async () => {
     let examId = createdExamId.value
     let createdExam = null
 
-    console.log('Creating exam with payload:', payload)
     if (!examId) {
       createdExam = await createExam(payload)
-      console.log('Created exam response:', createdExam)
       examId = createdExam?.id ?? createdExam?.examId ?? createdExam?.data?.id ?? createdExam?.data?.examId
-      console.log('Extracted examId:', examId)
       if (!examId) {
         throw new Error('Không nhận được ID đề thi từ server')
       }
@@ -515,20 +512,16 @@ const handlePublish = async () => {
       query.examCode = finalCode
     }
     
-    console.log('Navigating to waiting room with query:', query)
     try {
       await router.replace({
         path: '/teacher/exams/waiting-room',
         query
       })
-      console.log('Navigation completed')
     } catch (navErr) {
-      console.error('Navigation failed:', navErr)
       toast.error('Không thể chuyển trang. Vui lòng vào thủ công: /teacher/exams/waiting-room?examId=' + examId)
     }
   } catch (error) {
     saveState.value = 'error'
-    console.error('Publish error:', error)
     toast.error(error instanceof ApiError ? error.message : 'Không thể xuất bản đề thi.')
   } finally {
     isSubmitting.value = false

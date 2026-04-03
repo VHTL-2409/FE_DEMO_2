@@ -75,19 +75,15 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!isLoading && filteredClasses.length === 0" class="cmp__empty">
-      <div class="cmp__empty-illustration">
-        <div class="cmp__empty-icon">
-          <LucideIcon name="groups" />
-        </div>
-      </div>
-      <h3>{{ searchQuery ? 'Không tìm thấy lớp học' : 'Bắt đầu với lớp học đầu tiên' }}</h3>
-      <p>{{ searchQuery ? 'Thử thay đổi từ khóa tìm kiếm' : 'Tạo lớp học để quản lý học sinh dễ dàng hơn' }}</p>
-      <button v-if="!searchQuery" type="button" class="cmp__btn cmp__btn--primary" @click="openCreateModal">
-        <LucideIcon name="add" />
-        Tạo lớp học đầu tiên
-      </button>
-    </div>
+    <EmptyState
+      v-if="!isLoading && filteredClasses.length === 0"
+      :variant="searchQuery ? 'no-results' : 'no-data'"
+      :title="searchQuery ? 'Không tìm thấy lớp học' : 'Bắt đầu với lớp học đầu tiên'"
+      :description="searchQuery ? 'Thử thay đổi từ khóa tìm kiếm' : 'Tạo lớp học để quản lý học sinh dễ dàng hơn'"
+      :action-label="!searchQuery ? 'Tạo lớp học đầu tiên' : ''"
+      action-icon="add"
+      @action="openCreateModal"
+    />
 
     <!-- Classes Grid -->
     <div v-else class="cmp__grid">
@@ -247,6 +243,7 @@ import { useToast } from '../../../composables/useToast'
 import { useScrollToTop } from '../../../composables/useScrollToTop'
 import LucideIcon from '../../common/LucideIcon.vue'
 import TeacherPageHeader from '../common/TeacherPageHeader.vue'
+import EmptyState from '../../common/EmptyState.vue'
 import ClassFormModal from './ClassFormModal.vue'
 import ClassDetailDrawer from './ClassDetailDrawer.vue'
 
@@ -678,54 +675,6 @@ onMounted(loadClasses)
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Empty */
-.cmp__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  gap: 1rem;
-  text-align: center;
-}
-
-.cmp__empty-illustration {
-  margin-bottom: 0.5rem;
-}
-
-.cmp__empty-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--ds-radius-2xl);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.15);
-}
-
-.dark .cmp__empty-icon {
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
-}
-
-.cmp__empty h3 {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin: 0;
-}
-
-.dark .cmp__empty h3 { color: var(--ds-text); }
-
-.cmp__empty p {
-  font-size: 0.9rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-  max-width: 320px;
-}
 
 /* Grid */
 .cmp__grid {

@@ -4,8 +4,7 @@
     <nav class="edu-nav" :class="{ 'edu-nav--scrolled': isScrolled }">
       <div class="edu-nav__inner">
         <a href="/" class="edu-nav__logo">
-          <span class="edu-nav__logo-icon">E</span>
-          <span class="edu-nav__logo-text">EduExam</span>
+          <AppLogo size="sm" variant="default" tag="span" />
         </a>
         <div class="edu-nav__links">
           <a href="#features">Tính năng</a>
@@ -480,8 +479,7 @@
       <div class="footer__inner">
         <div class="footer__brand">
           <a href="/" class="footer__logo">
-            <span class="footer__logo-icon">E</span>
-            <span class="footer__logo-text">EduExam</span>
+            <AppLogo size="md" variant="default" tag="span" />
           </a>
           <p class="footer__tagline">Nền tảng thi trực tuyến hàng đầu Việt Nam</p>
           <div class="footer__social">
@@ -519,6 +517,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
+import AppLogo from '../common/AppLogo.vue'
 
 const authStore = useAuthStore()
 authStore.syncFromStorage()

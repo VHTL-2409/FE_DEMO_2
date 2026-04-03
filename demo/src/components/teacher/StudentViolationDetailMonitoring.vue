@@ -419,15 +419,15 @@ const goBack = () => {
 }
 
 const issueWarning = () => {
-  console.log('Issue warning to student:', studentInfo.value.studentId)
+  // Issue warning action
 }
 
 const suspendExam = () => {
-  console.log('Suspend exam for student:', studentInfo.value.studentId)
+  // Suspend exam action
 }
 
 const viewFullReport = () => {
-  console.log('View full report for student:', studentInfo.value.studentId)
+  // View full report action
 }
 </script>
 

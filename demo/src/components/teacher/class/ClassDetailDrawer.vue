@@ -139,7 +139,7 @@ import { ref, watch } from 'vue'
 import { ApiError } from '../../../services/apiClient'
 import { getClassStudents } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
-import LucideIcon from '../../common/LucideIcon.vue'
+import LucideIcon from '../../../common/LucideIcon.vue'
 import BulkAddStudentsModal from './BulkAddStudentsModal.vue'
 
 const props = defineProps({

@@ -326,7 +326,7 @@ const loadAttempts = async () => {
     attempts.value = attemptsData
     questionWrongStats.value = wrongStats
   } catch (error) {
-    console.error('Failed to load exam attempts:', error)
+    // Error handling done via toast in UI
   } finally {
     isLoading.value = false
   }

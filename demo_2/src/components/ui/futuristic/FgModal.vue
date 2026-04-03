@@ -1,5 +1,6 @@
 <script setup>
-import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useFocusTrap } from '../../composables/useFocusTrap'
 
 const props = defineProps({
   modelValue: {
@@ -35,10 +36,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'close', 'opened', 'closed'])
 
+const modalRef = ref(null)
 const modalClasses = computed(() => [
   'fg-modal',
   `fg-modal--${props.size}`
 ])
+
+const isActive = computed(() => props.modelValue)
+useFocusTrap(modalRef, isActive)
 
 const close = () => {
   emit('update:modelValue', false)
@@ -85,7 +90,7 @@ onUnmounted(() => {
         class="fg-modal-backdrop"
         @click="handleBackdropClick"
       >
-        <div :class="modalClasses" role="dialog" aria-modal="true">
+        <div ref="modalRef" :class="modalClasses" role="dialog" aria-modal="true">
           <!-- Header -->
           <div v-if="showHeader" class="fg-modal__header">
             <h2 class="fg-modal__title">{{ title }}</h2>

@@ -48,7 +48,7 @@ services:
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-}
       APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL:-http://localhost}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1:8080,http://localhost:81,https://localhost:444}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:81,http://localhost:81,https://localhost:444}
       APP_AI_SERVICE_ENABLED: ${APP_AI_SERVICE_ENABLED:-true}
       APP_AI_SERVICE_BASE_URL: ${APP_AI_SERVICE_BASE_URL:-http://ai-service:8090}
       SPRING_JPA_SHOW_SQL: "false"
@@ -82,6 +82,8 @@ services:
       APP_AI_MODEL_KEYS_JSON: ${APP_AI_MODEL_KEYS_JSON:-}
     volumes:
       - ./secrets:/run/secrets:ro
+    ports:
+      - "${DOCKER_AI_SERVICE_PUBLISH:-127.0.0.1:8090}:8090"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
       interval: 30s
@@ -90,7 +92,7 @@ services:
       start_period: 20s
     restart: unless-stopped
     mem_limit: ${AI_SERVICE_MEM_LIMIT:-512m}
-    
+
   fe:
     build:
       context: ./demo

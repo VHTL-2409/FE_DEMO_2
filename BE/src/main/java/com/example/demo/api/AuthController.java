@@ -5,12 +5,15 @@ import com.example.demo.api.dto.auth.AuthResponse;
 import com.example.demo.api.dto.auth.ChangePasswordRequest;
 import com.example.demo.api.dto.auth.ForgotPasswordRequest;
 import com.example.demo.api.dto.auth.LoginRequest;
+import com.example.demo.api.dto.auth.RefreshResponse;
+import com.example.demo.api.dto.auth.RefreshTokenRequest;
 import com.example.demo.api.dto.auth.RegisterRequest;
 import com.example.demo.api.dto.auth.RegisterResponse;
 import com.example.demo.api.dto.auth.ResetPasswordRequest;
 import com.example.demo.domain.entity.User;
 import com.example.demo.service.AuthService;
 import com.example.demo.service.CurrentUserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,8 +39,39 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest) {
+        // Capture device info and IP if not provided by client
+        if (request.getIpAddress() == null || request.getIpAddress().isBlank()) {
+            request.setIpAddress(resolveClientIp(httpRequest));
+        }
+        if (request.getDeviceInfo() == null || request.getDeviceInfo().isBlank()) {
+            request.setDeviceInfo(httpRequest.getHeader("User-Agent"));
+        }
         return ApiResponse.success(authService.login(request), "Login successful");
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<RefreshResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.success(authService.refreshAccessToken(request.getRefreshToken()));
+    }
+
+    @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Map<String, Object>> logout(@RequestBody RefreshTokenRequest request) {
+        if (request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            authService.revokeRefreshToken(request.getRefreshToken());
+        }
+        return ApiResponse.success(Map.of("status", "logged_out"));
+    }
+
+    @PostMapping("/logout-all")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Map<String, Object>> logoutAll() {
+        User user = currentUserService.requireCurrentUser();
+        authService.revokeAllUserTokens(user.getUsername());
+        return ApiResponse.success(Map.of("status", "all_tokens_revoked"));
     }
 
     @PostMapping("/forgot-password")
@@ -99,5 +133,17 @@ public class AuthController {
                 "username", user.getUsername(),
                 "email", user.getEmail(),
                 "roles", user.getRoles().stream().map(r -> r.getName().name()).toList());
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return xRealIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

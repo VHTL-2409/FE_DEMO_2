@@ -208,7 +208,7 @@ import { ref, computed, watch } from 'vue'
 import { ApiError } from '../../../services/apiClient'
 import { forceAddStudentsToClass, importStudentsToClass } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
-import LucideIcon from '../../common/LucideIcon.vue'
+import LucideIcon from '../../../common/LucideIcon.vue'
 
 const props = defineProps({
   modelValue: Boolean,

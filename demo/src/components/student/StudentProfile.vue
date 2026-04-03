@@ -3,17 +3,9 @@
     <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <div class="mb-5 ds-animate-fade-up">
-        <PageHeader
-          eyebrow="Sinh viên"
-          title="Hồ sơ sinh viên"
-          subtitle="Theo dõi thông tin cá nhân và cập nhật tài khoản."
-        >
+        <PageHeader eyebrow="Sinh viên" title="Hồ sơ sinh viên" subtitle="Theo dõi thông tin cá nhân và cập nhật tài khoản.">
           <template #actions>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2 text-sm font-semibold text-[var(--ds-text-secondary)] transition-colors hover:bg-[var(--ds-gray-100)]"
-              @click="goToDashboard"
-            >
+            <button type="button" class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2 text-sm font-semibold text-[var(--ds-text-secondary)] transition-colors hover:bg-[var(--ds-gray-100)]" @click="goToDashboard">
               <LucideIcon name="home" size="18" />
               Quay lại trang chủ
             </button>
@@ -21,7 +13,7 @@
         </PageHeader>
       </div>
 
-      <!-- Loading -->
+      <!-- Loading skeleton -->
       <div v-if="isLoading" class="ds-animate-fade-up" aria-busy="true">
         <div class="rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-8 shadow-[var(--ds-shadow-sm)]">
           <div class="flex flex-col items-center gap-6 md:flex-row md:items-start">
@@ -36,7 +28,8 @@
       <!-- Profile Card -->
       <section v-else class="ds-animate-fade-up" style="animation-delay: 0.05s">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- Avatar & Identity -->
+
+          <!-- Avatar + Identity -->
           <div class="lg:col-span-3 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 shadow-[var(--ds-shadow-sm)] flex flex-col items-center text-center">
             <div class="relative shrink-0">
               <div class="size-24 overflow-hidden rounded-full border-4 shadow-[var(--ds-shadow-md)]" style="border-color: var(--ds-primary-soft);">
@@ -68,72 +61,45 @@
             </div>
           </div>
 
-          <!-- Info Fields -->
+          <!-- Info + Edit + Password -->
           <div class="lg:col-span-9 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 shadow-[var(--ds-shadow-sm)]">
-            <!-- Fields -->
+
+            <!-- Info rows -->
             <div class="space-y-2 border-t border-[var(--ds-border)] pt-6">
               <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                  <LucideIcon name="user" size="16" class="text-[var(--ds-primary)]" />
-                  Tên đăng nhập
-                </span>
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="user" size="16" class="text-[var(--ds-primary)]" />Tên đăng nhập</span>
                 <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileUsername) }}</span>
               </div>
               <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                  <LucideIcon name="display_settings" size="16" class="text-[var(--ds-primary)]" />
-                  Tên hiển thị
-                </span>
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="display_settings" size="16" class="text-[var(--ds-primary)]" />Tên hiển thị</span>
                 <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileDisplayName) }}</span>
               </div>
               <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                  <LucideIcon name="person" size="16" class="text-[var(--ds-primary)]" />
-                  Họ và tên
-                </span>
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="person" size="16" class="text-[var(--ds-primary)]" />Họ và tên</span>
                 <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profileFullName) }}</span>
               </div>
               <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                  <LucideIcon name="cake" size="16" class="text-[var(--ds-primary)]" />
-                  Ngày sinh
-                </span>
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="cake" size="16" class="text-[var(--ds-primary)]" />Ngày sinh</span>
                 <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatDate(profileDateOfBirth) }}</span>
               </div>
               <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
-                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2">
-                  <LucideIcon name="phone" size="16" class="text-[var(--ds-primary)]" />
-                  Số điện thoại
-                </span>
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="phone" size="16" class="text-[var(--ds-primary)]" />Số điện thoại</span>
                 <span class="text-sm font-semibold text-[var(--ds-text)]">{{ formatField(profilePhone) }}</span>
+              </div>
+              <div class="flex justify-between gap-4 p-3 rounded-xl hover:bg-[var(--ds-gray-50)] transition-colors">
+                <span class="text-sm text-[var(--ds-text-muted)] flex items-center gap-2"><LucideIcon name="school" size="16" class="text-[var(--ds-primary)]" />Tổng số bài thi</span>
+                <span class="text-sm font-semibold text-[var(--ds-primary)]">{{ attempts.length }}</span>
               </div>
             </div>
 
-            <!-- Action buttons -->
-            <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--ds-border)] pt-6">
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ds-text-secondary)] transition-all hover:bg-[var(--ds-gray-50)] hover:shadow-md hover:-translate-y-0.5"
-              @click="toggleEditProfile"
-            >
-              <LucideIcon name="edit" size="18" />
-              {{ isEditingProfile ? 'Đóng chỉnh sửa' : 'Chỉnh sửa thông tin' }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--ds-text-secondary)] transition-all hover:bg-[var(--ds-gray-50)] hover:shadow-md hover:-translate-y-0.5"
-              @click="toggleChangePassword"
-            >
-              <LucideIcon name="lock" size="18" />
-              {{ isChangingPassword ? 'Đóng đổi mật khẩu' : 'Đổi mật khẩu' }}
-            </button>
-          </div>
+            <!-- Edit profile form -->
+            <div class="mt-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-[var(--ds-text)]">Chỉnh sửa hồ sơ</h3>
+                <button type="button" class="text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors" :class="isEditingProfile ? 'bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]' : 'text-[var(--ds-text-secondary)] hover:bg-[var(--ds-gray-50)]'" @click="toggleEditProfile">{{ isEditingProfile ? 'Hủy' : 'Chỉnh sửa' }}</button>
+              </div>
 
-          <!-- Edit Profile Panel -->
-          <div v-if="isEditingProfile" class="mt-6 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-gray-50)] p-5">
-            <h3 class="mb-4 text-base font-bold text-[var(--ds-text)]">Cập nhật thông tin</h3>
-            <form class="space-y-4" @submit.prevent="submitProfileUpdate">
-              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form v-if="isEditingProfile" class="grid grid-cols-1 md:grid-cols-2 gap-4" @submit.prevent="submitProfileUpdate">
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Tên hiển thị</label>
                   <input v-model="profileForm.displayName" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập tên hiển thị" type="text" />
@@ -154,49 +120,47 @@
                   <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Số điện thoại</label>
                   <input v-model="profileForm.phone" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm max-w-md" placeholder="Nhập số điện thoại" type="tel" />
                 </div>
-              </div>
-              <div class="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  :disabled="isSavingPassword"
-                  class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] px-5 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60"
-                  style="background-color: var(--ds-primary);"
-                >
-                  <LucideIcon name="progress_activity" size="18" />
-                  {{ isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi' }}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div class="flex items-center gap-3 pt-2 md:col-span-2">
+                  <button type="submit" :disabled="isSavingProfile" class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] px-5 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60" style="background-color: var(--ds-primary);">
+                    <LucideIcon name="progress_activity" size="18" />
+                    {{ isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi' }}
+                  </button>
+                </div>
+              </form>
+            </div>
 
-          <!-- Change Password Panel -->
-          <div v-if="isChangingPassword" class="mt-6 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-gray-50)] p-5">
-            <h3 class="mb-4 text-base font-bold text-[var(--ds-text)]">Thay đổi mật khẩu</h3>
-            <form class="space-y-4" @submit.prevent="submitChangePassword">
-              <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Mật khẩu hiện tại</label>
-                <input v-model="passwordForm.currentPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập mật khẩu hiện tại" type="password" />
-              </div>
-              <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Mật khẩu mới</label>
-                <input v-model="passwordForm.newPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập mật khẩu mới" type="password" />
-              </div>
-              <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Xác nhận mật khẩu mới</label>
-                <input v-model="passwordForm.confirmPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập lại mật khẩu mới" type="password" />
-              </div>
-              <div class="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  :disabled="isSavingPassword"
-                  class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] px-5 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60"
-                  style="background-color: var(--ds-primary);"
-                >
-                  <LucideIcon name="progress_activity" size="18" />
-                  {{ isSavingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
-                </button>
-              </div>
-            </form>
+            <!-- Change password panel -->
+            <div v-if="isChangingPassword" class="mt-6 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-gray-50)] p-5">
+              <h3 class="mb-4 text-base font-bold text-[var(--ds-text)]">Thay đổi mật khẩu</h3>
+              <form class="space-y-4" @submit.prevent="submitChangePassword">
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Mật khẩu hiện tại</label>
+                  <input v-model="passwordForm.currentPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập mật khẩu hiện tại" type="password" />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Mật khẩu mới</label>
+                  <input v-model="passwordForm.newPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập mật khẩu mới" type="password" />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-[var(--ds-text-secondary)]">Xác nhận mật khẩu mới</label>
+                  <input v-model="passwordForm.confirmPassword" class="ds-input w-full px-4 py-2.5 rounded-[var(--ds-radius-lg)] text-sm" placeholder="Nhập lại mật khẩu mới" type="password" />
+                </div>
+                <div class="flex items-center gap-3 pt-2">
+                  <button type="submit" :disabled="isSavingPassword" class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] px-5 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60" style="background-color: var(--ds-primary);">
+                    <LucideIcon name="progress_activity" size="18" />
+                    {{ isSavingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Password toggle -->
+            <div class="mt-6 pt-4 border-t border-[var(--ds-border)]">
+              <button type="button" class="flex items-center gap-2 text-sm font-semibold text-[var(--ds-text-secondary)] hover:text-[var(--ds-primary)] transition-colors" @click="toggleChangePassword">
+                <LucideIcon :name="isChangingPassword ? 'lock_open' : 'lock'" size="16" />
+                {{ isChangingPassword ? 'Hủy đổi mật khẩu' : 'Đổi mật khẩu' }}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -211,6 +175,7 @@ import { changePassword, fetchStudentProfile, updateSharedProfile, uploadAvatar 
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import PageHeader from '../ui/PageHeader.vue'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const router = useRouter()
 const profile = ref(null)
@@ -268,7 +233,7 @@ const handleAvatarChange = async (event) => {
     const result = await uploadAvatar(file)
     if (!profile.value) profile.value = result || {}
     if (result?.avatarUrl) profile.value = { ...profile.value, avatarUrl: result.avatarUrl }
-  } catch (error) {
+  } catch {
     toast.error('Không thể tải ảnh đại diện.')
   } finally {
     isUploadingAvatar.value = false
@@ -307,7 +272,7 @@ const submitProfileUpdate = async () => {
     profile.value = { ...profile.value, ...payload }
     toast.success('Đã cập nhật thông tin.')
     isEditingProfile.value = false
-  } catch (error) {
+  } catch {
     toast.error('Không thể cập nhật thông tin.')
   } finally {
     isSavingProfile.value = false
@@ -329,7 +294,7 @@ const submitChangePassword = async () => {
     toast.success('Đổi mật khẩu thành công.')
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     isChangingPassword.value = false
-  } catch (error) {
+  } catch {
     toast.error('Không thể đổi mật khẩu.')
   } finally {
     isSavingPassword.value = false
@@ -343,7 +308,7 @@ const loadProfileData = async () => {
     profile.value = profilePayload
     attempts.value = attemptsPayload || []
     if (isEditingProfile.value) syncProfileForm()
-  } catch (error) {
+  } catch {
     profile.value = null
     attempts.value = []
     toast.error('Không thể tải hồ sơ sinh viên.')

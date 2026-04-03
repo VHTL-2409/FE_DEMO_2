@@ -1031,7 +1031,6 @@ onMounted(async () => {
       if (examConfig.value.monitorMultiMonitor !== false) setTimeout(checkMultiMonitor, 3000)
     }
   } catch (error) {
-    console.error('Load exam error:', error)
     examLoadFailed.value = true
     examSurfaceReady.value = true
 

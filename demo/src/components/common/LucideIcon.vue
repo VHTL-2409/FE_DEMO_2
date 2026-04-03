@@ -66,6 +66,7 @@ const NAME_MAP = {
   error: 'AlertCircle',
   info: 'Info',
   help: 'HelpCircle',
+  error_outline: 'AlertCircle',
   sync: 'RefreshCw',
   sync_disabled: 'RefreshCw',
   radio_button_checked: 'Radio',
@@ -77,6 +78,7 @@ const NAME_MAP = {
   mic: 'Mic',
   mic_off: 'MicOff',
   screenshot: 'Monitor',
+  monitor_heart: 'Activity',
   pause: 'Pause',
   pause_circle: 'PauseCircle',
   play_arrow: 'Play',
@@ -95,6 +97,12 @@ const NAME_MAP = {
   'pencil-2': 'Pencil',
   'trash-2': 'Trash2',
   book_open: 'BookOpen',
+  badge: 'Award',
+  cake: 'Cake',
+  delete_sweep: 'Trash2',
+  format_list_numbered: 'ListOrdered',
+  all_inclusive: 'Infinity',
+  celebration: 'PartyPopper',
 
   // Time & Schedule
   schedule: 'Clock',
@@ -136,6 +144,7 @@ const NAME_MAP = {
   // Network & Connectivity
   wifi: 'Wifi',
   wifi_off: 'WifiOff',
+  x: 'X',
   signal_cellular_off: 'WifiOff',
   router: 'Network',
 
@@ -148,6 +157,7 @@ const NAME_MAP = {
   sort: 'ArrowUpDown',
   filter_list: 'Filter',
   fullscreen: 'Maximize',
+  display_settings: 'Monitor',
   fullscreen_exit: 'Minimize',
 
   // Misc
@@ -160,6 +170,7 @@ const NAME_MAP = {
   folder_open: 'FolderOpen',
   image: 'Image',
   picture_as_pdf: 'FileText',
+  pie_chart: 'PieChart',
   text_fields: 'Type',
   psychology: 'Brain',
   bookmark: 'Bookmark',
@@ -577,6 +588,7 @@ const NAME_MAP = {
   payments: 'Wallet',
   pending_actions: 'Clock',
   pending_send: 'Send',
+  satellite_alt: 'Radio',
   people: 'Users',
   percent: 'Percent',
   perm_camera_gray: 'Camera',
@@ -616,8 +628,11 @@ const NAME_MAP = {
   pool: 'Waves',
   portable_wifi_off: 'WifiOff',
   power: 'Power',
+  plus: 'Plus',
   precision_manufacturing: 'Bot',
   preview: 'Eye',
+  rate_review: 'MessageSquare',
+  table: 'Table2',
   price_change: 'CurrencyExchange',
   price_check: 'DollarSign',
   print_disabled: 'PrinterOff',

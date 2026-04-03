@@ -61,6 +61,17 @@ const iconName = (type) => {
   width: calc(100vw - 2.5rem);
 }
 
+@media (max-width: 640px) {
+  .toast-container {
+    top: auto;
+    bottom: 1.5rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .toast-stack {
   display: flex;
   flex-direction: column;

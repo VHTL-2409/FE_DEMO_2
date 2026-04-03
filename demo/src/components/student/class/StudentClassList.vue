@@ -224,7 +224,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getMyClasses } from '../../../services/classService'
 import { ApiError } from '../../../services/apiClient'
 import { useToast } from '../../../composables/useToast'
-import LucideIcon from '../../common/LucideIcon.vue'
+import LucideIcon from '../../../common/LucideIcon.vue'
 import StudentJoinClassModal from './StudentJoinClassModal.vue'
 
 const toast = useToast()

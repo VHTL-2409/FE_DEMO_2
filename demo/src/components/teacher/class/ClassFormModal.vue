@@ -70,7 +70,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import LucideIcon from '../../common/LucideIcon.vue'
+import LucideIcon from '../../../common/LucideIcon.vue'
 
 const props = defineProps({
   modelValue: Boolean,

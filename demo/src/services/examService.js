@@ -1,5 +1,9 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
+export const getBrowserTimezone = () => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
+}
+
 const toLocalDateTimeOrNull = (value) => {
   if (!value) return null
   const date = new Date(value)

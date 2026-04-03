@@ -1,6 +1,8 @@
 <template>
   <Teleport to="body">
-    <div class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-2rem)] pointer-events-none">
+    <div class="toast-host"
+      aria-live="polite"
+      aria-label="Thông báo hệ thống">
       <div class="pointer-events-auto flex flex-col gap-3">
         <TransitionGroup name="toast" tag="div" class="flex flex-col gap-3">
           <div
@@ -175,5 +177,32 @@ const iconName = (type) => {
 }
 .toast-move {
   transition: transform 0.3s ease;
+}
+
+/* Desktop + mobile base positioning */
+.toast-host {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+  width: 360px;
+  max-width: calc(100vw - 2rem);
+}
+
+/* Mobile: toast at bottom center, full width */
+@media (max-width: 640px) {
+  .toast-host {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    width: auto;
+    max-width: none;
+  }
 }
 </style>

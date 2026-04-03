@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -44,11 +45,32 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        // Prevent MIME type sniffing
+                        .contentTypeOptions(contentType -> {})
+                        // Prevent clickjacking
+                        .frameOptions(frame -> frame.deny())
+                        // XSS protection (legacy browsers)
+                        .xssProtection(xss -> xss.disable())
+                        // HSTS — only enable in production with HTTPS
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000)
+                                .preload(false))
+                        // Cache control — no caching for API responses
+                        .cacheControl(cache -> {})
+                        // Referrer policy
+                        .referrerPolicy(referrer -> referrer
+                                .policy(ReferrerPolicy.ORIGIN_WHEN_CROSS_ORIGIN))
+                        // Permissions policy — restrict browser features
+                        .permissionsPolicy(permissions -> permissions
+                                .policy("accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(self)"))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/login", "/web/**", "/css/**", "/js/**", "/avatars/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password",
-                        "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
+                        "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers("/api/questions/template").permitAll()
                         .requestMatchers("/ws/**").permitAll()
@@ -56,7 +78,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .userDetailsService(customUserDetailsService)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-    
+
         return http.build();
     }
 
@@ -84,6 +106,7 @@ public class SecurityConfig {
                 "Pragma"
             )
         );
+        configuration.setExposedHeaders(List.of("Retry-After"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -102,5 +125,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }

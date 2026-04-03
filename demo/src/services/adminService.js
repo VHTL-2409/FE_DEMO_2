@@ -86,3 +86,8 @@ export const patchAdminExamActive = async (examId, active) => {
   })
   return unwrapApiData(payload)
 }
+
+export const fetchAdminOpsSummary = async () => {
+  const payload = await apiRequest('/api/admin/ops/summary')
+  return unwrapApiData(payload)
+}

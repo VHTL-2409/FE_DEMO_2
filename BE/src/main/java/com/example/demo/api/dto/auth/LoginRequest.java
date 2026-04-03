@@ -12,4 +12,8 @@ public class LoginRequest {
 
     @NotBlank
     private String password;
+
+    private String deviceInfo;
+
+    private String ipAddress;
 }

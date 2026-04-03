@@ -86,6 +86,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Caffeine cache for rate limiting -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>

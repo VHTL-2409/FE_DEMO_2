@@ -9,13 +9,13 @@
     </div>
 
     <!-- Empty -->
-    <div v-else-if="!displayExams.length" class="eltable__empty">
-      <div class="eltable__empty-icon">
-        <LucideIcon name="assignment" />
-      </div>
-      <p class="eltable__empty-title">{{ emptyTitle }}</p>
-      <p class="eltable__empty-sub">{{ emptySub }}</p>
-    </div>
+    <EmptyState
+      v-else-if="!displayExams.length"
+      variant="no-data"
+      :title="emptyTitle"
+      :description="emptySub"
+      icon="assignment"
+    />
 
     <!-- Table -->
     <div v-else class="eltable__wrap">
@@ -139,8 +139,10 @@
 <script setup>
 import { computed } from 'vue'
 
+import EmptyState from '../../../common/EmptyState.vue'
 import ExamStatusChip from './ExamStatusChip.vue'
 import ExamRowActions from './ExamRowActions.vue'
+import LucideIcon from '../../../common/LucideIcon.vue'
 
 const props = defineProps({
   exams: { type: Array, default: () => [] },
@@ -240,45 +242,6 @@ const formatTime = (d) => fmt(d, { hour: '2-digit', minute: '2-digit' })
 .eltable__loading p {
   font-size: 0.875rem;
   font-weight: 600;
-  margin: 0;
-}
-
-/* Empty */
-.eltable__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.eltable__empty-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--ds-gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.dark .eltable__empty-icon { background: var(--ds-gray-700); }
-
-
-.eltable__empty-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin: 0;
-}
-
-.dark .eltable__empty-title { color: #f1f5f9; }
-
-.eltable__empty-sub {
-  font-size: 0.8rem;
-  color: var(--ds-text-muted);
   margin: 0;
 }
 

@@ -1,0 +1,182 @@
+1.
+Hệ quản trị cơ sở dữ liệu có chức năng gì?
+A. Quản lý truy xuất dữ liệu
+B. Truy vấn dữ liệu
+C. Tạo môi trường để tạo lập dữ liệu
+*D. Cung cấp cơ chế quản lý dữ liệu, truy xuất và lưu trữ dữ liệu
+2.
+Cơ sở dữ liệu là?
+A. Tập hợp các dữ liệu có liên quan với nhau
+B. Một bộ sưu tập rất lớn về các loại dữ liệu tác nghiệp
+C. Tập các file dữ liệu tác nghiệp
+*D. Tập hợp các dữ liệu có cấu trúc được tạo ra để phục vụ cho nhiều đối tượng người dùng
+3.
+Kiến trúc của hệ quản trị cơ sở dữ liệu bao gồm các mức nào?
+A. Mức ngoài, mức trong, mức vật lý, mức khung nhìn
+B. Mức ngoài, mức trong, mức vật lý, 
+*C. Mức ngoài, mức quan niệm, mức vật lý
+D. Mức ngoài, mức khung nhìn, mức vật lý
+4.
+Dữ liệu có thể phát triển mà không ảnh hưởng tới các hệ ứng dụng. Điều này thể hiện đặc tính nào của cơ sở dữ liệu?
+A. Tính nhất quán
+B. Tính tự mô tả
+*C. Tính độc lập
+D. Tính trừu tượng
+5.
+Vai trò của người thiết kế cơ sở dữ liệu là gì?
+A. Cấp quyền sử dụng cơ sở dữ liệu
+*B. Quyết định những dữ liệu cần được lưu trữ trong hệ thống
+C. Đảm bảo hoạt động của máy tính và hệ thống mạng máy tính của tổ chức
+D. Phát triển ứng dụng và hệ thống phần mềm
+6.
+Sơ đồ nào dưới đây thường được dùng trong giai đoạn phân tích quan niệm?
+*A. Mô hình thực thể liên kết
+B. Mô hình mạng
+C. Mô hình hướng đối tượng
+D. Mô hình phân cấp
+7.
+Với Mô hình ngoài thì nội dung thông tin như thế nào?
+A. Nội dung thông tin của toàn bộ cơ sở dữ liệu
+B. Nội dung thông tin của toàn bộ cơ sở dữ liệu dưới cách nhìn của người sử dụng 
+C. Nội dung thông tin của một phần cơ sở dữ liệu 
+*D. Nội dung thông tin của một phần dữ liệu dưới cách nhìn của người sử dụng 
+8.
+Trong sơ đồ thực thể liên kết, tập thực thể Bộ Môn chỉ thuộc một Khoa ở trong trường và tập thực thể Khoa có nhiều Bộ Môn khác nhau. Vậy mối liên kết giữa tập thực thể Khoa và tập thực thể Bộ Môn là mối liên kết gì?
+*A. Mối liên kết 1- n
+B. Mối liên kết n – n
+C. Mối liên kết 1-1
+D. Mối liên kết n - m
+9.
+Lược đồ cơ sở dữ liệu là gì?
+A. Là các dòng dữ liệu trong bảng
+*B. Là tập hợp các lược đồ quan hệ trong cùng một cơ sở dữ liệu
+C. Là tập hợp giá trị trong một bảng
+D. Là tập hợp các thuộc tính có liên quan về một đối tượng
+10.
+Lựa chọn nào sau đây là đúng cho khái niệm “Bộ”
+A. Tập hợp các thuộc tính của quan hệ 
+B. “Le Hoa”, #10/3/90#, nữ, Quảng Nam
+*C. Thể hiện dữ liệu cụ thể của các thuộc tính trong quan hệ
+D. Tập hợp các dòng của quan hệ 
+11.
+Phép toán nào trong đại số quan hệ mà khi thực hiện thì có thể bỏ bớt đi một vài bộ của quan hệ?
+A. Phép nối
+B. Phép chiếu
+*C. Phép chọn
+D. Phép chia
+12.
+Ý nghĩa của Phép chọn 
+*A. Được dùng để lấy ra một vài bộ thỏa điều kiện của quan hệ 
+B. Được dùng để lấy ra một vài cột của quan hệ thỏa điều kiện
+C. Được dùng để lấy ra tất cả các dòng của quan hệ
+D. Được dùng để lấy ra một vài thuộc tính của quan hệ.
+13.
+Cho quan hệ SANPHAM (MaSP, TenSP, DVT, Dongia, MaNCC). Muốn hiển thị danh sách các sản phẩm được nhập từ nhà cung cấp CC02 gồm các thông tin: TenSP, Dongia, MaNCC thì sử dụng phép toán nào?
+A. Phép chọn và phép nối
+B. Phép chiếu kết hợp phép nối
+C. Phép tích đề-các và phép nối
+*D. Phép chọn kết hợp với phép chiếu
+14.
+Cho quan hệ BANDOC (MaBD, Hoten, Ngaysinh, Lop, Sodienthoai, Anhdaidien). Muốn hiển thị danh sách các bạn đọc lớp K28TPM gồm các thông tinMaBD, Hoten, Lop thì sử dụng phép toán nào?
+A. Phép chọn
+B. Phép chiếu kết hợp phép nối
+*C. Phép chọn kết hợp với phép chiếu
+D. Phép nối
+15. 
+Cho quan hệ BANDOC (MaBD, Hoten, Ngaysinh, Lop, Sodienthoai, Anhdaidien). Muốn cập nhật lại số điện thoại cho bạn đọc Lê Hà thì câu lệnh nào dưới đây là đúng?
+A. UPDATE BANDOC SET Sodienthoai = ‘0905909808’, Hoten = ‘Lê Hà’
+*B. UPDATE BANDOC SET Sodienthoai = ‘0905909808’ WHERE Hoten = ‘Lê Hà’
+C. UPDATE BANDOC  SET Sodienthoai = ‘0905909808’
+D. UPDATE BANDOC WHERE  Hoten = ‘Lê Hà’ SET Sodienthoai = ‘0905909808’
+16. 
+Lệnh SQL nào dưới đây được dùng để lấy dữ liệu từ bảng?
+A. ALTER TABLE
+B. INSERT
+C. DELETE
+*D. SELECT
+17. 
+Phép chọn được thực hiện sau mệnh đề nào trong SELECT - FROM - WHERE?
+A. SELECT
+B. FROM 
+*C. WHERE 
+D. GROUP BY HAVING
+18.
+Cho quan hệ DUAN (MaDA, TenDA, Sogiayphep, Ngaykhoicong, Ngayhoanthanh). Ràng buộc Ngayhoanthanh phải lớn hơn Ngaykhoicong là loại ràng buộc nào sau đây?
+*A. Ràng buộc toàn vẹn liên thuộc tính
+B. Ràng buộc liên bộ
+C. Ràng buộc khóa chính
+D. Ràng buộc tham chiếu
+19.
+Ràng buộc Ngaykhoicong <= Ngayhoanthanh trong lược đồ CONGTRINH (MaCT, TenCT, Diadiem, NgayKC, NgayHT) là loại ràng buộc nào?
+A. Ràng buộc miền giá trị
+B. Ràng buộc liên bộ
+*C. Ràng buộc liên thuộc tính
+D. Ràng buộc liên thuộc tính liên quan hệ
+20.
+Ràng buộc Nhanvien. Mapb phải thuộc Phongban.Mapb là loại ràng buộc nào sau đây
+A. Ràng buộc liên bộ
+*B. Ràng buộc tham chiếu
+C. Ràng buộc khóa chính
+D. Tất cả các loại ràng buộc trên.
+21.
+Cho R (ABCD) và F= {A → B, A → C, BC → D}. Phụ thuộc hàm A→ BC được suy diễn nhờ vào luật nào dưới đây?
+*A. Luật hợp
+B. Phản xạ
+C. Tăng trưởng
+D. Tựa bắc cầu
+22.
+Cho R(ABCDEH) và F ={AB → C, BC→ AD, H → B, D→ E}. Bao đóng của AH 〖(AH)〗_F^+ là gì?
+A. AH
+*B. AHBCDE
+C. ABCDE
+D. ABCD
+23.
+Phụ thuộc hàm A->B là gì?
+*A. Mỗi giá trị thuộc A thì suy ra một giá trị thuộc B
+B. Mỗi giá trị thuộc A thì suy ra nhiều giá trị thuộc B
+C. Mỗi giá trị thuộc A thì suy ra không có giá trị thuộc B
+D. Mỗi giá trị thuộc B thì suy ra một giá trị thuộc A
+24.
+Cho R(ABCD) F={AB → C, AB → D, B → D, C → D}. Tập phụ thuộc hàm tối thiểu là tập nào dưới đây?
+A. F= {AB → C, AB → D, B → D, C → D}
+B. F= {AB → C, A → D, B → D, C → D}
+C. F= {AB → C, B → D}
+*D. F= {AB → C, B → D, C → D}
+25. 
+Mục đích của ràng buộc toàn vẹn dữ liệu là gì?
+A. Đảm bảo cho việc lưu trữ dữ liệu
+*B. Đảm bảo cơ sở dữ liệu luôn biểu diễn đúng ngữ nghĩa thực tế
+C. Đảm bảo dữ liệu luôn được cập nhật
+D. Triệt tiêu mức cao nhất khả năng xuất hiện các dị thường thông tin
+26. 
+Cho R(ABCDE) F={AB -> CD, D -> EB}. Chỉ ra 1 khóa của lược đồ
+*A. AB
+B. D
+C. ABC
+D. ABCD
+27.
+Cho R(ABCDEG) F={A -> BCD;  C->EG}. Dạng chuẫn cao nhất của R là?
+A. 1NF
+*B. 2NF
+C. 3NF
+D. BCNF
+28.
+Bao đóng tập thuộc tính X+  đối với tập phụ thuộc hàm F
+A. Tập các thuộc tính thuộc X
+B. Tập các thuộc tính không thuộc X
+*C. Tập các thuộc tính suy diễn từ X nhờ tập phụ thuộc hàm F
+D. Tập các thuộc tính không suy diễn từ X
+29.
+Cho R (X, Y, Z,T), F={ X→ Y, Y → Z, Y → T}. Phụ thuộc hàm X→ T được suy diễn nhờ vào luật nào dưới đây?
+A. Luật thêm
+B. Luật hợp
+*C. Luật bắc cầu
+D. Luật tựa bắc cầu
+30.
+Cho R(ABCDEGH). F ={ A -> BC, D -> BE, GE -> H). Bao đóng của ADG là
+A. ADG
+B. ABCDE
+C. ABCDEG
+*D. ABCDEGH
+
+

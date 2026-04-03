@@ -95,6 +95,8 @@ const router = createRouter({
     { path: '/student/generate-practice-test', component: () => import('./components/student/StudentGeneratePracticeTest.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/profile', component: () => import('./components/student/StudentProfile.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/schedule', component: () => import('./components/student/StudentExamSchedule.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
+    // 404 handler - phải là route cuối cùng
+    { path: '/:pathMatch(.*)*', component: () => import('./components/common/NotFoundPage.vue') },
     ...devRoutes
   ]
 })

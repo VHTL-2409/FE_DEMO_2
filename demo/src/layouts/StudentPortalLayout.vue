@@ -54,7 +54,6 @@ const activeSection = computed(() => {
   if (path.startsWith('/student/exam-join')) return 'join'
   if (path.startsWith('/student/exam-waiting-room')) return 'waiting'
   if (path.startsWith('/student/study-history')) return 'history'
-  if (path.startsWith('/student/exam-result')) return 'results'
   if (path.startsWith('/student/profile')) return 'profile'
   return 'dashboard'
 })
@@ -64,7 +63,6 @@ const studentSidebarItems = [
   { section: 'classes', to: '/student/classes', icon: 'school', label: 'Lớp học' },
   { section: 'join', to: '/student/exam-join', icon: 'login', label: 'Vào thi' },
   { section: 'history', to: '/student/study-history', icon: 'history', label: 'Lịch sử' },
-  { section: 'results', to: '/student/exam-result', icon: 'grade', label: 'Kết quả' },
   { section: 'profile', to: '/student/profile', icon: 'account_circle', label: 'Hồ sơ' }
 ]
 </script>

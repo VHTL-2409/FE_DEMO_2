@@ -1,20 +1,35 @@
 /**
  * useToast — Toast notification composable
  * Manages a queue of toast messages with auto-dismiss
+ * error toasts don't auto-dismiss — user must close manually
  */
 import { ref, readonly } from 'vue'
+
+const DEFAULT_DURATION = 4000
+const ERROR_DURATION = 0        // error toasts don't auto-dismiss
+const SUCCESS_DURATION = 4000
+const WARNING_DURATION = 4000
 
 const toasts = ref([])
 let toastIdCounter = 0
 
 export function useToast() {
-  function addToast({ message, type = 'info', duration = 4500, title = '' }) {
+  function addToast({ message, type = 'info', duration = null, title = '' }) {
+    if (!message) return null
+
+    const resolvedDuration = duration !== null
+      ? duration
+      : (type === 'error' ? ERROR_DURATION
+         : type === 'success' ? SUCCESS_DURATION
+         : type === 'warning' ? WARNING_DURATION
+         : DEFAULT_DURATION)
+
     const id = ++toastIdCounter
-    const toast = { id, message, type, title, duration }
+    const toast = { id, message, type, title }
     toasts.value.push(toast)
 
-    if (duration > 0) {
-      setTimeout(() => removeToast(id), duration)
+    if (resolvedDuration > 0) {
+      setTimeout(() => removeToast(id), resolvedDuration)
     }
     return id
   }

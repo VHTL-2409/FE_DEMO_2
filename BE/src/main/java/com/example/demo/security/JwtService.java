@@ -24,6 +24,12 @@ public class JwtService {
     @Value("${security.jwt.expiration-ms}")
     private long expirationMs;
 
+    @Value("${app.jwt.issuer:eduexam}")
+    private String defaultIssuer;
+
+    @Value("${app.jwt.audience:eduexam-client}")
+    private String defaultAudience;
+
     @PostConstruct
     private void validateSecretStrength() {
         byte[] keyBytes;
@@ -38,8 +44,14 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, defaultIssuer, defaultAudience);
+    }
+
+    public String generateToken(UserDetails userDetails, String issuer, String audience) {
         return Jwts.builder()
             .subject(userDetails.getUsername())
+            .issuer(issuer)
+            .audience().add(audience).and()
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + expirationMs))
             .signWith(getSigningKey())
@@ -51,8 +63,33 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        return isTokenValid(token, userDetails, defaultAudience);
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails, String expectedAudience) {
+        try {
+            String username = extractUsername(token);
+            if (!username.equals(userDetails.getUsername())) return false;
+            if (isTokenExpired(token)) return false;
+            if (!validateAudience(token, expectedAudience)) return false;
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private boolean validateAudience(String token, String expectedAudience) {
+        try {
+            Claims claims = parseClaims(token);
+            var audiences = claims.getAudience();
+            return audiences != null && audiences.contains(expectedAudience);
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    public long getExpirationMs() {
+        return expirationMs;
     }
 
     private boolean isTokenExpired(String token) {
@@ -60,13 +97,16 @@ public class JwtService {
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        Claims claims = Jwts.parser()
+        return resolver.apply(parseClaims(token));
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
             .verifyWith(getSigningKey())
             .clockSkewSeconds(60)
             .build()
             .parseSignedClaims(token)
             .getPayload();
-        return resolver.apply(claims);
     }
 
     private SecretKey getSigningKey() {

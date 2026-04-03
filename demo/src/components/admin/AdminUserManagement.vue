@@ -1,119 +1,152 @@
 <template>
-  <div class="staff-page-wrap min-h-0 flex-1 gap-6 pb-2">
-    <PageHeader :eyebrow="sectionEyebrow" :title="sectionTitle" :subtitle="sectionSubtitle" />
+  <div class="db-page-wrap">
 
-    <div
-      v-if="showSearch"
-      class="staff-surface rounded-[1.5rem] p-4 sm:p-5 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center"
-    >
-      <div class="relative flex-1 max-w-xl">
-        <LucideIcon name="search" />
+    <!-- Page Header -->
+    <header class="db-header">
+      <div class="db-header-left">
+        <div class="db-header-icon">
+          <LucideIcon name="users" :size="24" />
+        </div>
+        <div>
+          <p class="db-eyebrow">{{ sectionEyebrow }}</p>
+          <h1 class="db-title">{{ sectionTitle }}</h1>
+          <p class="db-subtitle">{{ sectionSubtitle }}</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Search Bar -->
+    <div v-if="showSearch" class="db-search-bar-card">
+      <div class="db-search-wrap" style="flex: 1">
+        <LucideIcon name="search" :size="16" class="db-search-icon" />
         <input
           v-model="searchInput"
           type="search"
-          placeholder="Tìm theo username, email, họ tên, hiển thị, SĐT…"
-          class="staff-search-input w-full rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          placeholder="Tim theo username, email, ho ten, hien thi, SDT..."
+          class="db-search-input"
           @keydown.enter.prevent="applySearch"
         />
       </div>
-      <div class="flex gap-2">
+      <div style="display: flex; gap: 0.5rem">
         <button
           type="button"
-          class="staff-action-btn staff-action-btn-primary"
+          class="db-btn db-btn--primary db-btn--sm"
           @click="applySearch"
         >
-          Tìm
+          Tim
         </button>
         <button
           v-if="appliedQuery"
           type="button"
-          class="staff-action-btn staff-action-btn-neutral"
+          class="db-btn db-btn--secondary db-btn--sm"
           @click="clearSearch"
         >
-          Xóa bộ lọc
+          Xoa loc
         </button>
       </div>
     </div>
 
-    <div class="staff-table-panel rounded-[1.75rem]">
-      <div class="staff-toolbar">
-        <p class="staff-toolbar-meta">
-          <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ totalElements }}</span>
-          tài khoản
-          <span v-if="appliedQuery" class="text-slate-500"> · lọc: "{{ appliedQuery }}"</span>
+    <!-- Table Panel -->
+    <div class="db-table-panel">
+      <!-- Toolbar -->
+      <div class="db-toolbar">
+        <p class="db-toolbar-meta">
+          <span style="font-weight: 700; color: var(--db-text)">{{ formatNum(totalElements) }}</span> tai khoan
+          <span v-if="appliedQuery" style="color: var(--db-text-muted)"> · loc: "{{ appliedQuery }}"</span>
         </p>
-        <button
-          type="button"
-          class="staff-action-btn staff-action-btn-neutral self-start disabled:opacity-50 sm:self-auto"
-          :disabled="loading"
-          @click="load"
-        >
-          <LucideIcon name="refresh" size="18" />
-          Làm mới
-        </button>
+        <div class="db-toolbar-right">
+          <button
+            type="button"
+            class="db-btn db-btn--secondary db-btn--sm"
+            :disabled="loading"
+            @click="load"
+          >
+            <LucideIcon name="refresh" :size="14" />
+            Lam moi
+          </button>
+        </div>
       </div>
 
-      <div class="min-h-0 flex-1 overflow-auto portal-scrollbar">
-        <table class="staff-table min-w-[820px]">
+      <!-- Table -->
+      <div class="db-table-wrap">
+        <table class="db-table">
           <thead>
             <tr>
               <th>#</th>
               <th>Username</th>
               <th>Email</th>
-              <th>Xác minh</th>
-              <th>Họ tên / hiển thị</th>
-              <th>Điện thoại</th>
-              <th v-if="showActions" class="text-right">Thao tác</th>
+              <th>Xac minh</th>
+              <th>Ho ten / hien thi</th>
+              <th>Dien thoai</th>
+              <th v-if="showActions" class="text-right">Thao tac</th>
             </tr>
           </thead>
           <tbody>
             <template v-if="loading && !rows.length">
-              <tr class="border-b border-white/[0.04]">
-                <td :colspan="colspanRows" class="px-6 py-12 text-center text-slate-500">Đang tải…</td>
+              <tr>
+                <td :colspan="colspanRows" class="db-empty-cell">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 3rem">
+                    <LucideIcon name="loader_2" :size="24" class="db-spin" style="color: var(--db-text-muted)" />
+                    <span style="color: var(--db-text-muted); font-size: 0.875rem">Dang tai...</span>
+                  </div>
+                </td>
               </tr>
             </template>
             <template v-else-if="!rows.length">
-              <tr class="border-b border-white/[0.04]">
-                <td :colspan="colspanRows" class="px-6 py-12 text-center text-slate-500">Chưa có dữ liệu.</td>
+              <tr>
+                <td :colspan="colspanRows" class="db-empty-cell">
+                  <div class="db-empty">
+                    <div class="db-empty-icon">
+                      <LucideIcon name="inbox" :size="24" />
+                    </div>
+                    <p class="db-empty-title">Chua co du lieu</p>
+                    <p class="db-empty-desc">Khong tim thay tai khoan nao.</p>
+                  </div>
+                </td>
               </tr>
             </template>
             <template v-else>
               <tr
                 v-for="(row, idx) in rows"
                 :key="row.userId"
-                class="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+                class="db-table-row"
+                :style="{ animationDelay: `${idx * 0.03}s` }"
               >
-                <td class="text-slate-500 tabular-nums">{{ page * size + idx + 1 }}</td>
-                <td class="font-mono text-primary">{{ row.username }}</td>
-                <td class="text-slate-700 dark:text-slate-300">{{ row.email }}</td>
+                <td style="color: var(--db-text-muted)">{{ page * size + idx + 1 }}</td>
+                <td class="text-mono" style="color: var(--db-primary); font-size: 0.8rem">{{ row.username }}</td>
+                <td style="color: var(--db-text)">{{ row.email }}</td>
                 <td>
                   <span
-                    class="staff-status-chip"
-                    :class="row.emailVerified ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-200'"
+                    class="db-chip"
+                    :class="row.emailVerified ? 'db-chip--success' : 'db-chip--warning'"
                   >
-                    {{ row.emailVerified ? 'Đã xác minh' : 'Chưa' }}
+                    <span
+                      class="db-dot"
+                      :class="row.emailVerified ? 'db-dot--success' : 'db-dot--warning'"
+                      style="width: 6px; height: 6px"
+                    />
+                    {{ row.emailVerified ? 'Da xac minh' : 'Chua' }}
                   </span>
                 </td>
-                <td class="text-slate-700 dark:text-slate-300">
-                  {{ displayName(row) }}
-                </td>
-                <td class="text-slate-500 dark:text-slate-400">{{ row.phone || '—' }}</td>
-                <td v-if="showActions" class="text-right whitespace-nowrap">
+                <td style="color: var(--db-text)">{{ displayName(row) }}</td>
+                <td style="color: var(--db-text-muted)">{{ row.phone || '—' }}</td>
+                <td v-if="showActions" class="text-right" style="white-space: nowrap">
                   <button
                     type="button"
-                    class="staff-action-btn staff-action-btn-primary mr-1"
+                    class="db-btn db-btn--primary db-btn--sm"
+                    style="margin-right: 0.375rem"
                     @click="openDetail(row)"
                   >
-                    <LucideIcon name="visibility" size="16" />
-                    Chi tiết
+                    <LucideIcon name="visibility" :size="14" />
+                    Chi tiet
                   </button>
                   <button
                     type="button"
-                    class="staff-action-btn staff-action-btn-neutral text-rose-600 dark:text-rose-400"
+                    class="db-btn db-btn--danger db-btn--sm"
                     @click="confirmDelete(row)"
                   >
-                    <LucideIcon name="delete" size="16" />
-                    Xóa
+                    <LucideIcon name="delete" :size="14" />
+                    Xoa
                   </button>
                 </td>
               </tr>
@@ -122,26 +155,24 @@
         </table>
       </div>
 
-      <div
-        v-if="totalPages > 1"
-        class="staff-toolbar"
-      >
-        <p class="staff-toolbar-meta">
-          Trang <span class="font-semibold text-slate-900 dark:text-slate-100">{{ page + 1 }}</span> / {{ totalPages }}
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="db-pagination">
+        <p class="db-pagination-info">
+          Trang <span style="font-weight: 700; color: var(--db-text)">{{ page + 1 }}</span> / {{ totalPages }}
         </p>
-        <div class="flex items-center gap-2">
+        <div class="db-pagination-controls">
           <button
             type="button"
             :disabled="page <= 0 || loading"
-            class="staff-action-btn staff-action-btn-neutral disabled:opacity-40"
+            class="db-btn db-btn--secondary db-btn--sm"
             @click="goPage(page - 1)"
           >
-            Trước
+            Truoc
           </button>
           <button
             type="button"
             :disabled="page >= totalPages - 1 || loading"
-            class="staff-action-btn staff-action-btn-neutral disabled:opacity-40"
+            class="db-btn db-btn--secondary db-btn--sm"
             @click="goPage(page + 1)"
           >
             Sau
@@ -150,73 +181,52 @@
       </div>
     </div>
 
-    <p v-if="errorMsg" class="shrink-0 text-sm font-medium text-rose-400">{{ errorMsg }}</p>
+    <!-- Error -->
+    <div v-if="errorMsg" class="db-alert db-alert--danger">
+      <LucideIcon name="alert_circle" :size="18" />
+      <span>{{ errorMsg }}</span>
+    </div>
 
-    <!-- Chi tiết -->
+    <!-- Detail Modal -->
     <Teleport to="body">
       <div
         v-if="detailOpen"
-        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+        class="db-modal-overlay"
         @click.self="closeDetail"
       >
-        <div
-          class="admin-detail-dialog portal-scrollbar max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div class="admin-detail-dialog__header flex items-center justify-between px-5 py-4">
-            <h3 class="text-lg font-bold text-slate-50">Chi tiết tài khoản</h3>
+        <div class="db-modal" role="dialog" aria-modal="true">
+          <div class="db-modal-header">
+            <h3 class="db-modal-title">Chi tiet tai khoan</h3>
             <button
               type="button"
-              class="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+              class="db-modal-close"
               @click="closeDetail"
             >
-              <LucideIcon name="close" />
+              <LucideIcon name="x" :size="18" />
             </button>
           </div>
-          <div v-if="detailLoading" class="px-5 py-12 text-center text-slate-400">Đang tải…</div>
-          <div v-else-if="detail" class="space-y-4 px-5 py-5 text-sm">
-            <div v-if="detail.avatarUrl" class="flex justify-center">
-              <img :src="detail.avatarUrl" alt="" class="size-20 rounded-2xl border border-slate-600/50 object-cover" />
+          <div v-if="detailLoading" class="db-modal-body" style="display: flex; justify-content: center; padding: 3rem">
+            <LucideIcon name="loader_2" :size="28" class="db-spin" style="color: var(--db-text-muted)" />
+          </div>
+          <div v-else-if="detail" class="db-modal-body">
+            <div v-if="detail.avatarUrl" style="display: flex; justify-content: center; margin-bottom: 1.5rem">
+              <img
+                :src="detail.avatarUrl"
+                alt=""
+                style="width: 80px; height: 80px; border-radius: var(--db-radius-xl); border: 2px solid var(--db-border-strong); object-fit: cover"
+              />
             </div>
-            <dl class="grid grid-cols-1 gap-3">
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>ID</dt>
-                <dd class="font-mono text-slate-100">{{ detail.userId }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Username</dt>
-                <dd class="font-mono text-indigo-300">{{ detail.username }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Email</dt>
-                <dd class="break-all text-slate-100">{{ detail.email }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Xác minh email</dt>
-                <dd class="text-slate-100">{{ detail.emailVerified ? 'Đã xác minh' : 'Chưa' }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Họ tên</dt>
-                <dd class="text-slate-100">{{ detail.fullName || '—' }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Tên hiển thị</dt>
-                <dd class="text-slate-100">{{ detail.displayName || '—' }}</dd>
-              </div>
-              <div class="flex justify-between gap-4 border-b border-slate-700/50 pb-2">
-                <dt>Điện thoại</dt>
-                <dd class="text-slate-100">{{ detail.phone || '—' }}</dd>
-              </div>
-              <div class="flex justify-between gap-4">
-                <dt>Ngày sinh</dt>
-                <dd class="text-slate-100">{{ formatDob(detail.dateOfBirth) }}</dd>
+            <dl style="display: flex; flex-direction: column; gap: 0.75rem">
+              <div v-for="field in detailFields" :key="field.key" class="db-detail-row">
+                <dt>{{ field.label }}</dt>
+                <dd :class="field.mono ? 'text-mono' : ''" :style="field.style">{{ field.value }}</dd>
               </div>
             </dl>
           </div>
         </div>
       </div>
     </Teleport>
+
   </div>
 </template>
 
@@ -232,7 +242,7 @@ import {
   deleteAdminTeacher
 } from '../../services/adminService'
 import { useToast } from '../../composables/useToast'
-import PageHeader from '../ui/PageHeader.vue'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const toast = useToast()
 
@@ -245,25 +255,25 @@ const props = defineProps({
 })
 
 const sectionEyebrow = computed(() => {
-  if (props.variant === 'students') return 'Học sinh'
-  if (props.variant === 'teachers') return 'Giáo viên'
-  return 'Quản trị viên'
+  if (props.variant === 'students') return 'Hoc sinh'
+  if (props.variant === 'teachers') return 'Giao vien'
+  return 'Quan tri vien'
 })
 
 const sectionTitle = computed(() => {
-  if (props.variant === 'students') return 'Quản lý học sinh'
-  if (props.variant === 'teachers') return 'Quản lý giáo viên'
-  return 'Quản lý tài khoản admin'
+  if (props.variant === 'students') return 'Quan ly hoc sinh'
+  if (props.variant === 'teachers') return 'Quan ly giao vien'
+  return 'Quan ly tai khoan admin'
 })
 
 const sectionSubtitle = computed(() => {
   if (props.variant === 'students') {
-    return 'Danh sách phân trang, tìm theo từ khóa, xem chi tiết và xóa khi cần.'
+    return 'Danh sach phan trang, tim theo tu khoa, xem chi tiet va xoa khi can.'
   }
   if (props.variant === 'teachers') {
-    return 'Theo dõi giáo viên đã đăng ký — tìm kiếm, chi tiết hồ sơ, gỡ tài khoản.'
+    return 'Theo doi giao vien da dang ky — tim kiem, chi tiet ho so, go tai khoan.'
   }
-  return 'Chỉ xem danh sách quản trị viên; không có thao tác xóa từ màn này.'
+  return 'Chi xem danh sach quan tri vien; khong co thao tac xoa tu man nay.'
 })
 
 const showSearch = computed(() => props.variant === 'students' || props.variant === 'teachers')
@@ -292,10 +302,21 @@ const displayName = (row) => {
   return full || disp || '—'
 }
 
-const formatDob = (d) => {
-  if (d == null || d === '') return '—'
-  return String(d)
-}
+const detailFields = computed(() => {
+  if (!detail.value) return []
+  return [
+    { key: 'id', label: 'ID', value: detail.value.userId, mono: true },
+    { key: 'username', label: 'Username', value: detail.value.username, mono: true, style: { color: 'var(--db-primary)' } },
+    { key: 'email', label: 'Email', value: detail.value.email },
+    { key: 'verified', label: 'Xac minh email', value: detail.value.emailVerified ? 'Da xac minh' : 'Chua' },
+    { key: 'fullName', label: 'Ho ten', value: detail.value.fullName || '—' },
+    { key: 'displayName', label: 'Ten hien thi', value: detail.value.displayName || '—' },
+    { key: 'phone', label: 'Dien thoai', value: detail.value.phone || '—' },
+    { key: 'dob', label: 'Ngay sinh', value: detail.value.dateOfBirth || '—' }
+  ]
+})
+
+const formatNum = (n) => (n == null ? '—' : new Intl.NumberFormat('vi-VN').format(n))
 
 const load = async () => {
   loading.value = true
@@ -318,7 +339,7 @@ const load = async () => {
     page.value = data.page ?? page.value
     size.value = data.size ?? size.value
   } catch (e) {
-    errorMsg.value = e?.payload?.message || e?.message || 'Không tải được danh sách.'
+    errorMsg.value = e?.payload?.message || e?.message || 'Khong tai duoc danh sach.'
     rows.value = []
   } finally {
     loading.value = false
@@ -354,7 +375,7 @@ const openDetail = async (row) => {
       detail.value = await fetchAdminTeacherDetail(row.userId)
     }
   } catch (e) {
-    toast.error(e?.payload?.message || e?.message || 'Không tải được chi tiết.')
+    toast.error(e?.payload?.message || e?.message || 'Khong tai duoc chi tiet.')
     detailOpen.value = false
   } finally {
     detailLoading.value = false
@@ -367,8 +388,8 @@ const closeDetail = () => {
 }
 
 const confirmDelete = (row) => {
-  const label = props.variant === 'students' ? 'học sinh' : 'giáo viên'
-  const msg = `Xóa ${label} "${row.username}"? Thao tác không hoàn tác.`
+  const label = props.variant === 'students' ? 'hoc sinh' : 'giao vien'
+  const msg = `Xoa ${label} "${row.username}"? Thao tac khong hoan tac.`
   if (!window.confirm(msg)) return
   doDelete(row.userId)
 }
@@ -380,11 +401,11 @@ const doDelete = async (userId) => {
     } else {
       await deleteAdminTeacher(userId)
     }
-    toast.success('Đã xóa tài khoản.')
+    toast.success('Da xoa tai khoan.')
     if (detail.value?.userId === userId) closeDetail()
     await load()
   } catch (e) {
-    toast.error(e?.payload?.message || e?.message || 'Không xóa được.')
+    toast.error(e?.payload?.message || e?.message || 'Khong xoa duoc.')
   }
 }
 
@@ -401,3 +422,59 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.db-search-bar-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(17, 17, 19, 0.85);
+  border: 1px solid var(--db-border-strong);
+  border-radius: var(--db-radius-xl);
+  box-shadow: var(--db-shadow-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex-wrap: wrap;
+  animation: fadeInUp 0.4s ease backwards;
+  animation-delay: 0.1s;
+}
+
+.db-table-row {
+  animation: fadeInUp 0.3s ease backwards;
+}
+
+.db-empty-cell {
+  border-bottom: none !important;
+  padding: 0 !important;
+}
+
+.db-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--db-border);
+}
+
+.db-detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.db-detail-row dt {
+  color: var(--db-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.db-detail-row dd {
+  color: var(--db-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
+}
+</style>

@@ -16,8 +16,9 @@
       <div class="rdp__top-cards">
         <div class="rdp__score-card">
           <p class="rdp__score-label">Tổng điểm</p>
-          <div class="rdp__score-ring" :class="scoreRingClass">
-            <span class="rdp__score-val">{{ scoreDisplay }}<span class="rdp__score-max">/10</span></span>
+          <div class="rdp__score-badge" :class="scoreBadgeClass">
+            <span class="rdp__score-val">{{ scoreDisplay }}</span>
+            <span class="rdp__score-max">/10</span>
           </div>
           <div class="rdp__progress-bar">
             <div class="rdp__progress-fill" :class="progressBarClass" :style="{ width: `${scorePercent}%` }" />
@@ -167,10 +168,10 @@ const scoreDisplay = computed(() => (scorePercent.value / 10).toFixed(1))
 
 const rankDisplay = computed(() => props.rankOrder ? `#${props.rankOrder}` : '-')
 
-const scoreRingClass = computed(() => {
-  if (scorePercent.value >= 80) return 'rdp__score-ring--high'
-  if (scorePercent.value >= 50) return 'rdp__score-ring--mid'
-  return 'rdp__score-ring--low'
+const scoreBadgeClass = computed(() => {
+  if (scorePercent.value >= 80) return 'rdp__score-badge--high'
+  if (scorePercent.value >= 50) return 'rdp__score-badge--mid'
+  return 'rdp__score-badge--low'
 })
 
 const progressBarClass = computed(() => {
@@ -351,48 +352,48 @@ const optionClass = (item, option) => {
   margin: 0;
 }
 
-.rdp__score-ring {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid;
-  position: relative;
-  transition: all 0.3s ease;
+.rdp__score-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--ds-radius-2xl);
+  border: 1.5px solid;
+  transition: all 0.2s ease;
+  margin: 0.25rem 0;
 }
 
-.rdp__score-ring--high {
-  border-color: var(--ds-success);
-  background: rgba(16, 185, 129, 0.06);
+.rdp__score-badge--high {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
+}
+.rdp__score-badge--mid {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #d97706;
+}
+.rdp__score-badge--low {
+  background: rgba(220, 38, 38, 0.07);
+  border-color: rgba(220, 38, 38, 0.22);
+  color: #dc2626;
 }
 
-.rdp__score-ring--mid {
-  border-color: var(--ds-warning);
-  background: rgba(234, 179, 8, 0.06);
-}
-
-.rdp__score-ring--low {
-  border-color: var(--ds-danger);
-  background: rgba(220, 38, 38, 0.06);
-}
-
-.rdp__score-ring:hover {
-  transform: scale(1.03);
-}
+.dark .rdp__score-badge--high { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+.dark .rdp__score-badge--mid  { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
+.dark .rdp__score-badge--low  { background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35); color: #fca5a5; }
 
 .rdp__score-val {
   font-family: var(--ds-font-display);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 900;
-  color: var(--ds-text);
+  color: inherit;
   line-height: 1;
 }
 
-.dark .rdp__score-val { color: #f1f5f9; }
+.dark .rdp__score-val { color: inherit; }
 
-.rdp__score-max { font-size: 0.875rem; font-weight: 600; opacity: 0.6; }
+.rdp__score-max { font-size: 1rem; font-weight: 600; opacity: 0.7; }
 
 .rdp__progress-bar { width: 100%; height: 6px; border-radius: var(--ds-radius-full); background: var(--ds-gray-100); overflow: hidden; }
 .dark .rdp__progress-bar { background: var(--ds-gray-800); }
@@ -405,33 +406,14 @@ const optionClass = (item, option) => {
   overflow: hidden;
 }
 
-.rdp__progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  animation: progressShine 2s ease-in-out infinite;
-}
-
-@keyframes progressShine {
-  0% { left: -100%; }
-  50%, 100% { left: 100%; }
-}
-
 .rdp__progress-fill--high { 
-  background: linear-gradient(90deg, #10b981, #34d399); 
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  background: #10b981; 
 }
 .rdp__progress-fill--mid { 
-  background: linear-gradient(90deg, #f59e0b, #fbbf24); 
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  background: #f59e0b; 
 }
 .rdp__progress-fill--low { 
-  background: linear-gradient(90deg, #ef4444, #f87171); 
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  background: #ef4444; 
 }
 
 /* Meta card */

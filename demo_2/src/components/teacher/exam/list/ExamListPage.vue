@@ -233,17 +233,15 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="filteredExams.length === 0" class="sm-empty">
-        <svg class="sm-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-        </svg>
-        <h3 class="sm-empty__title">Không có kỳ thi nào</h3>
-        <p class="sm-empty__description">Tạo kỳ thi đầu tiên của bạn để bắt đầu.</p>
-        <button class="sm-btn sm-btn--primary" @click="goToCreate">
-          Tạo kỳ thi mới
-        </button>
-      </div>
+      <EmptyState
+        v-if="filteredExams.length === 0"
+        variant="no-data"
+        title="Không có kỳ thi nào"
+        description="Tạo kỳ thi đầu tiên của bạn để bắt đầu."
+        action-label="Tạo kỳ thi mới"
+        action-icon="plus"
+        @action="goToCreate"
+      />
     </div>
   </div>
 
@@ -263,6 +261,7 @@ import { useRouter } from 'vue-router'
 import { listExams } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import { useScrollToTop } from '../../../composables/useScrollToTop'
+import EmptyState from '../../common/EmptyState.vue'
 import ExamDetailModal from './ExamDetailModal.vue'
 
 useScrollToTop()

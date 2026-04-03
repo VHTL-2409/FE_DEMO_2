@@ -330,7 +330,7 @@ const loadAttempts = async () => {
       wrongRate: (q.wrongRatePercent ?? q.wrongRate ?? q.errorRate ?? 0) / 100
     }))
   } catch (error) {
-    console.error('Failed to load exam attempts:', error)
+    // Error handling done via toast in UI
   } finally {
     isLoading.value = false
   }

@@ -175,27 +175,8 @@
 
       </div>
 
-      <!-- Info cards -->
-      <div class="mt-4 max-w-6xl grid grid-cols-1 gap-4 sm:grid-cols-2 ds-animate-fade-up" style="animation-delay: 0.1s">
-        <div class="group flex items-start gap-4 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20">
-          <div class="flex size-11 shrink-0 items-center justify-center rounded-[var(--ds-radius-lg)] bg-amber-100 text-amber-600 transition-transform group-hover:scale-110 dark:bg-amber-900/30 dark:text-amber-400">
-            <LucideIcon name="quiz" size="20" />
-          </div>
-          <div>
-            <p class="text-sm font-bold text-[var(--ds-text)] group-hover:text-primary transition-colors">Đủ thời gian</p>
-            <p class="mt-1 text-xs text-[var(--ds-text-muted)]">Mỗi kỳ thi có giới hạn thời gian riêng.</p>
-          </div>
-        </div>
-        <div class="group flex items-start gap-4 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20">
-          <div class="flex size-11 shrink-0 items-center justify-center rounded-[var(--ds-radius-lg)] bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110 dark:bg-emerald-900/30 dark:text-emerald-400">
-            <LucideIcon name="lock" size="20" />
-          </div>
-          <div>
-            <p class="text-sm font-bold text-[var(--ds-text)] group-hover:text-primary transition-colors">An toàn</p>
-            <p class="mt-1 text-xs text-[var(--ds-text-muted)]">Câu trả lời được lưu tự động khi làm bài.</p>
-          </div>
-        </div>
-      </div>
+      
+      
     </div>
   </div>
 </template>

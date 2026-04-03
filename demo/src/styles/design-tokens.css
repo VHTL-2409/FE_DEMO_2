@@ -1,3 +1,57 @@
+/* Dashboard Design System — Light Mode (Cloud-platform aesthetic) */
+:root {
+  /* Layout */
+  --db-sidebar-w: 260px;
+  --db-sidebar-collapsed: 72px;
+  --db-font: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Surface */
+  --db-surface: #ffffff;
+  --db-surface-2: #f8fafc;
+  --db-surface-3: #f1f5f9;
+
+  /* Border */
+  --db-border: rgba(148, 163, 184, 0.2);
+  --db-border-strong: rgba(148, 163, 184, 0.35);
+  --db-border-accent: rgba(12, 92, 171, 0.3);
+
+  /* Text */
+  --db-text: #0f172a;
+  --db-text-muted: #64748b;
+  --db-text-subtle: #94a3b8;
+
+  /* Brand */
+  --db-primary: #0c5cab;
+  --db-primary-hover: #0a4a8a;
+  --db-primary-glow: rgba(12, 92, 171, 0.2);
+  --db-primary-soft: rgba(12, 92, 171, 0.08);
+
+  /* Status */
+  --db-success: #10b981;
+  --db-success-soft: rgba(16, 185, 129, 0.1);
+  --db-warning: #f59e0b;
+  --db-warning-soft: rgba(245, 158, 11, 0.1);
+  --db-danger: #ef4444;
+  --db-danger-soft: rgba(239, 68, 68, 0.08);
+
+  /* Radius */
+  --db-radius-sm: 8px;
+  --db-radius: 12px;
+  --db-radius-lg: 16px;
+  --db-radius-xl: 20px;
+
+  /* Shadow */
+  --db-shadow-glass: 0 4px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(148, 163, 184, 0.12);
+  --db-shadow-card: 0 1px 4px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(148, 163, 184, 0.12);
+  --db-shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(12, 92, 171, 0.2);
+  --db-shadow-btn: 0 2px 8px rgba(12, 92, 171, 0.2);
+
+  /* Transition */
+  --db-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --db-transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --db-transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /**
  * Brand tokens shared across portal-ui, staff-ui, teacher-ui.
  * Keep hex values aligned with @theme in tailwind.css (primary-600, background-light/dark).

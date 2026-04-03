@@ -33,18 +33,29 @@ const props = defineProps({
   icon: {
     type: Boolean,
     default: false
+  },
+  name: {
+    type: String,
+    default: undefined
+  },
+  id: {
+    type: String,
+    default: undefined
   }
 })
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur', 'enter'])
 
 const isFocused = ref(false)
-const inputId = ref(`fg-input-${Math.random().toString(36).substr(2, 9)}`)
+const generatedId = `fg-input-${Math.random().toString(36).substr(2, 9)}`
+const inputId = computed(() => props.id || generatedId)
+const errorId = computed(() => props.error ? `${inputId.value}-error` : undefined)
+const isInvalid = computed(() => !!props.error)
 
 const inputClasses = computed(() => [
   'fg-input',
   {
-    'fg-input--error': !!props.error,
+    'fg-input--error': isInvalid.value,
     'fg-input--float': props.floatLabel,
     'fg-input--with-icon': props.icon
   }
@@ -92,10 +103,13 @@ const handleKeydown = (e) => {
       <!-- Input -->
       <input
         :id="inputId"
+        :name="name || inputId"
         :type="type"
         :value="modelValue"
         :placeholder="floatLabel ? placeholder : ''"
         :disabled="disabled"
+        :aria-invalid="isInvalid ? 'true' : undefined"
+        :aria-describedby="errorId"
         :class="inputClasses"
         @input="handleInput"
         @focus="handleFocus"

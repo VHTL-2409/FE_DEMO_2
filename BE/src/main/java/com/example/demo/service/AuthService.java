@@ -2,26 +2,29 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.auth.AuthResponse;
 import com.example.demo.api.dto.auth.LoginRequest;
+import com.example.demo.api.dto.auth.RefreshResponse;
 import com.example.demo.api.dto.auth.RegisterRequest;
 import com.example.demo.api.dto.auth.RegisterResponse;
 import com.example.demo.api.dto.auth.ResendVerificationResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.EmailVerificationToken;
 import com.example.demo.domain.entity.PasswordResetToken;
+import com.example.demo.domain.entity.RefreshToken;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.EmailVerificationTokenRepository;
 import com.example.demo.repository.PasswordResetTokenRepository;
+import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository resetTokenRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -49,6 +53,15 @@ public class AuthService {
 
     @Value("${app.frontend.base-url:http://localhost:5173}")
     private String frontendBaseUrl;
+
+    @Value("${app.jwt.refresh-expiration-days:7}")
+    private int refreshExpirationDays;
+
+    @Value("${app.jwt.issuer:eduexam}")
+    private String jwtIssuer;
+
+    @Value("${app.jwt.audience:eduexam-client}")
+    private String jwtAudience;
 
     @Transactional
     public RegisterResponse registerStudent(RegisterRequest request) {
@@ -60,11 +73,23 @@ public class AuthService {
         }
 
         String rawPassword = request.getPassword();
+        String username = request.getUsername();
         if (rawPassword == null || rawPassword.trim().length() < 8) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải ít nhất 8 ký tự.");
         }
         if (!rawPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
+        }
+        // Check password doesn't contain username
+        if (username != null && rawPassword.toLowerCase().contains(username.toLowerCase())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu không được chứa tên đăng nhập.");
+        }
+        // Check for common passwords
+        String lowerPassword = rawPassword.toLowerCase();
+        if (lowerPassword.contains("password") || lowerPassword.contains("123456") ||
+            lowerPassword.contains("admin") || lowerPassword.equals("qwerty") ||
+            lowerPassword.contains("letmein") || lowerPassword.contains("welcome")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu quá đơn giản. Vui lòng chọn mật khẩu mạnh hơn.");
         }
 
         User user = User.builder()
@@ -99,6 +124,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         try {
             authenticationManager.authenticate(
@@ -115,29 +141,126 @@ public class AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED: Email chưa được xác minh. Vui lòng kiểm tra hộp thư.");
         }
 
+        // Rotate refresh tokens: delete old ones and create new one
+        refreshTokenRepository.deleteByUser(user);
+        RefreshToken refreshToken = createRefreshToken(user, request.getDeviceInfo(), request.getIpAddress());
+
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, jwtIssuer, jwtAudience);
 
         log.info("User {} successfully logged in.", user.getUsername());
-        return new AuthResponse(token, user.getUsername(), extractRoleNames(user));
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtService.getExpirationMs())
+                .username(user.getUsername())
+                .roles(extractRoleNames(user))
+                .build();
     }
 
+    @Transactional
+    public RefreshResponse refreshAccessToken(String refreshTokenValue) {
+        RefreshToken storedToken = refreshTokenRepository.findValidToken(refreshTokenValue)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token"));
+
+        User user = storedToken.getUser();
+        if (!user.getEnabled()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Account is disabled");
+        }
+
+        // Rotate: delete old token and create new one
+        refreshTokenRepository.delete(storedToken);
+        RefreshToken newRefreshToken = createRefreshToken(user, storedToken.getDeviceInfo(), storedToken.getIpAddress());
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
+        String newAccessToken = jwtService.generateToken(userDetails, jwtIssuer, jwtAudience);
+
+        log.debug("Access token refreshed for user: {}", user.getUsername());
+        return RefreshResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(newRefreshToken.getToken())
+                .expiresIn(jwtService.getExpirationMs())
+                .build();
+    }
+
+    @Transactional
+    public void revokeRefreshToken(String refreshTokenValue) {
+        refreshTokenRepository.findValidToken(refreshTokenValue)
+                .ifPresent(token -> {
+                    log.info("Refresh token revoked for user: {}", token.getUser().getUsername());
+                    refreshTokenRepository.delete(token);
+                });
+    }
+
+    @Transactional
+    public void revokeAllUserTokens(String username) {
+        userRepository.findByUsernameWithRoles(username).ifPresent(user -> {
+            int count = refreshTokenRepository.findAll().stream()
+                    .filter(t -> t.getUser().getId().equals(user.getId()))
+                    .toList().size();
+            refreshTokenRepository.deleteAllByUser(user);
+            log.info("Revoked {} refresh tokens for user: {}", count, username);
+        });
+    }
+
+    private RefreshToken createRefreshToken(User user, String deviceInfo, String ipAddress) {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        String tokenValue = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .user(user)
+                .token(tokenValue)
+                .expiresAt(Instant.now().plusSeconds(refreshExpirationDays * 86400L))
+                .deviceInfo(truncate(deviceInfo, 255))
+                .ipAddress(truncate(ipAddress, 45))
+                .build();
+        return refreshTokenRepository.save(refreshToken);
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null) return null;
+        return value.length() > maxLength ? value.substring(0, maxLength) : value;
+    }
+
+    @Transactional
     public void changePassword(User user, com.example.demo.api.dto.auth.ChangePasswordRequest request) {
         User stored = userRepository.findById(user.getId())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Không tìm thấy người dùng."));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), stored.getPassword())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Sai MK");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng.");
         }
-        if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 8) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 8 ký tự và chứa cả chữ hoa, chữ thường và số.");
+        String newPassword = request.getNewPassword();
+        String username = stored.getUsername();
+        if (newPassword == null || newPassword.trim().length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải ít nhất 8 ký tự.");
         }
-        if (!request.getNewPassword().matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
+        if (!newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
+        }
+        // Check password doesn't contain username
+        if (username != null && newPassword.toLowerCase().contains(username.toLowerCase())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được chứa tên đăng nhập.");
+        }
+        // Check for common passwords
+        String lowerPassword = newPassword.toLowerCase();
+        if (lowerPassword.contains("password") || lowerPassword.contains("123456") ||
+            lowerPassword.contains("admin") || lowerPassword.equals("qwerty") ||
+            lowerPassword.contains("letmein") || lowerPassword.contains("welcome")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới quá đơn giản. Vui lòng chọn mật khẩu mạnh hơn.");
+        }
+        // Check if new password is same as current
+        if (passwordEncoder.matches(newPassword, stored.getPassword())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu hiện tại.");
         }
 
-        stored.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        stored.setPassword(passwordEncoder.encode(newPassword.trim()));
         userRepository.save(stored);
+        // Invalidate all refresh tokens — force re-login with new password
+        refreshTokenRepository.deleteAllByUser(stored);
+        log.info("Password changed and all sessions revoked for user: {}", stored.getUsername());
     }
 
     public List<User> listUsers() {

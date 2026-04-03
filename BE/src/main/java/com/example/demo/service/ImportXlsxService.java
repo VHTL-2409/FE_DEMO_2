@@ -15,8 +15,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -88,7 +88,7 @@ public class ImportXlsxService {
             validateFile(file, "docx");
             try {
                 String text = extractTextFromDocx(file.getInputStream());
-                return parseQuestionsFromText(exam, text);
+                return parseQuestionsFromDocx(exam, text);
             } catch (IOException ex) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
             } catch (RuntimeException ex) {
@@ -138,18 +138,27 @@ public class ImportXlsxService {
             List<Question> questions = new ArrayList<>();
             Map<String, Integer> headerIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
 
+            // Detect Azota multi-version format: "Câu hỏi" in col 0, then 9 exam-code columns
+            boolean isAzotaMultiVersion = headerIndexes.containsKey("cauhỏi")
+                    && headerIndexes.values().stream().filter(v -> v >= 1 && v <= 11).count() >= 9;
+            if (isAzotaMultiVersion) {
+                return parseQuestionsFromAzotaXlsx(exam, sheet, headerIndexes);
+            }
+
+            Map<String, Integer> hIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
+
             for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null) continue;
 
-                String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question", "cauhoi", "noidung", "cauho i");
-                String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona", "dapana", "dapanA", "dapan", "dapan a");
-                String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb", "dapanb", "dapanB", "dapan", "dapan b");
-                String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc", "dapanc", "dapanC", "dapan", "dapan c");
-                String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond", "dapand", "dapanD", "dapan", "dapan d");
-                String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer", "dapandung", "dapan dung", "dapan d", "correctanswer03");
-                String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points", "diem", "diemso", "diem so");
-                String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty", "domkho", "do kho");
+                String content = xlsxCellByHeader(row, hIndexes, 0, "content", "question", "cauhoi", "noidung", "cauho i");
+                String optionA = xlsxCellByHeader(row, hIndexes, 1, "optiona", "dapana", "dapanA", "dapan", "dapan a");
+                String optionB = xlsxCellByHeader(row, hIndexes, 2, "optionb", "dapanb", "dapanB", "dapan", "dapan b");
+                String optionC = xlsxCellByHeader(row, hIndexes, 3, "optionc", "dapanc", "dapanC", "dapan", "dapan c");
+                String optionD = xlsxCellByHeader(row, hIndexes, 4, "optiond", "dapand", "dapanD", "dapan", "dapan d");
+                String correctAnswer = xlsxCellByHeader(row, hIndexes, 5, "correctanswer", "dapandung", "dapan dung", "dapan d", "correctanswer03");
+                String scoreCell = xlsxCellByHeader(row, hIndexes, 6, "scoreweight", "points", "diem", "diemso", "diem so");
+                String difficulty = xlsxCellByHeader(row, hIndexes, 7, "difficulty", "domkho", "do kho");
 
                 if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
                     try {
@@ -170,6 +179,119 @@ public class ImportXlsxService {
         } catch (RuntimeException ex) {
             throw mapImportRuntimeException(ex, "Invalid xlsx template format");
         }
+    }
+
+    // ================================================================
+    //  AZOTA XLSX PARSER — 9 exam versions (columns 001-009)
+    // ================================================================
+
+    /**
+     * Parses Azota Excel format with 9 exam versions.
+     *
+     * <p>Structure:
+     * <ul>
+     *   <li>Row 0: header — "Câu hỏi" | 001 | 002 | ... | 009 | notes</li>
+     *   <li>Row 1: note row</li>
+     *   <li>Rows 2-41: 40 multiple-choice (answer = first version col)</li>
+     *   <li>Rows 42-49: 8 true/false (Đ/S pattern)</li>
+     *   <li>Rows 50-57: 8 fill-in-the-blank (numeric answer)</li>
+     *   <li>Rows 58+: "Tự luận" rows</li>
+     * </ul>
+     *
+     * <p>Note: Azota format typically does not store option texts (A/B/C/D) — only the answer key.
+     * When question text is present in the "Câu hỏi" column, the question is imported as
+     * an essay/short-answer question with the answer from the first version (001).
+     */
+    private List<Question> parseQuestionsFromAzotaXlsx(Exam exam, Sheet sheet, Map<String, Integer> headerIndexes) {
+        List<Question> questions = new ArrayList<>();
+        int questionColIdx = headerIndexes.getOrDefault("cauhỏi", 0);
+
+        for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) continue;
+
+            String content = cellAsString(row.getCell(questionColIdx)).trim();
+            // Skip empty rows and metadata rows
+            if (content.isBlank()) continue;
+            if (content.matches("(?i)^(note|lưu ý|mã đề|tối đa).*")) continue;
+
+            // Essay rows: "Tự luận" marker
+            if (content.matches("(?i)^tự\\s*luận")) {
+                continue;
+            }
+
+            // Essay rows with actual content (col 0 = content, col 1 = score)
+            if (rowIndex >= 58) {
+                String score = "1.0";
+                try {
+                    String scoreRaw = cellAsString(row.getCell(1)).trim();
+                    if (!scoreRaw.isBlank() && scoreRaw.matches("[\\d.,]+")) {
+                        score = String.valueOf(Double.parseDouble(scoreRaw.replace(",", ".")));
+                    }
+                } catch (Exception ignored) { }
+                if (!content.isBlank() && !content.matches("(?i)^tự\\s*luận")) {
+                    Question q = Question.builder()
+                            .exam(exam).content(content).type(QuestionType.ESSAY)
+                            .scoreWeight(Double.parseDouble(score)).build();
+                    questions.add(q);
+                }
+                continue;
+            }
+
+            // Read answer from first version column (col 1)
+            int lastDataCol = Math.min(11, row.getLastCellNum() - 1);
+            if (lastDataCol < 1) continue;
+
+            Cell firstDataCell = row.getCell(1);
+            String firstAnswer = firstDataCell == null ? "" : cellAsString(firstDataCell).trim();
+
+            String optionA = "", optionB = "", optionC = "", optionD = "";
+            String correctAnswer = "";
+            String scoreCell = "1.0";
+
+            if (firstAnswer.matches("(?i)[ĐSFT]")) {
+                // True/False: Đ/T/F = correct (→ A), S = wrong (→ B)
+                optionA = "Đúng";
+                optionB = "Sai";
+                correctAnswer = firstAnswer.equalsIgnoreCase("Đ")
+                        || firstAnswer.equalsIgnoreCase("T")
+                        || firstAnswer.equalsIgnoreCase("F")
+                        ? "A" : "B";
+            } else if (firstAnswer.matches("-?[\\d.,]+")) {
+                // Fill-in-blank: numeric answer — single option (the answer itself)
+                optionA = firstAnswer;
+                correctAnswer = "A";
+            } else if (List.of("A", "B", "C", "D").contains(firstAnswer.toUpperCase(Locale.ROOT))) {
+                // Multiple-choice answer key — no options stored
+                correctAnswer = firstAnswer.toUpperCase(Locale.ROOT);
+                // Store as essay-like question for review
+                String answerNote = "Đáp án đúng: " + correctAnswer;
+                content = content.isBlank() ? ("Câu hỏi số " + (rowIndex - 1)) : content;
+                Question q = Question.builder()
+                        .exam(exam).content(content).type(QuestionType.SINGLE_CHOICE)
+                        .scoreWeight(1.0)
+                        .correctAnswer(correctAnswer)
+                        .options(buildOptionsJson(
+                                "Đáp án đúng (xem đề gốc)", "", "", "", rowIndex + 1))
+                        .build();
+                questions.add(q);
+                continue;
+            } else {
+                // Unknown, skip
+                continue;
+            }
+
+            try {
+                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD,
+                        correctAnswer, scoreCell, null, rowIndex + 1);
+            } catch (ApiException ignored) { }
+        }
+
+        if (questions.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Không tìm thấy câu hỏi hợp lệ trong file Excel Azota.");
+        }
+        return questions;
     }
 
     private List<Question> parseQuestionsFromCsv(Exam exam, MultipartFile file) {
@@ -286,6 +408,189 @@ public class ImportXlsxService {
         return parseQuestionsFromText(exam, text);
     }
 
+    // ================================================================
+    //  DOCX PARSER — handles score in header, essay, fill-in-blank
+    // ================================================================
+
+    /**
+     * Parses DOCX text (extracted with run-level granularity) supporting:
+     * <ul>
+     *   <li>Trắc nghiệm: "1. (0.200 Point)" header → question → A./B./C./D. → *D. marks answer</li>
+     *   <li>Tự luận: "1. (0.250 Point)" header → question text → next non-blank line = answer</li>
+     *   <li>Fill-in-blank: "- answer" line after question</li>
+     *   <li>Simple: "1. question" → A./B./C./D. → *D. answer inline</li>
+     *   <li>Score extracted from header like "(0.200 Point)" when present</li>
+     * </ul>
+     */
+    private List<Question> parseQuestionsFromDocx(Exam exam, String rawText) {
+        if (rawText == null || rawText.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File DOCX trống hoặc không có nội dung");
+        }
+        String normalized = rawText.replace("\r\n", "\n").replace("\r", "\n");
+
+        Map<Integer, String> answerKey = extractAnswerKeyTable(normalized);
+        List<String> lines = new ArrayList<>();
+        for (String line : normalized.split("\n")) {
+            String trimmed = line.trim();
+            if (!trimmed.isBlank()) lines.add(trimmed);
+        }
+
+        List<Question> questions = new ArrayList<>();
+        int idx = 0;
+
+        while (idx < lines.size()) {
+            String line = lines.get(idx);
+
+            // Match question header: "N. (Score Point)" or "N. " or "N."
+            Pattern headerPattern = Pattern.compile(
+                    "(?i)^(?:Câu|Bài|Question)?\\s*(\\d+)\\s*[\\.\\):]?\\s*(?:\\(?[\\d.,]+\\s*(?:Point|điểm|đ)\\)?)?\\s*$");
+            Matcher hm = headerPattern.matcher(line);
+
+            if (hm.find()) {
+                int questionNum = Integer.parseInt(hm.group(1));
+                double score = extractScoreFromLine(line);
+
+                // Peek ahead to determine question type
+                int nextIdx = idx + 1;
+                StringBuilder questionContent = new StringBuilder();
+                List<String> optionLines = new ArrayList<>();
+                String essayAnswer = null;
+
+                while (nextIdx < lines.size()) {
+                    String nextLine = lines.get(nextIdx);
+
+                    // Stop at next question header or section marker
+                    if (nextLine.matches("(?i)^\\s*(?:Phần|TỰ LUẬN|Tự\\s*Luận|BẢNG ĐÁP ÁN|Đáp án|Chương|\\*Lưu ý).*")) {
+                        break;
+                    }
+                    Matcher nextHm = headerPattern.matcher(nextLine);
+                    if (nextHm.find() && nextIdx > idx + 1) {
+                        break;
+                    }
+
+                    // Essay: next non-blank line after question content (not starting with A./B./C./D.)
+                    if (nextLine.startsWith("-") || nextLine.startsWith("=>") || nextLine.startsWith("–")) {
+                        // Likely essay answer line
+                        String answerCandidate = nextLine.replaceFirst("^[\\-=>]\\s*", "").trim();
+                        if (!answerCandidate.isBlank() && !answerCandidate.matches("(?i)^(đáp án|answer|key).*")) {
+                            if (questionContent.length() > 0 && !questionContent.toString().matches(".*[A-Da-d][\\.\\):].*")) {
+                                // Question content didn't have options yet — treat as essay answer
+                                essayAnswer = answerCandidate;
+                                nextIdx++;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Option detection
+                    Pattern optPat = Pattern.compile("^\\s*[A-Da-d][\\.\\):\\-–—]\\s*(.+)");
+                    Matcher om = optPat.matcher(nextLine);
+                    if (om.matches()) {
+                        optionLines.add(nextLine);
+                        nextIdx++;
+                        continue;
+                    }
+
+                    // Accumulate question content
+                    if (optionLines.isEmpty() && !nextLine.matches("(?i)^(đáp án|answer|key).*")) {
+                        if (questionContent.length() > 0) questionContent.append(" ");
+                        questionContent.append(nextLine);
+                        nextIdx++;
+                    } else {
+                        break;
+                    }
+                }
+
+                String content = questionContent.toString().trim();
+                String correctAnswer = null;
+                String optionA = "", optionB = "", optionC = "", optionD = "";
+                boolean hasOptions = !optionLines.isEmpty();
+
+                if (hasOptions) {
+                    // Parse options
+                    for (String optLine : optionLines) {
+                        Pattern po = Pattern.compile("^\\s*([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
+                        Matcher omo = po.matcher(optLine);
+                        if (omo.matches()) {
+                            String letter = omo.group(1).toUpperCase(Locale.ROOT);
+                            String optText = omo.group(2).trim();
+                            // Strip leading asterisk if present
+                            if (optText.startsWith("*")) {
+                                optText = optText.substring(1).trim();
+                                correctAnswer = letter;
+                            }
+                            switch (letter) {
+                                case "A" -> optionA = optText;
+                                case "B" -> optionB = optText;
+                                case "C" -> optionC = optText;
+                                case "D" -> optionD = optText;
+                            }
+                        }
+                    }
+
+                    // Determine answer
+                    if (correctAnswer == null) {
+                        if (answerKey.containsKey(questionNum)) {
+                            correctAnswer = answerKey.get(questionNum);
+                        }
+                    }
+                    if (correctAnswer == null) {
+                        for (String optLine : optionLines) {
+                            if (optLine.contains("*")) {
+                                Pattern po = Pattern.compile("^\\s*([A-Da-d])[\\.\\):\\-–—]\\s*\\*?(.+)");
+                                Matcher omo = po.matcher(optLine);
+                                if (omo.find()) {
+                                    correctAnswer = omo.group(1).toUpperCase(Locale.ROOT);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (correctAnswer == null || !List.of("A", "B", "C", "D").contains(correctAnswer)) {
+                        idx = nextIdx;
+                        continue;
+                    }
+
+                    addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD,
+                            correctAnswer, String.valueOf(score > 0 ? score : 1.0), null, questionNum);
+                } else {
+                    // Essay or fill-in-blank
+                    if (content.isBlank()) {
+                        idx = nextIdx;
+                        continue;
+                    }
+                    if (essayAnswer != null && !essayAnswer.isBlank()) {
+                        Question q = Question.builder()
+                                .exam(exam).content(content).type(QuestionType.ESSAY)
+                                .scoreWeight(score > 0 ? score : 1.0)
+                                .correctAnswer(essayAnswer).build();
+                        questions.add(q);
+                    }
+                }
+                idx = nextIdx;
+            } else {
+                idx++;
+            }
+        }
+
+        if (questions.isEmpty()) {
+            return parseQuestionsFromText(exam, rawText);
+        }
+        return questions;
+    }
+
+    private double extractScoreFromLine(String line) {
+        Pattern sp = Pattern.compile("(?i)([\\d.,]+)\\s*(?:Point|điểm|đ)\\s*[\\)]?");
+        Matcher sm = sp.matcher(line);
+        if (sm.find()) {
+            try {
+                return Double.parseDouble(sm.group(1).replace(",", "."));
+            } catch (NumberFormatException ignored) { }
+        }
+        return 1.0;
+    }
+
     private double parseDoubleSafe(String value, double fallback, int rowNumber) {
         if (value == null || value.isBlank()) return fallback;
         try {
@@ -331,9 +636,37 @@ public class ImportXlsxService {
     }
 
     private String extractTextFromDocx(InputStream is) throws IOException {
-        try (XWPFDocument doc = new XWPFDocument(is);
-             XWPFWordExtractor extractor = new XWPFWordExtractor(doc)) {
-            return extractor.getText();
+        try (XWPFDocument doc = new XWPFDocument(is)) {
+            StringBuilder sb = new StringBuilder();
+            for (var element : doc.getBodyElements()) {
+                if (element instanceof org.apache.poi.xwpf.usermodel.XWPFParagraph paragraph) {
+                    StringBuilder line = new StringBuilder();
+                    paragraph.getRuns().forEach(run -> {
+                        String runText = run.text();
+                        if (runText != null) line.append(runText);
+                    });
+                    String text = line.toString();
+                    if (text != null && !text.isBlank()) {
+                        if (sb.length() > 0) sb.append("\n");
+                        sb.append(text);
+                    }
+                } else if (element instanceof org.apache.poi.xwpf.usermodel.XWPFTable table) {
+                    for (var row : table.getRows()) {
+                        List<String> rowCells = new ArrayList<>();
+                        for (var cell : row.getTableCells()) {
+                            String cellText = cell.getText();
+                            if (cellText != null && !cellText.isBlank()) {
+                                rowCells.add(cellText.trim());
+                            }
+                        }
+                        if (!rowCells.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(String.join(" | ", rowCells));
+                        }
+                    }
+                }
+            }
+            return sb.toString();
         }
     }
 
@@ -524,12 +857,12 @@ public class ImportXlsxService {
                 "(?i)(?:đáp\\s*án|answer|key|solution|correct)\\s*[:=\\-–—\\s]+([A-Da-d])(?:\\s|$|[,;\\.])"
         );
 
-        // Option patterns – most specific to least: dot, close-paren, colon, hyphen
+        // Option patterns – most specific to least: asterisk-marked, dot, close-paren, colon, hyphen
         Pattern[] optPatterns = new Pattern[]{
-                Pattern.compile("^\\s*([A-Da-d])\\.\\s*(.+)$"),          // A. option text
-                Pattern.compile("^\\s*([A-Da-d]\\))\\s*(.+)$"),         // A) option text
-                Pattern.compile("^\\s*([A-Da-d]):\\s*(.+)$"),           // A: option text
-                Pattern.compile("^\\s*([A-Da-d])[\\-–—]\\s*(.+)$"),   // A- option text
+                Pattern.compile("^\\s*\\*?([A-Da-d])\\.\\s*(.+)$"),        // *D. option text  OR  D. option text
+                Pattern.compile("^\\s*\\*?([A-Da-d]\\))\\s*(.+)$"),        // *D) option text  OR  D) option text
+                Pattern.compile("^\\s*\\*?([A-Da-d]):\\s*(.+)$"),          // *D: option text  OR  D: option text
+                Pattern.compile("^\\s*\\*?([A-Da-d])[\\-–—]\\s*(.+)$"),   // *D- option text  OR  D- option text
         };
 
         for (String line : lines) {
@@ -548,10 +881,27 @@ public class ImportXlsxService {
             }
 
             // 1) Inline answer line – skip it, don't add to content
+            // Also handles "*D. text" format where asterisk marks the correct option
             Matcher answerMatcher = answerInlinePattern.matcher(trimmed);
             if (answerMatcher.find() && correctAnswer == null) {
                 correctAnswer = answerMatcher.group(1).toUpperCase(Locale.ROOT);
                 continue;
+            }
+            // "*D. option text" — asterisk marks correct answer
+            if (trimmed.startsWith("*")) {
+                Pattern asteriskOpt = Pattern.compile("^\\*([A-Da-d])\\.\\s*(.+)$");
+                Matcher am = asteriskOpt.matcher(trimmed);
+                if (am.matches()) {
+                    correctAnswer = am.group(1).toUpperCase(Locale.ROOT);
+                    String optText = am.group(2).trim();
+                    switch (correctAnswer) {
+                        case "A" -> optionA = optText;
+                        case "B" -> optionB = optText;
+                        case "C" -> optionC = optText;
+                        case "D" -> optionD = optText;
+                    }
+                    continue;
+                }
             }
 
             // 2) Option lines – match A./A)/A:/A-
@@ -566,6 +916,9 @@ public class ImportXlsxService {
                         case "B" -> optionB = optText;
                         case "C" -> optionC = optText;
                         case "D" -> optionD = optText;
+                    }
+                    if (trimmed.startsWith("*")) {
+                        correctAnswer = letter;
                     }
                     matchedOption = true;
                     break;

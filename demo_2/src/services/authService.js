@@ -3,13 +3,23 @@ import { apiRequest, ApiError, unwrapApiData } from './apiClient'
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_USER_KEY = 'auth_user'
 const AUTH_USER_TS_KEY = 'auth_user_ts'
-/** Cache user info for 15 minutes — avoid redundant /api/me calls on every navigation */
+const REFRESH_TOKEN_KEY = 'auth_refresh_token'
+/** Cache user info for 15 minutes */
 const USER_CACHE_TTL_MS = 15 * 60 * 1000
+/** Refresh token 5 minutes before expiry */
+const REFRESH_BUFFER_MS = 5 * 60 * 1000
 
-/**
- * Check if the stored JWT token has expired without decoding the full token.
- * Falls back to true (expired) if token cannot be parsed.
- */
+const getTokenExpiryMs = () => {
+  const raw = localStorage.getItem(AUTH_TOKEN_KEY)
+  if (!raw) return 0
+  try {
+    const payload = JSON.parse(atob(raw.split('.')[1]))
+    return (payload.exp * 1000)
+  } catch {
+    return 0
+  }
+}
+
 const isTokenExpired = () => {
   const raw = localStorage.getItem(AUTH_TOKEN_KEY)
   if (!raw) return true
@@ -20,6 +30,14 @@ const isTokenExpired = () => {
     return true
   }
 }
+
+const isTokenExpiringSoon = () => {
+  const expiryMs = getTokenExpiryMs()
+  if (!expiryMs) return true
+  return expiryMs - Date.now() < REFRESH_BUFFER_MS
+}
+
+const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY)
 
 const normalizeAuthUser = (authData) => ({
   username: authData?.username || '',
@@ -109,22 +127,21 @@ const isUserCacheFresh = () => {
 /** Guard: ngăn gọi refresh đồng thời từ nhiều route navigation */
 let _refreshPromise = null
 export const getCachedOrRefresh = async (force = false) => {
-  const token = getStoredToken()
+  const token = localStorage.getItem(AUTH_TOKEN_KEY)
   if (!token) return null
 
-  // Token expired → force refresh
-  if (isTokenExpired()) {
-    return syncCurrentUserFromDatabase()
+  if (isTokenExpired() || isTokenExpiringSoon()) {
+    const refreshed = await refreshAccessToken()
+    if (!refreshed) return null
   }
 
-  // Cache fresh and user exists → skip API call
   if (!force && isUserCacheFresh()) {
     const cached = getStoredUser()
     if (cached?.username) return cached
   }
 
   if (_refreshPromise) return _refreshPromise
-  _refreshPromise = syncCurrentUserFromDatabase().finally(() => { _refreshPromise = null })
+  _refreshPromise = fetchMeUserAndPersist().finally(() => { _refreshPromise = null })
   return _refreshPromise
 }
 
@@ -149,8 +166,14 @@ const fetchMeUserAndPersist = async () => {
  * Chỉ clear session khi 401/403. Khi network error → giữ session hiện tại.
  */
 export const syncCurrentUserFromDatabase = async () => {
-  const token = getStoredToken()
+  const token = localStorage.getItem(AUTH_TOKEN_KEY)
   if (!token) return null
+
+  if (isTokenExpired() || isTokenExpiringSoon()) {
+    const refreshed = await refreshAccessToken()
+    if (!refreshed) return null
+  }
+
   try {
     return await fetchMeUserAndPersist()
   } catch (error) {
@@ -163,7 +186,6 @@ export const syncCurrentUserFromDatabase = async () => {
         return null
       }
     }
-    // Network error hoặc server error 5xx: giữ session hiện tại
     return getStoredUser()
   }
 }
@@ -195,6 +217,9 @@ export const storeAuthSession = (authData) => {
   if (authData?.token) {
     localStorage.setItem(AUTH_TOKEN_KEY, authData.token)
   }
+  if (authData?.refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, authData.refreshToken)
+  }
 
   const normalizedUser = normalizeAuthUser(authData)
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(normalizedUser))
@@ -205,6 +230,56 @@ export const clearAuthSession = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY)
   localStorage.removeItem(AUTH_USER_KEY)
   localStorage.removeItem(AUTH_USER_TS_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+export const logout = async () => {
+  const refreshToken = getStoredRefreshToken()
+  try {
+    if (refreshToken) {
+      await apiRequest('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken })
+      })
+    }
+  } catch {
+    // Ignore
+  }
+  clearAuthSession()
+}
+
+export const logoutAll = async () => {
+  try {
+    await apiRequest('/api/auth/logout-all', { method: 'POST' })
+  } catch {
+    // Ignore
+  }
+  clearAuthSession()
+}
+
+export const refreshAccessToken = async () => {
+  const refreshToken = getStoredRefreshToken()
+  if (!refreshToken) {
+    clearAuthSession()
+    return null
+  }
+  try {
+    const response = await apiRequest('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken })
+    })
+    const data = unwrapApiData(response)
+    if (data?.token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, data.token)
+    }
+    if (data?.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
+    }
+    return data
+  } catch {
+    clearAuthSession()
+    return null
+  }
 }
 
 export const invalidateSession = () => {

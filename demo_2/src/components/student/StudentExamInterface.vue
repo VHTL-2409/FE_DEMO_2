@@ -1555,7 +1555,6 @@ onMounted(async () => {
       }
     }
   } catch (error) {
-    console.error('Load exam error:', error)
     examLoadFailed.value = true
     examSurfaceReady.value = true
 
