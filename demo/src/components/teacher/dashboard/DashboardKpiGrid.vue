@@ -149,10 +149,51 @@ const alertTrendLabel = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .td-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.2s both;
+}
+
+.td-kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.375rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  box-shadow: var(--ds-shadow-xs);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+  overflow: hidden;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.td-kpi-card:nth-child(1) { animation-delay: 0.25s; }
+.td-kpi-card:nth-child(2) { animation-delay: 0.3s; }
+.td-kpi-card:nth-child(3) { animation-delay: 0.35s; }
+.td-kpi-card:nth-child(4) { animation-delay: 0.4s; }
+
+.td-kpi-card:hover {
+  box-shadow: var(--ds-shadow-md);
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.dark .td-kpi-card:hover { border-color: var(--ds-border-strong); }
+
+.td-kpi-card:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 @media (max-width: 1024px) {
@@ -180,29 +221,6 @@ const alertTrendLabel = computed(() => {
 }
 
 /* ===== KPI Card Base ===== */
-.td-kpi-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-  padding: 1.375rem;
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
-  box-shadow: var(--ds-shadow-xs);
-  transition: all 0.15s ease;
-  overflow: hidden;
-}
-
-.td-kpi-card:hover {
-  box-shadow: var(--ds-shadow-md);
-  transform: translateY(-1px);
-  border-color: rgba(148, 163, 184, 0.3);
-}
-
-.dark .td-kpi-card:hover {
-  border-color: var(--ds-border-strong);
-}
 
 /* Glow effect for live card */
 .td-kpi-card--live {
@@ -413,5 +431,15 @@ const alertTrendLabel = computed(() => {
 
 .td-kpi-card__trend--muted {
   color: var(--ds-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .td-kpi-grid,
+  .td-kpi-card {
+    animation: none;
+  }
+  .td-kpi-card:hover {
+    transform: none;
+  }
 }
 </style>

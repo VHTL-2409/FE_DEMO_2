@@ -135,10 +135,16 @@ const upcomingExams = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .td-insight {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.5s both;
 }
 
 /* Header */
@@ -339,6 +345,9 @@ const upcomingExams = computed(() => {
 .td-insight__upcoming-item:hover {
   background: var(--ds-gray-50);
   border-color: var(--ds-primary-border);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .dark .td-insight__upcoming-item:hover {

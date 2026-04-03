@@ -48,7 +48,7 @@
       <div class="mb-4 grid grid-cols-3 gap-3">
         <div class="rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-bg)] px-3 py-2.5 text-center">
           <p class="text-xl font-extrabold tabular-nums text-[var(--ds-primary)]">{{ liveExam.studentCount || 0 }}</p>
-          <p class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ds-text-muted)]">Sinh viên</p>
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-[var(--ds-text-muted)]">Học sinh</p>
         </div>
         <div class="rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-bg)] px-3 py-2.5 text-center">
           <p class="text-xl font-extrabold tabular-nums text-[var(--ds-success)]">{{ liveExam.answeredCount || 0 }}</p>

@@ -29,6 +29,11 @@
 </script>
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .sdl {
   display: flex;
   flex-direction: column;
@@ -38,19 +43,24 @@
   margin: 0 auto;
 }
 
-/* KPI strip */
+/* Entrance animations */
+.sdl__hero {
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.05s both;
+}
+
 .sdl__kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.15s both;
 }
 
-/* Main layout */
 .sdl__main {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 1.5rem;
   align-items: start;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.25s both;
 }
 
 .sdl__main-col {
@@ -63,6 +73,19 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Dark mode */
+.dark .sdl {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdl__hero,
+  .sdl__kpis,
+  .sdl__main {
+    animation: none;
+  }
 }
 
 /* Responsive - large screens */

@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.api.dto.admin.AdminClassListPageResponse;
 import com.example.demo.api.dto.classmanagement.*;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.ClassEntity;
@@ -10,6 +11,10 @@ import com.example.demo.repository.ClassRepository;
 import com.example.demo.repository.ClassStudentRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -46,6 +51,25 @@ public class ClassService {
         return classes.stream()
                 .map(this::toClassResponse)
                 .collect(Collectors.toList());
+    }
+
+    /** Danh sách lớp toàn hệ thống (admin / giáo vụ). */
+    @Transactional(readOnly = true)
+    public AdminClassListPageResponse listAllClassesForAdmin(int page, int size) {
+        int p = Math.max(0, page);
+        int s = Math.min(Math.max(1, size), 100);
+        Pageable pageable = PageRequest.of(p, s, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Page<ClassEntity> pg = classRepository.findAll(pageable);
+        List<ClassResponse> content = pg.getContent().stream()
+                .map(this::toClassResponse)
+                .collect(Collectors.toList());
+        return AdminClassListPageResponse.builder()
+                .content(content)
+                .page(pg.getNumber())
+                .size(pg.getSize())
+                .totalElements(pg.getTotalElements())
+                .totalPages(pg.getTotalPages())
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -390,14 +414,15 @@ public class ClassService {
 
     private ClassResponse toClassResponse(ClassEntity classEntity) {
         long studentCount = classStudentRepository.countByClassEntityId(classEntity.getId());
+        User teacher = classEntity.getTeacher();
         return ClassResponse.builder()
                 .id(classEntity.getId())
                 .name(classEntity.getName())
                 .description(classEntity.getDescription())
                 .subject(classEntity.getSubject())
                 .classCode(classEntity.getClassCode())
-                .teacherId(classEntity.getTeacher().getId())
-                .teacherName(classEntity.getTeacher().getUsername())
+                .teacherId(teacher != null ? teacher.getId() : null)
+                .teacherName(teacher != null ? teacher.getUsername() : "—")
                 .studentCount(studentCount)
                 .createdAt(toOffset(classEntity.getCreatedAt()))
                 .updatedAt(toOffset(classEntity.getUpdatedAt()))

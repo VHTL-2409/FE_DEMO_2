@@ -52,7 +52,7 @@
           Đợt thi <span class="font-semibold" style="color: var(--ds-primary)">{{ examTitle }}</span> đã được tạo thành công.
         </p>
         <p class="mt-1 text-sm" style="color: var(--ds-text-muted)">
-          Sinh viên có thể bắt đầu làm bài khi đến thời gian thi.
+          Học sinh có thể bắt đầu làm bài khi đến thời gian thi.
         </p>
       </div>
 
@@ -68,7 +68,7 @@
             </div>
             <div>
               <h2 class="text-lg font-bold" style="color: var(--ds-text)">Thông tin đợt thi</h2>
-              <p class="text-sm" style="color: var(--ds-text-muted)">Lưu lại mã để chia sẻ với sinh viên</p>
+              <p class="text-sm" style="color: var(--ds-text-muted)">Lưu lại mã để chia sẻ với học sinh</p>
             </div>
           </div>
 
@@ -112,7 +112,7 @@
             >
               <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Thời gian làm bài</p>
               <p class="mt-1 text-2xl font-extrabold" style="color: var(--ds-text)">{{ durationMinutes }} phút</p>
-              <p class="mt-1 text-xs" style="color: var(--ds-text-muted)">Tối đa cho mỗi sinh viên</p>
+              <p class="mt-1 text-xs" style="color: var(--ds-text-muted)">Tối đa cho mỗi học sinh</p>
             </div>
 
             <!-- Question Count -->
@@ -151,7 +151,7 @@
           </div>
           <div class="flex-1">
             <p class="font-bold text-lg">Giám sát ngay</p>
-            <p class="text-sm opacity-90">Theo dõi phòng chờ và tiến trình thi của sinh viên</p>
+            <p class="text-sm opacity-90">Theo dõi phòng chờ và tiến trình thi của học sinh</p>
           </div>
           <LucideIcon name="chevron_right" size="20" class="opacity-75" />
         </RouterLink>
@@ -221,8 +221,8 @@
             <div>
               <p class="text-sm font-semibold" style="color: var(--ds-text)">Mẹo chia sẻ đợt thi</p>
               <p class="mt-1 text-xs" style="color: var(--ds-text-secondary)">
-                Chia sẻ mã đề thi <span class="font-bold" style="color: #0284c7">{{ examCode }}</span> với sinh viên qua email, Zalo, hoặc phương tiện khác.
-                Sinh viên sẽ nhập mã này để tham gia thi.
+                Chia sẻ mã đề thi <span class="font-bold" style="color: #0284c7">{{ examCode }}</span> với học sinh qua email, Zalo, hoặc phương tiện khác.
+                Học sinh sẽ nhập mã này để tham gia thi.
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-4xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-5xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <!-- Breadcrumb + header -->
       <div class="mb-5 ds-animate-fade-up">
@@ -30,36 +30,36 @@
 
       <!-- Loading skeleton -->
       <div v-if="isLoading" class="ds-animate-fade-up" style="animation-delay: 0.1s">
-        <div class="rounded-[var(--ds-radius-2xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 mb-4">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="p-5 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)] flex flex-col items-center gap-3">
-              <div class="h-3 w-20 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
-              <div class="size-16 rounded-full border-4 border-[var(--ds-gray-200)] animate-pulse"></div>
-              <div class="h-2 w-24 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+        <div class="rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-4 mb-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="p-4 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)] flex flex-col items-center gap-3">
+              <div class="h-3 w-16 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+              <div class="size-12 rounded-full border-4 border-[var(--ds-gray-200)] animate-pulse"></div>
+              <div class="h-2 w-20 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
             </div>
-            <div class="p-5 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)]">
-              <div class="h-3 w-16 rounded bg-[var(--ds-gray-200)] animate-pulse mb-3"></div>
-              <div class="h-6 w-20 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+            <div class="p-4 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)]">
+              <div class="h-3 w-14 rounded bg-[var(--ds-gray-200)] animate-pulse mb-2"></div>
+              <div class="h-5 w-16 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
             </div>
-            <div class="p-5 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)]">
-              <div class="h-3 w-12 rounded bg-[var(--ds-gray-200)] animate-pulse mb-3"></div>
-              <div class="h-6 w-16 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+            <div class="p-4 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-gray-50)]">
+              <div class="h-3 w-10 rounded bg-[var(--ds-gray-200)] animate-pulse mb-2"></div>
+              <div class="h-5 w-14 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
             </div>
           </div>
         </div>
-        <div class="rounded-[var(--ds-radius-2xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6">
-          <div class="flex items-center gap-2 mb-4">
+        <div class="rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-4 mb-3">
+          <div class="flex items-center gap-2 mb-3">
             <div class="h-4 w-4 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
-            <div class="h-4 w-32 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+            <div class="h-4 w-28 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
           </div>
-          <div v-for="i in 3" :key="i" class="p-4 rounded-xl border border-[var(--ds-border)] mb-3 last:mb-0">
-            <div class="flex justify-between items-center mb-3">
-              <div class="h-3 w-16 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
-              <div class="h-3 w-12 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+          <div v-for="i in 3" :key="i" class="p-3 rounded-xl border border-[var(--ds-border)] mb-2 last:mb-0">
+            <div class="flex justify-between items-center mb-2">
+              <div class="h-3 w-14 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
+              <div class="h-3 w-10 rounded bg-[var(--ds-gray-200)] animate-pulse"></div>
             </div>
-            <div class="h-4 w-full rounded bg-[var(--ds-gray-200)] animate-pulse mb-3"></div>
-            <div class="space-y-2">
-              <div v-for="j in 4" :key="j" class="h-10 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-gray-50)] animate-pulse"></div>
+            <div class="h-4 w-full rounded bg-[var(--ds-gray-200)] animate-pulse mb-2"></div>
+            <div class="space-y-1.5">
+              <div v-for="j in 4" :key="j" class="h-8 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-gray-50)] animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -270,6 +270,9 @@ const reviewAnswers = computed(() => (report.value?.answers || []).map((item, in
 }))
 
 onMounted(async () => {
+  // Force scroll to top when component mounts
+  window.scrollTo({ top: 0, behavior: 'instant' })
+
   if (!attemptId.value) return
   isLoading.value = true
   try {

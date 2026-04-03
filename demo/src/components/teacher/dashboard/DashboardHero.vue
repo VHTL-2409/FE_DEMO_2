@@ -119,6 +119,11 @@ const heroSubtitle = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .td-hero {
   display: flex;
   align-items: center;
@@ -131,6 +136,7 @@ const heroSubtitle = computed(() => {
   box-shadow: var(--ds-shadow-sm);
   position: relative;
   overflow: hidden;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
 .dark .td-hero {
@@ -361,8 +367,8 @@ const heroSubtitle = computed(() => {
 }
 
 .td-hero__cta--live:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3);
 }
 
 .td-hero__cta--primary {
@@ -372,12 +378,12 @@ const heroSubtitle = computed(() => {
 }
 
 .td-hero__cta--primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
 }
 
 .td-hero__cta:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .td-hero__cta-icon-wrap {
@@ -391,7 +397,7 @@ const heroSubtitle = computed(() => {
   color: white;
   flex-shrink: 0;
   font-size: 1.25rem;
-  transition: all 0.15s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
 }
 
 .td-hero__cta-icon-wrap--primary {
@@ -400,7 +406,8 @@ const heroSubtitle = computed(() => {
 }
 
 .td-hero__cta:hover .td-hero__cta-icon-wrap {
-  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.15) rotate(-5deg);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .td-hero__cta-live-dot {

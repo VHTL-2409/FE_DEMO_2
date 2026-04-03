@@ -78,7 +78,7 @@ const studentSidebarItems = [
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: var(--ds-bg, #f8fafc);
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -89,7 +89,12 @@ const studentSidebarItems = [
 .portal-skeleton-bar {
   height: 18px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 40%, #e2e8f0 80%);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 0%,
+    var(--color-surface-muted) 40%,
+    var(--color-border) 80%
+  );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
   width: 100%;
@@ -106,7 +111,12 @@ const studentSidebarItems = [
   flex: 1;
   height: 120px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 40%, #e2e8f0 80%);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 0%,
+    var(--color-surface-muted) 40%,
+    var(--color-border) 80%
+  );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
@@ -123,5 +133,12 @@ const studentSidebarItems = [
 .portal-skeleton-enter-from,
 .portal-skeleton-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-skeleton-bar,
+  .portal-skeleton-card {
+    animation: none;
+  }
 }
 </style>

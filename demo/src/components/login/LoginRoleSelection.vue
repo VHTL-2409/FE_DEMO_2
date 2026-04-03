@@ -219,7 +219,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { login, resendVerification, redirectToSiteByDatabaseRole } from '../../services/authService'
+import { login, resendVerification } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 import AppLogo from '../common/AppLogo.vue'
 
@@ -263,7 +263,10 @@ const onSubmit = async () => {
 
   try {
     const authData = await login({ username: username.value.trim(), password: password.value })
-    await redirectToSiteByDatabaseRole(router, authData)
+    // Push to redirect page to prefetch dashboard data
+    const isTeacher = authData?.roles?.includes('TEACHER') ||
+                      authData?.roles?.some(r => String(r).toUpperCase().includes('TEACHER'))
+    await router.push(`/redirect?role=${isTeacher ? 'teacher' : 'student'}`)
   } catch (error) {
     if (error?.status === 403 && String(error?.payload?.message || '').includes('EMAIL_NOT_VERIFIED')) {
       emailNotVerified.value = true

@@ -218,7 +218,7 @@ const resultStudents = computed(() => submittedAttempts.value.map((attempt) => {
   return {
     id: attempt.id,
     attemptId: attempt.id,
-    userName: attempt.student || 'Sinh viên không rõ',
+    userName: attempt.student || 'Học sinh không rõ',
     fullName: attempt.student || '',
     email: attempt.email || '',
     studentCode: attempt.studentCode || (attempt.studentId ? `SV-${attempt.studentId}` : `AT-${attempt.id}`),
@@ -301,8 +301,8 @@ const viewQuestionDetail = (question) => {
 
 const downloadReport = () => {
   const columns = [
-    { key: 'userName', label: 'Sinh viên' },
-    { key: 'studentCode', label: 'Mã sinh viên' },
+    { key: 'userName', label: 'Học sinh' },
+    { key: 'studentCode', label: 'Mã học sinh' },
     { key: 'scoreDisplay', label: 'Điểm' },
     { key: 'warningCount', label: 'Cảnh báo' },
     { key: 'status', label: 'Trạng thái' }

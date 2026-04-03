@@ -467,7 +467,12 @@ const unwatchSearch = computed(() => {
   if (searchQuery.value || statusFilter.value !== 'all') currentPage.value = 1
 })
 
-onMounted(loadExams)
+onMounted(() => {
+  // Force scroll to top when component mounts
+  window.scrollTo({ top: 0, behavior: 'instant' })
+
+  loadExams()
+})
 </script>
 
 

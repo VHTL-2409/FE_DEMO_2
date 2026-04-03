@@ -146,7 +146,7 @@
           </div>
           <div>
             <h3 class="lm__modal-title">Gửi cảnh báo</h3>
-            <p class="lm__modal-subtitle">Sinh viên: {{ warningTarget?.name || '—' }}</p>
+            <p class="lm__modal-subtitle">Học sinh: {{ warningTarget?.name || '—' }}</p>
           </div>
         </div>
       </template>
@@ -181,7 +181,7 @@
           </div>
           <div>
             <h3 class="lm__modal-title">Tạm dừng bài thi</h3>
-            <p class="lm__modal-subtitle">Sinh viên: {{ pauseTarget?.name || '—' }}</p>
+            <p class="lm__modal-subtitle">Học sinh: {{ pauseTarget?.name || '—' }}</p>
           </div>
         </div>
       </template>
@@ -216,7 +216,7 @@
           </div>
           <div>
             <h3 class="lm__modal-title">Đình chỉ bài thi</h3>
-            <p class="lm__modal-subtitle">Sinh viên: {{ invalidateTarget?.name || '—' }}</p>
+            <p class="lm__modal-subtitle">Học sinh: {{ invalidateTarget?.name || '—' }}</p>
           </div>
         </div>
       </template>
@@ -371,7 +371,7 @@ const tableStudents = computed(() => attempts.value.map(attempt => {
   return {
     id: attempt.id,
     attemptId: attempt.id,
-    userName: attempt.student || 'Sinh viên không rõ',
+    userName: attempt.student || 'Học sinh không rõ',
     fullName: attempt.student || '',
     email: attempt.email || '',
     studentCode: attempt.studentCode || '',

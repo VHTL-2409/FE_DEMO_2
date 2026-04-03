@@ -12,7 +12,7 @@
       <!-- Page Header -->
       <div class="mb-6 ds-animate-fade-up max-w-6xl">
         <PageHeader
-          eyebrow="Sinh viên"
+          eyebrow="Học sinh"
           title="Vào thi"
           subtitle="Chọn đề thi từ lớp học hoặc nhập mã đề để tham gia thi."
           size="default"
@@ -115,19 +115,36 @@
             </div>
           </div>
 
-          <!-- Loading -->
+          <!-- Loading classes -->
           <div v-if="isLoadingClasses" class="flex items-center justify-center gap-3 py-8">
+            <div class="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
+            <span class="text-sm text-[var(--ds-text-muted)]">Đang tải lớp học...</span>
+          </div>
+
+          <!-- No classes at all -->
+          <div v-else-if="studentClasses.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
+            <div class="size-14 rounded-full bg-[var(--ds-gray-100)] flex items-center justify-center mb-3">
+              <LucideIcon name="school" size="28" class="text-[var(--ds-text-muted)]" />
+            </div>
+            <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Chưa tham gia lớp học nào</h3>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Bạn chưa được thêm vào lớp học nào. Vui lòng liên hệ giáo viên để được thêm.</p>
+          </div>
+
+          <!-- Loading exams for selected class -->
+          <div v-else-if="hasSelectedClass && isLoadingClassExams" class="flex items-center justify-center gap-3 py-8">
             <div class="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
             <span class="text-sm text-[var(--ds-text-muted)]">Đang tải đề thi...</span>
           </div>
 
-          <!-- No classes -->
-          <div v-else-if="filteredClassExams.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
+          <!-- No exams or none started -->
+          <div v-else-if="hasSelectedClass && currentClassExams.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
             <div class="size-14 rounded-full bg-[var(--ds-gray-100)] flex items-center justify-center mb-3">
-              <LucideIcon name="school" size="28" class="text-[var(--ds-text-muted)]" />
+              <LucideIcon name="quiz" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
-            <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Không có đề thi</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Không tìm thấy đề thi nào{{ selectedClassId ? ' trong lớp đã chọn' : ' từ lớp học của bạn' }}.</p>
+            <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Không có đề thi đang diễn ra</h3>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">
+              {{ selectedClassExams.length === 0 ? 'Lớp này chưa có đề thi nào.' : 'Lớp này hiện không có đề thi nào đang diễn ra.' }}
+            </p>
           </div>
 
           <!-- Class exam list -->
@@ -182,7 +199,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { joinExamByCode } from '../../services/examService'
 import { getMyClasses, getStudentClassExams } from '../../services/classService'
@@ -196,22 +213,52 @@ const isJoining = ref(false)
 const errorMsg = ref('')
 const isInputFocused = ref(false)
 
-const classExams = ref([])
+const studentClasses = ref([])
 const isLoadingClasses = ref(false)
 const selectedClassId = ref('')
+const selectedClassExams = ref([])
+const isLoadingClassExams = ref(false)
 
-const uniqueClasses = computed(() => {
-  const seen = new Set()
-  return classExams.value.filter(cls => {
-    if (seen.has(cls.id)) return false
-    seen.add(cls.id)
-    return true
-  })
-})
+const uniqueClasses = computed(() => studentClasses.value)
+
+const isExamStarted = (exam) => {
+  const now = Date.now()
+  const start = new Date(exam.startTime || exam.startDate || '').getTime()
+  const end = new Date(exam.endTime || exam.endDate || '').getTime()
+  if (Number.isNaN(start)) return false
+  if (!Number.isNaN(end) && now > end) return false // ended
+  return now >= start // started or within window
+}
+
+const currentClassExams = computed(() =>
+  selectedClassExams.value.filter(exam => isExamStarted(exam))
+)
+
+const hasSelectedClass = computed(() => !!selectedClassId.value)
 
 const filteredClassExams = computed(() => {
-  if (!selectedClassId.value) return classExams.value
-  return classExams.value.filter(cls => cls.id === selectedClassId.value)
+  if (!hasSelectedClass.value) return []
+  return [{
+    ...studentClasses.value.find(c => c.id === selectedClassId.value),
+    exams: currentClassExams.value
+  }]
+})
+
+// Load exams when a class is selected
+watch(selectedClassId, async (newClassId) => {
+  if (!newClassId) {
+    selectedClassExams.value = []
+    return
+  }
+  isLoadingClassExams.value = true
+  try {
+    const exams = await getStudentClassExams(newClassId)
+    selectedClassExams.value = exams || []
+  } catch {
+    selectedClassExams.value = []
+  } finally {
+    isLoadingClassExams.value = false
+  }
 })
 
 const goToWaitingRoom = async () => {
@@ -261,32 +308,19 @@ const enterClassExam = (exam) => {
   })
 }
 
-const loadClassExams = async () => {
+const loadMyClasses = async () => {
   isLoadingClasses.value = true
   try {
     const classes = await getMyClasses()
-    if (!classes || classes.length === 0) {
-      classExams.value = []
-      return
-    }
-    const results = []
-    for (const cls of classes) {
-      try {
-        const exams = await getStudentClassExams(cls.id)
-        results.push({ ...cls, exams: exams || [] })
-      } catch {
-        results.push({ ...cls, exams: [] })
-      }
-    }
-    classExams.value = results
+    studentClasses.value = classes || []
   } catch {
-    classExams.value = []
+    studentClasses.value = []
   } finally {
     isLoadingClasses.value = false
   }
 }
 
-onMounted(() => { loadClassExams() })
+onMounted(() => { loadMyClasses() })
 </script>
 
 <style scoped>

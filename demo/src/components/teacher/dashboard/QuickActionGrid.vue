@@ -122,15 +122,36 @@ const actions = [
   border: 1px solid var(--ds-border);
   background: var(--ds-surface);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
   text-align: left;
   width: 100%;
+  animation: fadeInRight 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) backwards;
+}
+
+.td-qa__item:nth-child(1) { animation-delay: 0.05s; }
+.td-qa__item:nth-child(2) { animation-delay: 0.1s; }
+.td-qa__item:nth-child(3) { animation-delay: 0.15s; }
+.td-qa__item:nth-child(4) { animation-delay: 0.2s; }
+.td-qa__item:nth-child(5) { animation-delay: 0.25s; }
+.td-qa__item:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .td-qa__item:hover {
   border-color: var(--ds-primary-border);
   background: var(--ds-primary-soft);
-  transform: translateX(2px);
+  transform: translateX(4px);
+}
+
+.td-qa__item:active {
+  transform: translateX(2px) scale(0.98);
 }
 
 .dark .td-qa__item:hover {
@@ -149,9 +170,12 @@ const actions = [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, color 0.2s ease;
 }
 
+.td-qa__item:hover .td-qa__item-icon {
+  transform: scale(1.15) rotate(-5deg);
+}
 
 .td-qa__item-icon--primary {
   background: var(--ds-primary-soft);
@@ -161,6 +185,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--primary {
   background: var(--ds-primary);
   color: white;
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .td-qa__item-icon--info {
@@ -171,6 +196,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--info {
   background: var(--ds-info);
   color: white;
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .td-qa__item-icon--success {
@@ -181,6 +207,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--success {
   background: var(--ds-success);
   color: white;
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .td-qa__item-icon--accent {
@@ -191,6 +218,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--accent {
   background: var(--ds-accent);
   color: white;
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .td-qa__item-icon--muted {
@@ -205,11 +233,13 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-300);
   color: var(--ds-text);
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .dark .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-600);
   color: white;
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .td-qa__item-body {

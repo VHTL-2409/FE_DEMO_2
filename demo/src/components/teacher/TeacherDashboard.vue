@@ -234,9 +234,16 @@ const handleQuickAction = (actionId) => {
 }
 
 // ─── Data loading ────────────────────────────────────────────
+// Reads from sessionStorage if prefetched by RedirectPage
 const loadExams = async () => {
   try {
-    rawExams.value = await listExams()
+    const cached = sessionStorage.getItem('prefetch_teacher_data')
+    if (cached) {
+      rawExams.value = JSON.parse(cached)
+      sessionStorage.removeItem('prefetch_teacher_data')
+    } else {
+      rawExams.value = await listExams()
+    }
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu dashboard.')
   }

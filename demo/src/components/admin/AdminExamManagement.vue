@@ -1,132 +1,162 @@
 <template>
-  <div class="db-page-wrap">
+  <div class="tui-page-wrap">
 
     <!-- Page Header -->
-    <header class="db-header">
-      <div class="db-header-left">
-        <div class="db-header-icon">
-          <LucideIcon name="clipboard_list" :size="24" />
+    <header class="tui-header">
+      <div class="tui-header-left">
+        <div class="tui-header-icon">
+          <LucideIcon name="clipboard_list" :size="22" />
         </div>
         <div>
-          <p class="db-eyebrow">Exam governance</p>
-          <h1 class="db-title">Quan ly de thi</h1>
-          <p class="db-subtitle">Xem toan bo de trong he thong, trang thai hoat dong, thoi gian va thong ke cau hoi / luot thi.</p>
+          <p class="tui-header-eyebrow">Quản lý đề thi</p>
+          <h1 class="tui-header-title">Danh sách đề thi</h1>
+          <p class="tui-header-desc">Theo dõi trạng thái, thời gian và thống kê đề thi trong hệ thống.</p>
         </div>
+      </div>
+      <div class="tui-header-right">
+        <button type="button" class="tui-btn tui-btn--secondary" :disabled="loading" @click="load">
+          <LucideIcon name="refresh" :size="14" :class="loading ? 'tui-spin' : ''" />
+          Làm mới
+        </button>
       </div>
     </header>
 
-    <!-- Stats Strip -->
-    <div class="db-stats-strip">
-      <div class="db-stats-strip__inner">
-        <div
-          v-for="(stat, i) in quickStats"
-          :key="stat.label"
-          class="db-stats-strip__item"
-          :style="{ animationDelay: `${0.05 + i * 0.08}s` }"
-        >
-          <LucideIcon :name="stat.icon" :size="16" class="db-stats-strip__icon" :class="`db-stats-strip__icon--${stat.color}`" />
-          <div>
-            <p class="db-stats-strip__val">{{ formatNum(stat.value) }}</p>
-            <p class="db-stats-strip__label">{{ stat.label }}</p>
-          </div>
+    <!-- Error Alert -->
+    <div v-if="errorMsg" class="tui-alert tui-alert--danger" style="margin-top: 1rem">
+      <LucideIcon name="alert_circle" :size="16" />
+      <span>{{ errorMsg }}</span>
+      <button type="button" @click="errorMsg = ''"><LucideIcon name="x" :size="14" /></button>
+    </div>
+
+    <!-- KPI Strip -->
+    <div class="tui-stat-grid" style="margin: 1rem 1.5rem 0">
+      <div class="tui-kpi-card tui-kpi-card--primary" style="animation-delay: 0s">
+        <div class="tui-kpi-icon-wrap">
+          <LucideIcon name="clipboard_list" :size="18" />
+        </div>
+        <div class="tui-kpi-body">
+          <p class="tui-kpi-value">{{ formatNum(totalElements) }}</p>
+          <p class="tui-kpi-label">Tổng đề thi</p>
+        </div>
+      </div>
+      <div class="tui-kpi-card tui-kpi-card--success" style="animation-delay: 0.06s">
+        <div class="tui-kpi-icon-wrap">
+          <LucideIcon name="check_circle" :size="18" />
+        </div>
+        <div class="tui-kpi-body">
+          <p class="tui-kpi-value">{{ formatNum(activeCount) }}</p>
+          <p class="tui-kpi-label">Đang hoạt động</p>
+        </div>
+      </div>
+      <div class="tui-kpi-card tui-kpi-card--warning" style="animation-delay: 0.12s">
+        <div class="tui-kpi-icon-wrap">
+          <LucideIcon name="file_text" :size="18" />
+        </div>
+        <div class="tui-kpi-body">
+          <p class="tui-kpi-value">{{ formatNum(totalQuestions) }}</p>
+          <p class="tui-kpi-label">Tổng câu hỏi</p>
+        </div>
+      </div>
+      <div class="tui-kpi-card tui-kpi-card--info" style="animation-delay: 0.18s">
+        <div class="tui-kpi-icon-wrap">
+          <LucideIcon name="users" :size="18" />
+        </div>
+        <div class="tui-kpi-body">
+          <p class="tui-kpi-value">{{ formatNum(totalAttempts) }}</p>
+          <p class="tui-kpi-label">Tổng lượt thi</p>
         </div>
       </div>
     </div>
 
+    <!-- Tab Filter -->
+    <div class="tui-tabs" style="margin-top: 1rem">
+      <button
+        v-for="tab in statusTabs"
+        :key="tab.key"
+        type="button"
+        class="tui-tab"
+        :class="{ 'tui-tab--active': activeFilter === tab.key }"
+        @click="activeFilter = tab.key"
+      >
+        {{ tab.label }}
+        <span v-if="tab.count != null" style="margin-left: 0.3rem; font-size: 0.65rem; opacity: 0.75">({{ tab.count }})</span>
+      </button>
+    </div>
+
     <!-- Table Panel -->
-    <div class="db-table-panel">
-      <!-- Toolbar -->
-      <div class="db-toolbar">
-        <p class="db-toolbar-meta">
-          <span style="font-weight: 700; color: var(--db-text)">{{ formatNum(totalElements) }}</span> de thi
-        </p>
-        <div class="db-toolbar-right">
-          <button
-            type="button"
-            class="db-btn db-btn--secondary db-btn--sm"
-            :disabled="loading"
-            @click="load"
-          >
-            <LucideIcon name="refresh" :size="14" />
-            Lam moi
-          </button>
-        </div>
-      </div>
+    <div class="tui-panel tui-panel--anim" style="margin: 1rem 1.5rem 1.5rem; flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
 
       <!-- Table -->
-      <div class="db-table-wrap">
-        <table class="db-table">
+      <div class="tui-table-wrap" style="flex: 1; overflow-y: auto">
+        <table class="tui-table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Tieu de</th>
-              <th>Ma</th>
-              <th>Phut</th>
-              <th>Hoat dong</th>
-              <th>Thoi gian</th>
-              <th>GMT</th>
-              <th>CH / Luot</th>
+              <th>Tiêu đề đề thi</th>
+              <th>Mã đề</th>
+              <th>Phút</th>
+              <th>Trạng thái</th>
+              <th>Thời gian bắt đầu</th>
+              <th>Người tạo</th>
+              <th>Câu hỏi / Lượt thi</th>
             </tr>
           </thead>
           <tbody>
             <template v-if="loading && !rows.length">
-              <tr>
-                <td colspan="8" class="db-empty-cell">
-                  <div style="display: flex; justify-content: center; padding: 3rem">
-                    <LucideIcon name="loader_2" :size="28" class="db-spin" style="color: var(--db-text-muted)" />
-                  </div>
+              <tr v-for="n in 7" :key="n">
+                <td colspan="8" style="padding: 0.5rem 1.25rem">
+                  <div class="tui-skeleton" style="height: 44px; border-radius: 10px" />
                 </td>
               </tr>
             </template>
             <template v-else-if="!rows.length">
               <tr>
-                <td colspan="8" class="db-empty-cell">
-                  <div class="db-empty">
-                    <div class="db-empty-icon">
-                      <LucideIcon name="clipboard_list" :size="24" />
-                    </div>
-                    <p class="db-empty-title">Chua co de thi</p>
-                    <p class="db-empty-desc">He thong chua co de thi nao.</p>
+                <td colspan="8" style="border-bottom: none">
+                  <div class="tui-empty">
+                    <div class="tui-empty-icon"><LucideIcon name="clipboard_list" :size="22" /></div>
+                    <p class="tui-empty-title">Chưa có đề thi</p>
+                    <p class="tui-empty-desc">Hệ thống chưa có đề thi nào.</p>
                   </div>
                 </td>
               </tr>
             </template>
             <template v-else>
               <tr
-                v-for="(row, idx) in rows"
+                v-for="(row, idx) in filteredRows"
                 :key="row.id"
-                class="db-table-row"
-                :style="{ animationDelay: `${idx * 0.03}s` }"
+                class="tui-table-row--anim"
+                :style="{ animationDelay: `${idx * 0.04}s` }"
               >
-                <td style="color: var(--db-text-muted); font-size: 0.8rem">{{ row.id }}</td>
-                <td class="truncate" style="max-width: 200px; font-weight: 600; color: var(--db-text)" :title="row.title">
-                  {{ row.title }}
+                <td style="font-family: monospace; color: var(--ds-text-secondary); font-size: 0.72rem; white-space: nowrap">{{ row.id }}</td>
+                <td>
+                  <span style="font-weight: 700; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: block" :title="row.title">{{ row.title }}</span>
                 </td>
-                <td class="text-mono" style="color: var(--db-primary); font-size: 0.75rem">{{ row.code || '—' }}</td>
-                <td style="color: var(--db-text-muted)">{{ row.durationMinutes ?? '—' }}</td>
+                <td>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--ds-primary); font-weight: 700">{{ row.code || '—' }}</span>
+                </td>
+                <td style="color: var(--ds-text-secondary); font-size: 0.78rem">{{ row.durationMinutes ?? '—' }}</td>
                 <td>
                   <button
                     type="button"
                     :disabled="togglingId === row.id"
-                    class="db-exam-toggle"
-                    :class="row.isActive ? 'db-exam-toggle--on' : 'db-exam-toggle--off'"
+                    class="tui-toggle"
+                    :class="row.isActive ? 'tui-toggle--on' : 'tui-toggle--off'"
                     @click="toggleActive(row)"
                   >
-                    <span
-                      class="db-exam-toggle__dot"
-                      :class="row.isActive ? 'db-exam-toggle__dot--on' : 'db-exam-toggle__dot--off'"
-                    />
-                    {{ row.isActive ? 'Bat' : 'Tat' }}
+                    <span class="tui-dot" :class="row.isActive ? 'tui-dot--up' : 'tui-dot--muted'" />
+                    {{ row.isActive ? 'Đang bật' : 'Đang tắt' }}
                   </button>
                 </td>
-                <td style="color: var(--db-text-muted); font-size: 0.75rem; line-height: 1.6; white-space: nowrap">
+                <td style="font-size: 0.72rem; color: var(--ds-text-secondary); white-space: nowrap">
                   {{ formatDt(row.startTime) }}
                 </td>
-                <td class="text-mono" style="color: var(--db-text-muted); font-size: 0.75rem">{{ row.createdByUsername || '—' }}</td>
-                <td style="color: var(--db-text-muted); font-size: 0.8rem">
-                  <span style="font-weight: 700; color: var(--db-primary)">{{ row.questionCount }}</span>
-                  <span style="color: var(--db-text-muted)"> / </span>
-                  <span style="font-weight: 700; color: var(--db-text)">{{ row.attemptCount }}</span>
+                <td>
+                  <span style="font-family: monospace; font-size: 0.72rem; color: var(--ds-text-secondary)">{{ row.createdByUsername || '—' }}</span>
+                </td>
+                <td style="white-space: nowrap">
+                  <span style="font-weight: 800; color: var(--ds-primary); font-size: 0.8rem">{{ row.questionCount }}</span>
+                  <span style="color: var(--ds-text-secondary); font-size: 0.75rem"> / </span>
+                  <span style="font-weight: 700; color: var(--ds-text); font-size: 0.8rem">{{ row.attemptCount }}</span>
                 </td>
               </tr>
             </template>
@@ -135,35 +165,23 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="db-pagination">
-        <p class="db-pagination-info">
-          Trang <span style="font-weight: 700; color: var(--db-text)">{{ page + 1 }}</span> / {{ totalPages }}
+      <div v-if="totalPages > 1" class="tui-pagination">
+        <p class="tui-pagination-info">
+          Trang <strong>{{ page + 1 }}</strong> / {{ totalPages }}
+          &nbsp;&middot;&nbsp;
+          {{ formatNum(totalElements) }} đề thi
         </p>
-        <div class="db-pagination-controls">
-          <button
-            type="button"
-            :disabled="page <= 0 || loading"
-            class="db-btn db-btn--secondary db-btn--sm"
-            @click="goPage(page - 1)"
-          >
-            Truoc
+        <div class="tui-pagination-controls">
+          <button type="button" class="tui-btn tui-btn--secondary tui-btn--sm" :disabled="page <= 0 || loading" @click="goPage(page - 1)">
+            <LucideIcon name="chevron_left" :size="14" />
+            Trước
           </button>
-          <button
-            type="button"
-            :disabled="page >= totalPages - 1 || loading"
-            class="db-btn db-btn--secondary db-btn--sm"
-            @click="goPage(page + 1)"
-          >
+          <button type="button" class="tui-btn tui-btn--secondary tui-btn--sm" :disabled="page >= totalPages - 1 || loading" @click="goPage(page + 1)">
             Sau
+            <LucideIcon name="chevron_right" :size="14" />
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- Error -->
-    <div v-if="errorMsg" class="db-alert db-alert--danger">
-      <LucideIcon name="alert_circle" :size="18" />
-      <span>{{ errorMsg }}</span>
     </div>
 
   </div>
@@ -185,19 +203,22 @@ const size = ref(20)
 const totalElements = ref(0)
 const totalPages = ref(0)
 const togglingId = ref(null)
+const activeFilter = ref('all')
 
-const quickStats = computed(() => {
-  const total = totalElements.value
-  const active = rows.value.filter(r => r.isActive).length
-  const inactive = total - active
-  const totalAttempts = rows.value.reduce((sum, r) => sum + (r.attemptCount || 0), 0)
-  const totalQuestions = rows.value.reduce((sum, r) => sum + (r.questionCount || 0), 0)
-  return [
-    { label: 'Tong de', value: total, icon: 'clipboard_list', color: 'primary' },
-    { label: 'Dang bat', value: active, icon: 'check_circle', color: 'success' },
-    { label: 'Dang tat', value: inactive, icon: 'x_circle', color: 'muted' },
-    { label: 'Tong luot thi', value: totalAttempts, icon: 'users', color: 'warning' }
-  ]
+const activeCount = computed(() => rows.value.filter(r => r.isActive).length)
+const totalQuestions = computed(() => rows.value.reduce((s, r) => s + (r.questionCount || 0), 0))
+const totalAttempts = computed(() => rows.value.reduce((s, r) => s + (r.attemptCount || 0), 0))
+
+const statusTabs = computed(() => [
+  { key: 'all',      label: 'Tất cả',      count: totalElements.value || null },
+  { key: 'active',   label: 'Đang bật',   count: activeCount.value },
+  { key: 'inactive', label: 'Đang tắt',   count: rows.value.length - activeCount.value }
+])
+
+const filteredRows = computed(() => {
+  if (activeFilter.value === 'active') return rows.value.filter(r => r.isActive)
+  if (activeFilter.value === 'inactive') return rows.value.filter(r => !r.isActive)
+  return rows.value
 })
 
 const formatDt = (iso) => {
@@ -224,7 +245,7 @@ const load = async () => {
     page.value = data.page ?? page.value
     size.value = data.size ?? size.value
   } catch (e) {
-    errorMsg.value = e?.payload?.message || e?.message || 'Khong tai duoc danh sach de thi.'
+    errorMsg.value = e?.payload?.message || e?.message || 'Không tải được danh sách đề thi.'
     rows.value = []
   } finally {
     loading.value = false
@@ -243,9 +264,9 @@ const toggleActive = async (row) => {
   try {
     await patchAdminExamActive(row.id, next)
     row.isActive = next
-    toast.success(next ? 'Da bat de thi.' : 'Da tat de thi.')
+    toast.success(next ? 'Đã bật đề thi.' : 'Đã tắt đề thi.')
   } catch (e) {
-    toast.error(e?.payload?.message || e?.message || 'Khong cap nhat duoc.')
+    toast.error(e?.payload?.message || e?.message || 'Không cập nhật được.')
   } finally {
     togglingId.value = null
   }
@@ -253,146 +274,3 @@ const toggleActive = async (row) => {
 
 onMounted(load)
 </script>
-
-<style scoped>
-/* Stats strip */
-.db-stats-strip {
-  animation: fadeInUp 0.4s ease backwards;
-  animation-delay: 0.1s;
-}
-
-.db-stats-strip__inner {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-}
-
-@media (max-width: 640px) {
-  .db-stats-strip__inner { grid-template-columns: repeat(2, 1fr); }
-}
-
-.db-stats-strip__item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  background: rgba(17, 17, 19, 0.85);
-  border: 1px solid var(--db-border-strong);
-  border-radius: var(--db-radius-lg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all var(--db-transition);
-  animation: fadeInUp 0.4s ease backwards;
-}
-
-.db-stats-strip__item:hover {
-  border-color: var(--db-border-accent);
-  transform: translateY(-2px);
-}
-
-.db-stats-strip__icon {
-  flex-shrink: 0;
-}
-
-.db-stats-strip__icon--primary { color: var(--db-primary); }
-.db-stats-strip__icon--success { color: var(--db-success); }
-.db-stats-strip__icon--warning { color: var(--db-warning); }
-.db-stats-strip__icon--muted { color: var(--db-text-muted); }
-
-.db-stats-strip__val {
-  font-family: var(--db-font);
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--db-text);
-  margin: 0;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-
-.db-stats-strip__label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--db-text-muted);
-  margin: 0.2rem 0 0;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-}
-
-/* Table rows */
-.db-table-row {
-  animation: fadeInUp 0.3s ease backwards;
-}
-
-.db-empty-cell {
-  border-bottom: none !important;
-  padding: 0 !important;
-}
-
-/* Exam toggle */
-.db-exam-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.875rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all var(--db-transition);
-  border: 1.5px solid transparent;
-  font-family: var(--db-font);
-}
-
-.db-exam-toggle:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.db-exam-toggle--on {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: var(--db-success);
-}
-
-.db-exam-toggle--on:hover:not(:disabled) {
-  background: rgba(16, 185, 129, 0.2);
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-}
-
-.db-exam-toggle--off {
-  background: var(--db-surface-3);
-  border-color: var(--db-border-strong);
-  color: var(--db-text-muted);
-}
-
-.db-exam-toggle--off:hover:not(:disabled) {
-  background: var(--db-surface-2);
-  color: var(--db-text);
-  transform: translateY(-2px) scale(1.05);
-}
-
-.db-exam-toggle__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.db-exam-toggle__dot--on {
-  background: var(--db-success);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
-  animation: pulseRingSuccess 2.5s infinite;
-}
-
-.db-exam-toggle__dot--off {
-  background: var(--db-text-muted);
-}
-
-.db-exam-toggle__dot--on {
-  background: var(--db-success);
-  animation: pulseRingSuccess 2.5s infinite;
-}
-</style>
