@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from openai import OpenAI
@@ -97,6 +100,7 @@ class AiChatAssistant:
                 messages=cleaned,
                 temperature=0.7,
                 max_tokens=2048,
+                timeout=30.0,
             )
             reply = (response.choices[0].message.content or "").strip()
             usage = {}
@@ -113,6 +117,7 @@ class AiChatAssistant:
                 "usage": usage,
             }
         except Exception as exc:  # pragma: no cover - network/API
+            logger.error("Chat completion failed for model '%s': %s", resolved_model, exc, exc_info=True)
             return {
                 "status": "ERROR",
                 "reply": f"Không thể kết nối tới mô hình '{resolved_model}'. Kiểm tra API key và OPENAI_API_BASE_URL.",

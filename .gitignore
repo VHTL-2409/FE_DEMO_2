@@ -14,6 +14,6 @@ everything-claude-code/
 *.ps1
 # Production env (chứa mật khẩu, secret)
 .env
-
+/demo_2
 # AI multi-key secrets (chứa API key — không commit)
 secrets/

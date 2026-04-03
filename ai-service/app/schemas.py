@@ -33,7 +33,7 @@ class OcrProcessResponse(BaseModel):
 class FrameAnalysisRequest(BaseModel):
     attempt_id: int | None = None
     student_id: int | None = None
-    image_base64: str
+    image_base64: str = Field(max_length=10_000_000)  # ~7.5 MB base64
     captured_at: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -143,10 +143,15 @@ class PerformancePredictionResponse(BaseModel):
     recommendations: list[str] = Field(default_factory=list)
 
 
+class QuestionQualityRequestOption(BaseModel):
+    id: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+
+
 class QuestionQualityRequest(BaseModel):
-    question_content: str
-    options: list[dict[str, str]]
-    correct_answer: str
+    question_content: str = Field(min_length=1)
+    options: list[QuestionQualityRequestOption] = Field(min_length=1)
+    correct_answer: str = Field(min_length=1)
     difficulty: str | None = None
 
 

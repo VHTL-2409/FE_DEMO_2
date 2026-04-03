@@ -1,11 +1,11 @@
 import { toastService } from './toastService'
 import { invalidateSession } from './authService'
+import { REFRESH_BUFFER_MS } from '../constants/auth.js'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082').replace(/\/$/, '')
 
 const getAuthToken = () => localStorage.getItem('auth_token')
 const REFRESH_TOKEN_KEY = 'auth_refresh_token'
-const REFRESH_BUFFER_MS = 5 * 60 * 1000
 let _refreshPromise = null
 
 const parseJsonSafe = async (response) => {
@@ -114,35 +114,30 @@ export const apiRequest = async (path, options = {}) => {
 
   const payload = await parseJsonSafe(response)
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      if (!_refreshPromise) {
-        const refreshed = await silentRefresh()
-        if (refreshed && response.status === 401) {
-          const newToken = localStorage.getItem('auth_token')
-          headers.Authorization = `Bearer ${newToken}`
-          try {
-            response = await fetch(`${API_BASE_URL}${path}`, { ...options, method, headers })
-          } catch {
-            invalidateSession()
-            throw new ApiError('Session expired', 401, null)
-          }
-        } else if (!refreshed) {
-          invalidateSession()
-        }
-      }
-    }
+  if (response.ok) return payload
 
-    if (!response.ok) {
-      const errorMessage = resolveErrorMessage(payload, getDefaultErrorMessage(response.status))
-      if (response.status !== 401) {
-        toastService.error(errorMessage)
+  if (response.status === 401) {
+    const refreshed = await silentRefresh()
+    if (refreshed) {
+      const newToken = localStorage.getItem('auth_token')
+      headers.Authorization = `Bearer ${newToken}`
+      try {
+        const retryResponse = await fetch(`${API_BASE_URL}${path}`, { ...options, method, headers })
+        const retryPayload = await parseJsonSafe(retryResponse)
+        if (retryResponse.ok) return retryPayload
+        response = retryResponse
+        payload = retryPayload
+      } catch (err) {
+        invalidateSession()
+        throw new ApiError('Session expired', 401, null)
       }
-      throw new ApiError(errorMessage, response.status, payload)
     }
+    invalidateSession()
   }
 
-  return payload
+  const errorMessage = resolveErrorMessage(payload, getDefaultErrorMessage(response.status))
+  if (response.status !== 401) toastService.error(errorMessage)
+  throw new ApiError(errorMessage, response.status, payload)
 }
 
 const getDefaultErrorMessage = (status) => {

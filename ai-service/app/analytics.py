@@ -1,10 +1,21 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
 from .openai_client import create_openai_client
+
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_llm_input(text: str | None) -> str:
+    """Remove potential prompt injection patterns from user-supplied text."""
+    if not text:
+        return ""
+    return text.strip()[:10000]
+
 
 SYSTEM_PROMPT_ANALYTICS_VI = """Bạn là chuyên gia phân tích giáo dục và data science.
 Nhiệm vụ: Phân tích dữ liệu học tập và đưa ra dự đoán, khuyến nghị.
@@ -72,12 +83,13 @@ class PerformancePredictor:
             return self._fallback_prediction(history)
 
         try:
+            student_id_str = _sanitize_llm_input(str(student_id)) if student_id else ""
             history_text = "\n".join(
                 f"- Bài thi {i + 1}: {h.get('score', 0)}/{h.get('max_score', 10)}"
                 for i, h in enumerate(history[-10:])
             )
 
-            user_content = f"""Phân tích lịch sử điểm số của học sinh (ID: {student_id}):
+            user_content = f"""Phân tích lịch sử điểm số của học sinh (ID: {student_id_str}):
 
 {history_text}
 
@@ -92,6 +104,7 @@ Hãy dự đoán điểm số tiếp theo và đưa ra khuyến nghị."""
                 ],
                 temperature=0.3,
                 max_tokens=1000,
+                timeout=30.0,
             )
 
             content = response.choices[0].message.content or "{}"
@@ -103,6 +116,7 @@ Hãy dự đoán điểm số tiếp theo và đưa ra khuyến nghị."""
                 **result,
             }
         except Exception as exc:
+            logger.error("Performance prediction LLM call failed: %s", exc, exc_info=True)
             return {
                 "status": "ERROR",
                 **self._fallback_prediction(history),
@@ -138,6 +152,7 @@ Hãy đưa ra khuyến nghị học tập cá nhân hóa."""
                 ],
                 temperature=0.5,
                 max_tokens=800,
+                timeout=30.0,
             )
 
             content = response.choices[0].message.content or "{}"
@@ -148,7 +163,8 @@ Hãy đưa ra khuyến nghị học tập cá nhân hóa."""
                 "status": "DONE",
                 "recommendations": result.get("recommendations", self._fallback_recommendations()["recommendations"]),
             }
-        except Exception:
+        except Exception as exc:
+            logger.error("Study recommendations LLM call failed: %s", exc, exc_info=True)
             return self._fallback_recommendations()
 
     def _extract_json(self, content: str) -> str:
@@ -223,15 +239,15 @@ class QuestionQualityAnalyzer:
             return self._fallback_analysis(question_content, difficulty)
 
         try:
-            options_text = "\n".join(f"- {opt.get('id', '')}: {opt.get('text', '')}" for opt in options)
+            options_text = "\n".join(f"- {opt.id}: {opt.text}" for opt in options)
             difficulty_section = f"\nĐộ khó mong muốn: {difficulty}" if difficulty else ""
 
             user_content = f"""Phân tích chất lượng câu hỏi trắc nghiệm sau:
 
-Câu hỏi: {question_content}
+Câu hỏi: {_sanitize_llm_input(question_content)}
 Các đáp án:
 {options_text}
-Đáp án đúng: {correct_answer}
+Đáp án đúng: {_sanitize_llm_input(correct_answer)}
 {difficulty_section}"""
 
             model = os.environ.get("APP_AI_MODEL", "gpt-4o-mini")
@@ -243,6 +259,7 @@ Các đáp án:
                 ],
                 temperature=0.3,
                 max_tokens=1000,
+                timeout=30.0,
             )
 
             content = response.choices[0].message.content or "{}"
@@ -253,7 +270,8 @@ Các đáp án:
                 "status": "DONE",
                 **result,
             }
-        except Exception:
+        except Exception as exc:
+            logger.error("Question quality analysis LLM call failed: %s", exc, exc_info=True)
             return self._fallback_analysis(question_content, difficulty)
 
     def suggest_improvements(

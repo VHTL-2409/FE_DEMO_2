@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -11,12 +12,20 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Set;
 import java.util.function.Function;
-
-import jakarta.annotation.PostConstruct;
 
 @Service
 public class JwtService {
+
+    private static final Set<String> KNOWN_WEAK_SECRETS = Set.of(
+        "ZGVtby1zZWNyZXQta2V5LWRlbW8tc2VjcmV0LWtleS1kZW1vLXNlY3JldC1rZXk=",
+        "c2VjcmV0LWtleS1kZW1v",
+        "my-secret-key",
+        "changeme",
+        "secret",
+        "password"
+    );
 
     @Value("${security.jwt.secret}")
     private String secret;
@@ -32,14 +41,11 @@ public class JwtService {
 
     @PostConstruct
     private void validateSecretStrength() {
-        byte[] keyBytes;
-        try {
-            keyBytes = Decoders.BASE64.decode(secret);
-        } catch (IllegalArgumentException ex) {
-            keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT secret must be set via SECURITY_JWT_SECRET environment variable");
         }
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes)");
+        if (KNOWN_WEAK_SECRETS.contains(secret)) {
+            throw new IllegalStateException("JWT secret is a known weak placeholder. Please set a strong secret via SECURITY_JWT_SECRET env var");
         }
     }
 
@@ -115,6 +121,14 @@ public class JwtService {
             keyBytes = Decoders.BASE64.decode(secret);
         } catch (IllegalArgumentException ex) {
             keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            try {
+                java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+                keyBytes = digest.digest(keyBytes);
+            } catch (java.security.NoSuchAlgorithmException e) {
+                throw new RuntimeException("SHA-256 not available", e);
+            }
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }

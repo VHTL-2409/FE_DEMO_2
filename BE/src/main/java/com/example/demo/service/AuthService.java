@@ -66,10 +66,10 @@ public class AuthService {
     @Transactional
     public RegisterResponse registerStudent(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ApiException(HttpStatus.CONFLICT, "Username '" + request.getUsername() + "' is already taken.");
+            throw new ApiException(HttpStatus.CONFLICT, "Username is already taken.");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ApiException(HttpStatus.CONFLICT, "Email '" + request.getEmail() + "' is already registered.");
+            throw new ApiException(HttpStatus.CONFLICT, "Email is already registered.");
         }
 
         String rawPassword = request.getPassword();

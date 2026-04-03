@@ -258,10 +258,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { listExams } from '../../services/examService'
-import { useToast } from '../../composables/useToast'
-import { useScrollToTop } from '../../../composables/useScrollToTop'
-import EmptyState from '../../common/EmptyState.vue'
+import { listExams } from '../../../../services/examService'
+import { useToast } from '../../../../composables/useToast'
+import { useScrollToTop } from '../../../../composables/useScrollToTop'
+import EmptyState from '../../../common/EmptyState.vue'
 import ExamDetailModal from './ExamDetailModal.vue'
 
 useScrollToTop()

@@ -13,6 +13,7 @@ import com.example.demo.service.ImportXlsxService;
 import com.example.demo.service.QuestionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -102,6 +103,7 @@ public class QuestionController {
     }
 
     @GetMapping("/api/questions/template")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadTemplate(@RequestParam(required = false) String format) throws IOException {
         boolean wantXlsx = "xlsx".equalsIgnoreCase(format);
         if (wantXlsx) {

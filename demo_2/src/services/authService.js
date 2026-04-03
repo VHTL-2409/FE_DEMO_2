@@ -1,13 +1,12 @@
 import { apiRequest, ApiError, unwrapApiData } from './apiClient'
+import { REFRESH_BUFFER_MS, USER_CACHE_TTL_MS } from '../constants/auth.js'
 
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_USER_KEY = 'auth_user'
 const AUTH_USER_TS_KEY = 'auth_user_ts'
 const REFRESH_TOKEN_KEY = 'auth_refresh_token'
-/** Cache user info for 15 minutes */
-const USER_CACHE_TTL_MS = 15 * 60 * 1000
-/** Refresh token 5 minutes before expiry */
-const REFRESH_BUFFER_MS = 5 * 60 * 1000
+
+export { REFRESH_BUFFER_MS, USER_CACHE_TTL_MS }
 
 const getTokenExpiryMs = () => {
   const raw = localStorage.getItem(AUTH_TOKEN_KEY)

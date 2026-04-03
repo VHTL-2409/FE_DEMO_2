@@ -1,10 +1,21 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
 from .openai_client import create_openai_client
+
+logger = logging.getLogger(__name__)
+
+_MAX_ANSWER_LEN = 10000
+
+
+def _sanitize_llm_input(text: str | None) -> str:
+    if not text:
+        return ""
+    return str(text).strip()[:_MAX_ANSWER_LEN]
 
 SYSTEM_PROMPT_VI = """Bạn là một giáo viên chấm bài luận chuyên nghiệp.
 Nhiệm vụ: Đánh giá bài luận dựa trên câu hỏi và rubric.
@@ -142,13 +153,13 @@ class EssayEvaluator:
     ) -> dict[str, Any]:
         system_prompt = SYSTEM_PROMPT_VI if language == "vi" else SYSTEM_PROMPT_EN
 
-        rubric_section = f"\n\nRubric (tiêu chí chấm điểm):\n{rubric}" if rubric else ""
+        rubric_section = f"\n\nRubric (tiêu chí chấm điểm):\n{rubric}" if rubric and rubric.strip() else ""
         user_content = f"""Hãy đánh giá bài luận sau:
 
-Câu hỏi: {question}
+Câu hỏi: {_sanitize_llm_input(question)}
 
 Bài trả lời của học sinh:
-{answer}
+{_sanitize_llm_input(answer)}
 {rubric_section}
 
 Điểm tối đa: {max_score}"""
@@ -166,6 +177,7 @@ Bài trả lời của học sinh:
                 ],
                 temperature=0.3,
                 max_tokens=2000,
+                timeout=30.0,
             )
 
             content = response.choices[0].message.content or "{}"
@@ -180,6 +192,7 @@ Bài trả lời của học sinh:
                 **result,
             }
         except Exception as exc:
+            logger.error("LLM call failed in EssayEvaluator: %s", exc, exc_info=True)
             return {
                 "status": "ERROR",
                 **self._fallback_evaluation(question, answer, max_score),

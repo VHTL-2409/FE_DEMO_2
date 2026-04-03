@@ -1,0 +1,176 @@
+#!/bin/bash
+# Download Google Fonts → demo/public/fonts/
+# Generate @font-face in demo/src/fonts.css with correct filenames
+# Run from project root: bash demo/download-fonts.sh
+
+FONT_DIR="demo/public/fonts"
+CSS_OUT="demo/src/fonts.css"
+mkdir -p "$FONT_DIR"
+
+echo "============================================"
+echo "  Downloading Google Fonts (self-hosting)"
+echo "============================================"
+
+declare -A FONT_URLS=(
+  ["Be Vietnam Pro"]="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,700&subset=vietnamese&display=swap"
+  ["Manrope"]="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&subset=vietnamese&display=swap"
+  ["IBM Plex Sans"]="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700;800;900&subset=vietnamese&display=swap"
+  ["IBM Plex Mono"]="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+  ["Montserrat"]="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&subset=vietnamese&display=swap"
+  ["JetBrains Mono"]="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+  ["Space Grotesk"]="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+  ["Material Symbols Outlined"]="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+)
+
+declare -A FONTS_MAP
+
+for font_name in "${!FONT_URLS[@]}"; do
+  echo ""
+  echo ">>> Fetching $font_name..."
+  CSS=$(curl -fsL "${FONT_URLS[$font_name]}" 2>/dev/null)
+  if [ -z "$CSS" ]; then
+    echo "  [WARN] Could not fetch CSS for $font_name (network issue)"
+    continue
+  fi
+
+  URLS=$(echo "$CSS" | grep -oP "https://fonts\.gstatic\.com[^)]+\.woff2" | sort -u)
+
+  if [ -z "$URLS" ]; then
+    echo "  [WARN] No woff2 URLs found for $font_name"
+    continue
+  fi
+
+  echo "$URLS" | while read url; do
+    fname=$(basename "$url")
+    outpath="$FONT_DIR/$fname"
+    if [ -f "$outpath" ]; then
+      echo "  Already: $fname"
+    else
+      echo -n "  Downloading: $fname ... "
+      curl -fsL "$url" -o "$outpath" 2>/dev/null
+      if [ $? -eq 0 ] && [ -s "$outpath" ]; then
+        echo "OK ($(du -sh "$outpath" | cut -f1))"
+      else
+        echo "FAILED"
+        rm -f "$outpath"
+      fi
+    fi
+  done
+done
+
+echo ""
+echo "=== Font files downloaded ==="
+ls -lh "$FONT_DIR/" 2>/dev/null
+FONT_COUNT=$(ls "$FONT_DIR" 2>/dev/null | wc -l)
+echo "Total: $FONT_COUNT files"
+echo ""
+
+# Build associative array: filename → font-family,weight,style
+declare -A FONT_DEFS
+
+add_font() {
+  local fname="$1"
+  local family="$2"
+  local weight="$3"
+  local style="$4"
+  FONT_DEFS["$fname"]="$family|$weight|$style"
+}
+
+for fname in "$FONT_DIR"/*.woff2; do
+  [ -f "$fname" ] || continue
+  bname=$(basename "$fname")
+
+  case "$bname" in
+    *bevietnampro*|*Bqs6Pzel*|*Bqs5Pzel*|*Bqs8Pzel*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      if echo "$bname" | grep -qP '(?:italic|it-|-i)'; then style="italic"; else style="normal"; fi
+      add_font "$bname" "Be Vietnam Pro" "$weight" "$style"
+      ;;
+    *Manrope*|*Manrope-*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      style="normal"
+      add_font "$bname" "Manrope" "$weight" "$style"
+      ;;
+    *IBMPlexSans*|*IBMPlexSans-*|*IBMPlex-Sans*|*IBMPlexSans2*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      style="normal"
+      add_font "$bname" "IBM Plex Sans" "$weight" "$style"
+      ;;
+    *IBMPlexMono*|*IBMPlexMono-*|*IBMPlex-Mono*|*IBMPlexMono2*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      style="normal"
+      add_font "$bname" "IBM Plex Mono" "$weight" "$style"
+      ;;
+    *Montserrat*|*Montserrat-*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      if echo "$bname" | grep -qP '(?:italic|it-|-i)'; then style="italic"; else style="normal"; fi
+      add_font "$bname" "Montserrat" "$weight" "$style"
+      ;;
+    *JetBrainsMono*|*JetBrains-Mono*|*JetBrainsMono2*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      style="normal"
+      add_font "$bname" "JetBrains Mono" "$weight" "$style"
+      ;;
+    *SpaceGrotesk*|*SpaceGrotesk-*|*Space-Grotesk*)
+      weight=$(echo "$bname" | grep -oP '(?:wght@)?(\d+)' | head -1)
+      style="normal"
+      add_font "$bname" "Space Grotesk" "$weight" "$style"
+      ;;
+    *material*|*Material*|*MaterialSymbols*|*material-symbols*)
+      add_font "$bname" "Material Symbols Outlined" "100 700" "normal"
+      ;;
+    *)
+      echo "  [SKIP] Unknown font: $bname"
+      ;;
+  esac
+done
+
+# Generate fonts.css
+echo "Generating $CSS_OUT ..."
+
+cat > "$CSS_OUT" << 'HEADER'
+/* ================================================================
+   Self-hosted Google Fonts — no CDN dependency
+   Generated by demo/download-fonts.sh
+   ================================================================ */
+HEADER
+
+for fname in "${!FONT_DEFS[@]}"; do
+  IFS='|' read -r family weight style <<< "${FONT_DEFS[$fname]}"
+  if [ "$family" = "Material Symbols Outlined" ]; then
+    cat >> "$CSS_OUT" << EOF
+
+@font-face {
+  font-family: '$family';
+  font-style: $style;
+  font-weight: $weight;
+  font-display: block;
+  src: url('/fonts/$fname') format('woff2');
+}
+EOF
+  else
+    cat >> "$CSS_OUT" << EOF
+
+@font-face {
+  font-family: '$family';
+  font-style: $style;
+  font-weight: $weight;
+  font-display: swap;
+  src: url('/fonts/$fname') format('woff2');
+}
+EOF
+  fi
+done
+
+echo "  Done: $CSS_OUT ($(wc -l < "$CSS_OUT") lines)"
+
+echo ""
+echo "============================================"
+echo "  Setup complete!"
+echo "============================================"
+echo ""
+echo "Next steps:"
+echo "  1. bash demo/download-fonts.sh       # Download fonts + generate CSS"
+echo "  2. npm run build --prefix demo        # Rebuild (fonts.css auto-bundled)"
+echo "  3. Copy demo/dist/ to VPS (fonts in dist/fonts/)"
+echo ""

@@ -1,0 +1,1 @@
+function i(n){if(!n)return null;if(n instanceof Date)return isNaN(n.getTime())?null:n;const t=String(n).trim();if(!t)return null;if(t.includes("+")||t.endsWith("Z")){const r=new Date(t);return Number.isNaN(r.getTime())?null:r}const e=new Date(t+"+07:00");return Number.isNaN(e.getTime())?null:e}export{i as p};

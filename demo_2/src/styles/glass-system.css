@@ -2171,3 +2171,34 @@ html[data-demo2='1'] select:not([multiple]):not([size]):focus-visible {
   border-color: var(--ds-primary);
   box-shadow: 0 0 0 4px var(--ds-primary-ring), 0 10px 24px rgba(139, 75, 0, 0.14);
 }
+
+/* =============================================
+   MISSING ANIMATION CLASSES
+   Used in templates but not yet defined in any CSS file.
+   These were discovered during animation audit.
+   ============================================= */
+
+/* animate-fade-up — matches teacher-ui.css / animation.css style */
+@keyframes animateFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: animateFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-up-delay {
+  animation: animateFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+/* glass-card — matches demo/src/animation.css style */
+.glass-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  box-shadow: 0 18px 36px -30px rgb(15 23 42 / 0.18);
+}
+.glass-card--dark {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.12);
+}

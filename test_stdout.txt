@@ -1,0 +1,43 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.3)
+
+2026-04-03 18:49:24.487 [main] INFO  com.example.demo.DemoApplication - Starting DemoApplication v0.0.1-SNAPSHOT using Java 17.0.13 with PID 12600 (C:\Users\Administrator\Desktop\FE_DEMO_2\BE\target\demo-0.0.1-SNAPSHOT.jar started by Administrator in C:\Users\Administrator\Desktop\FE_DEMO_2\BE)
+2026-04-03 18:49:24.491 [main] DEBUG com.example.demo.DemoApplication - Running with Spring Boot v4.0.3, Spring v7.0.5
+2026-04-03 18:49:24.493 [main] INFO  com.example.demo.DemoApplication - The following 1 profile is active: "gmail"
+2026-04-03 18:49:25.599 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-03 18:49:25.717 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 102 ms. Found 22 JPA repository interfaces.
+2026-04-03 18:49:27.032 [main] INFO  o.s.boot.tomcat.TomcatWebServer - Tomcat initialized with port 8082 (http)
+2026-04-03 18:49:27.060 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-04-03 18:49:27.061 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/11.0.18]
+2026-04-03 18:49:27.115 [main] INFO  o.s.b.w.c.s.WebApplicationContextInitializer - Root WebApplicationContext: initialization completed in 2564 ms
+2026-04-03 18:49:27.591 [main] INFO  org.hibernate.orm.jpa - HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-04-03 18:49:27.684 [main] INFO  org.hibernate.orm.core - HHH000001: Hibernate ORM core version 7.2.4.Final
+2026-04-03 18:49:28.588 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-03 18:49:28.644 [main] INFO  com.zaxxer.hikari.HikariDataSource - ExamHikariPool - Starting...
+2026-04-03 18:49:28.909 [main] INFO  com.zaxxer.hikari.pool.HikariPool - ExamHikariPool - Added connection org.postgresql.jdbc.PgConnection@548f4f60
+2026-04-03 18:49:28.911 [main] INFO  com.zaxxer.hikari.HikariDataSource - ExamHikariPool - Start completed.
+2026-04-03 18:49:28.998 [main] INFO  o.hibernate.orm.connections.pooling - HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5432/datn]
+	Database driver: PostgreSQL JDBC Driver
+	Database dialect: PostgreSQLDialect
+	Database version: 18.3
+	Default catalog/schema: datn/public
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-04-03 18:49:30.819 [main] INFO  org.hibernate.orm.core - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-03 18:49:30.823 [main] INFO  org.hibernate.orm.jdbc.batch - HHH100501: Automatic JDBC statement batching enabled (maximum batch size 25)
+2026-04-03 18:49:30.910 [main] WARN  org.hibernate.orm.jdbc.warn - HHH000247: ErrorCode: 0, SQLState: 00000
+2026-04-03 18:49:30.910 [main] WARN  org.hibernate.orm.jdbc.warn - constraint "uk_monitoring_event_attempt_type_details" of relation "monitoring_events" does not exist, skipping
+2026-04-03 18:49:30.936 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-03 18:49:31.028 [main] INFO  o.s.d.j.r.q.QueryEnhancerFactories - Hibernate is in classpath; If applicable, HQL parser will be used.

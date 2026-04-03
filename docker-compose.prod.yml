@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: datn
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d datn"]
       interval: 10s
@@ -29,6 +29,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - app-network
 
   be:
     build:
@@ -38,11 +40,11 @@ services:
       TZ: Asia/Ho_Chi_Minh
       # JVM: heap ~70% của mem_limit container (đổi trong .env: JAVA_TOOL_OPTIONS=...)
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseStringDeduplication"
-      HIKARI_MAX_POOL: ${HIKARI_MAX_POOL:-6}
+      HIKARI_MAX_POOL: ${HIKARI_MAX_POOL:-12}
       HIKARI_MIN_IDLE: ${HIKARI_MIN_IDLE:-1}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
@@ -62,12 +64,14 @@ services:
       db:
         condition: service_healthy
       ai-service:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${DOCKER_BE_PUBLISH:-8082}:8082"
     # Trần RAM cho container BE — JVM + native; chỉnh 512m–768m nếu VPS rất nhỏ
     mem_limit: ${BE_MEM_LIMIT:-768m}
     restart: unless-stopped
+    networks:
+      - app-network
 
   ai-service:
     build:
@@ -92,17 +96,33 @@ services:
       start_period: 20s
     restart: unless-stopped
     mem_limit: ${AI_SERVICE_MEM_LIMIT:-512m}
+    networks:
+      - app-network
 
   fe:
     build:
       context: ./demo
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     ports:
       - "${DOCKER_FE_PUBLISH:-8080}:80"
     depends_on:
-      - be
+      be:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
 volumes:
   pgdata:

@@ -1,0 +1,190 @@
+/* ================================================================
+   Force-include animation & utility classes for production build.
+   Vite/Tailwind tree-shaking removes "unused" selectors even when
+   they are applied dynamically via :class bindings.
+   Import this file in main.js so these classes are NEVER purged.
+   ================================================================ */
+
+/* --- GPU-accelerated base for all animations --- */
+.animate-fade-up,
+.animate-fade-up-delay,
+.animate-fade-up-slow,
+.animate-fade-up-xslow {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Tailwind v4 core animation keyframes --- */
+@keyframes animate-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes animate-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Custom keyframes --- */
+@keyframes teacherFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes teacherFloatSlow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%       { transform: translate3d(0, -10px, 0); }
+}
+@keyframes teacherFloatDelay {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%       { transform: translate3d(0, 8px, 0); }
+}
+@keyframes pulseRing {
+  0%   { transform: scale(0.95); opacity: 1; }
+  50%  { transform: scale(1.05); opacity: 0.7; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalContentIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes fadeScale {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes checkPop {
+  0%   { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Fade Up --- */
+.animate-fade-up          { animation: teacherFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-up-delay    { animation: teacherFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
+.animate-fade-up-slow     { animation: teacherFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
+.animate-fade-up-xslow    { animation: teacherFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
+
+/* --- Float --- */
+.animate-float-slow       { animation: teacherFloatSlow 8s ease-in-out infinite; }
+.animate-float-delay      { animation: teacherFloatDelay 9s ease-in-out infinite; }
+.animate-float-fast       { animation: teacherFloatSlow 5s ease-in-out infinite; }
+
+/* --- Pulse ring --- */
+.animate-pulse-ring       { animation: pulseRing 2s ease-in-out infinite; }
+
+/* --- Modal --- */
+.animate-modal-overlay    { animation: modalOverlayIn 0.2s ease-out; }
+.animate-modal-content    { animation: modalContentIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* --- Shimmer / skeleton --- */
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* --- Spin --- */
+.animate-spin-slow { animation: animate-spin 3s linear infinite; }
+
+/* --- Glass card --- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  box-shadow: 0 18px 36px -30px rgb(15 23 42 / 0.18);
+}
+.glass-card--dark {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+/* --- Gradient cards --- */
+.gradient-card-primary {
+  background: linear-gradient(135deg, rgb(79 70 229 / 0.12) 0%, rgb(238 242 255) 100%);
+}
+.gradient-card-alert {
+  background: linear-gradient(135deg, rgb(254 242 242) 0%, rgb(255 247 237) 100%);
+}
+
+/* --- Card interactive --- */
+.card-interactive {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px -24px rgb(79 70 229 / 0.18);
+}
+
+/* --- SiteIntroduction Landing Page Keyframes --- */
+@keyframes eduFadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes eduFadeLeft {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* --- SiteIntroduction Landing Page Animations --- */
+.edu-hero-section {
+  animation: eduFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+.edu-hero-visual {
+  animation: eduFadeLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+.edu-animate-fade-up      { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.edu-animate-fade-up-d1   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both; }
+.edu-animate-fade-up-d2   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both; }
+.edu-animate-fade-up-d3   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both; }
+.edu-animate-fade-up-d4   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both; }
+.edu-animate-fade-up-d5   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both; }
+.edu-animate-fade-up-d6   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both; }
+.edu-animate-fade-up-d7   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both; }
+.edu-animate-fade-up-d8   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both; }
+
+/* Reduced motion for landing page */
+@media (prefers-reduced-motion: reduce) {
+  .edu-animate-fade-up,
+  .edu-animate-fade-up-d1,
+  .edu-animate-fade-up-d2,
+  .edu-animate-fade-up-d3,
+  .edu-animate-fade-up-d4,
+  .edu-animate-fade-up-d5,
+  .edu-animate-fade-up-d6,
+  .edu-animate-fade-up-d7,
+  .edu-animate-fade-up-d8,
+  .edu-hero-section,
+  .edu-hero-visual {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Reduced motion: disable all animations --- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-up-delay,
+  .animate-fade-up-slow,
+  .animate-fade-up-xslow,
+  .animate-float-slow,
+  .animate-float-delay,
+  .animate-float-fast,
+  .animate-pulse-ring,
+  .animate-modal-overlay,
+  .animate-modal-content,
+  .animate-shimmer,
+  .animate-spin-slow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

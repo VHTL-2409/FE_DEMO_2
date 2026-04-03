@@ -487,6 +487,7 @@ const isCheckingDevices = ref(false)
 const mediaStreamRef = ref(null)
 const cameraPreviewRef = ref(null)
 let deviceStatusInterval = null
+let questionList = []
 let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
@@ -533,6 +534,7 @@ const deserializeAnswerValue = (question, value) => {
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
+const devicesReady = computed(() => cameraReady.value && micReady.value)
 const answeredCount = computed(() => Object.values(answers.value).filter(hasAnswerValue).length)
 const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
 const markedCount = computed(() => Object.values(markedQuestions.value).filter(Boolean).length)
@@ -799,7 +801,7 @@ const handleFullscreenChange = () => {
   pendingViolationByType.value = { ...pendingViolationByType.value, EXIT_FULLSCREEN: true }; showFullscreenPrompt.value = !isPracticeExam.value; void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình')
 }
 
-const resetIdleTimer = () => {
+const onIdleActivity = () => {
   if (idleTimer) window.clearTimeout(idleTimer)
   idleTimer = window.setTimeout(() => { void reportViolation('IDLE_TIME', `Idle ${Math.round(IDLE_THRESHOLD_MS / 60000)} phút`, LONG_VIOLATION_COOLDOWN_MS) }, IDLE_THRESHOLD_MS)
 }
@@ -964,7 +966,7 @@ onMounted(async () => {
     if (!examId.value || !attemptId.value) { showErrorPopup.value = true; errorPopupMessage.value = 'Thiếu thông tin bài thi. Vui lòng quay lại và thử lại.'; examLoadFailed.value = true; examSurfaceReady.value = true; return }
 
     const [{ getExamDetail }] = await Promise.all([import('../../services/examService')])
-    const [questionList, draftData, examDetail] = await Promise.all([listExamQuestions(examId.value), getDraftAnswers(attemptId.value), getExamDetail(examId.value)])
+    ;[questionList, draftData, examDetail] = await Promise.all([listExamQuestions(examId.value), getDraftAnswers(attemptId.value), getExamDetail(examId.value)])
 
     examConfig.value = {
       monitorTabSwitch: examDetail?.monitorTabSwitch !== false, monitorBlur: examDetail?.monitorBlur !== false,
@@ -1021,7 +1023,7 @@ onMounted(async () => {
       await connectProctorRealtime()
       startHeartbeat(); void syncHeartbeat()
       attemptStatusTimer = window.setInterval(() => { syncAttemptStatus(); enforceDeviceAccess() }, 5000)
-      if (examConfig.value.monitorIdleTime !== false) { resetIdleTimer(); window.addEventListener('mousemove', resetIdleTimer); window.addEventListener('keydown', resetIdleTimer); window.addEventListener('scroll', resetIdleTimer) }
+      if (examConfig.value.monitorIdleTime !== false) { onIdleActivity(); window.addEventListener('mousemove', onIdleActivity); window.addEventListener('keydown', onIdleActivity); window.addEventListener('scroll', onIdleActivity) }
       if (examConfig.value.monitorDevtools !== false) scheduleDevToolsCheck()
       if (examConfig.value.monitorTabSwitch !== false) document.addEventListener('visibilitychange', handleVisibilityChange)
       if (examConfig.value.monitorBlur !== false) { window.addEventListener('blur', handleWindowBlur); window.addEventListener('focus', handleWindowFocus) }
@@ -1068,7 +1070,7 @@ onUnmounted(() => {
     if (examConfig.value.monitorExitFullscreen !== false) document.removeEventListener('fullscreenchange', handleFullscreenChange)
     if (examConfig.value.monitorCopyPaste !== false) { document.removeEventListener('copy', handleCopyPaste); document.removeEventListener('paste', handleCopyPaste) }
     if (examConfig.value.monitorPrintScreen !== false) document.removeEventListener('keydown', handlePrintScreen)
-    if (examConfig.value.monitorIdleTime !== false) { window.removeEventListener('mousemove', resetIdleTimer); window.removeEventListener('keydown', resetIdleTimer); window.removeEventListener('scroll', resetIdleTimer) }
+    if (examConfig.value.monitorIdleTime !== false) { window.removeEventListener('mousemove', onIdleActivity); window.removeEventListener('keydown', onIdleActivity); window.removeEventListener('scroll', onIdleActivity) }
   }
 })
 </script>

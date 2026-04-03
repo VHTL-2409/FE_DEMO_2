@@ -5,14 +5,14 @@
 # Bật site:  sudo ln -sf /etc/nginx/sites-available/test1.nexquoteapp.com /etc/nginx/sites-enabled/
 # Kiểm tra: sudo nginx -t && sudo systemctl reload nginx
 #
-# Docker (trong .env): phải bind localhost để Nginx host chiếm 444/81:
+# Docker (trong .env): phải bind localhost để Nginx hostchiếm 444/81:
 #   DOCKER_FE_PUBLISH=127.0.0.1:8080
 #   DOCKER_BE_PUBLISH=127.0.0.1:8082
 #
 # Firewall: mở TCP 81 và 444 (và 80 nếu Certbot cần).
 # Trình duyệt: https://test1.nexquoteapp.com:444  (cổng 444 bắt buộc ghi rõ trừ khi bạn thêm 443).
 #
-# Chứng chỉ Let’s Encrypt (ví dụ — chỉnh đường dẫn theo certbot trên máy bạn):
+# Chứng chỉ Let's Encrypt (ví dụ — chỉnh đường dẫn theo certbot trên máy bạn):
 #   sudo certbot certonly --webroot -w /var/www/html -d test1.nexquoteapp.com
 #   hoặc certbot nginx (nếu đã có server listen tạm phù hợp)
 # =============================================================================
@@ -39,6 +39,13 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'" always;
+
     # Giao diện (container fe → Nginx :80 nội bộ)
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -52,6 +59,7 @@ server {
     }
 
     location /api {
+        limit_req zone=api_limit burst=50 nodelay;
         proxy_pass http://127.0.0.1:8082;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -73,3 +81,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# Rate limiting — must be in http {} context
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;

@@ -19,6 +19,9 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     List<ExamAttempt> findByExam(Exam exam);
 
+    @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam = :exam")
+    List<ExamAttempt> findByExamWithStudent(@Param("exam") Exam exam);
+
     @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam = :exam AND ea.startedAt >= :fromInclusive AND ea.startedAt <= :toInclusive ORDER BY ea.startedAt DESC")
     List<ExamAttempt> findByExamAndStartedAtBetween(
             @Param("exam") Exam exam,

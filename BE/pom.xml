@@ -53,6 +53,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
+		<!-- Load .env file for local development secrets -->
+		<dependency>
+			<groupId>me.paulschwarz</groupId>
+			<artifactId>spring-dotenv</artifactId>
+			<version>4.0.0</version>
+		</dependency>
 		<!-- Jackson 2 (để tương thích code dùng com.fasterxml.jackson.*) -->
 		<!-- Jackson 3 (tools.jackson.*) được spring-boot-starter-jackson:4.0.3 cung cấp -->
 		<!-- Cả hai cùng tồn tại trong classpath: Jackson 2 cho code hiện tại, Jackson 3 cho Spring Boot 4 -->

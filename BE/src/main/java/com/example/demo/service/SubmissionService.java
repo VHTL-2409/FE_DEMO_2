@@ -304,9 +304,12 @@ public class SubmissionService {
     /**
      * Giáo viên / admin xem danh sách lượt làm theo đề — cùng lý do {@link #listAttemptSummariesForStudent}.
      */
+    private static final int LIST_EXAM_ATTEMPTS_MAX = 10_000;
+
     @Transactional(readOnly = true)
     public List<AttemptSummaryResponse> listAttemptSummariesForExam(Exam exam) {
-        return listByExam(exam).stream()
+        return examAttemptRepository.findByExamWithStudent(exam).stream()
+                .limit(LIST_EXAM_ATTEMPTS_MAX)
                 .map(this::toSummary)
                 .toList();
     }
@@ -315,6 +318,7 @@ public class SubmissionService {
      * Danh sách attempts của đợt thi hiện tại (theo exam.startTime, exam.endTime).
      * Khi tạo đợt thi mới, chỉ lấy attempts trong khoảng thời gian đó, không lấy dữ liệu cũ.
      */
+    @Transactional(readOnly = true)
     public List<ExamAttempt> listByExam(Exam exam) {
         if (exam.getStartTime() != null && exam.getEndTime() != null) {
             return examAttemptRepository.findByExamAndStartedAtBetween(
@@ -409,9 +413,12 @@ public class SubmissionService {
                 .build();
     }
 
+    private static final int EXPORT_MAX_RECORDS = 10_000;
+
     @Transactional(readOnly = true)
     public byte[] exportExamAttemptsCsv(Exam exam) {
-        List<ExamAttempt> attempts = listByExam(exam);
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamWithStudent(exam)
+                .stream().limit(EXPORT_MAX_RECORDS).toList();
         StringBuilder csv = new StringBuilder();
         csv.append("attemptId,examId,student,status,score,riskScore,suspicious,startedAt,submittedAt,deadlineAt,remainingSeconds\n");
 

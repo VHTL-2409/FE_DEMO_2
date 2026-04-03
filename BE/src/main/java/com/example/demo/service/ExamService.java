@@ -606,7 +606,7 @@ public class ExamService {
     @Transactional(readOnly = true)
     public List<WaitingStudentResponse> getWaitingStudents(Long examId, User actor) {
         Exam exam = requireManageableExam(examId, actor);
-        List<ExamAttempt> attempts = examAttemptRepository.findByExam(exam);
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamWithStudent(exam);
 
         List<WaitingStudentResponse> waitingStudents = new ArrayList<>();
         for (ExamAttempt attempt : attempts) {

@@ -54,7 +54,7 @@ export const uploadImportJob = async (file, { examId } = {}) => {
   if (examId != null) {
     formData.append('examId', String(examId))
   }
-  const payload = await apiRequest('/api/v1/import/upload', {
+  const payload = await apiRequest('/api/import/upload', {
     method: 'POST',
     body: formData
   })
@@ -66,7 +66,7 @@ export const uploadImportJob = async (file, { examId } = {}) => {
  * @param {string} jobId
  */
 export const getImportJobStatus = async (jobId) => {
-  const payload = await apiRequest(`/api/v1/import/status/${jobId}`)
+  const payload = await apiRequest(`/api/import/status/${jobId}`)
   return unwrapApiData(payload)
 }
 
@@ -75,7 +75,7 @@ export const getImportJobStatus = async (jobId) => {
  * @param {string} jobId
  */
 export const getImportJobPreview = async (jobId) => {
-  const payload = await apiRequest(`/api/v1/import/preview/${jobId}`)
+  const payload = await apiRequest(`/api/import/preview/${jobId}`)
   return unwrapApiData(payload)
 }
 
@@ -85,7 +85,7 @@ export const getImportJobPreview = async (jobId) => {
  * @param {Object} reviewPayload — { questions: [...], options: {...} }
  */
 export const reviewImportJob = async (jobId, reviewPayload) => {
-  const payload = await apiRequest(`/api/v1/import/review/${jobId}`, {
+  const payload = await apiRequest(`/api/import/review/${jobId}`, {
     method: 'PUT',
     body: JSON.stringify(reviewPayload)
   })
@@ -99,7 +99,7 @@ export const reviewImportJob = async (jobId, reviewPayload) => {
  */
 export const confirmImportJob = async (jobId, { examId } = {}) => {
   const query = examId != null ? `?examId=${encodeURIComponent(examId)}` : ''
-  const payload = await apiRequest(`/api/v1/import/confirm/${jobId}${query}`, {
+  const payload = await apiRequest(`/api/import/confirm/${jobId}${query}`, {
     method: 'POST'
   })
   return unwrapApiData(payload)
@@ -110,7 +110,7 @@ export const confirmImportJob = async (jobId, { examId } = {}) => {
  * @param {string} jobId
  */
 export const cancelImportJob = async (jobId) => {
-  const payload = await apiRequest(`/api/v1/import/cancel/${jobId}`, {
+  const payload = await apiRequest(`/api/import/cancel/${jobId}`, {
     method: 'DELETE'
   })
   return unwrapApiData(payload)
@@ -125,7 +125,7 @@ export const cancelImportJob = async (jobId) => {
  */
 export const importQuestionsFromAzota = async (questions, { examId } = {}) => {
   const query = examId != null ? `?examId=${encodeURIComponent(examId)}` : ''
-  const payload = await apiRequest(`/api/v1/import/from-azota${query}`, {
+  const payload = await apiRequest(`/api/import/from-azota${query}`, {
     method: 'POST',
     body: JSON.stringify({ questions })
   })
@@ -153,6 +153,24 @@ export const importQuestionsFromFile = async (examId, file, options = {}) => {
     body: formData
   })
   return unwrapApiData(payload)
+}
+
+/**
+ * Import từ file Excel (.xlsx) — wrapper quanh importQuestionsFromFile
+ * @param {number} examId
+ * @param {File} file
+ * @param {{ questionCount?: number | string }} options
+ */
+export const importQuestionsFromXlsx = async (examId, file, options = {}) => {
+  validateImportFile(file)
+  const allowedTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel'
+  ]
+  if (!allowedTypes.includes(file.type) && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    throw new Error('Chỉ hỗ trợ file Excel (.xlsx, .xls)')
+  }
+  return importQuestionsFromFile(examId, file, options)
 }
 
 /**

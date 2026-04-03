@@ -16,7 +16,7 @@ export const sendMonitoringEvent = async (attemptId, eventType, details = '') =>
 }
 
 export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
-  const payload = await apiRequest(`/api/v1/proctor/sessions/${attemptId}/events/batch`, {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events/batch`, {
     method: 'POST',
     body: JSON.stringify(batchPayload)
   })
@@ -24,7 +24,7 @@ export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
 }
 
 export const sendMonitoringHeartbeat = async (attemptId, heartbeatPayload) => {
-  const payload = await apiRequest(`/api/v1/proctor/sessions/${attemptId}/heartbeat`, {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/heartbeat`, {
     method: 'POST',
     body: JSON.stringify(heartbeatPayload)
   })
@@ -32,7 +32,7 @@ export const sendMonitoringHeartbeat = async (attemptId, heartbeatPayload) => {
 }
 
 export const fetchAttemptRisk = async (attemptId) => {
-  const payload = await apiRequest(`/api/v1/proctor/sessions/${attemptId}/risk`)
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/risk`)
   return unwrapApiData(payload)
 }
 

@@ -84,7 +84,7 @@ import { ref, watch, nextTick } from 'vue'
 import { joinClassByCode } from '../../../services/classService'
 import { ApiError } from '../../../services/apiClient'
 import { useToast } from '../../../composables/useToast'
-import LucideIcon from '../../../common/LucideIcon.vue'
+import LucideIcon from '../../common/LucideIcon.vue'
 
 const props = defineProps({
   modelValue: {

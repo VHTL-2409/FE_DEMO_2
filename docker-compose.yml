@@ -4,23 +4,22 @@ services:
     environment:
       POSTGRES_DB: datn
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d datn"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
+    restart: unless-stopped
+    networks:
+      - app-network
 
   be:
     build:
@@ -29,9 +28,8 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 123
-      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:-ZGVtby1zZWNyZXQta2V5LWRlbW8tc2VjcmV0LWtleS1kZW1vLXNlY3JldC1rZXk=}
-      # FE dev (demo :5173, demo_2 :5174) + preview; thêm 127.0.0.1 vì một số trình duyệt dùng host đó
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET}
       APP_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174,http://localhost:8080,http://127.0.0.1:8080
       APP_AI_SERVICE_ENABLED: "true"
       APP_AI_SERVICE_BASE_URL: http://ai-service:8090
@@ -39,21 +37,20 @@ services:
       db:
         condition: service_healthy
       ai-service:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8082:8082"
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
+    mem_limit: 1g
+    mem_reservation: 512m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    restart: unless-stopped
+    networks:
+      - app-network
 
   ai-service:
     build:
@@ -63,48 +60,46 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       APP_AI_API_KEY: ${APP_AI_API_KEY:-${OPENAI_API_KEY:-}}
       APP_AI_MODEL: ${APP_AI_MODEL:-gpt-4o-mini}
-      # OpenAI 兼容代理：例如 https://api.key4u.shop/v1（将 api.openai.com 换为网关地址）
       OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-}
-      # Multi-key: JSON file {"model-id": "api-key", ...} (mount in volumes below)
       APP_AI_MODEL_KEYS_FILE: ${APP_AI_MODEL_KEYS_FILE:-}
-      # Tùy chọn: inline JSON nếu không dùng file (ưu tiên file)
       APP_AI_MODEL_KEYS_JSON: ${APP_AI_MODEL_KEYS_JSON:-}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
     volumes:
-      # Mount secrets directory → /run/secrets (đặt quyền 600)
       - ./secrets:/run/secrets:ro
     ports:
       - "8090:8090"
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+    restart: unless-stopped
+    networks:
+      - app-network
 
   fe:
     build:
       context: ./demo
       dockerfile: Dockerfile
       args:
-        # Bắt buộc lúc build (Vite embed URL API vào bundle)
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8082}
     ports:
       - "8080:80"
     depends_on:
-      - be
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 64M
+      be:
+        condition: service_healthy
+    mem_limit: 128m
+    mem_reservation: 64m
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   pgdata:
-

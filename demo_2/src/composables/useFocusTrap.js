@@ -6,6 +6,7 @@ import { watch, onUnmounted, nextTick } from 'vue'
  */
 export function useFocusTrap(containerRef, isActive) {
   let previousActive = null
+  let isTrapActive = false
 
   const getFocusable = (root) => {
     if (!root) return []
@@ -37,19 +38,23 @@ export function useFocusTrap(containerRef, isActive) {
 
   const activate = () => {
     previousActive = document.activeElement
+    document.addEventListener('keydown', handleKeydown)
     nextTick(() => {
-      nextTick(() => {
+      queueMicrotask(() => {
         const nodes = getFocusable(containerRef.value)
         if (nodes.length) {
           nodes[0].focus()
         }
       })
     })
-    document.addEventListener('keydown', handleKeydown)
+    isTrapActive = true
   }
 
   const deactivate = () => {
-    document.removeEventListener('keydown', handleKeydown)
+    if (isTrapActive) {
+      document.removeEventListener('keydown', handleKeydown)
+    }
+    isTrapActive = false
     if (previousActive && typeof previousActive.focus === 'function') {
       try {
         previousActive.focus()
@@ -70,7 +75,9 @@ export function useFocusTrap(containerRef, isActive) {
   )
 
   onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeydown)
+    if (isTrapActive) {
+      document.removeEventListener('keydown', handleKeydown)
+    }
   })
 
   return { activate, deactivate }

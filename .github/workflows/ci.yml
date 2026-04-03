@@ -42,9 +42,9 @@ jobs:
       - name: Install
         run: npm ci
       - name: Typecheck
-        run: npm run typecheck || true
+        run: npm run typecheck
       - name: Run Tests
-        run: npm run test || true
+        run: npm run test
       - name: Build
         run: npm run build
 

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 
 /**
  * Debounce lưu nháp server + localStorage đồng bộ ngay.
@@ -74,6 +74,12 @@ export function useAutoSaveDraft({ getAnswers, getAttemptId, saveToServer, debou
     hasPendingChanges.value = true
     await flushServer()
   }
+
+  onUnmounted(() => {
+    if (debounceTimer) {
+      window.clearTimeout(debounceTimer)
+    }
+  })
 
   /**
    * Merge local backup lên object đáp án từ server (local thắng khi có key server thiếu).

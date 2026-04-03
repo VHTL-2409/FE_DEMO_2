@@ -1,10 +1,22 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
 from .openai_client import create_openai_client
+
+logger = logging.getLogger(__name__)
+
+_MAX_INPUT_LEN = 10000
+
+
+def _sanitize_llm_input(text: str | None) -> str:
+    """Strip and limit length to prevent resource exhaustion and reduce prompt injection risk."""
+    if not text:
+        return ""
+    return str(text).strip()[:_MAX_INPUT_LEN]
 
 SYSTEM_PROMPT_VI = """Bạn là một giáo viên chuyên nghiệp, chuyên tạo câu hỏi trắc nghiệm chất lượng cao.
 Nhiệm vụ: Tạo câu hỏi trắc nghiệm từ chủ đề hoặc nội dung được cung cấp.
@@ -82,7 +94,7 @@ class QuestionGenerator:
         language: str = "vi",
     ) -> dict[str, Any]:
         system_prompt = SYSTEM_PROMPT_VI if language == "vi" else SYSTEM_PROMPT_EN
-        user_content = f"Tạo {count} câu hỏi trắc nghiệm về chủ đề: {topic}\nĐộ khó: {difficulty}"
+        user_content = f"Tạo {count} câu hỏi trắc nghiệm về chủ đề: {_sanitize_llm_input(topic)}\nĐộ khó: {_sanitize_llm_input(difficulty)}"
 
         return self._call_llm(
             system_prompt=system_prompt,
@@ -100,8 +112,8 @@ class QuestionGenerator:
         system_prompt = SYSTEM_PROMPT_VI if language == "vi" else SYSTEM_PROMPT_EN
         user_content = f"""Tạo {count} câu hỏi trắc nghiệm từ nội dung sau:
 
-{text}
-Độ khó: {difficulty}"""
+{_sanitize_llm_input(text)}
+Độ khó: {_sanitize_llm_input(difficulty)}"""
 
         return self._call_llm(
             system_prompt=system_prompt,
@@ -128,6 +140,7 @@ class QuestionGenerator:
                 ],
                 temperature=0.7,
                 max_tokens=4000,
+                timeout=30.0,
             )
 
             content = response.choices[0].message.content or "[]"
@@ -145,6 +158,7 @@ class QuestionGenerator:
                 "usage": usage,
             }
         except Exception as exc:
+            logger.error("LLM call failed in QuestionGenerator: %s", exc, exc_info=True)
             return {
                 "status": "ERROR",
                 "questions": self._fallback_questions(count)["questions"],

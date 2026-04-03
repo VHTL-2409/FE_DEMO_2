@@ -167,18 +167,6 @@ onUnmounted(() => {
   border-color: var(--ds-primary-border);
 }
 
-
-.ccl__sidebar-toggle:hover {
-  background: var(--ds-gray-100);
-  color: var(--ds-primary);
-  border-color: var(--ds-primary-border);
-}
-
-.dark .ccl__sidebar-toggle:hover {
-  background: var(--ds-gray-700);
-  border-color: var(--ds-primary-border);
-}
-
 /* Sidebar content */
 .ccl__sidebar-content {
   flex: 1;

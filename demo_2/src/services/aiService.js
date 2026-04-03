@@ -1,7 +1,7 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
 export const generateQuestionsFromTopic = async (topic, count = 5, difficulty = 'MEDIUM', language = 'vi') => {
-  const payload = await apiRequest('/api/v1/ai/generate/from-topic', {
+  const payload = await apiRequest('/api/ai/generate/from-topic', {
     method: 'POST',
     body: JSON.stringify({
       topic,
@@ -14,7 +14,7 @@ export const generateQuestionsFromTopic = async (topic, count = 5, difficulty = 
 }
 
 export const generateQuestionsFromText = async (text, count = 5, difficulty = 'MEDIUM', language = 'vi') => {
-  const payload = await apiRequest('/api/v1/ai/generate/from-text', {
+  const payload = await apiRequest('/api/ai/generate/from-text', {
     method: 'POST',
     body: JSON.stringify({
       text,
@@ -27,7 +27,7 @@ export const generateQuestionsFromText = async (text, count = 5, difficulty = 'M
 }
 
 export const evaluateEssay = async (question, answer, rubric = null, maxScore = 10) => {
-  const payload = await apiRequest('/api/v1/ai/evaluate/essay', {
+  const payload = await apiRequest('/api/ai/evaluate/essay', {
     method: 'POST',
     body: JSON.stringify({
       question,
@@ -40,7 +40,7 @@ export const evaluateEssay = async (question, answer, rubric = null, maxScore = 
 }
 
 export const predictPerformance = async (studentId, examId = null, history = []) => {
-  const payload = await apiRequest('/api/v1/ai/analytics/predict', {
+  const payload = await apiRequest('/api/ai/analytics/predict', {
     method: 'POST',
     body: JSON.stringify({
       studentId,
@@ -52,12 +52,12 @@ export const predictPerformance = async (studentId, examId = null, history = [])
 }
 
 export const getStudyRecommendations = async (studentId, history = []) => {
-  const payload = await apiRequest(`/api/v1/ai/analytics/recommendations/${studentId}?history=${encodeURIComponent(JSON.stringify(history))}`)
+  const payload = await apiRequest(`/api/ai/analytics/recommendations/${studentId}?history=${encodeURIComponent(JSON.stringify(history))}`)
   return unwrapApiData(payload)
 }
 
 export const analyzeQuestionQuality = async (questionContent, options, correctAnswer, difficulty = null) => {
-  const payload = await apiRequest('/api/v1/ai/analytics/question-quality', {
+  const payload = await apiRequest('/api/ai/analytics/question-quality', {
     method: 'POST',
     body: JSON.stringify({
       questionContent,
@@ -70,7 +70,7 @@ export const analyzeQuestionQuality = async (questionContent, options, correctAn
 }
 
 export const analyzeDifficultyDistribution = async (questions) => {
-  const payload = await apiRequest('/api/v1/ai/analytics/difficulty-distribution', {
+  const payload = await apiRequest('/api/ai/analytics/difficulty-distribution', {
     method: 'POST',
     body: JSON.stringify({
       questions
@@ -80,17 +80,17 @@ export const analyzeDifficultyDistribution = async (questions) => {
 }
 
 export const getAiServiceStatus = async () => {
-  const payload = await apiRequest('/api/v1/ai/status')
+  const payload = await apiRequest('/api/ai/status')
   return unwrapApiData(payload)
 }
 
 export const getGeneratorStatus = async () => {
-  const payload = await apiRequest('/api/v1/ai/generate/status')
+  const payload = await apiRequest('/api/ai/generate/status')
   return unwrapApiData(payload)
 }
 
 export const getEvaluatorStatus = async () => {
-  const payload = await apiRequest('/api/v1/ai/evaluate/status')
+  const payload = await apiRequest('/api/ai/evaluate/status')
   return unwrapApiData(payload)
 }
 
@@ -101,7 +101,7 @@ export const getEvaluatorStatus = async () => {
 export const sendChatMessage = async (messages, model) => {
   const body = { messages }
   if (model) body.model = model
-  const payload = await apiRequest('/api/v1/ai/chat', {
+  const payload = await apiRequest('/api/ai/chat', {
     method: 'POST',
     body: JSON.stringify(body)
   })
@@ -109,6 +109,6 @@ export const sendChatMessage = async (messages, model) => {
 }
 
 export const getChatModels = async () => {
-  const payload = await apiRequest('/api/v1/ai/chat/models')
+  const payload = await apiRequest('/api/ai/chat/models')
   return unwrapApiData(payload)
 }

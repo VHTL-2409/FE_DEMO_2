@@ -6,4 +6,5 @@ pytesseract
 PyMuPDF
 opencv-python-headless
 numpy
-openai>=1.0.0
+openai>=1.0.0,<2.0.0
+slowapi

@@ -12,6 +12,7 @@ import com.example.demo.repository.QuestionRepository;
 import com.example.demo.service.helper.QuestionPayloadHelper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class QuestionService {
         this.questionPayloadHelper = questionPayloadHelper;
     }
 
+    @Transactional
     public QuestionResponse createQuestion(Exam exam, QuestionRequest request) {
         QuestionPayload payload = validateQuestionRequest(request);
 
@@ -43,12 +45,14 @@ public class QuestionService {
         return toResponse(questionRepository.save(question), true);
     }
 
+    @Transactional(readOnly = true)
     public List<QuestionResponse> listByExam(Exam exam, boolean includeCorrectAnswer) {
         return questionRepository.findByExam(exam).stream()
             .map(question -> toResponse(question, includeCorrectAnswer))
             .toList();
     }
 
+    @Transactional
     public QuestionResponse updateQuestion(Long examId, Long questionId, QuestionRequest request, User actor) {
         Question question = requireQuestion(questionId);
         ensureQuestionBelongsToExam(question, examId);
@@ -65,6 +69,7 @@ public class QuestionService {
         return toResponse(questionRepository.save(question), true);
     }
 
+    @Transactional
     public void deleteQuestion(Long examId, Long questionId, User actor) {
         Question question = requireQuestion(questionId);
         ensureQuestionBelongsToExam(question, examId);
@@ -72,11 +77,13 @@ public class QuestionService {
         questionRepository.delete(question);
     }
 
+    @Transactional(readOnly = true)
     public Question requireQuestion(Long questionId) {
         return questionRepository.findById(questionId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Question not found"));
     }
 
+    @Transactional(readOnly = true)
     public List<Question> findEntitiesByExam(Exam exam) {
         return questionRepository.findByExam(exam);
     }

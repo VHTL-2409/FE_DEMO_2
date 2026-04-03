@@ -17,6 +17,7 @@ import org.springframework.util.StreamUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -24,7 +25,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RateLimitFilter implements Filter {
 
-    private static final String LOGIN_PATH = "/api/auth/login";
+    private static final Set<String> RATE_LIMITED_PATHS = Set.of(
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/auth/forgot-password"
+    );
     private final Cache<String, RateLimitEntry> attemptCache;
 
     @Value("${app.ratelimit.max-attempts:5}")
@@ -46,7 +51,9 @@ public class RateLimitFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        if (!LOGIN_PATH.equals(request.getRequestURI()) || !"POST".equalsIgnoreCase(request.getMethod())) {
+        String path = request.getRequestURI();
+        boolean isAuthPath = RATE_LIMITED_PATHS.contains(path) && "POST".equalsIgnoreCase(request.getMethod());
+        if (!isAuthPath) {
             chain.doFilter(request, response);
             return;
         }
@@ -126,7 +133,7 @@ public class RateLimitFilter implements Filter {
         }
     }
 
-    private static class RateLimitEntry {
+    private class RateLimitEntry {
         private final AtomicInteger count = new AtomicInteger(0);
         private volatile long firstAttemptMs = System.currentTimeMillis();
         private volatile long lockExpiryMs = 0;
@@ -144,7 +151,7 @@ public class RateLimitFilter implements Filter {
         boolean isLocked(int windowMinutes) {
             if (lockExpiryMs > System.currentTimeMillis()) return true;
             long windowMs = windowMinutes * 60 * 1000L;
-            return count.get() >= 5 &&
+            return count.get() >= RateLimitFilter.this.maxAttempts &&
                    (System.currentTimeMillis() - firstAttemptMs) < windowMs;
         }
 
