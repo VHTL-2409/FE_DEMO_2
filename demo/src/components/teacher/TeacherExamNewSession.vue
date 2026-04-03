@@ -100,7 +100,7 @@
                   style="border-color: var(--ds-border); background-color: var(--ds-surface); color: var(--ds-text)"
                 />
                 <p class="mt-1 text-xs" style="color: var(--ds-text-muted)">
-                  Thời gian làm bài tối đa cho mỗi sinh viên
+                  Thời gian làm bài tối đa cho mỗi học sinh
                 </p>
               </div>
             </FormSection>
@@ -120,7 +120,7 @@
                     <LucideIcon name="videocam" />
                     <div>
                       <p class="text-sm font-semibold" style="color: var(--ds-text)">Giám sát camera</p>
-                      <p class="text-xs" style="color: var(--ds-text-muted)">Yêu cầu sinh viên bật camera trong quá trình thi</p>
+                      <p class="text-xs" style="color: var(--ds-text-muted)">Yêu cầu học sinh bật camera trong quá trình thi</p>
                     </div>
                   </div>
                   <button
@@ -141,7 +141,7 @@
                     <LucideIcon name="mic" />
                     <div>
                       <p class="text-sm font-semibold" style="color: var(--ds-text)">Giám sát microphone</p>
-                      <p class="text-xs" style="color: var(--ds-text-muted)">Yêu cầu sinh viên bật microphone trong quá trình thi</p>
+                      <p class="text-xs" style="color: var(--ds-text-muted)">Yêu cầu học sinh bật microphone trong quá trình thi</p>
                     </div>
                   </div>
                   <button
@@ -162,7 +162,7 @@
                     <LucideIcon name="tab" />
                     <div>
                       <p class="text-sm font-semibold" style="color: var(--ds-text)">Phát hiện chuyển tab</p>
-                      <p class="text-xs" style="color: var(--ds-text-muted)">Cảnh báo khi sinh viên chuyển sang tab khác</p>
+                      <p class="text-xs" style="color: var(--ds-text-muted)">Cảnh báo khi học sinh chuyển sang tab khác</p>
                     </div>
                   </div>
                   <button
@@ -183,7 +183,7 @@
                     <LucideIcon name="visibility_off" />
                     <div>
                       <p class="text-sm font-semibold" style="color: var(--ds-text)">Chống copy câu hỏi</p>
-                      <p class="text-xs" style="color: var(--ds-text-muted)">Ngăn sinh viên copy nội dung câu hỏi</p>
+                      <p class="text-xs" style="color: var(--ds-text-muted)">Ngăn học sinh copy nội dung câu hỏi</p>
                     </div>
                   </div>
                   <button

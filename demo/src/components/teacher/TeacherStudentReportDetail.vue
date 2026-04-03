@@ -22,7 +22,7 @@
             Tổng quan điểm
           </RouterLink>
           <LucideIcon name="chevron_right" size="12" />
-          <span class="font-medium" style="color: var(--ds-text)">Chi tiết sinh viên</span>
+          <span class="font-medium" style="color: var(--ds-text)">Chi tiết học sinh</span>
         </div>
       </div>
 
@@ -31,7 +31,7 @@
         <PageHeader
           :eyebrow="'Báo cáo chi tiết'"
           :title="examTitle"
-          :subtitle="'Xem chi tiết kết quả làm bài của sinh viên'"
+          :subtitle="'Xem chi tiết kết quả làm bài của học sinh'"
         >
           <template #actions>
             <button
@@ -60,7 +60,7 @@
               </div>
               <div>
                 <h2 class="text-xl font-bold" style="color: var(--ds-text)">{{ studentInfo.name }}</h2>
-                <p class="text-sm" style="color: var(--ds-text-muted)">Mã sinh viên: {{ studentInfo.studentId }}</p>
+                <p class="text-sm" style="color: var(--ds-text-muted)">Mã học sinh: {{ studentInfo.studentId }}</p>
                 <p class="text-xs" style="color: var(--ds-text-secondary)">{{ studentInfo.email }}</p>
               </div>
             </div>

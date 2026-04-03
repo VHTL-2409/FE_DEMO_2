@@ -101,7 +101,7 @@
           </div>
           <div class="flex flex-col gap-1.5 lg:col-span-2">
             <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tìm kiếm</label>
-            <input class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)" placeholder="Tìm tên hoặc mã sinh viên..." />
+            <input class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)" placeholder="Tìm tên hoặc mã học sinh..." />
           </div>
         </div>
       </div>
@@ -171,11 +171,11 @@
         <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 p-6" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
             <div class="space-y-1">
-              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên sinh viên</p>
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên học sinh</p>
               <p class="font-medium" style="color: var(--ds-text)">{{ selectedIncident.student }}</p>
             </div>
             <div class="space-y-1">
-              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Mã sinh viên</p>
+              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Mã học sinh</p>
               <p class="font-medium" style="color: var(--ds-text)">{{ selectedIncident.studentId }}</p>
             </div>
             <div class="space-y-1 border-t pt-3 mt-1" style="border-color: var(--ds-gray-100)">
@@ -300,7 +300,7 @@ const summaryTabLink = computed(() => ({ path: '/teacher/exams/review/summary', 
 const incidentTabLink = computed(() => ({ path: '/teacher/exams/review/incidents', query: route.query }))
 
 const incidentColumns = computed(() => [
-  { key: 'student', label: 'Sinh viên' },
+  { key: 'student', label: 'Học sinh' },
   { key: 'studentId', label: 'Mã' },
   { key: 'datetime', label: 'Thời điểm vi phạm' },
   { key: 'violation', label: 'Loại vi phạm' },
@@ -334,7 +334,7 @@ const buildIncident = (attempt) => {
 
   return {
     attemptId: attempt.id,
-    student: attempt.student || 'Sinh viên không rõ',
+    student: attempt.student || 'Học sinh không rõ',
     studentId: `AT-${attempt.id}`,
     date: formatDate(submittedAt),
     time: latestWarningTime,
@@ -399,8 +399,8 @@ const summaryCards = computed(() => {
 
 const downloadReport = () => {
   const columns = [
-    { key: 'student', label: 'Sinh viên' },
-    { key: 'studentId', label: 'Mã sinh viên' },
+    { key: 'student', label: 'Học sinh' },
+    { key: 'studentId', label: 'Mã học sinh' },
     { key: 'date', label: 'Ngày' },
     { key: 'time', label: 'Thời gian' },
     { key: 'violation', label: 'Vi phạm' },

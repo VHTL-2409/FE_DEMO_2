@@ -121,6 +121,11 @@ const nextAction = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .sh {
   display: flex;
   align-items: center;
@@ -133,6 +138,7 @@ const nextAction = computed(() => {
   box-shadow: var(--ds-shadow-sm);
   position: relative;
   overflow: hidden;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
 .dark .sh {
@@ -177,7 +183,13 @@ const nextAction = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
   animation: wave 3s ease-in-out infinite;
+}
+
+.sh__greeting-row:hover .sh__wave-icon {
+  transform: scale(1.15) rotate(-8deg);
+  background: rgba(79, 70, 229, 0.2);
 }
 
 
@@ -241,22 +253,34 @@ const nextAction = computed(() => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    background 0.2s ease;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
   width: fit-content;
   margin-top: 0.25rem;
 }
 
 .sh__next-action:hover {
   background: var(--ds-primary-hover, #4338ca);
-  transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  transform: translateX(4px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
 }
 
+.sh__next-action:active {
+  transform: translateX(2px) scale(0.98);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
 
 .sh__next-arrow {
   margin-left: 0.25rem;
   font-size: 1.125rem;
+  transition: transform 0.2s ease;
+}
+
+.sh__next-action:hover .sh__next-arrow {
+  transform: translateX(3px);
 }
 
 /* Right */
@@ -278,7 +302,10 @@ const nextAction = computed(() => {
   border: 1px solid var(--ds-border);
   backdrop-filter: blur(4px);
   box-shadow: var(--ds-shadow-xs);
-  transition: all 0.2s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    border-color 0.2s ease;
 }
 
 .dark .sh__stat-item {
@@ -287,8 +314,9 @@ const nextAction = computed(() => {
 }
 
 .sh__stat-item:hover {
-  transform: translateX(4px);
+  transform: translateX(5px) scale(1.02);
   box-shadow: var(--ds-shadow-sm);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 .sh__stat-item > div {
@@ -305,12 +333,10 @@ const nextAction = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
 }
 
-.sh__stat-item:hover .sh__stat-icon-wrap {
-  transform: scale(1.1);
-}
+.sh__stat-item:hover .sh__stat-icon-wrap { transform: scale(1.15) rotate(-5deg); }
 
 .sh__stat-icon-wrap--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
 .sh__stat-icon-wrap--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }

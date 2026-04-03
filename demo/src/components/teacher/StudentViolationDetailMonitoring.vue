@@ -30,7 +30,7 @@
       <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.05s">
         <PageHeader
           eyebrow="Theo dõi vi phạm"
-          title="Chi tiết hành vi sinh viên"
+          title="Chi tiết hành vi học sinh"
           :subtitle="'Phân tích vi phạm của ' + studentInfo.name"
         >
           <template #actions>
@@ -69,7 +69,7 @@
               </div>
               <div>
                 <h2 class="text-xl font-bold" style="color: var(--ds-text)">{{ studentInfo.name }}</h2>
-                <p class="text-sm" style="color: var(--ds-text-muted)">Mã sinh viên: {{ studentInfo.studentId }}</p>
+                <p class="text-sm" style="color: var(--ds-text-muted)">Mã học sinh: {{ studentInfo.studentId }}</p>
                 <p class="text-xs" style="color: var(--ds-text-secondary)">{{ studentInfo.email }}</p>
               </div>
             </div>
@@ -283,7 +283,7 @@ const violationData = computed(() => ({
   overallRiskScore: 78,
   riskLevel: 'warning',
   riskLabel: 'Nguy cơ cao',
-  riskDescription: 'Sinh viên có nhiều hành vi bất thường trong quá trình làm bài thi. Cần được giám sát kỹ lưỡng.'
+  riskDescription: 'Học sinh có nhiều hành vi bất thường trong quá trình làm bài thi. Cần được giám sát kỹ lưỡng.'
 }))
 
 const sessionSummary = computed(() => ({

@@ -159,7 +159,7 @@ const navItemClass = (section) => {
 
 const handleLogout = () => {
   clearAuthSession()
-  router.push('/login')
+  router.push('/gioi-thieu')
 }
 </script>
 
@@ -232,19 +232,15 @@ const handleLogout = () => {
 .db-sidebar__logo {
   width: 40px;
   height: 40px;
-  border-radius: var(--db-radius);
-  background: linear-gradient(135deg, var(--db-primary), #0a4a8a);
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(12, 92, 171, 0.3);
   transition: transform var(--db-transition-spring);
 }
 
 .db-sidebar__brand:hover .db-sidebar__logo {
-  transform: scale(1.05) rotate(-3deg);
+  transform: scale(1.05);
 }
 
 .db-sidebar__brand-text {
@@ -322,6 +318,7 @@ const handleLogout = () => {
 .db-sidebar-nav-item:hover {
   color: var(--db-text);
   background: var(--db-surface-3);
+  transform: translateX(3px);
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item {
@@ -332,12 +329,9 @@ const handleLogout = () => {
   width: 100%;
 }
 
-.db-sidebar-nav-item:hover {
-  transform: translateX(3px);
-}
-
 .db-sidebar--collapsed .db-sidebar-nav-item:hover {
   transform: translateX(0) scale(1.05);
+  background: rgba(148, 163, 184, 0.12);
 }
 
 /* Active state */
@@ -345,11 +339,21 @@ const handleLogout = () => {
   color: var(--db-primary);
   background: var(--db-primary-soft);
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.15);
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item--active {
   background: var(--db-primary);
   color: white;
+  box-shadow:
+    0 0 0 2px rgba(79, 70, 229, 0.3),
+    0 0 16px rgba(79, 70, 229, 0.25);
+  animation: active-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes active-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3), 0 0 12px rgba(79, 70, 229, 0.2); }
+  50%       { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.45), 0 0 22px rgba(79, 70, 229, 0.35); }
 }
 
 /* Active left bar (only when expanded) */
@@ -376,11 +380,12 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   width: 20px;
-  transition: transform var(--db-transition-spring), color var(--db-transition);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
 }
 
 .db-sidebar-nav-item:hover .db-sidebar-nav-item__icon {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(-5deg);
+  color: var(--db-primary);
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item__icon {
@@ -408,11 +413,18 @@ const handleLogout = () => {
   border-radius: 9999px;
   font-size: 0.6rem;
   font-weight: 800;
-  background: var(--db-primary-soft);
-  color: var(--db-primary);
+  background: var(--db-danger);
+  color: white;
   white-space: nowrap;
   opacity: 1;
-  transition: opacity 0.2s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+  animation: badge-shake 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes badge-shake {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item__badge {
@@ -478,7 +490,7 @@ const handleLogout = () => {
   width: 32px;
   height: 32px;
   border-radius: var(--db-radius-sm);
-  background: linear-gradient(135deg, var(--db-primary), #0a4a8a);
+  background: linear-gradient(135deg, var(--db-primary), #4338ca);
   color: white;
   display: flex;
   align-items: center;
@@ -486,7 +498,7 @@ const handleLogout = () => {
   font-size: 0.875rem;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(12, 92, 171, 0.25);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 
 .db-sidebar-user__info {

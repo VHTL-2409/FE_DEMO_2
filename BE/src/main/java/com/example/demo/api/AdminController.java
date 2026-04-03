@@ -1,6 +1,7 @@
 package com.example.demo.api;
 
 import com.example.demo.api.dto.ApiResponse;
+import com.example.demo.api.dto.admin.AdminClassListPageResponse;
 import com.example.demo.api.dto.admin.AdminDashboardStatsResponse;
 import com.example.demo.api.dto.admin.AdminExamActiveRequest;
 import com.example.demo.api.dto.admin.AdminExamListPageResponse;
@@ -10,6 +11,7 @@ import com.example.demo.service.AdminDashboardService;
 import com.example.demo.service.AdminExamManagementService;
 import com.example.demo.service.AdminUserDeletionService;
 import com.example.demo.service.AdminUserManagementService;
+import com.example.demo.service.ClassService;
 import com.example.demo.service.CurrentUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class AdminController {
     private final AdminUserManagementService adminUserManagementService;
     private final AdminUserDeletionService adminUserDeletionService;
     private final AdminExamManagementService adminExamManagementService;
+    private final ClassService classService;
     private final CurrentUserService currentUserService;
 
     @GetMapping("/dashboard/stats")
@@ -101,6 +104,15 @@ public class AdminController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.success(adminUserManagementService.listAdmins(page, size));
+    }
+
+    @GetMapping("/classes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<AdminClassListPageResponse> listClasses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(classService.listAllClassesForAdmin(page, size));
     }
 
     @GetMapping("/exams")

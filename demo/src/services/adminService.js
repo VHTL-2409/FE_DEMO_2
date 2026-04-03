@@ -63,9 +63,36 @@ export const fetchAdminAdmins = async (params = {}) => {
   return unwrapApiData(payload)
 }
 
+/** Tạo tài khoản admin mới */
+export const createAdminUser = async (data) => {
+  const payload = await apiRequest('/api/admin/users/admins', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+  return unwrapApiData(payload)
+}
+
+/** Xóa tài khoản admin */
+export const deleteAdminAdmin = async (userId) => {
+  const payload = await apiRequest(`/api/admin/users/admins/${userId}`, { method: 'DELETE' })
+  return unwrapApiData(payload)
+}
+
 /**
  * @param {{ page?: number, size?: number }} params
  */
+/**
+ * @param {{ page?: number, size?: number }} params
+ */
+export const fetchAdminClasses = async (params = {}) => {
+  const q = new URLSearchParams()
+  if (params.page != null) q.set('page', String(params.page))
+  if (params.size != null) q.set('size', String(params.size))
+  const suffix = q.toString() ? `?${q.toString()}` : ''
+  const payload = await apiRequest(`/api/admin/classes${suffix}`)
+  return unwrapApiData(payload)
+}
+
 export const fetchAdminExams = async (params = {}) => {
   const q = new URLSearchParams()
   if (params.page != null) q.set('page', String(params.page))

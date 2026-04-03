@@ -25,6 +25,7 @@ const NAME_MAP = {
   list_alt: 'List',
   live_tv: 'Eye',
   assessment: 'BarChart2',
+  radar: 'Radar',
   account_circle: 'User',
   home: 'Home',
   menu: 'Menu',
@@ -987,7 +988,31 @@ const NAME_MAP = {
   'hash': 'Hash',
   'login': 'LogIn',
   'alert-triangle': 'AlertTriangle',
-  'check-circle': 'CheckCircle'
+  'check-circle': 'CheckCircle',
+
+  // Custom dashboard & admin icons
+  'layout_dashboard': 'LayoutDashboard',
+  'clipboard_list': 'ClipboardList',
+  'message_circle': 'MessageCircle',
+  'file_check_2': 'FileCheck2',
+  'server_off': 'ServerOff',
+  'help_circle': 'HelpCircle',
+  'log_out': 'LogOut',
+  'shield_check': 'ShieldCheck',
+  'co_present': 'Presentation',
+  'activity': 'Activity',
+  'server': 'Server',
+  'school': 'GraduationCap',
+  'refresh': 'RefreshCw',
+  'x': 'X',
+  'users': 'Users',
+  'trending_up': 'TrendingUp',
+  'trending_down': 'TrendingDown',
+  'presentation': 'Presentation',
+  'pending': 'Clock',
+  'check_circle': 'CheckCircle',
+  'file_text': 'FileText',
+  'plus': 'Plus'
 }
 
 const resolvedSize = computed(() => {

@@ -169,7 +169,7 @@
                 </div>
               </div>
               <div class="text-right">
-                <p class="text-xs font-medium" style="color: var(--ds-text-muted)">{{ exam.students }} sinh viên</p>
+                <p class="text-xs font-medium" style="color: var(--ds-text-muted)">{{ exam.students }} học sinh</p>
                 <p class="text-xs" style="color: var(--ds-info)">{{ exam.timeUntil }}</p>
               </div>
             </div>
@@ -218,7 +218,7 @@ const kpiStats = computed(() => [
     trend: 12
   },
   {
-    label: 'Sinh viên đang thi',
+    label: 'Học sinh đang thi',
     value: '156',
     subValue: 'em',
     sub: 'Đang theo dõi',

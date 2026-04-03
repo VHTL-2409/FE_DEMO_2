@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
       <div class="mb-5 ds-animate-fade-up">
-        <PageHeader eyebrow="Sinh viên" title="Hồ sơ sinh viên" subtitle="Theo dõi thông tin cá nhân và cập nhật tài khoản.">
+        <PageHeader eyebrow="Học sinh" title="Hồ sơ học sinh" subtitle="Theo dõi thông tin cá nhân và cập nhật tài khoản.">
           <template #actions>
             <button type="button" class="inline-flex items-center gap-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2 text-sm font-semibold text-[var(--ds-text-secondary)] transition-colors hover:bg-[var(--ds-gray-100)]" @click="goToDashboard">
               <LucideIcon name="home" size="18" />
@@ -189,7 +189,7 @@ const profileForm = ref({ displayName: '', fullName: '', dateOfBirth: '', email:
 const isChangingPassword = ref(false)
 const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
-const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Sinh viên')
+const profileName = computed(() => profile.value?.displayName || profile.value?.username || 'Học sinh')
 const profileInitial = computed(() => String(profileName.value).trim().charAt(0).toUpperCase() || 'S')
 const profileId = computed(() => profile.value?.id || '-')
 const profileUsername = computed(() => profile.value?.username || '-')
@@ -311,7 +311,7 @@ const loadProfileData = async () => {
   } catch {
     profile.value = null
     attempts.value = []
-    toast.error('Không thể tải hồ sơ sinh viên.')
+    toast.error('Không thể tải hồ sơ học sinh.')
   } finally {
     isLoading.value = false
   }

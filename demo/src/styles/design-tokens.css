@@ -21,10 +21,10 @@
   --db-text-subtle: #94a3b8;
 
   /* Brand */
-  --db-primary: #0c5cab;
-  --db-primary-hover: #0a4a8a;
-  --db-primary-glow: rgba(12, 92, 171, 0.2);
-  --db-primary-soft: rgba(12, 92, 171, 0.08);
+  --db-primary: #4f46e5;
+  --db-primary-hover: #4338ca;
+  --db-primary-glow: rgba(79, 70, 229, 0.2);
+  --db-primary-soft: rgba(79, 70, 229, 0.08);
 
   /* Status */
   --db-success: #10b981;
@@ -43,8 +43,8 @@
   /* Shadow */
   --db-shadow-glass: 0 4px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(148, 163, 184, 0.12);
   --db-shadow-card: 0 1px 4px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(148, 163, 184, 0.12);
-  --db-shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(12, 92, 171, 0.2);
-  --db-shadow-btn: 0 2px 8px rgba(12, 92, 171, 0.2);
+  --db-shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(79, 70, 229, 0.2);
+  --db-shadow-btn: 0 2px 8px rgba(79, 70, 229, 0.2);
 
   /* Transition */
   --db-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);

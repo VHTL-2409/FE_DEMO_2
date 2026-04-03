@@ -42,6 +42,11 @@ defineEmits(['create-exam', 'open-monitoring'])
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .tdl-root {
   display: flex;
   flex-direction: column;
@@ -50,6 +55,7 @@ defineEmits(['create-exam', 'open-monitoring'])
 
 .tdl-topbar-overlay {
   padding: 1rem 0 0;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.05s both;
 }
 
 .tdl-topbar-overlay__inner {
@@ -84,6 +90,13 @@ defineEmits(['create-exam', 'open-monitoring'])
   font-size: 0.75rem;
   color: var(--ds-text-muted);
   cursor: default;
+  transition: all 0.18s ease;
+}
+
+.tdl-topbar-overlay__search-hint:hover {
+  border-color: var(--ds-primary-border);
+  box-shadow: 0 0 0 3px var(--ds-primary-soft);
+  color: var(--ds-primary);
 }
 
 .tdl-topbar-overlay__search-icon {
@@ -103,6 +116,13 @@ defineEmits(['create-exam', 'open-monitoring'])
   font-size: 0.65rem;
   font-family: monospace;
   color: var(--ds-text-secondary);
+  transition: all 0.15s ease;
+}
+
+.tdl-topbar-overlay__search-hint:hover .tdl-topbar-overlay__kbd {
+  background: var(--ds-primary-soft);
+  border-color: var(--ds-primary-border);
+  color: var(--ds-primary);
 }
 
 .tdl-topbar-overlay__breadcrumb {
@@ -111,8 +131,8 @@ defineEmits(['create-exam', 'open-monitoring'])
   gap: 0.375rem;
   font-size: 0.75rem;
   color: var(--ds-text-muted);
+  transition: color 0.15s ease;
 }
-
 
 .tdl-topbar-overlay__breadcrumb-sep {
   opacity: 0.5;
@@ -126,5 +146,46 @@ defineEmits(['create-exam', 'open-monitoring'])
 .tdl-content {
   flex: 1;
   min-width: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.15s both;
+}
+
+/* Dark mode */
+.dark .tdl-topbar-overlay__search-hint {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+}
+
+.dark .tdl-topbar-overlay__kbd {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+}
+
+.dark .tdl-topbar-overlay__breadcrumb-current {
+  color: #e2e8f0;
+}
+
+.dark .tdl-topbar-overlay__search-hint:hover {
+  border-color: rgba(79, 70, 229, 0.4);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  color: #a5b4fc;
+}
+
+.dark .tdl-topbar-overlay__search-hint:hover .tdl-topbar-overlay__kbd {
+  background: rgba(79, 70, 229, 0.15);
+  border-color: rgba(79, 70, 229, 0.4);
+  color: #a5b4fc;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tdl-topbar-overlay,
+  .tdl-content {
+    animation: none;
+  }
+  .tdl-topbar-overlay__search-hint:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 </style>

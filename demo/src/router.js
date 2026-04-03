@@ -23,12 +23,15 @@ const devRoutes = import.meta.env.DEV
 const router = createRouter({
   history: createWebHistory(),
   scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) return savedPosition
-    if (to.hash) return { el: to.hash, behavior: 'smooth' }
-    return { top: 0, behavior: 'instant' }
+    // Always scroll to top when navigating to a new page
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth', top: 0 }
+    }
+    return { top: 0 }
   },
   routes: [
     { path: '/', component: () => import('./components/public/SiteIntroduction.vue'), alias: ['/gioi-thieu'] },
+    { path: '/redirect', component: () => import('./components/public/RedirectPage.vue'), meta: { guest: true } },
     { path: '/login', component: () => import('./components/login/LoginRoleSelection.vue'), meta: { guest: true } },
     { path: '/forgot-password', component: () => import('./components/login/ForgotPassword.vue'), meta: { guest: true } },
     { path: '/reset-password', component: () => import('./components/login/ResetPassword.vue'), meta: { guest: true } },
@@ -59,7 +62,8 @@ const router = createRouter({
           component: () => import('./components/admin/AdminUserManagement.vue'),
           props: { variant: 'admins' }
         },
-        { path: 'exams', component: () => import('./components/admin/AdminExamManagement.vue') }
+        { path: 'exams', component: () => import('./components/admin/AdminExamManagement.vue') },
+        { path: 'classes', component: () => import('./components/admin/AdminClassManagement.vue') }
       ]
     },
     { path: '/teacher/dashboard', component: () => import('./components/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
@@ -166,6 +170,13 @@ router.beforeEach(async (to, from, next) => {
   }
 
   next()
+})
+
+// Always scroll to top after navigation completes (after page transition)
+router.afterEach(() => {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, 200)
 })
 
 export default router

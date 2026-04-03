@@ -303,14 +303,22 @@ const formatDateTime = (value) => {
   })
 }
 
-// Load data
+// Load data — reads from sessionStorage if prefetched by RedirectPage
 const loadData = async () => {
   isLoadingAttempts.value = true
   try {
-    attempts.value = await listMyAttempts()
-    // Try to get student name from first attempt or profile
-    if (attempts.value.length > 0) {
-      studentName.value = attempts.value[0]?.studentName || 'Học sinh'
+    const cached = sessionStorage.getItem('prefetch_student_data')
+    if (cached) {
+      attempts.value = JSON.parse(cached)
+      sessionStorage.removeItem('prefetch_student_data')
+      if (attempts.value.length > 0) {
+        studentName.value = attempts.value[0]?.studentName || 'Học sinh'
+      }
+    } else {
+      attempts.value = await listMyAttempts()
+      if (attempts.value.length > 0) {
+        studentName.value = attempts.value[0]?.studentName || 'Học sinh'
+      }
     }
   } catch (error) {
     attempts.value = []

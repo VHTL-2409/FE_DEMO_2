@@ -125,10 +125,16 @@ const totalEnds = computed(() =>
 </script>
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .td-schedule {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.55s both;
 }
 
 /* Header */

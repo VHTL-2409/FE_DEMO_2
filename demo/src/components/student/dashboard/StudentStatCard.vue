@@ -50,6 +50,11 @@ const formattedValue = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .ssc {
   display: flex;
   align-items: center;
@@ -58,23 +63,32 @@ const formattedValue = computed(() => {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
   min-width: 0;
   cursor: default;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
+
+.sdl__kpis .ssc:nth-child(1) { animation-delay: 0.2s; }
+.sdl__kpis .ssc:nth-child(2) { animation-delay: 0.27s; }
+.sdl__kpis .ssc:nth-child(3) { animation-delay: 0.34s; }
+.sdl__kpis .ssc:nth-child(4) { animation-delay: 0.41s; }
 
 .dark .ssc {
   border-color: var(--ds-border-strong);
 }
 
 .ssc:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
 }
 
-.ssc--primary:hover { border-color: var(--ds-primary-border); box-shadow: 0 8px 24px rgba(79, 70, 229, 0.12); }
-.ssc--success:hover { border-color: rgba(22, 163, 74, 0.25); box-shadow: 0 8px 24px rgba(22, 163, 74, 0.1); }
-.ssc--warning:hover { border-color: rgba(217, 119, 6, 0.25); box-shadow: 0 8px 24px rgba(217, 119, 6, 0.1); }
+.ssc--primary:hover { border-color: var(--ds-primary-border); box-shadow: 0 12px 28px rgba(79, 70, 229, 0.15); }
+.ssc--success:hover { border-color: rgba(22, 163, 74, 0.3); box-shadow: 0 12px 28px rgba(22, 163, 74, 0.12); }
+.ssc--warning:hover { border-color: rgba(217, 119, 6, 0.3); box-shadow: 0 12px 28px rgba(217, 119, 6, 0.12); }
 
 /* Icon */
 .ssc__icon-wrap {
@@ -85,11 +99,11 @@ const formattedValue = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
 }
 
 .ssc:hover .ssc__icon-wrap {
-  transform: scale(1.1) rotate(-5deg);
+  transform: scale(1.15) rotate(-6deg);
 }
 
 .ssc__icon-wrap--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
@@ -173,7 +187,7 @@ const formattedValue = computed(() => {
   }
 
   .ssc:hover {
-    transform: translateY(-1px) scale(1.005);
+    transform: translateY(-1px) scale(1.01);
   }
 }
 

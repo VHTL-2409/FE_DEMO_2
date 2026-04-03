@@ -124,10 +124,16 @@ const displayExams = computed(() => {
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .td-sub {
   display: flex;
   flex-direction: column;
   gap: 0;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.4s both;
 }
 
 /* Header */
@@ -208,10 +214,16 @@ const displayExams = computed(() => {
 .td-sub__filter-tab:hover {
   color: var(--ds-text);
   background: var(--ds-gray-200);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .dark .td-sub__filter-tab:hover {
   background: var(--ds-gray-700);
+}
+
+.td-sub__filter-tab:active {
+  transform: translateY(0);
 }
 
 .td-sub__filter-tab--active {
