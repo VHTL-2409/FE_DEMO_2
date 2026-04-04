@@ -291,7 +291,7 @@
 import { ref, computed } from 'vue'
 import { API_BASE_URL } from '../../../services/apiClient'
 import { previewImportFile, validateImportFile } from '../../../services/importService'
-import ConfirmDialog from '../../../ui/ConfirmDialog.vue'
+import ConfirmDialog from '../../ui/ConfirmDialog.vue'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] },
