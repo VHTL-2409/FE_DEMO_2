@@ -173,11 +173,10 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-// Always scroll to top after navigation completes (after page transition)
+// Scroll to top immediately — before page component even starts mounting
+// This guarantees the new page renders from the top regardless of lazy-component load time
 router.afterEach(() => {
-  setTimeout(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }, 200)
+  window.scrollTo({ top: 0, behavior: 'instant' })
 })
 
 export default router

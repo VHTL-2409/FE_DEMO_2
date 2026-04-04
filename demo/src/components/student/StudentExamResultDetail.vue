@@ -270,9 +270,6 @@ const reviewAnswers = computed(() => (report.value?.answers || []).map((item, in
 }))
 
 onMounted(async () => {
-  // Force scroll to top when component mounts
-  window.scrollTo({ top: 0, behavior: 'instant' })
-
   if (!attemptId.value) return
   isLoading.value = true
   try {

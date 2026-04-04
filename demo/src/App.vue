@@ -49,6 +49,7 @@ const isStudentPortalRoute = computed(() =>
   (route.path || '').startsWith('/student/') && route.path !== '/student/exam-interface'
 )
 const isExamRoute = computed(() => route.path === '/student/exam-interface')
+
 </script>
 
 <style>

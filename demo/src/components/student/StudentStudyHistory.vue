@@ -180,9 +180,6 @@ const loadAttempts = async () => {
 }
 
 onMounted(() => {
-  // Force scroll to top when component mounts
-  window.scrollTo({ top: 0, behavior: 'instant' })
-
   loadAttempts()
 })
 </script>

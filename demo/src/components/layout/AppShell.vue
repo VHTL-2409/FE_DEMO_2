@@ -62,6 +62,8 @@ const currentSidebarItems = computed(() => {
 watch(sidebarCollapsed, (val) => {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('sidebarCollapsed', String(val))
+    // Reset scroll to top when sidebar width changes to prevent mid-content flicker
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 })
 </script>

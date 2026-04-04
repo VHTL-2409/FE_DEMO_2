@@ -1,10 +1,11 @@
 <template>
   <!-- Portal layout: provides its own stacking context so children z-index work predictably -->
   <div class="route-layout route-layout-portal">
-    <!-- Skeleton overlay — scoped to portal so dropdown z-indexes resolve correctly -->
+    <!-- Skeleton overlay — v-show avoids DOM destroy/recreate flicker during fast navigations.
+         Leave duration (300ms) matches page-enter duration so skeleton never vanishes first. -->
     <Transition name="portal-skeleton">
       <div
-        v-if="isNavigating"
+        v-show="isNavigating"
         class="portal-skeleton-overlay"
         aria-hidden="true"
       >
@@ -144,15 +145,12 @@ const teacherSidebarItems = computed(() => [
   100% { background-position: -200% 0; }
 }
 
-/* Fade in/out skeleton */
-.portal-skeleton-enter-active,
-.portal-skeleton-leave-active {
-  transition: opacity 0.25s ease;
-}
+/* Fade skeleton — leave duration matches page-enter (280ms) so the overlay
+   never lingers after the new page is fully visible */
+.portal-skeleton-enter-active { transition: opacity 0.2s ease; }
+.portal-skeleton-leave-active { transition: opacity 0.28s ease; }
 .portal-skeleton-enter-from,
-.portal-skeleton-leave-to {
-  opacity: 0;
-}
+.portal-skeleton-leave-to { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .portal-skeleton-bar,
