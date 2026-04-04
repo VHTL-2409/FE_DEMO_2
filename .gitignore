@@ -12,8 +12,11 @@ docs/
 everything-claude-code/
 /stitch_new
 *.ps1
+.typeui-temp/
+
 # Production env (chứa mật khẩu, secret)
 .env
 /demo_2
 # AI multi-key secrets (chứa API key — không commit)
 secrets/
+.typeui-temp
