@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./BE/.env:/run/secrets/be.env:ro
     mem_limit: 512m
     mem_reservation: 256m
     healthcheck:
@@ -26,6 +27,7 @@ services:
       context: ./BE
       dockerfile: Dockerfile
     environment:
+      BE_DOTENV_FILE: /run/secrets/be.env
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}

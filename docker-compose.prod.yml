@@ -38,6 +38,7 @@ services:
       dockerfile: Dockerfile
     environment:
       TZ: Asia/Ho_Chi_Minh
+      BE_DOTENV_FILE: /run/secrets/be.env
       # JVM: heap ~70% của mem_limit container (đổi trong .env: JAVA_TOOL_OPTIONS=...)
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseStringDeduplication"
       HIKARI_MAX_POOL: ${HIKARI_MAX_POOL:-12}
@@ -72,6 +73,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    volumes:
+      - ./BE/.env:/run/secrets/be.env:ro
 
   ai-service:
     build:
