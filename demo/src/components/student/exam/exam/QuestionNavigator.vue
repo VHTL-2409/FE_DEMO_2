@@ -385,7 +385,7 @@ export default { name: 'QuestionNavigator' }
   font-size: 0.8rem;
   font-weight: 900;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -505,3 +505,9 @@ export default { name: 'QuestionNavigator' }
   .qn__stat { min-width: unset; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -142,7 +142,7 @@ defineEmits(['toggle-mark', 'prev', 'next', 'update:modelValue'])
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
 }
 
@@ -204,7 +204,7 @@ defineEmits(['toggle-mark', 'prev', 'next', 'update:modelValue'])
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   border: 1.5px solid;
   font-family: inherit;
 }
@@ -257,7 +257,7 @@ defineEmits(['toggle-mark', 'prev', 'next', 'update:modelValue'])
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
 }
 
@@ -279,3 +279,9 @@ defineEmits(['toggle-mark', 'prev', 'next', 'update:modelValue'])
   .qcontent__question-text { font-size: 1.1rem; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

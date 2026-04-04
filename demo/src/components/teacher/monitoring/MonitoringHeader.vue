@@ -275,7 +275,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .dark .mch__back-btn {
@@ -395,7 +395,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   position: relative;
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
   min-width: 110px;
 }
 
@@ -547,7 +547,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   font-weight: 700;
   color: var(--ds-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
   white-space: nowrap;
 }
 
@@ -583,7 +583,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .dark .mch__action-btn {
@@ -664,5 +664,36 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 @media (max-width: 640px) {
   .mch__conn-toggle .hidden { display: none; }
   .mch__countdown { display: none; }
+}
+
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .mch,
+  .mch::before {
+    transition: none;
+  }
+
+  .mch__back-btn,
+  .mch__conn-btn,
+  .mch__action-btn {
+    transition: none;
+  }
+
+  .mch__stat {
+    transition: none;
+  }
+
+  .mch__stat:hover {
+    transform: none;
+  }
+
+  .mch__live-badge--live .mch__live-dot,
+  .mch__stat-pulse {
+    animation: none;
+  }
+
+  .mch__spin {
+    animation: none;
+  }
 }
 </style>

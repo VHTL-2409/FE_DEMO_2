@@ -309,7 +309,7 @@ const close = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -339,7 +339,7 @@ const close = () => {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .cdd-tab:hover { background: var(--ds-gray-100); color: var(--ds-text); }
@@ -384,7 +384,7 @@ const close = () => {
   background: var(--ds-gray-50);
   border: 2px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark .cdd-info-item { 
@@ -453,7 +453,7 @@ const close = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .cdd-copy-btn:hover {
@@ -523,7 +523,7 @@ const close = () => {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .cdd-student-item { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -591,7 +591,7 @@ const close = () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -634,7 +634,7 @@ const close = () => {
 /* Transition */
 .cdd-drawer-enter-active,
 .cdd-drawer-leave-active {
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .cdd-drawer-enter-from,
@@ -647,3 +647,9 @@ const close = () => {
   transform: translateX(100%);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

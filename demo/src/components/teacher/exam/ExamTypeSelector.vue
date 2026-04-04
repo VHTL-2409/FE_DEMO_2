@@ -194,7 +194,7 @@ const proceed = () => {
   border: 2px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -259,7 +259,7 @@ const proceed = () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ets__card-icon--blue {
@@ -401,7 +401,7 @@ const proceed = () => {
   cursor: pointer;
   border: none;
   color: white;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   letter-spacing: -0.01em;
 }

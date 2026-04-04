@@ -230,7 +230,7 @@ const startAtDisplay = computed(() => {
   border-radius: var(--ds-radius-full);
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .dark .elh__sync-badge { border-color: var(--ds-border-strong); }
@@ -301,7 +301,7 @@ const startAtDisplay = computed(() => {
   cursor: pointer;
   padding: 0.375rem 0.875rem;
   border-radius: var(--ds-radius-full);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -700,3 +700,9 @@ const startAtDisplay = computed(() => {
   .elh__meta-grid { grid-template-columns: 1fr; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

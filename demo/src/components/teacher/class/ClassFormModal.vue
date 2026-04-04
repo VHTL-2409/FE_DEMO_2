@@ -195,7 +195,7 @@ const handleSubmit = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -237,7 +237,7 @@ const handleSubmit = () => {
   font-size: 0.9375rem;
   background: var(--ds-surface);
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   resize: vertical;
   line-height: 1.5;
@@ -308,7 +308,7 @@ const handleSubmit = () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -353,7 +353,7 @@ const handleSubmit = () => {
 /* Transition */
 .cfm-modal-enter-active,
 .cfm-modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .cfm-modal-enter-from,
@@ -366,3 +366,9 @@ const handleSubmit = () => {
   transform: scale(0.95) translateY(10px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -178,7 +178,7 @@ const handleAvatarChange = (event) => {
   overflow: hidden;
   border: 3px solid var(--ds-primary-border);
   box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   background: var(--ds-primary);
 }
 
@@ -219,7 +219,7 @@ const handleAvatarChange = (event) => {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
 }
 

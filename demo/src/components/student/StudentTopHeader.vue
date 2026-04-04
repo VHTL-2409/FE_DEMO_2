@@ -285,7 +285,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sth__icon-btn:hover,
@@ -454,7 +454,7 @@ onMounted(() => {
   color: var(--color-text-secondary);
   cursor: pointer;
   text-align: left;
-  transition: all 0.18s ease;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .sth__dropdown-item:hover {
@@ -517,10 +517,10 @@ onMounted(() => {
 
 /* Dropdown transition */
 .sth-dropdown-enter-active {
-  transition: all 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  transition: color 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), background-color 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), border-color 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), transform 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 .sth-dropdown-leave-active {
-  transition: all 0.18s cubic-bezier(0.4, 0, 1, 1);
+  transition: color 0.18s cubic-bezier(0.4, 0, 1, 1), background-color 0.18s cubic-bezier(0.4, 0, 1, 1), border-color 0.18s cubic-bezier(0.4, 0, 1, 1), box-shadow 0.18s cubic-bezier(0.4, 0, 1, 1), transform 0.18s cubic-bezier(0.4, 0, 1, 1);
 }
 .sth-dropdown-enter-from {
   opacity: 0;
@@ -556,7 +556,7 @@ onMounted(() => {
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1.5px solid transparent;
   background: transparent;
   animation: nav-slide-in 0.35s ease backwards;

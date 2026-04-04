@@ -602,7 +602,7 @@ watch(() => props.events.length, () => {
   font-weight: 700;
   color: var(--ds-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
   white-space: nowrap;
 }
@@ -653,7 +653,7 @@ watch(() => props.events.length, () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .af__icon-btn { color: #94a3b8; }
@@ -719,7 +719,7 @@ watch(() => props.events.length, () => {
   cursor: pointer;
   appearance: none;
   outline: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -962,7 +962,7 @@ watch(() => props.events.length, () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .af__item-action { background: var(--ds-gray-700); }
@@ -1059,7 +1059,7 @@ watch(() => props.events.length, () => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -1068,8 +1068,14 @@ watch(() => props.events.length, () => {
 .dark .af__show-more:hover { background: rgba(79, 70, 229, 0.1); }
 
 /* Transition */
-.af-item-enter-active { transition: all 0.3s ease; }
+.af-item-enter-active { transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; }
 .af-item-enter-from { opacity: 0; transform: translateX(-8px); background: rgba(79, 70, 229, 0.04); }
-.af-item-leave-active { transition: all 0.2s ease; }
+.af-item-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .af-item-leave-to { opacity: 0; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

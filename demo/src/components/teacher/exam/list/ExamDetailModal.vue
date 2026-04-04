@@ -163,7 +163,7 @@ const formatDateTime = (d) => {
   color: var(--ds-text-muted);
   border-radius: var(--ds-radius-md);
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.12s ease; flex-shrink: 0;
+  cursor: pointer; transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease; flex-shrink: 0;
 }
 .dark .edm__close { background: var(--ds-gray-700); }
 .edm__close:hover { background: var(--ds-gray-200); color: var(--ds-text); }
@@ -216,7 +216,7 @@ const formatDateTime = (d) => {
   padding: 0.625rem 1.125rem;
   border-radius: var(--ds-radius-xl);
   font-size: 0.875rem; font-weight: 700;
-  cursor: pointer; transition: all 0.12s ease;
+  cursor: pointer; transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   border: 1.5px solid transparent; white-space: nowrap;
 }
 
@@ -237,3 +237,9 @@ const formatDateTime = (d) => {
 .edm-fade-enter-from, .edm-fade-leave-to { opacity: 0; }
 .edm-fade-enter-from .edm, .edm-fade-leave-to .edm { transform: scale(0.95); }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -440,7 +440,7 @@ watch([hasData, chartType], async ([data, type]) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .sdc__toggle {
@@ -609,3 +609,9 @@ watch([hasData, chartType], async ([data, type]) => {
 .sdc__legend-item--fail { color: var(--ds-danger); }
 .sdc__legend-item--pass { color: var(--ds-success); }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

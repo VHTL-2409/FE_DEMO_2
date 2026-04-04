@@ -188,7 +188,7 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
   font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
   margin-top: 0.5rem;
@@ -242,7 +242,7 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
   border: none;
   border-top: 1px solid var(--ds-border);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   border-radius: 0 0 var(--ds-radius-2xl) var(--ds-radius-2xl);
 }
@@ -250,3 +250,9 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
 .dark .uel__load-more { background: var(--ds-gray-800); border-top-color: var(--ds-border-strong); }
 .uel__load-more:hover { background: var(--ds-primary-soft); }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

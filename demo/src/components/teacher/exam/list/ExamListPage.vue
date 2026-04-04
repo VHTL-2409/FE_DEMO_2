@@ -612,7 +612,7 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -680,7 +680,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .dark .elp__page-btn {
@@ -791,7 +791,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -907,7 +907,7 @@ onMounted(() => {
 /* Modal transition */
 .elp-modal-enter-active,
 .elp-modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .elp-modal-enter-from,

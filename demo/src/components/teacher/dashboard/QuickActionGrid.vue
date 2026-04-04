@@ -129,7 +129,7 @@ const actions = [
     background 0.2s ease;
   text-align: left;
   width: 100%;
-  animation: fadeInRight 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) backwards;
+  animation: fadeLeft 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) backwards;
 }
 
 .td-qa__item:nth-child(1) { animation-delay: 0.05s; }
@@ -139,7 +139,7 @@ const actions = [
 .td-qa__item:nth-child(5) { animation-delay: 0.25s; }
 .td-qa__item:nth-child(6) { animation-delay: 0.3s; }
 
-@keyframes fadeInRight {
+@keyframes fadeLeft {
   from { opacity: 0; transform: translateX(-10px); }
   to   { opacity: 1; transform: translateX(0); }
 }
@@ -278,7 +278,7 @@ const actions = [
   font-size: 1.125rem;
   color: var(--ds-text-muted);
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .td-qa__item:hover .td-qa__item-arrow {
@@ -286,3 +286,9 @@ const actions = [
   transform: translateX(2px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -387,7 +387,7 @@ const timeAgo = (value) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -410,7 +410,7 @@ const timeAgo = (value) => {
   border: none;
   border-top: 1px solid var(--ds-border);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
 }
 

@@ -171,7 +171,7 @@ const subtitle = computed(() =>
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   white-space: nowrap;
 }
@@ -296,3 +296,9 @@ const subtitle = computed(() =>
   .rhead__stat:last-child { border-bottom: none; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

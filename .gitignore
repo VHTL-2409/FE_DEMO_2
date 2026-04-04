@@ -13,7 +13,7 @@ everything-claude-code/
 /stitch_new
 *.ps1
 .typeui-temp/
-
+*.txt
 # Production env (chứa mật khẩu, secret)
 .env
 /demo_2

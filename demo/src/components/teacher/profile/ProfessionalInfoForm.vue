@@ -322,7 +322,7 @@ defineExpose({ isSaving, isEditing })
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -547,7 +547,7 @@ defineExpose({ isSaving, isEditing })
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid;
   font-family: inherit;
 }

@@ -926,9 +926,15 @@ const saveStatusLabel = computed(() => {
 
 const onSelectAnswer = (questionId, selectedAnswer) => {
   if (isSuspended.value) return
-  answers.value = { ...answers.value, [questionId]: selectedAnswer }
+  const q = questions.value.find(item => String(item.id) === String(questionId))
+  const type = q ? normalizeQuestionType(q) : 'SINGLE_CHOICE'
+  const stored =
+    type === 'SINGLE_CHOICE'
+      ? (selectedAnswer != null && selectedAnswer !== '' ? String(selectedAnswer) : '')
+      : selectedAnswer
+  answers.value = { ...answers.value, [questionId]: stored }
   visitedQuestions.value = { ...visitedQuestions.value, [String(questionId)]: true }
-  examSessionStore.setAnswer(questionId, selectedAnswer)
+  examSessionStore.setAnswer(questionId, stored)
   schedule()
 }
 
@@ -1025,7 +1031,17 @@ onMounted(async () => {
     if (!examId.value || !attemptId.value) { showErrorPopup.value = true; errorPopupMessage.value = 'Thiếu thông tin bài thi. Vui lòng quay lại và thử lại.'; examLoadFailed.value = true; examSurfaceReady.value = true; return }
 
     const [{ getExamDetail }] = await Promise.all([import('../../services/examService')])
-    ;[questionList, draftData, examDetail] = await Promise.all([listExamQuestions(examId.value), getDraftAnswers(attemptId.value), getExamDetail(examId.value)])
+    questionList = await listExamQuestions(examId.value)
+    const emptyDraft = { answers: [], status: 'IN_PROGRESS' }
+    const [draftOutcome, examOutcome] = await Promise.allSettled([
+      getDraftAnswers(attemptId.value),
+      getExamDetail(examId.value)
+    ])
+    const draftData =
+      draftOutcome.status === 'fulfilled' && draftOutcome.value != null
+        ? draftOutcome.value
+        : emptyDraft
+    const examDetail = examOutcome.status === 'fulfilled' ? examOutcome.value : null
 
     examConfig.value = {
       monitorTabSwitch: examDetail?.monitorTabSwitch !== false, monitorBlur: examDetail?.monitorBlur !== false,
@@ -1079,7 +1095,11 @@ onMounted(async () => {
     window.addEventListener('keydown', handleExamKeydown)
 
     if (!isPracticeExam.value) {
-      await connectProctorRealtime()
+      try {
+        await connectProctorRealtime()
+      } catch {
+        /* WebSocket/STOMP lỗi không nên chặn làm bài khi đề đã tải */
+      }
       startHeartbeat(); void syncHeartbeat()
       attemptStatusTimer = window.setInterval(() => { syncAttemptStatus(); enforceDeviceAccess() }, 5000)
       if (examConfig.value.monitorIdleTime !== false) { onIdleActivity(); window.addEventListener('mousemove', onIdleActivity); window.addEventListener('keydown', onIdleActivity); window.addEventListener('scroll', onIdleActivity) }
@@ -1241,7 +1261,7 @@ onUnmounted(() => {
   background: var(--ds-surface);
   border: 2px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   flex-shrink: 0;
 }
@@ -1389,7 +1409,7 @@ onUnmounted(() => {
   font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid transparent;
   font-family: inherit;
   white-space: nowrap;
@@ -1456,7 +1476,7 @@ onUnmounted(() => {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .ei-fs-warn__btn:hover { background: var(--ds-warning); color: white; }
 
@@ -1598,7 +1618,7 @@ onUnmounted(() => {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .ei-modal__confirm:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
 .ei-modal__confirm--error { background: var(--ds-danger); }
@@ -1718,7 +1738,7 @@ onUnmounted(() => {
   color: var(--ds-text-muted);
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .ei-mark-btn:hover:not(:disabled) { border-color: var(--ds-warning); color: var(--ds-warning); background: var(--ds-warning-soft); }
 .ei-mark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1760,7 +1780,7 @@ onUnmounted(() => {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid var(--ds-border);
 }
 .ei-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -1808,7 +1828,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .ei-cam-btn--on { background: var(--ds-success-soft); color: var(--ds-success); }
 .ei-cam-btn--off { background: var(--ds-gray-100); color: var(--ds-text-muted); }
@@ -1953,7 +1973,7 @@ onUnmounted(() => {
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2054,15 +2074,15 @@ onUnmounted(() => {
 .ei-fade-enter-active, .ei-fade-leave-active { transition: opacity 0.2s ease; }
 .ei-fade-enter-from, .ei-fade-leave-to { opacity: 0; }
 
-.ei-slide-down-enter-active, .ei-slide-down-leave-active { transition: all 0.25s ease; }
+.ei-slide-down-enter-active, .ei-slide-down-leave-active { transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease; }
 .ei-slide-down-enter-from, .ei-slide-down-leave-to { transform: translateY(-100%); opacity: 0; }
 
 /* Question slide transition */
 .ei-q-slide-enter-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .ei-q-slide-leave-active {
-  transition: all 0.2s ease-in;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease-in;
 }
 .ei-q-slide-enter-from {
   opacity: 0;
@@ -2073,3 +2093,9 @@ onUnmounted(() => {
   transform: translateX(-24px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

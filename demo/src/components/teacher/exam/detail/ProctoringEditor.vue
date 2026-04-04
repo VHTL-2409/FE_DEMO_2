@@ -334,7 +334,7 @@ const applyPreset = (presetId) => {
   padding: 1.25rem;
   border-radius: var(--ds-radius-2xl);
   border: 1.5px solid var(--ds-border);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .dark .pe__summary { border-color: var(--ds-border-strong); }
 .pe__summary--high { background: var(--ds-danger-soft); border-color: rgba(220, 38, 38, 0.2); }
@@ -419,7 +419,7 @@ const applyPreset = (presetId) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dark .pe__preset-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: #94a3b8; }
 .pe__preset-btn:hover { transform: translateY(-1px); }
@@ -461,7 +461,7 @@ const applyPreset = (presetId) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .dark .pe__master-icon { background: var(--ds-gray-700); }
 .pe__master-icon--on { background: var(--ds-primary-soft); color: var(--ds-primary); }
@@ -532,7 +532,7 @@ const applyPreset = (presetId) => {
   border-radius: var(--ds-radius-full);
   padding: 0.25rem 0.75rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .pe__rules-toggle-all:hover { background: var(--ds-primary); color: white; }
 
@@ -553,7 +553,7 @@ const applyPreset = (presetId) => {
   background: var(--ds-gray-50);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dark .pe__rule-card { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
 .pe__rule-card--active {
@@ -572,7 +572,7 @@ const applyPreset = (presetId) => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dark .pe__rule-icon { background: var(--ds-gray-700); }
 .pe__rule-card--active .pe__rule-icon { background: var(--ds-primary); color: white; }

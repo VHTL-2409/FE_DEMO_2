@@ -210,7 +210,7 @@ onMounted(async () => {
   font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .oauth-callback__btn:hover {
@@ -218,3 +218,9 @@ onMounted(async () => {
   transform: translateY(-1px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

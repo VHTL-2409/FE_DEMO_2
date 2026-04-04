@@ -491,7 +491,7 @@ defineExpose({ preferences })
   background-repeat: no-repeat;
   background-position: right 0.625rem center;
   background-color: var(--ds-surface);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   min-width: 140px;
   font-family: inherit;
 }
@@ -522,7 +522,7 @@ defineExpose({ preferences })
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
   flex-shrink: 0;
 }
@@ -533,3 +533,9 @@ defineExpose({ preferences })
   border-color: var(--ds-danger);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

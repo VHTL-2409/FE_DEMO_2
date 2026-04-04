@@ -296,7 +296,7 @@ const applyTemplate = (tpl) => {
   border-radius: var(--ds-radius-2xl);
   font-size: 0.9375rem;
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
@@ -360,7 +360,7 @@ const applyTemplate = (tpl) => {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-template-btn:hover {
@@ -379,3 +379,9 @@ const applyTemplate = (tpl) => {
   background: rgba(79, 70, 229, 0.15);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

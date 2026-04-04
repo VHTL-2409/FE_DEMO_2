@@ -457,7 +457,7 @@ const warningIcon = (count) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .srt__action-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -545,7 +545,7 @@ const warningIcon = (count) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   padding: 0 0.5rem;
   font-family: inherit;
 }

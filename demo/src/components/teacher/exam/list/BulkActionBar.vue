@@ -136,7 +136,7 @@ defineEmits(['publish', 'archive', 'delete', 'clear'])
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   white-space: nowrap;
   transform: translateY(0);
 }
@@ -210,7 +210,7 @@ defineEmits(['publish', 'archive', 'delete', 'clear'])
   color: var(--ds-text-muted);
   cursor: pointer;
   border-radius: var(--ds-radius-lg);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -229,7 +229,7 @@ defineEmits(['publish', 'archive', 'delete', 'clear'])
 /* Transition */
 .bab-slide-enter-active,
 .bab-slide-leave-active {
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bab-slide-enter-from,
@@ -238,3 +238,9 @@ defineEmits(['publish', 'archive', 'delete', 'clear'])
   transform: translateX(-50%) translateY(20px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

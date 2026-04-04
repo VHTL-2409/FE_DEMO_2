@@ -194,3 +194,116 @@ export const waitForImportJob = async (
   }
   throw new Error('Import job xử lý quá lâu. Vui lòng thử tải lại preview.')
 }
+
+// ─── Exam PDF Import (Python Parser) ────────────────────────────────────────
+
+/**
+ * Upload PDF để parse bằng Python FastAPI service.
+ * @param {File} file
+ * @param {{ examId?: number, forceTemplate?: string }} options
+ */
+export const uploadExamPdf = async (file, { examId, forceTemplate } = {}) => {
+  validateImportFile(file)
+  const formData = new FormData()
+  formData.append('file', file)
+  if (examId != null) formData.append('examId', String(examId))
+  if (forceTemplate) formData.append('forceTemplate', forceTemplate)
+  const payload = await apiRequest('/api/v1/exam-import/upload', {
+    method: 'POST',
+    body: formData
+  })
+  return unwrapApiData(payload)
+}
+
+/**
+ * Lấy preview của exam import session.
+ * @param {number} sessionId
+ */
+export const getExamImportPreview = async (sessionId) => {
+  const payload = await apiRequest(`/api/v1/exam-import/preview/${sessionId}`)
+  return unwrapApiData(payload)
+}
+
+/**
+ * Lấy danh sách exam import sessions của user.
+ */
+export const getExamImportSessions = async () => {
+  const payload = await apiRequest('/api/v1/exam-import/sessions')
+  return unwrapApiData(payload)
+}
+
+/**
+ * Xác nhận import questions từ exam session vào exam.
+ * @param {number} sessionId
+ * @param {{ examId?: number }} options
+ */
+export const confirmExamImport = async (sessionId, { examId } = {}) => {
+  const query = examId != null ? `?examId=${encodeURIComponent(examId)}` : ''
+  const payload = await apiRequest(`/api/v1/exam-import/confirm/${sessionId}${query}`, {
+    method: 'POST'
+  })
+  return unwrapApiData(payload)
+}
+
+/**
+ * Lấy đường dẫn ảnh cropped của một câu hỏi.
+ * @param {number} sessionId
+ * @param {number} questionIndex
+ * @returns {string|null}
+ */
+export const getExamQuestionImageUrl = (sessionId, questionIndex) => {
+  // Return relative URL — apiClient handles auth via Authorization header
+  return `/api/v1/exam-import/image/${sessionId}/${questionIndex}`
+}
+
+/**
+ * Lấy ảnh cropped của một câu hỏi (returns blob với auth header).
+ * @param {number} sessionId
+ * @param {number} questionIndex
+ * @returns {Promise<Blob|null>}
+ */
+export const fetchExamQuestionImage = async (sessionId, questionIndex) => {
+  const token = localStorage.getItem('auth_token')
+  const headers = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  try {
+    const resp = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082'}/api/v1/exam-import/image/${sessionId}/${questionIndex}`,
+      { headers }
+    )
+    if (!resp.ok) return null
+    return await resp.blob()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Kiểm tra Python parser service có đang chạy không.
+ */
+export const checkPythonParserHealth = async () => {
+  const payload = await apiRequest('/api/v1/exam-import/health')
+  return unwrapApiData(payload)
+}
+
+/**
+ * Poll trạng thái exam import session.
+ * @param {number} sessionId
+ * @param {{ intervalMs?: number, maxAttempts?: number }} options
+ */
+export const waitForExamImportSession = async (
+  sessionId,
+  { intervalMs = 1200, maxAttempts = 100 } = {}
+) => {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const preview = await getExamImportPreview(sessionId)
+    const status = preview?.status
+    if (status === 'DONE' || status === 'FAILED') {
+      return preview
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, intervalMs))
+  }
+  throw new Error('Quá thời gian chờ parse. Vui lòng tải lại trang.')
+}

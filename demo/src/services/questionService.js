@@ -47,21 +47,68 @@ export const serializeQuestionValue = (value, fallback = '') => {
   return JSON.stringify(value)
 }
 
+/** A–Z theo thứ tự cho MCQ khi server/importer không gán id. */
+const defaultOptionLetterId = (index) => {
+  if (index >= 0 && index < 26) return String.fromCharCode(65 + index)
+  return String(index + 1)
+}
+
+/**
+ * Chuẩn hoá options từ API (JSON string hoặc đã parse).
+ * Hỗ trợ: [{id,text}], mảng chuỗi, object có value/title/body, v.v.
+ */
 export const parseQuestionOptions = (rawOptions) => {
   const parsed = parseQuestionJson(rawOptions, [])
   if (!Array.isArray(parsed)) {
     return []
   }
 
-  return parsed.map((item, index) => ({
-    id: item?.id ? String(item.id) : String(index + 1),
-    text: item?.text || item?.content || item?.label || ''
-  }))
+  return parsed.map((item, index) => {
+    const letter = defaultOptionLetterId(index)
+    let id = letter
+    let text = ''
+
+    if (item == null) {
+      id = letter
+    } else if (typeof item === 'string' || typeof item === 'number') {
+      const s = String(item).trim()
+      if (/^[A-Za-z]$/.test(s)) {
+        id = s.toUpperCase()
+        text = s
+      } else {
+        id = letter
+        text = s
+      }
+    } else if (typeof item === 'object') {
+      const rawId = item.id
+      id =
+        rawId != null && String(rawId).trim() !== ''
+          ? String(rawId).trim()
+          : letter
+      text = String(
+        item.text ??
+          item.content ??
+          item.label ??
+          item.value ??
+          item.title ??
+          item.body ??
+          item.option ??
+          ''
+      ).trim()
+    }
+
+    if (!text) {
+      text = `Phương án ${id}`
+    }
+
+    return { id, text }
+  })
 }
 
 export const listExamQuestions = async (examId) => {
   const payload = await apiRequest(`/api/exams/${examId}/questions`)
-  return unwrapApiData(payload) || []
+  const data = unwrapApiData(payload)
+  return Array.isArray(data) ? data : []
 }
 
 /**

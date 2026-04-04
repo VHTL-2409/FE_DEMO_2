@@ -300,7 +300,7 @@ const alertTextClass = computed(() =>
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .td-monitor__manage-btn:hover {
@@ -536,7 +536,7 @@ const alertTextClass = computed(() =>
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -564,7 +564,7 @@ const alertTextClass = computed(() =>
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 

@@ -233,7 +233,7 @@ const handleJoin = async () => {
   justify-content: center;
   cursor: pointer;
   color: var(--ds-text-muted);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -315,7 +315,7 @@ const handleJoin = async () => {
   text-transform: uppercase;
   background: var(--ds-surface);
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
 }
 
@@ -371,7 +371,7 @@ const handleJoin = async () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.4, 0, 0.2, 1);
   border: 1.5px solid transparent;
   min-width: 100px;
 }
@@ -426,7 +426,7 @@ const handleJoin = async () => {
 /* Modal Transitions */
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .modal-enter-from,
@@ -460,3 +460,9 @@ const handleJoin = async () => {
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

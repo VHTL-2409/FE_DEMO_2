@@ -250,7 +250,7 @@ onMounted(async () => {
 /* List transition for history items */
 .list-enter-active,
 .list-leave-active {
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .list-enter-from,
@@ -270,3 +270,9 @@ onMounted(async () => {
   backface-visibility: hidden;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

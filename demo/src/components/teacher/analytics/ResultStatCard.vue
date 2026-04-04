@@ -90,7 +90,7 @@ const trendIcon = computed(() => {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   position: relative;
   overflow: hidden;
   min-width: 0;
@@ -237,7 +237,7 @@ const trendIcon = computed(() => {
 .rscard__skeleton {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: rscardShimmer 1.5s infinite;
+  animation: shimmer 1.5s infinite;
   border-radius: var(--ds-radius-md);
 }
 
@@ -246,13 +246,14 @@ const trendIcon = computed(() => {
   background-size: 200% 100%;
 }
 
-@keyframes rscardShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .rscard__skeleton--icon { width: 36px; height: 36px; border-radius: var(--ds-radius-lg); }
 .rscard__skeleton--label { width: 80px; height: 12px; }
 .rscard__skeleton--value { width: 60px; height: 28px; }
 .rscard__skeleton--sub { width: 100px; height: 10px; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

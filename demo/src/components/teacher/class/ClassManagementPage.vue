@@ -605,7 +605,7 @@ onMounted(loadClasses)
   font-size: 0.9375rem;
   background: var(--ds-surface);
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark .cmp__search-input {
@@ -640,7 +640,7 @@ onMounted(loadClasses)
   justify-content: center;
   cursor: pointer;
   color: var(--ds-text-muted);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .cmp__search-clear { background: var(--ds-gray-700); color: var(--ds-text-muted); }
@@ -696,7 +696,7 @@ onMounted(loadClasses)
 /* Card Animation */
 .card-enter-active,
 .card-leave-active {
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .card-enter-from,
@@ -715,7 +715,7 @@ onMounted(loadClasses)
   border-radius: var(--ds-radius-2xl);
   padding: 0;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -759,7 +759,7 @@ onMounted(loadClasses)
   gap: 0.375rem;
   opacity: 0;
   transform: translateY(-4px);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .cmp__card:hover .cmp__card-actions {
@@ -779,7 +779,7 @@ onMounted(loadClasses)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .cmp__action-btn {
@@ -885,7 +885,7 @@ onMounted(loadClasses)
   color: white;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .cmp__card-manage-btn:hover {
@@ -913,7 +913,7 @@ onMounted(loadClasses)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .cmp__page-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: var(--ds-text-muted); }
@@ -937,7 +937,7 @@ onMounted(loadClasses)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -966,7 +966,7 @@ onMounted(loadClasses)
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.4, 0, 0.2, 1);
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -1104,7 +1104,7 @@ onMounted(loadClasses)
 /* Modal Transitions */
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .modal-enter-from,
@@ -1166,7 +1166,7 @@ onMounted(loadClasses)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .cmp__copy-btn:hover {
@@ -1180,3 +1180,9 @@ onMounted(loadClasses)
   margin: 0;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

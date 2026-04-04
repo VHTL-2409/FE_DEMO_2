@@ -74,6 +74,8 @@ const rootClass = computed(() => {
 </script>
 
 <style scoped>
+/* Animation classes come from animation.css (force-included in main.js — never tree-shaken).
+   Here we only keep background + dark-variant overrides; .shimmer and .animate-gpu-shimmer handle the animation. */
 .portal-skeleton {
   background: linear-gradient(90deg, var(--ds-gray-100, #f1f5f9) 25%, var(--ds-gray-200, #e2e8f0) 50%, var(--ds-gray-100, #f1f5f9) 75%);
   background-size: 200% 100%;
@@ -82,14 +84,5 @@ const rootClass = computed(() => {
 .dark .portal-skeleton {
   background: linear-gradient(90deg, var(--ds-gray-700, #334155) 25%, var(--ds-gray-600, #475569) 50%, var(--ds-gray-700, #334155) 75%);
   background-size: 200% 100%;
-}
-
-.shimmer {
-  animation: shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 </style>

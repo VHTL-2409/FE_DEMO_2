@@ -641,12 +641,18 @@ const handleImport = async () => {
         }
       } catch (apiErr) {
         console.warn('API preview failed, using file content directly:', apiErr)
+        if (apiErr?.payload?.message) {
+          importError.value = apiErr.payload.message
+        } else if (apiErr?.message) {
+          importError.value = apiErr.message
+        }
       }
     }
 
     // If still no questions, show error
     if (!questions || questions.length === 0) {
-      importError.value = 'Không thể đọc câu hỏi từ file. Vui lòng kiểm tra định dạng file.'
+      const existingError = importError.value
+      importError.value = existingError || 'Không thể đọc câu hỏi từ file. Vui lòng kiểm tra định dạng file.'
       return
     }
 
@@ -656,7 +662,11 @@ const handleImport = async () => {
     if (fileInput.value) fileInput.value.value = ''
 
   } catch (err) {
-    importError.value = err.message || 'Không thể nhập file. Vui lòng thử lại.'
+    if (err?.payload?.message) {
+      importError.value = err.payload.message
+    } else {
+      importError.value = err.message || 'Không thể nhập file. Vui lòng thử lại.'
+    }
   } finally {
     isImporting.value = false
   }
@@ -745,7 +755,7 @@ const handleImport = async () => {
   border-radius: var(--ds-radius-2xl);
   padding: 2rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   background: var(--ds-gray-50);
   text-align: center;
 }
@@ -817,7 +827,7 @@ const handleImport = async () => {
   font-size: 0.75rem;
   font-weight: 700;
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-dropzone__tpl:hover { background: var(--ds-primary); color: white; }
@@ -868,7 +878,7 @@ const handleImport = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-dropzone__file-remove:hover { background: var(--ds-danger-soft); color: var(--ds-danger); }
@@ -926,7 +936,7 @@ const handleImport = async () => {
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   margin-left: auto;
 }
 
@@ -968,7 +978,7 @@ const handleImport = async () => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .ec-qb-item { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -1032,7 +1042,7 @@ const handleImport = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -1054,7 +1064,7 @@ const handleImport = async () => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .ec-toggle-item { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -1198,7 +1208,7 @@ const handleImport = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-size: 1.25rem;
 }
 
@@ -1283,7 +1293,7 @@ const handleImport = async () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   align-self: flex-start;
 }
@@ -1359,7 +1369,7 @@ const handleImport = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-modal__close:hover { background: var(--ds-gray-100); color: var(--ds-text); }
@@ -1384,7 +1394,7 @@ const handleImport = async () => {
   border-radius: var(--ds-radius-2xl);
   font-size: 0.875rem;
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
@@ -1402,11 +1412,11 @@ const handleImport = async () => {
 }
 
 /* Transitions */
-.ec-slide-enter-active, .ec-slide-leave-active { transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; }
+.ec-slide-enter-active, .ec-slide-leave-active { transition: color 0.28s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.28s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; }
 .ec-slide-enter-from, .ec-slide-leave-to { opacity: 0; max-height: 0; }
 .ec-slide-enter-to, .ec-slide-leave-from { opacity: 1; max-height: 200px; }
 
-.ec-modal-enter-active, .ec-modal-leave-active { transition: all 0.2s ease; }
+.ec-modal-enter-active, .ec-modal-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .ec-modal-enter-from, .ec-modal-leave-to { opacity: 0; }
 .ec-modal-enter-from .ec-modal, .ec-modal-leave-to .ec-modal { transform: scale(0.95) translateY(10px); }
 
@@ -1415,3 +1425,9 @@ const handleImport = async () => {
 
 .hidden { display: none; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

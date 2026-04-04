@@ -221,7 +221,7 @@ const overallStatusSub = computed(() => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   margin-left: auto;
 }
@@ -247,7 +247,7 @@ const overallStatusSub = computed(() => {
   gap: 0.875rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--ds-border);
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .dark .rcl__summary { border-bottom-color: var(--ds-border-strong); }
@@ -264,7 +264,7 @@ const overallStatusSub = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .rcl__summary-icon--ok {
@@ -327,7 +327,7 @@ const overallStatusSub = computed(() => {
   gap: 0.875rem;
   padding: 0.875rem 1.25rem;
   border-bottom: 1px solid var(--ds-border);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .rcl__item { border-bottom-color: var(--ds-border-strong); }
@@ -345,7 +345,7 @@ const overallStatusSub = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .rcl__item-icon--pending {
@@ -436,3 +436,9 @@ const overallStatusSub = computed(() => {
   line-height: 1.4;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -152,7 +152,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   margin-top: 1.25rem;
   align-self: flex-start;
   position: relative;
@@ -213,3 +213,9 @@ onUnmounted(() => {
   border-top-color: var(--ds-border-strong);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

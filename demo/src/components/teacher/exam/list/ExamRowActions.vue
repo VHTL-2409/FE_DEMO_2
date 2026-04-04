@@ -238,7 +238,7 @@ defineExpose({ open, close })
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .elr__trigger:hover {
@@ -284,7 +284,7 @@ defineExpose({ open, close })
   color: var(--ds-text);
   cursor: pointer;
   text-align: left;
-  transition: all 0.1s ease;
+  transition: color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease, transform 0.1s ease;
   white-space: nowrap;
 }
 
@@ -335,3 +335,9 @@ defineExpose({ open, close })
   background: var(--ds-border-strong);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

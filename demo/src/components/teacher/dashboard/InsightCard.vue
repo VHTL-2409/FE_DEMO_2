@@ -135,16 +135,13 @@ const upcomingExams = computed(() => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
+/* InsightCard — uses .animate-fade-up from animation.css (canonical)
+   delay 0.5s is preserved via inline style for staggered entry */
 .td-insight {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.5s both;
+  animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.5s both;
 }
 
 /* Header */
@@ -339,7 +336,7 @@ const upcomingExams = computed(() => {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .td-insight__upcoming-item:hover {
@@ -390,3 +387,9 @@ const upcomingExams = computed(() => {
   flex-shrink: 0;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

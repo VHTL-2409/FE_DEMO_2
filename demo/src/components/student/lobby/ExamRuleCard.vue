@@ -258,7 +258,7 @@ const displayRules = computed(() => {
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: var(--ds-radius-lg);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .erc__rule:hover {
@@ -398,3 +398,9 @@ const displayRules = computed(() => {
   .erc__info-item:last-child { border-bottom: none; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -18,7 +18,11 @@
       class="db-app-shell__main"
       :class="showSidebar ? (sidebarCollapsed ? 'db-app-shell__main--collapsed' : 'db-app-shell__main--expanded') : ''"
     >
-      <slot />
+      <router-view v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </router-view>
     </main>
   </div>
 </template>
@@ -108,5 +112,13 @@ watch(sidebarCollapsed, (val) => {
 
 .db-app-shell__main--collapsed {
   padding-left: var(--db-sidebar-collapsed);
+}
+
+/* GPU: sidebar padding transitions smoothly; reduced-motion disables it */
+@media (prefers-reduced-motion: reduce) {
+  .db-app-shell__main {
+    transition: none;
+  }
+  /* page transition is handled globally in animation.css */
 }
 </style>

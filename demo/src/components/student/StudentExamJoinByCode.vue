@@ -385,7 +385,7 @@ onMounted(() => { loadMyClasses() })
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   text-align: left;
   width: 100%;
   font-family: inherit;
@@ -449,3 +449,9 @@ onMounted(() => { loadMyClasses() })
 }
 .animate-fade-up { animation: fadeUp 0.4s ease-out; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -247,7 +247,7 @@ const enableAll = () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ec-proctor-master__icon--on {
@@ -347,7 +347,7 @@ const enableAll = () => {
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: var(--ds-radius-md);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-proctor-rules__enable-all:hover {
@@ -370,7 +370,7 @@ const enableAll = () => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .ec-rule {

@@ -372,7 +372,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .rdl__step-icon {
@@ -384,7 +384,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   background: rgba(255, 255, 255, 0.05);
 }
 

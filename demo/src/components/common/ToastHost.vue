@@ -165,10 +165,10 @@ const iconName = (type) => {
 }
 
 .toast-enter-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .toast-leave-active {
-  transition: all 0.25s ease-out;
+  transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease-out;
 }
 .toast-enter-from,
 .toast-leave-to {
@@ -206,3 +206,9 @@ const iconName = (type) => {
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

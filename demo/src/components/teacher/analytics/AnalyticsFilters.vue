@@ -171,7 +171,7 @@ const sortOptions = [
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -293,7 +293,7 @@ const sortOptions = [
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .af__search {
@@ -345,7 +345,7 @@ const sortOptions = [
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -369,7 +369,7 @@ const sortOptions = [
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-color: var(--ds-surface);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   min-width: 130px;
 }
@@ -423,7 +423,7 @@ const sortOptions = [
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
   font-family: inherit;
@@ -441,3 +441,9 @@ const sortOptions = [
   transform: none;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

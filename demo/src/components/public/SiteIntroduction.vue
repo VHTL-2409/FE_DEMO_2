@@ -966,7 +966,7 @@ onUnmounted(() => {
   right: 0;
   z-index: 100;
   padding: 1rem 2rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .lp__nav--scrolled {
@@ -1014,7 +1014,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.5rem 0.875rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__nav-link:hover {
@@ -1035,7 +1035,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__nav-login:hover {
@@ -1054,7 +1054,7 @@ onUnmounted(() => {
   padding: 0.625rem 1.25rem;
   border-radius: 10px;
   text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
 }
 
@@ -1080,7 +1080,7 @@ onUnmounted(() => {
   height: 2px;
   background: var(--lp-text);
   border-radius: 2px;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__mobile-menu {
@@ -1103,7 +1103,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__mobile-link:hover {
@@ -1139,7 +1139,7 @@ onUnmounted(() => {
   text-decoration: none;
   border: none;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -1613,7 +1613,7 @@ onUnmounted(() => {
   padding: 0.625rem 0.75rem;
   background: var(--lp-bg);
   border-radius: 10px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__preview-student:hover {
@@ -1920,7 +1920,7 @@ onUnmounted(() => {
   background: var(--lp-surface);
   border: 1px solid var(--lp-border);
   padding: 2rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: default;
   overflow: hidden;
 }
@@ -1975,7 +1975,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin-bottom: 1.25rem;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__feature-card:hover .lp__feature-icon-wrap {
@@ -2113,7 +2113,7 @@ onUnmounted(() => {
   margin-bottom: 1.5rem;
   position: relative;
   z-index: 2;
-  transition: all 0.4s ease;
+  transition: color 0.4s ease, background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
 }
 
 .lp__workflow-step:hover .lp__workflow-step-number {
@@ -2140,7 +2140,7 @@ onUnmounted(() => {
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__workflow-step-card:hover {
@@ -2204,7 +2204,7 @@ onUnmounted(() => {
   border: 1px solid var(--lp-border);
   border-radius: 24px;
   padding: 2.5rem;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   position: absolute;
   inset: 0;
@@ -2291,7 +2291,7 @@ onUnmounted(() => {
   justify-content: center;
   color: var(--lp-text);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__testimonials-btn:hover {
@@ -2312,7 +2312,7 @@ onUnmounted(() => {
   border: none;
   background: var(--lp-border);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__testimonials-dot--active {
@@ -2344,7 +2344,7 @@ onUnmounted(() => {
   border: 1px solid var(--lp-border);
   border-radius: 16px;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__faq-item:hover {
@@ -2588,7 +2588,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--lp-text-secondary);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__footer-social-link:hover {

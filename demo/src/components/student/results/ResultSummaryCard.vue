@@ -132,7 +132,7 @@ const completionRate = computed(() => {
   border-radius: var(--ds-radius-xl);
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .rsc__card { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -245,7 +245,7 @@ const completionRate = computed(() => {
 
 /* Card hover effects */
 .rsc__card {
-  transition: all 0.25s ease;
+  transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .rsc__card:hover {
@@ -266,3 +266,9 @@ const completionRate = computed(() => {
   .rsc__grid { grid-template-columns: 1fr; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

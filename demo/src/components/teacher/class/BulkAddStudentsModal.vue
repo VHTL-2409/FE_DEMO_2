@@ -512,7 +512,7 @@ const handleSubmitByCsv = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -548,7 +548,7 @@ const handleSubmitByCsv = async () => {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .basm-tab:hover { color: var(--ds-text); }
@@ -595,7 +595,7 @@ const handleSubmitByCsv = async () => {
   font-size: 0.9375rem;
   background: var(--ds-surface);
   color: var(--ds-text);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   resize: vertical;
   line-height: 1.6;
@@ -646,7 +646,7 @@ const handleSubmitByCsv = async () => {
   background: var(--ds-gray-50);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .basm-checkbox-label {
@@ -672,7 +672,7 @@ const handleSubmitByCsv = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   margin-top: 2px;
 }
 
@@ -729,7 +729,7 @@ const handleSubmitByCsv = async () => {
   border-radius: var(--ds-radius-xl);
   background: var(--ds-gray-50);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .basm-csv-upload-area {
@@ -791,7 +791,7 @@ const handleSubmitByCsv = async () => {
   font-weight: 600;
   color: var(--ds-primary);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   margin-top: 0.5rem;
   align-self: flex-start;
 }
@@ -850,7 +850,7 @@ const handleSubmitByCsv = async () => {
   color: var(--ds-text-muted);
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .basm-preview__header button:hover {
@@ -1118,7 +1118,7 @@ const handleSubmitByCsv = async () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -1163,7 +1163,7 @@ const handleSubmitByCsv = async () => {
 /* Transition */
 .basm-modal-enter-active,
 .basm-modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .basm-modal-enter-from,
@@ -1176,3 +1176,9 @@ const handleSubmitByCsv = async () => {
   transform: scale(0.95) translateY(10px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

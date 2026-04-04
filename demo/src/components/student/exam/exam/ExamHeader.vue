@@ -259,7 +259,7 @@ const ringClass = computed(() => ({
   width: 60px;
   height: 60px;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .ehead__timer-wrap--warning {
@@ -434,7 +434,7 @@ const ringClass = computed(() => ({
   border: 1.5px solid var(--ds-border);
   color: var(--ds-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
   white-space: nowrap;
   letter-spacing: 0.01em;
@@ -463,7 +463,7 @@ const ringClass = computed(() => ({
   border: none;
   color: white;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
   white-space: nowrap;
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
@@ -527,3 +527,9 @@ const ringClass = computed(() => ({
   .ehead__save-btn { padding: 0.375rem 0.625rem; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

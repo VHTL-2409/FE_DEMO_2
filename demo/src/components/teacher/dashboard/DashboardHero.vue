@@ -289,7 +289,7 @@ const heroSubtitle = computed(() => {
   color: var(--ds-text-muted);
   flex-shrink: 0;
   font-size: 1.125rem;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .td-hero__stat-icon-wrap {
@@ -353,7 +353,7 @@ const heroSubtitle = computed(() => {
   border-radius: var(--ds-radius-xl);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   position: relative;
   overflow: hidden;
   text-align: left;
@@ -480,3 +480,9 @@ const heroSubtitle = computed(() => {
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

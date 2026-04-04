@@ -512,7 +512,7 @@ const closePicker = (event) => {
   background: var(--ds-gray-50);
   color: var(--ds-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   text-align: left;
 }
 
@@ -636,7 +636,7 @@ const closePicker = (event) => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .ec-sched-quick-btn {
@@ -672,7 +672,7 @@ const closePicker = (event) => {
   font-size: 0.875rem;
   color: var(--ds-text);
   outline: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .ec-input {
@@ -738,3 +738,9 @@ const closePicker = (event) => {
   margin: 0.25rem 0 0;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

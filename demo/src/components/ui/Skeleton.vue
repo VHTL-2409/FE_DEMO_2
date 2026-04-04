@@ -36,6 +36,7 @@ const skeletonStyle = computed(() => ({
 </script>
 
 <style scoped>
+/* ds-shimmer animation uses .shimmer from animation.css (never tree-shaken) */
 .ds-skeleton {
   background: linear-gradient(
     90deg,
@@ -44,12 +45,7 @@ const skeletonStyle = computed(() => ({
     var(--ds-gray-100) 100%
   );
   background-size: 200% 100%;
-  animation: ds-shimmer 1.3s ease-in-out infinite;
-}
-
-@keyframes ds-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  animation: shimmer 1.3s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,7 +18,8 @@ export const sendMonitoringEvent = async (attemptId, eventType, details = '') =>
 export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events/batch`, {
     method: 'POST',
-    body: JSON.stringify(batchPayload)
+    body: JSON.stringify(batchPayload),
+    suppressToast: true
   })
   return unwrapApiData(payload)
 }
@@ -26,7 +27,8 @@ export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
 export const sendMonitoringHeartbeat = async (attemptId, heartbeatPayload) => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/heartbeat`, {
     method: 'POST',
-    body: JSON.stringify(heartbeatPayload)
+    body: JSON.stringify(heartbeatPayload),
+    suppressToast: true
   })
   return unwrapApiData(payload)
 }

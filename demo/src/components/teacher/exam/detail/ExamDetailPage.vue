@@ -871,7 +871,7 @@ onMounted(loadExam)
   font-weight: 600;
   color: var(--ds-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   text-align: left;
   white-space: nowrap;
   position: relative;
@@ -1023,7 +1023,7 @@ onMounted(loadExam)
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   align-self: flex-start;
 }
 
@@ -1066,7 +1066,7 @@ onMounted(loadExam)
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   width: 100%;
 }
@@ -1180,7 +1180,7 @@ onMounted(loadExam)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -1290,7 +1290,7 @@ onMounted(loadExam)
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
 }
 
@@ -1340,10 +1340,16 @@ onMounted(loadExam)
 .edp__modal-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
 /* Transitions */
-.edp-modal-enter-active, .edp-modal-leave-active { transition: all 0.2s ease; }
+.edp-modal-enter-active, .edp-modal-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .edp-modal-enter-from, .edp-modal-leave-to { opacity: 0; }
 .edp-modal-enter-from .edp-modal, .edp-modal-leave-to .edp-modal { transform: scale(0.95); }
 
 .ed-spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

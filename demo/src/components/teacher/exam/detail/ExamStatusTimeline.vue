@@ -209,7 +209,7 @@ const milestones = computed(() => {
   z-index: 1;
   background: var(--ds-gray-100);
   border: 2px solid var(--ds-border);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .dark .est__dot {
@@ -296,3 +296,9 @@ const milestones = computed(() => {
   align-self: center;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,6 +1,10 @@
 <template>
   <div class="route-layout route-layout-exam min-h-full">
-    <slot />
+    <router-view v-slot="{ Component }">
+      <Transition name="page" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </router-view>
   </div>
 </template>
 

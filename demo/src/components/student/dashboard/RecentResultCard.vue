@@ -119,17 +119,14 @@ const passChipClass = (score) => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* fadeUpSm — shared 10px fade-up keyframe (defined in animation.css, accessible globally) */
 
 .rrc {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.3s both;
+  animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.3s both;
 }
 
 .dark .rrc {
@@ -226,7 +223,7 @@ const passChipClass = (score) => {
 .rrc__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: rrcShimmer 1.5s infinite;
+  animation: shimmer 1.5s infinite;
   border-radius: var(--ds-radius-md);
 }
 
@@ -235,12 +232,6 @@ const passChipClass = (score) => {
   background-size: 200% 100%;
 }
 
-@keyframes rrcShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.rrc__skel--icon { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
 .rrc__skel-content { flex: 1; display: flex; flex-direction: column; gap: 0.375rem; }
 .rrc__skel--title { height: 14px; width: 70%; }
 .rrc__skel--meta { height: 10px; width: 50%; }
@@ -257,7 +248,7 @@ const passChipClass = (score) => {
 }
 
 
-.dark .rrc__empty
+.dark .rrc__empty p { color: #f1f5f9; }
 
 .rrc__empty p {
   font-size: 0.875rem;
@@ -265,8 +256,6 @@ const passChipClass = (score) => {
   color: var(--ds-text);
   margin: 0;
 }
-
-.dark .rrc__empty p { color: #f1f5f9; }
 
 .rrc__empty span:last-child {
   font-size: 0.75rem;
@@ -305,7 +294,7 @@ const passChipClass = (score) => {
   border-radius: var(--ds-radius-xl);
   border: 1px solid;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .rrc__score-wrap--excellent {
@@ -402,3 +391,9 @@ const passChipClass = (score) => {
   color: var(--ds-danger);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

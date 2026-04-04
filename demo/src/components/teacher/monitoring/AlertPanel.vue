@@ -444,7 +444,7 @@ const groupedAlerts = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ap__sound-btn {
@@ -473,7 +473,7 @@ const groupedAlerts = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ap__mark-read { color: #94a3b8; }
@@ -527,7 +527,7 @@ const groupedAlerts = computed(() => {
   cursor: pointer;
   appearance: none;
   outline: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -790,7 +790,7 @@ const groupedAlerts = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ap__alert-action { background: var(--ds-gray-700); }
@@ -893,7 +893,7 @@ const groupedAlerts = computed(() => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -903,7 +903,7 @@ const groupedAlerts = computed(() => {
 
 /* Transition */
 .ap-alert-enter-active {
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .ap-alert-enter-from {
@@ -913,7 +913,7 @@ const groupedAlerts = computed(() => {
 }
 
 .ap-alert-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ap-alert-leave-to {
@@ -921,3 +921,9 @@ const groupedAlerts = computed(() => {
   transform: translateX(12px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

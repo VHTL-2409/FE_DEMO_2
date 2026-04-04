@@ -94,7 +94,7 @@ const tabs = [
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   white-space: nowrap;
 }
@@ -198,7 +198,7 @@ const tabs = [
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .esf__search-clear { background: var(--ds-gray-700); }
@@ -212,3 +212,9 @@ const tabs = [
   .esf__search-wrap { max-width: 100%; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -783,7 +783,7 @@ onUnmounted(() => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .wr-student-card:hover {
@@ -927,7 +927,7 @@ onUnmounted(() => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .wr-action-card:hover {
@@ -1063,7 +1063,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   border: 1px solid var(--ds-border);
   background: transparent;
   color: var(--ds-text-secondary);
@@ -1121,7 +1121,7 @@ onUnmounted(() => {
 
 .wr-flash-enter-active,
 .wr-flash-leave-active {
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .wr-flash-enter-from {
@@ -1153,6 +1153,20 @@ onUnmounted(() => {
 
   .wr-header__stats {
     justify-content: space-around;
+  }
+}
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .wr-flash-enter-active,
+  .wr-flash-leave-active {
+    transition: none;
+  }
+
+  .wr-student-card:hover,
+  .wr-action-card:hover,
+  .wr-btn:hover {
+    transform: none;
+    transition: none;
   }
 }
 </style>

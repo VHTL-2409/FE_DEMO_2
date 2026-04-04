@@ -111,6 +111,19 @@
               <LucideIcon name="warning" size="13" />
               confidence thấp
             </span>
+
+            <!-- Render mode badge -->
+            <span v-if="question.renderMode" class="ipw__render-badge"
+              :class="`ipw__render-badge--${question.renderMode?.toLowerCase()}`">
+              <LucideIcon :name="question.renderMode === 'IMAGE' ? 'image' : 'text_fields'" size="11" />
+              {{ question.renderMode === 'IMAGE' ? 'Ảnh' : 'Text' }}
+            </span>
+
+            <!-- Has issues badge -->
+            <span v-if="question.issues?.length" class="ipw__issues-badge">
+              <LucideIcon name="warning" size="11" />
+              {{ question.issues.length }}
+            </span>
           </div>
 
           <div class="ipw__card-right">
@@ -146,8 +159,41 @@
         <!-- Card body: editable (shown when expanded) -->
         <div v-if="expandedIds.has(question.index)" class="ipw__card-body">
 
-          <!-- Question content -->
-          <div class="ipw__field">
+          <!-- Image toggle bar (show for IMAGE mode or when user wants to toggle) -->
+          <div v-if="question.render?.imagePath || canToggleRenderMode(question)" class="ipw__render-toggle">
+            <button
+              type="button"
+              class="ipw__render-toggle-btn"
+              :class="{ 'ipw__render-toggle-btn--active': activeRenderMode(question.index) === 'text' }"
+              @click="setRenderMode(question.index, 'text')"
+            >
+              <LucideIcon name="text_fields" size="13" />
+              Text
+            </button>
+            <button
+              v-if="question.render?.imagePath"
+              type="button"
+              class="ipw__render-toggle-btn"
+              :class="{ 'ipw__render-toggle-btn--active': activeRenderMode(question.index) === 'image' }"
+              @click="setRenderMode(question.index, 'image')"
+            >
+              <LucideIcon name="image" size="13" />
+              Ảnh
+            </button>
+          </div>
+
+          <!-- Image mode -->
+          <div v-if="activeRenderMode(question.index) === 'image' && question.render?.imagePath" class="ipw__image-viewer">
+            <img
+              :src="questionImageUrl(question)"
+              :alt="`Câu ${question.index}`"
+              class="ipw__cropped-img"
+              @error="onImageError(question.index, $event)"
+            />
+          </div>
+
+          <!-- Text mode (question content) -->
+          <div v-else class="ipw__field">
             <label class="ipw__field-label">
               <LucideIcon name="text_fields" size="14" />
               Nội dung câu hỏi
@@ -269,6 +315,30 @@
               <span>{{ Number(question.parseConfidence || 0).toFixed(2) }}</span>
             </div>
           </div>
+
+          <!-- Explanation (from solution section) -->
+          <div v-if="question.explanation" class="ipw__field">
+            <label class="ipw__field-label">
+              <LucideIcon name="lightbulb" size="14" />
+              Lời giải
+            </label>
+            <div class="ipw__explanation-box">{{ question.explanation }}</div>
+          </div>
+
+          <!-- Issues list -->
+          <div v-if="question.issues?.length" class="ipw__issues-list">
+            <div class="ipw__issues-title">
+              <LucideIcon name="warning" size="13" />
+              Cảnh báo
+            </div>
+            <span
+              v-for="(issue, iIdx) in question.issues"
+              :key="iIdx"
+              class="ipw__issue-pill"
+            >
+              {{ issue }}
+            </span>
+          </div>
         </div>
       </article>
     </div>
@@ -281,7 +351,8 @@ import { ref, computed } from 'vue'
 const props = defineProps({
   summary: { type: Object, default: () => ({}) },
   questions: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  sessionId: { type: [Number, String], default: null }
 })
 
 const emit = defineEmits(['update-question'])
@@ -289,7 +360,40 @@ const emit = defineEmits(['update-question'])
 const expandedIds = ref(new Set([1, 2, 3])) // expand first 3 by default
 const allExpanded = ref(false)
 
-// Expose toggleAll for parent to control
+// Track active render mode per question (TEXT | IMAGE)
+const renderModeOverrides = ref({})
+
+// Image error tracking
+const imageErrors = ref({})
+
+const questionImageUrl = (question) => {
+  if (!question.render?.imagePath) return ''
+  // Backend serves image via /api/v1/exam-import/image/{sessionId}/{questionIndex}
+  const sid = props.sessionId || question.sessionId || ''
+  return `/api/v1/exam-import/image/${sid}/${question.index}`
+}
+
+const activeRenderMode = (index) => {
+  if (renderModeOverrides.value[index] !== undefined) {
+    return renderModeOverrides.value[index]
+  }
+  const q = props.questions.find(q => q.index === index)
+  return q?.renderMode === 'IMAGE' ? 'image' : 'text'
+}
+
+const setRenderMode = (index, mode) => {
+  renderModeOverrides.value = { ...renderModeOverrides.value, [index]: mode }
+}
+
+const canToggleRenderMode = (question) => {
+  return question.renderMode === 'IMAGE' || question.render?.imagePath
+}
+
+const onImageError = (index, event) => {
+  imageErrors.value = { ...imageErrors.value, [index]: true }
+  console.warn(`[ImportPreviewWorkbench] Failed to load image for question ${index}`)
+}
+
 const toggleAll = () => {
   if (allExpanded.value) {
     expandedIds.value = new Set(props.questions.map(q => q.index))
@@ -518,7 +622,7 @@ defineExpose({ toggleAll })
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ipw__expand-all-btn { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
@@ -834,7 +938,7 @@ defineExpose({ toggleAll })
   font-size: 0.65rem;
   font-weight: 800;
   flex-shrink: 0;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ipw__opt-badge { background: var(--ds-gray-700); }
@@ -885,7 +989,7 @@ defineExpose({ toggleAll })
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ipw__correct-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
@@ -952,4 +1056,136 @@ defineExpose({ toggleAll })
   font-variant-numeric: tabular-nums;
   margin-left: auto;
 }
+
+/* Render mode badge */
+.ipw__render-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.12rem 0.35rem;
+  border-radius: var(--ds-radius-full);
+  flex-shrink: 0;
+}
+
+.ipw__render-badge--image {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
+.ipw__render-badge--text {
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+}
+
+.dark .ipw__render-badge--text { background: var(--ds-gray-700); }
+
+/* Issues badge */
+.ipw__issues-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.12rem 0.35rem;
+  border-radius: var(--ds-radius-full);
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--ds-danger);
+  flex-shrink: 0;
+}
+
+/* Render toggle bar */
+.ipw__render-toggle {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.ipw__render-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1.5px solid var(--ds-border);
+  background: var(--ds-gray-50);
+  color: var(--ds-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.dark .ipw__render-toggle-btn { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
+
+.ipw__render-toggle-btn--active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+}
+
+.dark .ipw__render-toggle-btn--active { background: rgba(59, 130, 246, 0.12); }
+
+/* Image viewer */
+.ipw__image-viewer {
+  border-radius: var(--ds-radius-xl);
+  overflow: hidden;
+  border: 1.5px solid var(--ds-border);
+  background: var(--ds-gray-50);
+}
+
+.dark .ipw__image-viewer { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+
+.ipw__cropped-img {
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Explanation box */
+.ipw__explanation-box {
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--ds-radius-xl);
+  background: rgba(139, 92, 246, 0.06);
+  border: 1.5px solid rgba(139, 92, 246, 0.2);
+  color: var(--ds-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.dark .ipw__explanation-box { background: rgba(139, 92, 246, 0.08); color: #c4b5fd; }
+
+/* Issues list */
+.ipw__issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.ipw__issues-title {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ds-danger);
+}
+
+.ipw__issue-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--ds-radius-full);
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.15);
+  color: var(--ds-danger);
+  font-size: 0.7rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.dark .ipw__issue-pill { background: rgba(220, 38, 38, 0.1); }
 </style>

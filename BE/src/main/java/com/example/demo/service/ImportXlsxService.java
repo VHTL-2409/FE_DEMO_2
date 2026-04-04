@@ -42,6 +42,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.example.demo.service.importer.FormatDetector;
+import com.example.demo.service.importer.QuizParserEngine;
 import com.example.demo.service.importer.extractor.CsvExtractor;
 @Service
 public class ImportXlsxService {
@@ -52,14 +53,16 @@ public class ImportXlsxService {
     private final AiDifficultyAnalyzerService aiAnalyzer;
     private final FormatDetector formatDetector;
     private final CsvExtractor csvExtractor;
+    private final QuizParserEngine quizParserEngine;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ImportXlsxService(QuestionRepository questionRepository, AiDifficultyAnalyzerService aiAnalyzer,
-            FormatDetector formatDetector, CsvExtractor csvExtractor) {
+            FormatDetector formatDetector, CsvExtractor csvExtractor, QuizParserEngine quizParserEngine) {
         this.questionRepository = questionRepository;
         this.aiAnalyzer = aiAnalyzer;
         this.formatDetector = formatDetector;
         this.csvExtractor = csvExtractor;
+        this.quizParserEngine = quizParserEngine;
     }
 
     public int importQuestions(Exam exam, MultipartFile file) {
@@ -72,66 +75,18 @@ public class ImportXlsxService {
     }
 
     public List<Question> parseQuestions(Exam exam, MultipartFile file) {
-        String extension = getFileExtension(file);
-        if ("xlsx".equals(extension)) {
-            validateFile(file, "xlsx");
-            return parseQuestionsFromXlsx(exam, file);
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File is empty");
         }
-        if ("csv".equals(extension)) {
-            validateFile(file, "csv");
-            return parseQuestionsFromCsv(exam, file);
-        }
-        if ("pdf".equals(extension)) {
-            validateFile(file, "pdf");
-            try {
-                String text = extractTextFromPdf(file.getInputStream());
-                return parseQuestionsFromText(exam, text);
-            } catch (IOException ex) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file PDF");
-            } catch (RuntimeException ex) {
-                throw mapImportRuntimeException(ex, "Định dạng PDF không hợp lệ hoặc file bị mã hóa");
-            }
-        }
-        if ("docx".equals(extension)) {
-            validateFile(file, "docx");
-            try {
-                String text = extractTextFromDocx(file.getInputStream());
-                return parseQuestionsFromDocx(exam, text);
-            } catch (IOException ex) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
-            } catch (RuntimeException ex) {
-                throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
-            }
-        }
-        if ("json".equals(extension)) {
-            validateFile(file, "json");
-            try {
-                return parseQuestionsFromJson(exam, file);
-            } catch (IOException ex) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file JSON");
-            } catch (RuntimeException ex) {
-                throw mapImportRuntimeException(ex, "Định dạng JSON không hợp lệ");
-            }
-        }
-        if ("md".equals(extension) || "markdown".equals(extension)) {
-            validateFile(file, extension);
-            try {
-                String text = new String(file.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-                return parseQuestionsFromMarkdown(exam, text);
-            } catch (IOException ex) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Markdown");
-            }
-        }
-        if ("txt".equals(extension)) {
-            validateFile(file, "txt");
-            try {
-                String text = new String(file.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-                return parseQuestionsFromText(exam, text);
-            } catch (IOException ex) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file TXT");
-            }
-        }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF, DOCX, TXT, JSON và Markdown");
+        String ext = getFileExtension(file);
+        return switch (ext) {
+            case "pdf" -> previewPdf(exam, file).questions();
+            case "docx" -> previewDocx(exam, file).questions();
+            case "csv", "xlsx" -> quizParserEngine.parseFile(exam, file);
+            default -> throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Định dạng không được hỗ trợ: " + (ext.isBlank() ? "(không có phần mở rộng)" : ext)
+                            + ". Chỉ hỗ trợ CSV, XLSX, PDF và DOCX.");
+        };
     }
 
     public int countQuestions(MultipartFile file) {
@@ -282,7 +237,7 @@ public class ImportXlsxService {
 
             if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
                 try {
-                    ParsedQuestion pq = parseQuestionBlock(content, Map.of(), rowIndex + 1);
+                    ParsedQuestion pq = parseQuestionBlock(content, Map.of(), rowIndex + 1, SectionKind.UNKNOWN);
                     if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
                         addQuestionRow(questions, exam, pq.content, pq.optionA, pq.optionB, pq.optionC, pq.optionD,
                                 pq.correctAnswer, "1.0", null, rowIndex + 1);
@@ -541,7 +496,7 @@ public class ImportXlsxService {
         if (rawText == null || rawText.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File DOCX trống hoặc không có nội dung");
         }
-        String normalized = rawText.replace("\r\n", "\n").replace("\r", "\n");
+        String normalized = preprocessQuizPlainText(rawText);
 
         Map<Integer, String> answerKey = extractAnswerKeyTable(normalized);
         List<String> lines = new ArrayList<>();
@@ -597,8 +552,8 @@ public class ImportXlsxService {
                         }
                     }
 
-                    // Option detection
-                    Pattern optPat = Pattern.compile("^\\s*[A-Da-d][\\.\\):\\-–—]\\s*(.+)");
+                    // Option detection — cho phép *A. / *D. (đánh dấu đáp án đúng như doc_mau_2)
+                    Pattern optPat = Pattern.compile("^\\s*\\*?([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
                     Matcher om = optPat.matcher(nextLine);
                     if (om.matches()) {
                         optionLines.add(nextLine);
@@ -624,11 +579,14 @@ public class ImportXlsxService {
                 if (hasOptions) {
                     // Parse options
                     for (String optLine : optionLines) {
-                        Pattern po = Pattern.compile("^\\s*([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
+                        Pattern po = Pattern.compile("^\\s*\\*?([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
                         Matcher omo = po.matcher(optLine);
                         if (omo.matches()) {
                             String letter = omo.group(1).toUpperCase(Locale.ROOT);
                             String optText = omo.group(2).trim();
+                            if (optLine.trim().startsWith("*")) {
+                                correctAnswer = letter;
+                            }
                             // Strip leading asterisk if present
                             if (optText.startsWith("*")) {
                                 optText = optText.substring(1).trim();
@@ -690,7 +648,7 @@ public class ImportXlsxService {
         }
 
         if (questions.isEmpty()) {
-            return parseQuestionsFromText(exam, rawText);
+            return parseQuestionsFromText(exam, normalized);
         }
         return questions;
     }
@@ -811,24 +769,47 @@ public class ImportXlsxService {
                     "File PDF/Word có thể chứa hình ảnh thay vì văn bản có thể đọc. "
                     + "Vui lòng dùng file đã OCR hoặc file có text extractable.");
         }
-        String normalized = rawText.replace("\r\n", "\n").replace("\r", "\n");
+        String normalized = preprocessQuizPlainText(rawText);
+
+        // Step 0 – detect exam sections (PHẦN I / PHẦN II / Trắc nghiệm / Tự luận)
+        List<SectionSpan> sections = detectExamSections(normalized);
 
         // Step 1 – extract answer key table from the end of the document
         Map<Integer, String> answerKey = extractAnswerKeyTable(normalized);
 
-        // Step 2 – split raw text into individual question blocks
-        List<String> blocks = splitQuestionBlocks(normalized);
-
         List<Question> questions = new ArrayList<>();
-        for (int i = 0; i < blocks.size(); i++) {
-            String block = blocks.get(i).trim();
-            if (block.isBlank()) continue;
 
-            ParsedQuestion pq = parseQuestionBlock(block, answerKey, i + 1);
-            if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
-                addQuestionRow(questions, exam, pq.content,
-                        pq.optionA, pq.optionB, pq.optionC, pq.optionD,
-                        pq.correctAnswer, "1.0", null, i + 1);
+        for (SectionSpan span : sections) {
+            String spanText = String.join("\n",
+                    java.util.Arrays.copyOfRange(normalized.split("\n", -1), span.startLine, span.endLine));
+            List<String> blocks = splitQuestionBlocks(spanText);
+
+            for (int i = 0; i < blocks.size(); i++) {
+                String block = blocks.get(i).trim();
+                if (block.isBlank()) continue;
+
+                try {
+                    ParsedQuestion pq = parseQuestionBlock(block, answerKey, i + 1, span.kind);
+                    if (pq != null && pq.content != null && !pq.content.isBlank()) {
+                        if (pq.type == QuestionType.ESSAY || span.kind == SectionKind.ESSAY) {
+                            addEssayQuestion(questions, exam, pq.content, 1.0,
+                                    pq.correctAnswer != null && pq.correctAnswer.isBlank() ? null : pq.correctAnswer);
+                        } else if (pq.correctAnswer != null && List.of("A", "B", "C", "D").contains(pq.correctAnswer)) {
+                            addQuestionRow(questions, exam, pq.content,
+                                    pq.optionA, pq.optionB, pq.optionC, pq.optionD,
+                                    pq.correctAnswer, "1.0", null, i + 1);
+                        }
+                    }
+                } catch (ApiException ex) {
+                    // MCQ block with no answer → try ESSAY fallback
+                    try {
+                        ParsedQuestion pq = parseQuestionBlock(block, answerKey, i + 1, SectionKind.ESSAY);
+                        if (pq != null && pq.content != null && !pq.content.isBlank()) {
+                            addEssayQuestion(questions, exam, pq.content, 1.0,
+                                    pq.correctAnswer != null && pq.correctAnswer.isBlank() ? null : pq.correctAnswer);
+                        }
+                    } catch (ApiException ignored) { }
+                }
             }
         }
 
@@ -838,6 +819,40 @@ public class ImportXlsxService {
                     + "Định dạng yêu cầu: Câu 1. nội dung | A) đáp án | B) đáp án | C) đáp án | D) đáp án | Đáp án: A");
         }
         return questions;
+    }
+
+    /**
+     * Chuẩn hoá text trích xuất từ PDF/Word: dấu fullwidth, và tách dòng kiểu bảng
+     * {@code Câu 1. stem | A) ... | B) ... | Đáp án: A} thành nhiều dòng để parser
+     * nhận diện được từng phần (trước đây một dòng duy nhất khiến mất nội dung câu hỏi).
+     */
+    private String preprocessQuizPlainText(String rawText) {
+        if (rawText == null) return null;
+        String n = rawText.replace("\r\n", "\n").replace("\r", "\n");
+        n = n.replace('\uFF0E', '.').replace('\uFF09', ')').replace('\uFF1A', ':').replace('\uFF1B', ';');
+        StringBuilder sb = new StringBuilder();
+        Pattern optFrag = Pattern.compile("[A-Da-d][\\.\\):\\-–—]");
+        for (String rawLine : n.split("\n", -1)) {
+            String t = rawLine.trim();
+            if (t.isBlank()) {
+                sb.append('\n');
+                continue;
+            }
+            long optCount = optFrag.matcher(t).results().count();
+            boolean looksLikeRow = t.matches("(?is).*(?:câu|bài|question)\\s+\\d+.*")
+                    || t.matches("(?s)^\\s*\\d+[\\.\\):].*");
+            if (t.contains("|") && optCount >= 2 && looksLikeRow) {
+                String[] parts = t.split("\\|");
+                for (int i = 0; i < parts.length; i++) {
+                    if (i > 0) sb.append('\n');
+                    sb.append(parts[i].trim());
+                }
+                sb.append('\n');
+            } else {
+                sb.append(rawLine).append('\n');
+            }
+        }
+        return sb.toString();
     }
 
     // ---------- Answer Key Table extractor ----------
@@ -942,6 +957,84 @@ public class ImportXlsxService {
         String content;
         String optionA, optionB, optionC, optionD;
         String correctAnswer;
+        QuestionType type = QuestionType.SINGLE_CHOICE;
+    }
+
+    /** Phân loại khu vực trong đề thi. */
+    enum SectionKind { MCQ, ESSAY, UNKNOWN }
+
+    /** Một khu vực trong đề thi với vị trí dòng và loại. */
+    record SectionSpan(int startLine, int endLine, SectionKind kind) {}
+
+    // ---------- Exam section detector ----------
+
+    /**
+     * Quét toàn bộ văn bản để nhận diện các khu vực đề thi (PHẦN I / PHẦN II /
+     * Trắc nghiệm / Tự luận). Trả về danh sách SectionSpan đã sort theo startLine.
+     */
+    private List<SectionSpan> detectExamSections(String normalized) {
+        List<SectionSpan> sections = new ArrayList<>();
+        String[] lines = normalized.split("\n", -1);
+
+        SectionKind currentKind = SectionKind.UNKNOWN;
+        int sectionStart = 0;
+
+        // Regex patterns cho tiêu đề khu vực (phải ở đầu dòng)
+        Pattern essayHeader = Pattern.compile(
+                "(?i)^\\s*(phần\\s*II|phần\\s*2|tự\\s*luận|tự\\s*luận|phần\\s*II\\s*[:.]?|section\\s*II|part\\s*II)\\b");
+        Pattern mcqHeader = Pattern.compile(
+                "(?i)^\\s*(phần\\s*I|phần\\s*1|trắc\\s*nghiệm|trắc nghiệm|phần\\s*I\\s*[:.]?|section\\s*I|part\\s*I)\\b");
+        Pattern neutralHeader = Pattern.compile(
+                "(?i)^\\s*(phần\\s*[IIVXL]+|phần\\s+\\d+|section\\s+[IIVXL]+|bài\\s+thi|mục)\\s*[:.]?\\s*$");
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isBlank()) continue;
+
+            SectionKind detected = null;
+
+            if (essayHeader.matcher(line).find()) {
+                detected = SectionKind.ESSAY;
+            } else if (mcqHeader.matcher(line).find()) {
+                detected = SectionKind.MCQ;
+            } else if (neutralHeader.matcher(line).find()) {
+                // "Phần I" / "Phần II" — xác định parity để suy ra kind
+                detected = inferSectionKindFromLine(line);
+            }
+
+            if (detected != null && detected != currentKind) {
+                if (currentKind != null && sectionStart < i) {
+                    sections.add(new SectionSpan(sectionStart, i, currentKind));
+                }
+                currentKind = detected;
+                sectionStart = i;
+            }
+        }
+
+        // Flush cuối
+        if (currentKind != null && sectionStart < lines.length) {
+            sections.add(new SectionSpan(sectionStart, lines.length, currentKind));
+        }
+
+        // Nếu không có section nào → toàn bộ là UNKNOWN (dùng MCQ logic có fallback)
+        if (sections.isEmpty()) {
+            sections.add(new SectionSpan(0, lines.length, SectionKind.UNKNOWN));
+        }
+
+        return sections;
+    }
+
+    /** Suy ra kind từ tiêu đề "Phần I" / "Phần II" / "Phần 1" / "Phần 2". */
+    private SectionKind inferSectionKindFromLine(String line) {
+        String lower = line.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        // "phần2" / "phầnII" → ESSAY; "phần1" / "phầnI" → MCQ
+        if (lower.matches(".*phần2.*") || lower.matches(".*phầnii.*")) {
+            return SectionKind.ESSAY;
+        }
+        if (lower.matches(".*phần1.*") || lower.matches(".*phầni.*")) {
+            return SectionKind.MCQ;
+        }
+        return SectionKind.UNKNOWN;
     }
 
     // ---------- Question block parser ----------
@@ -949,11 +1042,13 @@ public class ImportXlsxService {
     /**
      * Parses a single question block.
      *
-     * @param block      raw text of the question
-     * @param answerKey answer map from {@link #extractAnswerKeyTable} (may be empty)
-     * @param blockIndex 1-based index for error messages
+     * @param block       raw text of the question
+     * @param answerKey   answer map from {@link #extractAnswerKeyTable} (may be empty)
+     * @param blockIndex  1-based index for error messages
+     * @param sectionKind the kind of section this block belongs to (affects answer requirements)
      */
-    private ParsedQuestion parseQuestionBlock(String block, Map<Integer, String> answerKey, int blockIndex) {
+    private ParsedQuestion parseQuestionBlock(String block, Map<Integer, String> answerKey,
+                                              int blockIndex, SectionKind sectionKind) {
         ParsedQuestion pq = new ParsedQuestion();
         String[] lines = block.split("\n");
 
@@ -989,10 +1084,29 @@ public class ImportXlsxService {
             String trimmed = line.trim();
             if (trimmed.isBlank()) continue;
 
+            // Tách "Đáp án: X" ở cuối cùng dòng (cùng dòng với stem/đáp án) rồi parse phần còn lại
+            String workLine = trimmed;
+            Matcher ansScan = answerInlinePattern.matcher(workLine);
+            int lastAnsStart = -1;
+            String lastAnsLetter = null;
+            while (ansScan.find()) {
+                lastAnsStart = ansScan.start();
+                lastAnsLetter = ansScan.group(1);
+            }
+            if (lastAnsLetter != null) {
+                if (correctAnswer == null) {
+                    correctAnswer = lastAnsLetter.toUpperCase(Locale.ROOT);
+                }
+                workLine = workLine.substring(0, lastAnsStart).replaceAll("[\\s|]+$", "").trim();
+                if (workLine.isBlank()) {
+                    continue;
+                }
+            }
+
             // Check special format: first line is ONLY "N." (no other content on that line)
             if (!headerOnlyChecked && contentBuilder.length() == 0) {
                 Pattern pureHeaderPattern = Pattern.compile("(?m)^(?:Câu|Bài|Question)?\\s*(\\d+)[\\s.\\):\\-–—]\\s*$");
-                Matcher phm = pureHeaderPattern.matcher(trimmed);
+                Matcher phm = pureHeaderPattern.matcher(workLine);
                 if (phm.find()) {
                     try {
                         questionNumber = Integer.parseInt(phm.group(1));
@@ -1007,14 +1121,14 @@ public class ImportXlsxService {
             // If we detected a header-only first line, the NEXT non-blank line IS the question content
             if (firstLineIsHeaderOnly && contentBuilder.length() == 0) {
                 if (contentBuilder.length() > 0) contentBuilder.append(" ");
-                contentBuilder.append(trimmed);
+                contentBuilder.append(workLine);
                 firstLineIsHeaderOnly = false;
                 continue;
             }
 
             // Extract question number from header line
             if (questionNumber == null) {
-                Matcher nm = numPattern.matcher(trimmed);
+                Matcher nm = numPattern.matcher(workLine);
                 if (nm.find()) {
                     try {
                         String numStr = nm.group(1);
@@ -1023,17 +1137,10 @@ public class ImportXlsxService {
                 }
             }
 
-            // 1) Inline answer line – skip it, don't add to content
-            // Also handles "*D. text" format where asterisk marks the correct option
-            Matcher answerMatcher = answerInlinePattern.matcher(trimmed);
-            if (answerMatcher.find() && correctAnswer == null) {
-                correctAnswer = answerMatcher.group(1).toUpperCase(Locale.ROOT);
-                continue;
-            }
             // "*D. option text" — asterisk marks correct answer
-            if (trimmed.startsWith("*")) {
+            if (workLine.startsWith("*")) {
                 Pattern asteriskOpt = Pattern.compile("^\\*([A-Da-d])\\.\\s*(.+)$");
-                Matcher am = asteriskOpt.matcher(trimmed);
+                Matcher am = asteriskOpt.matcher(workLine);
                 if (am.matches()) {
                     correctAnswer = am.group(1).toUpperCase(Locale.ROOT);
                     String optText = am.group(2).trim();
@@ -1050,7 +1157,7 @@ public class ImportXlsxService {
             // 2) Option lines – match A./A)/A:/A-
             boolean matchedOption = false;
             for (Pattern optPat : optPatterns) {
-                Matcher om = optPat.matcher(trimmed);
+                Matcher om = optPat.matcher(workLine);
                 if (om.matches()) {
                     String letter = om.group(1).toUpperCase(Locale.ROOT);
                     String optText = om.group(2).trim();
@@ -1060,7 +1167,7 @@ public class ImportXlsxService {
                         case "C" -> optionC = optText;
                         case "D" -> optionD = optText;
                     }
-                    if (trimmed.startsWith("*")) {
+                    if (workLine.startsWith("*")) {
                         correctAnswer = letter;
                     }
                     matchedOption = true;
@@ -1070,9 +1177,9 @@ public class ImportXlsxService {
             if (matchedOption) continue;
 
             // 3) Content / continuation lines
-            String cleaned = trimmed;
+            String cleaned = workLine;
             if (questionNumber != null) {
-                cleaned = trimmed.replaceFirst(
+                cleaned = workLine.replaceFirst(
                         "(?m)^(?:Câu|Bài|Question)?\\s*\\d+[\\s.\\):\\-–—]+", "");
                 cleaned = cleaned.trim();
             }
@@ -1121,13 +1228,46 @@ public class ImportXlsxService {
             }
         }
 
-        if (correctAnswer == null || !List.of("A", "B", "C", "D").contains(correctAnswer)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "Thiếu đáp án đúng (A/B/C/D) ở câu " + blockIndex
-                    + (questionNumber != null ? " (câu " + questionNumber + ")" : ""));
+        // ESSAY section → never require answer
+        if (sectionKind == SectionKind.ESSAY) {
+            pq.type = QuestionType.ESSAY;
+            return pq;
         }
 
-        return pq;
+        // MCQ section with valid answer
+        if (correctAnswer != null && List.of("A", "B", "C", "D").contains(correctAnswer)) {
+            pq.type = QuestionType.SINGLE_CHOICE;
+            return pq;
+        }
+
+        // MCQ/UNKNOWN: fewer than 2 real options → treat as essay
+        int validOptions = 0;
+        if (!optionA.isBlank()) validOptions++;
+        if (!optionB.isBlank()) validOptions++;
+        if (!optionC.isBlank()) validOptions++;
+        if (!optionD.isBlank()) validOptions++;
+
+        if (validOptions < 2) {
+            pq.type = QuestionType.ESSAY;
+            return pq;
+        }
+
+        // MCQ with >= 2 options but no answer found → throw
+        throw new ApiException(HttpStatus.BAD_REQUEST,
+                "Thiếu đáp án đúng (A/B/C/D) ở câu " + blockIndex
+                + (questionNumber != null ? " (câu " + questionNumber + ")" : ""));
+    }
+
+    private void addEssayQuestion(List<Question> questions, Exam exam,
+                                   String content, double scoreWeight, String correctAnswer) {
+        if (content.isBlank()) return;
+        Question q = Question.builder()
+                .exam(exam).content(content).type(QuestionType.ESSAY)
+                .scoreWeight(scoreWeight)
+                .correctAnswer(correctAnswer != null && !correctAnswer.isBlank() ? correctAnswer : null)
+                .options("[]")
+                .build();
+        questions.add(q);
     }
 
     // ================================================================

@@ -139,7 +139,7 @@ const handleConfirm = () => {
   color: var(--ds-text);
   outline: none;
   resize: vertical;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
   line-height: 1.5;
   min-height: 80px;
@@ -174,7 +174,7 @@ const handleConfirm = () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   font-family: inherit;
 }
@@ -239,3 +239,9 @@ const handleConfirm = () => {
   transform: none !important;
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

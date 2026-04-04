@@ -307,7 +307,7 @@ watch(() => props.events.length, () => {
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--ds-info);
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lef__live-badge--off {
@@ -372,7 +372,7 @@ watch(() => props.events.length, () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .lef__icon-btn { color: #94a3b8; }
@@ -619,8 +619,14 @@ watch(() => props.events.length, () => {
 .dark .lef__footer-clear:hover { background: rgba(220, 38, 38, 0.1); }
 
 /* Transition */
-.lef-event-enter-active { transition: all 0.3s ease; }
+.lef-event-enter-active { transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; }
 .lef-event-enter-from { opacity: 0; transform: translateY(-8px); background: rgba(79, 70, 229, 0.05); }
-.lef-event-leave-active { transition: all 0.2s ease; position: absolute; }
+.lef-event-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; position: absolute; }
 .lef-event-leave-to { opacity: 0; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

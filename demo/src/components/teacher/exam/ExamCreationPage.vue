@@ -635,7 +635,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   background: var(--ds-gray-100);
   color: var(--ds-text-muted);
   border: 1px solid var(--ds-border);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ec-page-header__save-status--saving {
@@ -679,7 +679,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   white-space: nowrap;
 }
@@ -804,7 +804,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   font-weight: 600;
   color: var(--ds-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -948,7 +948,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .ec-modal__close:hover {
@@ -1044,7 +1044,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 /* Transitions */
 .ec-modal-enter-active,
 .ec-modal-leave-active {
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ec-modal-enter-from,
@@ -1059,7 +1059,7 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 
 .ec-toast-enter-active,
 .ec-toast-leave-active {
-  transition: all 0.25s ease;
+  transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .ec-toast-enter-from,
@@ -1093,3 +1093,9 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -201,7 +201,7 @@ const onDrop = (e) => {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   overflow: hidden;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   position: relative;
 }
 
@@ -379,7 +379,7 @@ const onDrop = (e) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .qic__action:hover {

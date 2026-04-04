@@ -173,7 +173,7 @@ const reasonClass = computed(() => {
   font-size: 1.125rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.34, 1.56, 0.64, 1);
   border: none;
   font-family: inherit;
   min-height: 56px;
@@ -235,7 +235,7 @@ const reasonClass = computed(() => {
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.4;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .dark .sep__reason { background: var(--ds-gray-800); }
@@ -390,3 +390,9 @@ const reasonClass = computed(() => {
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

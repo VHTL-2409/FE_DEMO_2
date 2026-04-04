@@ -208,7 +208,7 @@ const activeFilterCount = computed(() => {
   font-size: 0.875rem;
   color: var(--ds-text);
   outline: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .eltb__search {
@@ -242,7 +242,7 @@ const activeFilterCount = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .eltb__search-clear:hover {
@@ -289,7 +289,7 @@ const activeFilterCount = computed(() => {
   color: var(--ds-text);
   outline: none;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 100%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   width: 100%;
@@ -351,7 +351,7 @@ const activeFilterCount = computed(() => {
   font-weight: 700;
   color: var(--ds-danger);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
 }
 
@@ -378,3 +378,9 @@ const activeFilterCount = computed(() => {
   background: rgba(255,255,255,0.3);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

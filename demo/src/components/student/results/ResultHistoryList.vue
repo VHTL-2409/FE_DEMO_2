@@ -204,7 +204,7 @@ const scoreBadgeClass = (score) => {
   font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
   margin-top: 0.5rem;
@@ -225,7 +225,7 @@ const scoreBadgeClass = (score) => {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   overflow: hidden;
   position: relative;
 }
@@ -336,7 +336,7 @@ const scoreBadgeClass = (score) => {
   border-radius: var(--ds-radius-xl);
   border: 1px solid;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ehl__card:hover .ehl__score-badge {
@@ -408,7 +408,7 @@ const scoreBadgeClass = (score) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .ehl__page-btn { border-color: var(--ds-border-strong); background: var(--ds-gray-800); }
@@ -425,3 +425,9 @@ const scoreBadgeClass = (score) => {
   .ehl__arrow { display: none; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

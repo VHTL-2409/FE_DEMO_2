@@ -292,14 +292,11 @@ body {
   box-shadow: var(--shadow-focus);
 }
 
-/* Skeleton pulse nhẹ (dùng chung) */
-@keyframes portal-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+/* Skeleton pulse GPU — uses opacity + transform, no paint */
+@keyframes portal-gpu-shimmer {
+  0%   { opacity: 0.45; transform: scaleX(0.2); }
+  50%  { opacity: 1;   transform: scaleX(1); }
+  100% { opacity: 0.45; transform: scaleX(0.2); }
 }
 
 .portal-skeleton {
@@ -312,6 +309,7 @@ body {
   );
   background-size: 200% 100%;
   animation: portal-shimmer 1.2s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .dark .portal-skeleton {
@@ -322,6 +320,14 @@ body {
     rgb(30 41 59) 100%
   );
   background-size: 200% 100%;
+}
+
+@keyframes portal-shimmer {
+  0%   { background-position:  200% 0; transform: scaleX(0.2); opacity: 0.5; }
+  30%  { opacity: 1; transform: scaleX(0.85); }
+  50%  { background-position: -200% 0; transform: scaleX(1); opacity: 1; }
+  80%  { opacity: 1; transform: scaleX(0.85); }
+  100% { background-position:  200% 0; transform: scaleX(0.2); opacity: 0.5; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -439,8 +445,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition:
-    all 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.22s ease;
 }
 
@@ -514,7 +519,8 @@ body {
   .portal-icon-btn,
   .portal-btn,
   .portal-btn--primary,
-  .portal-btn--ghost {
+  .portal-btn--ghost,
+  .portal-skeleton {
     transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
     animation: none !important;
   }

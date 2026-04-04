@@ -426,7 +426,7 @@ watch(() => props.modelValue, (val) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -458,7 +458,7 @@ watch(() => props.modelValue, (val) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
 }
 
@@ -519,7 +519,7 @@ watch(() => props.modelValue, (val) => {
   border-radius: var(--ds-radius-xl);
   font-size: 0.875rem;
   color: var(--ds-text);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   outline: none;
   resize: vertical;
   min-height: 80px;
@@ -545,7 +545,7 @@ watch(() => props.modelValue, (val) => {
   border-radius: var(--ds-radius-xl);
   font-size: 0.875rem;
   color: var(--ds-text);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   outline: none;
 }
 
@@ -611,7 +611,7 @@ watch(() => props.modelValue, (val) => {
   font-weight: 800;
   flex-shrink: 0;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .qemodal__opt-badge { background: var(--ds-gray-700); border-color: var(--ds-border-strong); }
@@ -643,7 +643,7 @@ watch(() => props.modelValue, (val) => {
   font-size: 0.875rem;
   color: var(--ds-text);
   outline: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .qemodal__opt-input { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: #f1f5f9; }
@@ -674,7 +674,7 @@ watch(() => props.modelValue, (val) => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .qemodal__diff-btn { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
@@ -734,7 +734,7 @@ watch(() => props.modelValue, (val) => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
 }
 
@@ -763,7 +763,13 @@ watch(() => props.modelValue, (val) => {
 .qemodal__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
 /* Transition */
-.qemodal-enter-active, .qemodal-leave-active { transition: all 0.2s ease; }
+.qemodal-enter-active, .qemodal-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .qemodal-enter-from, .qemodal-leave-to { opacity: 0; }
 .qemodal-enter-from .qemodal, .qemodal-leave-to .qemodal { transform: scale(0.95) translateY(8px); }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

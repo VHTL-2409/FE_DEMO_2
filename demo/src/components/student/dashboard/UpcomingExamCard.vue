@@ -166,17 +166,14 @@ const formatDateTime = (value) => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* fadeUpSm — shared 10px fade-up keyframe (defined in animation.css, accessible globally) */
 
 .uec {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
+  animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
 }
 
 .dark .uec {
@@ -275,18 +272,13 @@ const formatDateTime = (value) => {
 .uec__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: uecShimmer 1.5s infinite;
+  animation: shimmer 1.5s infinite;
   border-radius: var(--ds-radius-md);
 }
 
 .dark .uec__skel {
   background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
   background-size: 200% 100%;
-}
-
-@keyframes uecShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
 
 .uec__skel--icon { width: 40px; height: 40px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }
@@ -480,7 +472,7 @@ const formatDateTime = (value) => {
   border: none;
   border-top: 1px solid var(--ds-border);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
 }
 
@@ -494,3 +486,9 @@ const formatDateTime = (value) => {
 }
 
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

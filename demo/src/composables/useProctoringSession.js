@@ -94,16 +94,20 @@ export function useProctoringSession({
   const syncHeartbeat = async () => {
     const attemptId = getAttemptId?.()
     if (!attemptId) return null
-    if (pendingEvents.length) {
-      await flush()
+    try {
+      if (pendingEvents.length) {
+        await flush()
+      }
+      const response = await sendMonitoringHeartbeat(attemptId, {
+        ...(getHeartbeatPayload?.() || {}),
+        deviceFingerprint: getDeviceFingerprint?.() || ''
+      })
+      onRiskUpdate?.(response)
+      emitAction(response)
+      return response
+    } catch {
+      return null
     }
-    const response = await sendMonitoringHeartbeat(attemptId, {
-      ...(getHeartbeatPayload?.() || {}),
-      deviceFingerprint: getDeviceFingerprint?.() || ''
-    })
-    onRiskUpdate?.(response)
-    emitAction(response)
-    return response
   }
 
   const startHeartbeat = () => {

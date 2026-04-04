@@ -321,9 +321,26 @@ const optionClass = (item, option) => {
 .rdp__skeleton { display: flex; flex-direction: column; gap: 0.625rem; }
 .rdp__skel-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
 .rdp__skel-card { padding: 0.875rem; border-radius: var(--ds-radius-xl); background: var(--ds-surface); border: 1.5px solid var(--ds-border); display: flex; flex-direction: column; gap: 0.375rem; align-items: center; }
-.rdp__skel { background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%); background-size: 200% 100%; animation: rdpShimmer 1.5s infinite; border-radius: var(--ds-radius-md); }
-.dark .rdp__skel { background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%); background-size: 200% 100%; }
-@keyframes rdpShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+/* GPU shimmer — transform+opacity avoids paint, runs at 60fps */
+@keyframes rdpShimmer {
+  0%   { opacity: 0.45; transform: scaleX(0.2); }
+  30%  { opacity: 1;   transform: scaleX(0.85); }
+  50%  { opacity: 1;   transform: scaleX(1); }
+  80%  { opacity: 0.8; transform: scaleX(0.85); }
+  100% { opacity: 0.45; transform: scaleX(0.2); }
+}
+.rdp__skel {
+  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
+  background-size: 200% 100%;
+  animation: rdpShimmer 1.5s ease-in-out infinite;
+  border-radius: var(--ds-radius-md);
+  will-change: transform, opacity;
+  transform-origin: left;
+}
+.dark .rdp__skel {
+  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
+  background-size: 200% 100%;
+}
 
 /* Top cards */
 .rdp__top-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
@@ -367,7 +384,7 @@ const optionClass = (item, option) => {
   padding: 0.5rem 1.25rem;
   border-radius: var(--ds-radius-xl);
   border: 1.5px solid;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
   margin: 0.125rem 0;
 }
 
@@ -609,7 +626,7 @@ const optionClass = (item, option) => {
   padding: 0.5rem 0.75rem;
   border-radius: var(--ds-radius-lg);
   border: 1.5px solid;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .rdp__option:hover { background: rgba(79, 70, 229, 0.03); }

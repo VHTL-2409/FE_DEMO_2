@@ -393,7 +393,7 @@ const closePicker = (event) => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dark .se__preset-btn { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
 .se__preset-btn:hover {
@@ -535,7 +535,7 @@ const closePicker = (event) => {
   font-size: 0.9375rem;
   color: var(--ds-text);
   outline: none;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -576,7 +576,7 @@ const closePicker = (event) => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dark .se__quick-btn { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: #94a3b8; }
 .se__quick-btn:hover {
@@ -620,7 +620,7 @@ const closePicker = (event) => {
   font-size: 0.9375rem;
   color: var(--ds-text);
   outline: none;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
@@ -660,3 +660,9 @@ const closePicker = (event) => {
 .se__preview--error .se__preview-main { color: var(--ds-danger); }
 .se__preview-sub { font-size: 0.75rem; color: var(--ds-text-secondary); margin: 0.25rem 0 0; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

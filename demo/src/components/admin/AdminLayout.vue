@@ -320,36 +320,6 @@ const logout = async () => {
   }
 }
 
-/* ─── Page transition (premium slide-fade) ─────────────────── */
-/* Enter: fade + subtle right-slide with scale */
-/* Leave: fade + subtle left-slide */
-.page-enter-active {
-  transition:
-    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.page-leave-active {
-  transition:
-    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
-    transform 0.22s cubic-bezier(0.4, 0, 1, 1);
-}
-.page-enter-from {
-  opacity: 0;
-  transform: translateX(20px) scale(0.985);
-  filter: blur(1px);
-}
-.page-leave-to {
-  opacity: 0;
-  transform: translateX(-12px) scale(0.99);
-  filter: blur(0.5px);
-}
-.page-enter-to,
-.page-leave-from {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-  filter: blur(0);
-}
-
 /* ─── Dark mode ─────────────────────────────────────────── */
 .dark .adm-shell {
   background: #0f172a;
@@ -393,6 +363,7 @@ const logout = async () => {
   .adm-sidebar--mobile {
     transition: none;
   }
+  /* page transition is handled globally in animation.css */
 }
 
 @keyframes fadeIn {

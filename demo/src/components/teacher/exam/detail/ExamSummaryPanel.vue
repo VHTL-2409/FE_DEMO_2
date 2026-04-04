@@ -360,7 +360,7 @@ const formatDateTime = (d) => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .esp__stat-card {
@@ -448,7 +448,7 @@ const formatDateTime = (d) => {
   font-weight: 600;
   background: var(--ds-gray-50);
   color: var(--ds-text-muted);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .esp__check-item { background: var(--ds-gray-700); }
@@ -612,7 +612,7 @@ const formatDateTime = (d) => {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   text-align: left;
   font-family: inherit;
 }
@@ -639,3 +639,9 @@ const formatDateTime = (d) => {
   border-radius: var(--ds-radius-full);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

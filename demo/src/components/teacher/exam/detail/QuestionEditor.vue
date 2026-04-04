@@ -559,7 +559,7 @@ const processImportFile = async (file) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .qe__header-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: #94a3b8; }
@@ -637,7 +637,7 @@ const processImportFile = async (file) => {
   text-align: center;
   color: var(--ds-text-muted);
   font-size: 0.875rem;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .qe__import-drop { background: var(--ds-gray-700); border-color: var(--ds-border-strong); }
@@ -661,7 +661,7 @@ const processImportFile = async (file) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   margin-top: 0.25rem;
 }
 
@@ -710,7 +710,7 @@ const processImportFile = async (file) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .dark .qe__import-close { background: var(--ds-gray-700); }
@@ -780,7 +780,7 @@ const processImportFile = async (file) => {
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: var(--ds-radius-md);
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .qe__stats-clear:hover { background: var(--ds-primary-soft); }
@@ -871,7 +871,7 @@ const processImportFile = async (file) => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -917,7 +917,7 @@ const processImportFile = async (file) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -1000,7 +1000,7 @@ const processImportFile = async (file) => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   font-family: inherit;
 }
@@ -1028,7 +1028,13 @@ const processImportFile = async (file) => {
 }
 
 /* Transition */
-.qe-confirm-enter-active, .qe-confirm-leave-active { transition: all 0.2s ease; }
+.qe-confirm-enter-active, .qe-confirm-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .qe-confirm-enter-from, .qe-confirm-leave-to { opacity: 0; }
 .qe-confirm-enter-from .qe-confirm, .qe-confirm-leave-to .qe-confirm { transform: scale(0.9); }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

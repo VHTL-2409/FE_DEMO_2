@@ -463,7 +463,7 @@ onMounted(async () => {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .cdp__back-btn {
@@ -534,7 +534,7 @@ onMounted(async () => {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1.5px solid var(--ds-border);
   background: transparent;
   color: var(--ds-text-secondary);
@@ -654,7 +654,7 @@ onMounted(async () => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .cdp__stat-card:hover {
@@ -830,7 +830,7 @@ onMounted(async () => {
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .cdp__info-item:hover {
@@ -882,7 +882,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .cdp__copy-small:hover {
@@ -906,7 +906,7 @@ onMounted(async () => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   text-align: left;
   width: 100%;
 }
@@ -981,7 +981,7 @@ onMounted(async () => {
   font-size: 0.875rem;
   background: var(--ds-surface);
   color: var(--ds-text);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .dark .cdp__search-input {
@@ -1054,7 +1054,7 @@ onMounted(async () => {
 }
 
 .cdp__table-row {
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .cdp__table-row:hover {
@@ -1137,7 +1137,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .cdp__page-btn {
@@ -1171,7 +1171,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -1203,7 +1203,7 @@ onMounted(async () => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -1420,3 +1420,9 @@ onMounted(async () => {
   }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

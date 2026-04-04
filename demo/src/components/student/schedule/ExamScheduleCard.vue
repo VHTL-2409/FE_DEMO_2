@@ -137,7 +137,7 @@ const formatDateTime = (value) => {
   border-radius: var(--ds-radius-2xl);
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   cursor: pointer;
   overflow: hidden;
 }
@@ -265,7 +265,7 @@ const formatDateTime = (value) => {
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
   font-family: inherit;
@@ -311,3 +311,9 @@ const formatDateTime = (value) => {
   .esfc__btn { width: 100%; justify-content: center; }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

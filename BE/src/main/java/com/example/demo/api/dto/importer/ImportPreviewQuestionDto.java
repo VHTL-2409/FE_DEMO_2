@@ -24,6 +24,14 @@ public class ImportPreviewQuestionDto {
     private String metadata;
     private String attachments;
     private Double parseConfidence;
+    /** Render mode: TEXT | IMAGE */
+    private String renderMode;
+    /** Render info: imagePath, bbox */
+    private RenderDto render;
+    /** Per-question issues/warnings */
+    private List<String> issues;
+    /** Explanation (from solution section) */
+    private String explanation;
 
     @Getter
     @Setter
@@ -33,5 +41,17 @@ public class ImportPreviewQuestionDto {
     public static class OptionDto {
         private String id;
         private String text;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RenderDto {
+        private String imagePath;
+        private String imageUrl;
+        private List<Double> bbox;
+        private Integer pageNumber;
     }
 }

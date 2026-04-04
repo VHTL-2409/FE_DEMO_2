@@ -246,7 +246,7 @@ const timeColor = computed(() => {
   border-radius: var(--ds-radius-2xl);
   overflow: visible;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   display: flex;
   flex-direction: column;
   min-height: 200px;
@@ -447,7 +447,7 @@ const timeColor = computed(() => {
   justify-content: flex-start;
   flex-direction: column;
   align-items: stretch;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .rsc__stat { background: var(--ds-gray-800); }
@@ -596,7 +596,7 @@ const timeColor = computed(() => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   flex: 1;
   justify-content: center;
   font-family: inherit;
@@ -651,3 +651,9 @@ const timeColor = computed(() => {
   background: var(--ds-warning);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

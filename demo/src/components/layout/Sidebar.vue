@@ -307,7 +307,7 @@ const handleLogout = () => {
   font-weight: 600;
   color: var(--db-text-muted);
   text-decoration: none;
-  transition: all var(--db-transition);
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
   overflow: hidden;
   white-space: nowrap;
 
@@ -417,7 +417,7 @@ const handleLogout = () => {
   color: white;
   white-space: nowrap;
   opacity: 1;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
   animation: badge-shake 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -477,7 +477,7 @@ const handleLogout = () => {
   border-radius: var(--db-radius);
   background: var(--db-surface-2);
   border: 1px solid var(--db-border);
-  transition: all var(--db-transition);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   overflow: hidden;
 }
 
@@ -545,7 +545,7 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--db-transition);
+  transition: color 0.15s ease, background-color 0.15s ease;
   opacity: 0;
 }
 
@@ -571,7 +571,7 @@ const handleLogout = () => {
   font-weight: 600;
   color: var(--db-text-muted);
   cursor: pointer;
-  transition: all var(--db-transition);
+  transition: color 0.15s ease, background-color 0.15s ease;
   overflow: hidden;
   white-space: nowrap;
   width: 100%;
@@ -620,5 +620,49 @@ const handleLogout = () => {
 
 .db-sidebar--collapsed .db-sidebar-user__logout {
   display: none;
+}
+
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .db-sidebar-nav-item,
+  .db-sidebar-nav-item__icon,
+  .db-sidebar-nav-item__label,
+  .db-sidebar-user__info,
+  .db-sidebar-collapse-btn__label {
+    transition: none;
+    animation: none;
+  }
+
+  .db-sidebar-nav-item:hover {
+    transform: none;
+  }
+
+  .db-sidebar--collapsed .db-sidebar-nav-item:hover {
+    transform: none;
+  }
+
+  .db-sidebar-nav-item--active {
+    animation: none;
+  }
+
+  .db-sidebar-nav-item__badge {
+    animation: none;
+  }
+
+  .db-sidebar-nav-item__bar {
+    animation: none;
+  }
+
+  .db-sidebar__logo {
+    transition: none;
+  }
+
+  .db-sidebar__brand:hover .db-sidebar__logo {
+    transform: none;
+  }
+
+  .db-sidebar-backdrop {
+    animation: none;
+  }
 }
 </style>

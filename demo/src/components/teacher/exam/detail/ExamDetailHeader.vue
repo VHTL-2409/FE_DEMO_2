@@ -290,7 +290,7 @@ const handlePreview = () => emit('preview')
   border-radius: var(--ds-radius-full);
   padding: 0.2rem 0.625rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-family: inherit;
 }
 
@@ -328,7 +328,7 @@ const handlePreview = () => emit('preview')
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
   white-space: nowrap;
 }
@@ -369,7 +369,7 @@ const handlePreview = () => emit('preview')
   background: var(--ds-gray-100);
   color: var(--ds-text-muted);
   border: 1px solid var(--ds-border);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .ed-header__save-status--saving {

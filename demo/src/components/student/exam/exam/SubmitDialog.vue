@@ -215,7 +215,7 @@ defineEmits(['confirm', 'update:modelValue'])
   padding: 0.75rem;
   border-radius: var(--ds-radius-xl);
   border: 1.5px solid;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .sd__stat-card--ok {
@@ -366,7 +366,7 @@ defineEmits(['confirm', 'update:modelValue'])
   font-size: 0.875rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: none;
   font-family: inherit;
   min-height: 52px;
@@ -432,3 +432,9 @@ defineEmits(['confirm', 'update:modelValue'])
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
