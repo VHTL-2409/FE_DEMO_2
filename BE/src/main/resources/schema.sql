@@ -166,3 +166,16 @@ CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_
 
 CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_created
     ON monitoring_events(attempt_id, created_at DESC);
+
+-- =====================================================
+-- EXAM SHUFFLE FIELDS
+-- =====================================================
+ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS shuffle_questions BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS shuffle_answers  BOOLEAN DEFAULT FALSE NOT NULL;
+
+-- =====================================================
+-- OAUTH2 USER FIELDS
+-- =====================================================
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(20) DEFAULT 'NONE';
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS oauth_uid VARCHAR(255);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth_uid ON users(oauth_uid);

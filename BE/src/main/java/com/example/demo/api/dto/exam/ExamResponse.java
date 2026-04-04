@@ -40,4 +40,6 @@ public class ExamResponse {
     private Boolean requireCameraMic;
     private Boolean isArchived;
     private String className;
+    private Boolean shuffleQuestions;
+    private Boolean shuffleAnswers;
 }

@@ -7,7 +7,7 @@
         </div>
         <div>
           <h3 class="se__section-title">Lịch thi</h3>
-          <p class="se__section-desc">Thiết lập thời gian bắt đầu, kết thúc và múi giờ</p>
+          <p class="se__section-desc">Thiết lập thời gian bắt đầu và kết thúc</p>
         </div>
       </div>
 
@@ -66,8 +66,8 @@
             </div>
           </div>
           <div class="se__block-inputs">
-            <input v-model="localStartDate" type="date" class="se__input" :min="todayStr" />
-            <input v-model="localStartTime" type="time" step="300" class="se__input" />
+            <input v-model="localStartDate" type="date" class="se__input" :min="todayStr" @change="closePicker" @input="closePicker" />
+            <input v-model="localStartTime" type="time" step="300" class="se__input" @change="closePicker" @input="closePicker" />
             <div class="se__quick">
               <button type="button" class="se__quick-btn" @click="setStartNow">Bây giờ</button>
               <button type="button" class="se__quick-btn" @click="setStartIn(15)">+15p</button>
@@ -89,8 +89,8 @@
             </div>
           </div>
           <div class="se__block-inputs">
-            <input v-model="localEndDate" type="date" class="se__input" :min="localStartDate" :disabled="isOpen24h" />
-            <input v-model="localEndTime" type="time" step="300" class="se__input" :disabled="isOpen24h" />
+            <input v-model="localEndDate" type="date" class="se__input" :min="localStartDate" :disabled="isOpen24h" @change="closePicker" @input="closePicker" />
+            <input v-model="localEndTime" type="time" step="300" class="se__input" :disabled="isOpen24h" @change="closePicker" @input="closePicker" />
             <div class="se__quick">
               <button type="button" class="se__quick-btn se__quick-btn--accent" @click="setEndByDuration">
                 Bắt đầu + {{ localDuration }} phút
@@ -295,6 +295,12 @@ const applyPreset = (preset) => {
   const endTarget = addMins(target, localDuration.value)
   localEndDate.value = fmtDate(endTarget)
   localEndTime.value = fmtTime(endTarget)
+}
+
+const closePicker = (event) => {
+  const target = event?.target
+  if (!target) return
+  window.setTimeout(() => target.blur(), 0)
 }
 </script>
 

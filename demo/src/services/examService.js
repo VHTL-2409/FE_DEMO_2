@@ -19,22 +19,22 @@ const toLocalDateTimeOrNull = (value) => {
 }
 
 export const listExams = async () => {
-  const payload = await apiRequest('/api/exams')
+  const payload = await apiRequest('/api/exams', { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 
 export const getExamDetail = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}`)
+  const payload = await apiRequest(`/api/exams/${examId}`, { suppressToast: true })
   return unwrapApiData(payload)
 }
 
 export const getWaitingStudents = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/waiting-students`)
+  const payload = await apiRequest(`/api/exams/${examId}/waiting-students`, { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 
 export const joinExamByCode = async (query) => {
-  const payload = await apiRequest(`/api/exams/join?query=${encodeURIComponent(query)}`)
+  const payload = await apiRequest(`/api/exams/join?query=${encodeURIComponent(query)}`, { suppressToast: true })
   return unwrapApiData(payload)
 }
 
@@ -62,6 +62,7 @@ export const createExam = async ({
 }) => {
   const payload = await apiRequest('/api/exams', {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({
       title,
       description,
@@ -113,6 +114,7 @@ export const updateExam = async (examId, {
 }) => {
   const payload = await apiRequest(`/api/exams/${examId}`, {
     method: 'PUT',
+    suppressToast: true,
     body: JSON.stringify({
       title,
       description,
@@ -141,13 +143,14 @@ export const updateExam = async (examId, {
 }
 
 export const getPracticeOptions = async () => {
-  const payload = await apiRequest('/api/exams/practice-options')
+  const payload = await apiRequest('/api/exams/practice-options', { suppressToast: true })
   return unwrapApiData(payload) || { maxQuestions: 50 }
 }
 
 export const createPracticeExam = async ({ questionCount = 20, durationMinutes = 30 } = {}) => {
   const payload = await apiRequest('/api/exams/practice', {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({
       questionCount,
       durationMinutes
@@ -165,6 +168,7 @@ export const createPracticeFromFile = async (file, durationMinutes = 30, questio
   }
   const payload = await apiRequest('/api/exams/practice-from-file', {
     method: 'POST',
+    suppressToast: true,
     body: formData
   })
   return unwrapApiData(payload)
@@ -172,13 +176,15 @@ export const createPracticeFromFile = async (file, durationMinutes = 30, questio
 
 export const deleteExam = async (examId) => {
   await apiRequest(`/api/exams/${examId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    suppressToast: true
   })
 }
 
 export const createNewSession = async (examId, { startTime, endTime, durationMinutes }) => {
   const payload = await apiRequest(`/api/exams/${examId}/sessions`, {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({
       startTime: toLocalDateTimeOrNull(startTime),
       endTime: toLocalDateTimeOrNull(endTime),
@@ -189,39 +195,54 @@ export const createNewSession = async (examId, { startTime, endTime, durationMin
 }
 
 export const getAnswerSimilarity = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/answer-similarity`)
+  const payload = await apiRequest(`/api/exams/${examId}/answer-similarity`, { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 
 export const getQuestionWrongStats = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/question-wrong-stats`)
+  const payload = await apiRequest(`/api/exams/${examId}/question-wrong-stats`, { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 
 // ─── Publish / Unpublish / Archive ─────────────────────────────────
 
 export const publishExam = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/publish`, { method: 'PATCH' })
+  const payload = await apiRequest(`/api/exams/${examId}/publish`, {
+    method: 'PATCH',
+    suppressToast: true
+  })
   return unwrapApiData(payload)
 }
 
 export const unpublishExam = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/unpublish`, { method: 'PATCH' })
+  const payload = await apiRequest(`/api/exams/${examId}/unpublish`, {
+    method: 'PATCH',
+    suppressToast: true
+  })
   return unwrapApiData(payload)
 }
 
 export const archiveExam = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/archive`, { method: 'PATCH' })
+  const payload = await apiRequest(`/api/exams/${examId}/archive`, {
+    method: 'PATCH',
+    suppressToast: true
+  })
   return unwrapApiData(payload)
 }
 
 export const unarchiveExam = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/unarchive`, { method: 'PATCH' })
+  const payload = await apiRequest(`/api/exams/${examId}/unarchive`, {
+    method: 'PATCH',
+    suppressToast: true
+  })
   return unwrapApiData(payload)
 }
 
 export const duplicateExam = async (examId) => {
-  const payload = await apiRequest(`/api/exams/${examId}/duplicate`, { method: 'POST' })
+  const payload = await apiRequest(`/api/exams/${examId}/duplicate`, {
+    method: 'POST',
+    suppressToast: true
+  })
   return unwrapApiData(payload)
 }
 
@@ -230,6 +251,7 @@ export const duplicateExam = async (examId) => {
 export const bulkPublishExams = async (examIds) => {
   const payload = await apiRequest('/api/exams/bulk/publish', {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({ examIds })
   })
   return unwrapApiData(payload) || []
@@ -238,6 +260,7 @@ export const bulkPublishExams = async (examIds) => {
 export const bulkArchiveExams = async (examIds) => {
   const payload = await apiRequest('/api/exams/bulk/archive', {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({ examIds })
   })
   return unwrapApiData(payload) || []
@@ -246,6 +269,7 @@ export const bulkArchiveExams = async (examIds) => {
 export const bulkDeleteExams = async (examIds) => {
   await apiRequest('/api/exams/bulk/delete', {
     method: 'POST',
+    suppressToast: true,
     body: JSON.stringify({ examIds })
   })
 }

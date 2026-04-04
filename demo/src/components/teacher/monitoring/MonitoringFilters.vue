@@ -1,41 +1,21 @@
 <template>
   <div class="mf">
-    <!-- Status tabs -->
-    <div class="mf__tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        type="button"
-        class="mf__tab"
-        :class="{
-          'mf__tab--active': activeTab === tab.id,
-          [`mf__tab--${tab.color}`]: activeTab === tab.id
-        }"
-        @click="$emit('update:activeTab', tab.id)"
-      >
-        <LucideIcon :name="tab.icon" :size="16" />
-        <span class="mf__tab-label">{{ tab.label }}</span>
-        <span class="mf__tab-count" :class="[`mf__tab-count--${tab.color}`]">{{ tab.count }}</span>
-      </button>
-    </div>
-
     <!-- Search + filters row -->
     <div class="mf__controls">
       <!-- Search -->
       <div class="mf__search">
         <LucideIcon class="mf__search-icon" name="search" :size="18" />
         <input
-          :value="searchQuery"
+          v-model="searchQuery"
           type="text"
           class="mf__search-input"
           placeholder="Tìm học sinh, phòng thi..."
-          @input="$emit('update:searchQuery', $event.target.value)"
         />
         <button
           v-if="searchQuery"
           type="button"
           class="mf__search-clear"
-          @click="$emit('update:searchQuery', '')"
+          @click="searchQuery = ''"
         >
           <LucideIcon name="close" :size="16" />
         </button>
@@ -44,33 +24,21 @@
       <!-- Dropdown filters -->
       <div class="mf__filters">
         <!-- Risk band -->
-        <select
-          :value="riskBand"
-          class="mf__select"
-          @change="$emit('update:riskBand', $event.target.value)"
-        >
+        <select v-model="riskBand" class="mf__select">
           <option v-for="opt in riskOptions" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
         </select>
 
         <!-- Status -->
-        <select
-          :value="status"
-          class="mf__select"
-          @change="$emit('update:status', $event.target.value)"
-        >
+        <select v-model="status" class="mf__select">
           <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
         </select>
 
         <!-- Time range -->
-        <select
-          :value="timeRange"
-          class="mf__select"
-          @change="$emit('update:timeRange', $event.target.value)"
-        >
+        <select v-model="timeRange" class="mf__select">
           <option v-for="opt in timeOptions" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
@@ -87,89 +55,35 @@
           Xóa lọc
         </button>
       </div>
-
-      <!-- View toggle -->
-      <div class="mf__view-toggle">
-        <button
-          type="button"
-          class="mf__view-btn"
-          :class="{ 'mf__view-btn--active': viewMode === 'grid' }"
-          title="Chế độ lưới"
-          @click="$emit('update:viewMode', 'grid')"
-        >
-          <LucideIcon name="grid_view" :size="18" />
-        </button>
-        <button
-          type="button"
-          class="mf__view-btn"
-          :class="{ 'mf__view-btn--active': viewMode === 'table' }"
-          title="Chế độ bảng"
-          @click="$emit('update:viewMode', 'table')"
-        >
-          <LucideIcon name="view_list" :size="18" />
-        </button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import LucideIcon from '../../common/LucideIcon.vue'
+import { useProctorDashboardStore } from '../../../stores/proctorDashboardStore'
 
-const props = defineProps({
-  activeTab: { type: String, default: 'all' },
-  searchQuery: { type: String, default: '' },
-  riskBand: { type: String, default: 'ALL' },
-  status: { type: String, default: 'ALL' },
-  timeRange: { type: String, default: 'all' },
-  viewMode: { type: String, default: 'grid' },
-  stats: {
-    type: Object,
-    default: () => ({ total: 0, stable: 0, attention: 0, critical: 0 })
-  }
+const store = useProctorDashboardStore()
+const { filters } = storeToRefs(store)
+
+const searchQuery = computed({
+  get: () => filters.value.search,
+  set: (v) => store.setFilters({ search: v })
 })
-
-const emit = defineEmits([
-  'update:activeTab',
-  'update:searchQuery',
-  'update:riskBand',
-  'update:status',
-  'update:timeRange',
-  'update:viewMode',
-  'clear-all'
-])
-
-const tabs = computed(() => [
-  {
-    id: 'all',
-    label: 'Tất cả',
-    icon: 'dashboard',
-    color: 'default',
-    count: props.stats.total || 0
-  },
-  {
-    id: 'stable',
-    label: 'Ổn định',
-    icon: 'verified_user',
-    color: 'success',
-    count: props.stats.stable || 0
-  },
-  {
-    id: 'attention',
-    label: 'Cần chú ý',
-    icon: 'warning',
-    color: 'warning',
-    count: props.stats.attention || 0
-  },
-  {
-    id: 'critical',
-    label: 'Nghiêm trọng',
-    icon: 'gpp_bad',
-    color: 'danger',
-    count: props.stats.critical || 0
-  }
-])
+const riskBand = computed({
+  get: () => filters.value.riskBand,
+  set: (v) => store.setFilters({ riskBand: v })
+})
+const status = computed({
+  get: () => filters.value.status,
+  set: (v) => store.setFilters({ status: v })
+})
+const timeRange = computed({
+  get: () => filters.value.timeRange,
+  set: (v) => store.setFilters({ timeRange: v })
+})
 
 const riskOptions = [
   { value: 'ALL', label: 'Mọi mức rủi ro' },
@@ -196,17 +110,14 @@ const timeOptions = [
 ]
 
 const hasActiveFilters = computed(() =>
-  props.searchQuery ||
-  props.riskBand !== 'ALL' ||
-  props.status !== 'ALL' ||
-  props.timeRange !== 'all'
+  filters.value.search ||
+  filters.value.riskBand !== 'ALL' ||
+  filters.value.status !== 'ALL' ||
+  filters.value.timeRange !== 'all'
 )
 
 const clearAll = () => {
-  emit('update:searchQuery', '')
-  emit('update:riskBand', 'ALL')
-  emit('update:status', 'ALL')
-  emit('update:timeRange', 'all')
+  store.setFilters({ search: '', riskBand: 'ALL', status: 'ALL', timeRange: 'all' })
 }
 </script>
 
@@ -218,101 +129,6 @@ const clearAll = () => {
   gap: 0.875rem;
   padding: 0.875rem 0;
   margin-bottom: 0.5rem;
-}
-
-/* Tabs */
-.mf__tabs {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.mf__tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.mf__tab {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-radius: var(--ds-radius-xl);
-  border: 1.5px solid var(--ds-border);
-  background: var(--ds-surface);
-  color: var(--ds-text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.dark .mf__tab {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-.mf__tab:hover {
-  background: var(--ds-gray-50);
-  color: var(--ds-text);
-}
-
-.dark .mf__tab:hover {
-  background: var(--ds-gray-700);
-}
-
-.mf__tab--active {
-  background: var(--ds-gray-50);
-  border-color: var(--ds-primary-border);
-  color: var(--ds-primary);
-}
-
-.dark .mf__tab--active {
-  background: rgba(79, 70, 229, 0.1);
-}
-
-.mf__tab-icon {
-  font-size: 1.125rem;
-}
-
-.mf__tab-label {
-  font-weight: 700;
-}
-
-.mf__tab-count {
-  padding: 0.1rem 0.5rem;
-  border-radius: var(--ds-radius-full);
-  font-size: 0.7rem;
-  font-weight: 800;
-  background: var(--ds-gray-100);
-  color: var(--ds-text-muted);
-  transition: all 0.15s ease;
-}
-
-.dark .mf__tab-count {
-  background: var(--ds-gray-700);
-}
-
-.mf__tab--active .mf__tab-count {
-  color: var(--ds-primary);
-  background: var(--ds-primary-soft);
-}
-
-.mf__tab--success.mf__tab--active .mf__tab-count {
-  color: var(--ds-success);
-  background: var(--ds-success-soft);
-}
-
-.mf__tab--warning.mf__tab--active .mf__tab-count {
-  color: var(--ds-warning);
-  background: rgba(234, 179, 8, 0.1);
-}
-
-.mf__tab--danger.mf__tab--active .mf__tab-count {
-  color: var(--ds-danger);
-  background: var(--ds-danger-soft);
 }
 
 /* Controls row */
@@ -363,24 +179,11 @@ const clearAll = () => {
     flex: 1 1 auto;
     justify-content: center;
   }
-
-  .mf__view-toggle {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
 }
 
 @media (max-width: 480px) {
   .mf__select {
     flex: 1 1 100%;
-  }
-
-  .mf__tab {
-    padding: 0.5rem 0.625rem;
-  }
-
-  .mf__tab-label {
-    font-size: 0.7rem;
   }
 }
 
@@ -538,55 +341,4 @@ const clearAll = () => {
   background: var(--ds-danger);
   color: white;
 }
-
-
-/* View toggle */
-.mf__view-toggle {
-  display: flex;
-  gap: 0.125rem;
-  padding: 0.25rem;
-  background: var(--ds-gray-100);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-lg);
-  margin-left: auto;
-}
-
-.dark .mf__view-toggle {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-.mf__view-btn {
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--ds-radius-md);
-  border: none;
-  background: transparent;
-  color: var(--ds-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.mf__view-btn:hover {
-  background: var(--ds-gray-200);
-  color: var(--ds-text);
-}
-
-.dark .mf__view-btn:hover {
-  background: var(--ds-gray-700);
-}
-
-.mf__view-btn--active {
-  background: var(--ds-surface);
-  color: var(--ds-primary);
-  box-shadow: var(--ds-shadow-xs);
-}
-
-.dark .mf__view-btn--active {
-  background: var(--ds-gray-700);
-}
-
 </style>

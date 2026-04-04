@@ -225,7 +225,7 @@ const goToExamInterface = async () => {
     if (!requireCameraMic.value) {
       // no-op
     } else {
-      toast.error(deviceError.value || 'Bạn cần cấp quyền camera và micro để vào phòng thi.')
+      // deviceError đã được checkDevices() hiển thị toast rồi → không toast lại
       return
     }
   }

@@ -15,6 +15,10 @@ import java.util.Set;
 @Builder
 public class User {
 
+    public enum OAuthProvider {
+        NONE, GOOGLE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,6 +57,14 @@ public class User {
     @Column(name = "enabled")
     @Builder.Default
     private Boolean enabled = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "oauth_provider")
+    @Builder.Default
+    private OAuthProvider oauthProvider = OAuthProvider.NONE;
+
+    @Column(name = "oauth_uid")
+    private String oauthUid;
 
     /** LAZY + JOIN FETCH ở repository khi cần roles — tránh load roles mọi lúc */
     @ManyToMany(fetch = FetchType.LAZY)

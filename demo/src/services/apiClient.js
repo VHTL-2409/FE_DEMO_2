@@ -92,7 +92,8 @@ export const apiRequest = async (path, options = {}) => {
   }
 
   const token = getAuthToken()
-  const method = options.method || 'GET'
+  const method = (options.method || 'GET').toUpperCase()
+  const suppressToast = options.suppressToast || false
   const headers = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {})
@@ -110,11 +111,11 @@ export const apiRequest = async (path, options = {}) => {
       headers
     })
   } catch (networkError) {
-    toastService.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
+    if (!suppressToast) toastService.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
     throw new ApiError('Network error', 0, null)
   }
 
-  const payload = await parseJsonSafe(response)
+  let payload = await parseJsonSafe(response)
 
   if (response.ok) return payload
 
@@ -138,7 +139,7 @@ export const apiRequest = async (path, options = {}) => {
   }
 
   const errorMessage = resolveErrorMessage(payload, getDefaultErrorMessage(response.status))
-  if (response.status !== 401) toastService.error(errorMessage)
+  if (response.status !== 401 && !suppressToast) toastService.error(errorMessage)
   throw new ApiError(errorMessage, response.status, payload)
 }
 

@@ -57,7 +57,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { assignRole, redirectToSiteByDatabaseRole } from '../../services/authService'
+import { assignRole, redirectToSiteByDatabaseRole, updateSharedProfile } from '../../services/authService'
+import { removeAccents } from '../../utils/textUtils'
 import { useToast } from '../../composables/useToast'
 
 const router = useRouter()
@@ -74,6 +75,29 @@ const selectRole = async (role) => {
 
   try {
     await assignRole(role)
+
+    // Nếu là OAuth user mới (Google) — auto-fill profile với email + name
+    const isOAuthPending = sessionStorage.getItem('oauth_pending') === 'true'
+    if (isOAuthPending) {
+      const googleEmail = sessionStorage.getItem('oauth_pending_email') || ''
+      const googleName = sessionStorage.getItem('oauth_pending_name') || ''
+      sessionStorage.removeItem('oauth_pending')
+      sessionStorage.removeItem('oauth_pending_email')
+      sessionStorage.removeItem('oauth_pending_name')
+
+      try {
+        await updateSharedProfile({
+          email: googleEmail || null,
+          fullName: googleName || null,
+          displayName: removeAccents(googleName) || null
+        })
+        toast.success('Đã điền thông tin từ tài khoản Google.')
+      } catch (profileErr) {
+        // Không block flow — profile có thể để trống, user tự sửa sau
+        console.warn('[SelectRole] Không thể cập nhật profile tự động:', profileErr)
+      }
+    }
+
     await redirectToSiteByDatabaseRole(router)
   } catch (error) {
     errorMessage.value = 'Không thể cập nhật role. Vui lòng thử lại.'

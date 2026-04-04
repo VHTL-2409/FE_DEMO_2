@@ -191,9 +191,14 @@ export const redirectToSiteByDatabaseRole = async (router, authFromLogin = null)
   await router.push(getDashboardPathForUser(user))
 }
 
+const REFRESH_TOKEN_KEY = 'auth_refresh_token'
+
 export const storeAuthSession = (authData) => {
   if (authData?.token) {
     localStorage.setItem(AUTH_TOKEN_KEY, authData.token)
+  }
+  if (authData?.refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, authData.refreshToken)
   }
 
   const normalizedUser = normalizeAuthUser(authData)
@@ -203,6 +208,7 @@ export const storeAuthSession = (authData) => {
 
 export const clearAuthSession = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem('auth_refresh_token')
   localStorage.removeItem(AUTH_USER_KEY)
   localStorage.removeItem(AUTH_USER_TS_KEY)
 }

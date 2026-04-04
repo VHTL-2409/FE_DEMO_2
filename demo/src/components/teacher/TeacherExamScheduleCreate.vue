@@ -355,6 +355,8 @@ const handleCreateAssignment = async () => {
       await createExamAssignment(examId.value, assignPayload)
     }
 
+    toast.success(isEditMode.value ? 'Cập nhật đợt thi thành công!' : 'Xuất bản đợt thi thành công!')
+    await new Promise(resolve => setTimeout(resolve, 300))
     router.push({
       path: '/teacher/exams/created-success',
       query: {

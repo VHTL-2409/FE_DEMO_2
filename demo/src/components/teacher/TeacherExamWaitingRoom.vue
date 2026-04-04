@@ -42,8 +42,8 @@
         </div>
         <div class="wr-header__actions">
           <div class="wr-sync-status" :class="{ 'wr-sync-status--syncing': isPolling }">
-            <span class="wr-sync-dot"></span>
-            {{ isPolling ? 'Đang cập nhật...' : 'Đã cập nhật: ' + lastSyncLabel }}
+            <span class="wr-sync-dot" :class="{ 'wr-sync-dot--live': isConnected }"></span>
+            {{ isConnected ? 'Kết nối thời gian thực' : 'Đã cập nhật: ' + lastSyncLabel }}
           </div>
         </div>
       </div>
@@ -168,6 +168,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Flash events notification overlay -->
+    <div class="wr-flash-container">
+      <TransitionGroup name="wr-flash">
+        <div
+          v-for="event in flashEvents"
+          :key="event.id"
+          class="wr-flash-item"
+        >
+          <LucideIcon name="zap" size="14" />
+          {{ event.message }}
+        </div>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
@@ -176,11 +190,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getExamDetail, getWaitingStudents } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
+import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
 import { parseBackendDate } from '../../utils/dateUtils.js'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const { isConnected, lastError, connect, disconnect } = useRealtimeChannel()
 
 // State
 const examTitle = ref('')
@@ -234,7 +250,131 @@ const countdownLabel = computed(() => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
-// Methods
+// ── Realtime: xử lý thông báo từ WebSocket ──────────────────────────────────
+function handleWaitingRoomEvent(event) {
+  if (!event) return
+
+  switch (event.type) {
+    case 'STUDENT_JOINED':
+      upsertStudent({
+        attemptId: event.attemptId,
+        studentName: event.studentName || event.student?.name || '—',
+        studentEmail: event.studentEmail || event.student?.email || '—',
+        status: 'Đang chờ',
+        riskScore: event.riskScore ?? 0,
+        joinedAt: new Date().toISOString()
+      })
+      addFlashEvent(`${event.studentName || 'Một học sinh'} đã tham gia`)
+      break
+
+    case 'STUDENT_STARTED':
+    case 'EXAM_STARTED':
+      updateStudentStatus(event.attemptId, 'Đang thi')
+      addFlashEvent(`${event.studentName || 'Học sinh'} đã bắt đầu làm bài`)
+      break
+
+    case 'STUDENT_SUBMITTED':
+    case 'EXAM_SUBMITTED':
+      updateStudentStatus(event.attemptId, 'Đã nộp')
+      addFlashEvent(`${event.studentName || 'Học sinh'} đã nộp bài`)
+      break
+
+    case 'STUDENT_PAUSED':
+      updateStudentStatus(event.attemptId, 'Tạm dừng')
+      addFlashEvent(`${event.studentName || 'Học sinh'} bị tạm dừng`)
+      break
+
+    case 'RISK_UPDATED':
+      updateStudentRisk(event.attemptId, event.riskScore ?? 0)
+      if ((event.riskScore ?? 0) > 50) {
+        addFlashEvent(`${event.studentName || 'Học sinh'} có hành vi đáng ngờ (${event.riskScore}%)`)
+      }
+      break
+
+    case 'ATTEMPT_STOPPED':
+    case 'STUDENT_STOPPED':
+      updateStudentStatus(event.attemptId, 'Đã dừng')
+      addFlashEvent(`${event.studentName || 'Học sinh'} bị đình chỉ`)
+      break
+
+    default:
+      break
+  }
+}
+
+function upsertStudent(student) {
+  const existing = waitingStudents.value.findIndex(s => s.attemptId === student.attemptId)
+  if (existing >= 0) {
+    waitingStudents.value[existing] = { ...waitingStudents.value[existing], ...student }
+  } else {
+    waitingStudents.value = [...waitingStudents.value, student]
+  }
+}
+
+function updateStudentStatus(attemptId, status) {
+  const idx = waitingStudents.value.findIndex(s => s.attemptId === attemptId)
+  if (idx >= 0) {
+    waitingStudents.value[idx] = { ...waitingStudents.value[idx], status }
+  }
+}
+
+function updateStudentRisk(attemptId, riskScore) {
+  const idx = waitingStudents.value.findIndex(s => s.attemptId === attemptId)
+  if (idx >= 0) {
+    waitingStudents.value[idx] = { ...waitingStudents.value[idx], riskScore }
+  }
+}
+
+// Flash events (toast-like inline notification)
+const flashEvents = ref([])
+let flashId = 0
+function addFlashEvent(message) {
+  const id = ++flashId
+  flashEvents.value = [{ id, message }, ...flashEvents.value]
+  setTimeout(() => {
+    flashEvents.value = flashEvents.value.filter(e => e.id !== id)
+  }, 4000)
+}
+
+// ── WebSocket setup ──────────────────────────────────────────────────────────
+let reconnectTimer = null
+
+async function connectRealtime() {
+  const examId = getExamId()
+  if (!examId) return
+
+  await connect({
+    topics: [
+      {
+        destination: `/topic/exams/${examId}/alerts`,
+        handler: (body) => {
+          handleWaitingRoomEvent(body)
+        }
+      }
+    ],
+    reconnectDelay: 5000,
+    onConnect: () => {
+      lastSyncedAt.value = Date.now()
+    },
+    onDisconnect: () => {
+      scheduleReconnect()
+    },
+    onError: () => {
+      scheduleReconnect()
+    }
+  })
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    const examId = getExamId()
+    if (examId) connectRealtime()
+  }, 5000)
+}
+
+// ── Methods ──────────────────────────────────────────────────────────────────
 const getExamId = () => route.query.examId || null
 
 const fetchExamInfo = async () => {
@@ -277,8 +417,11 @@ const refreshNow = async () => {
 
 const startPolling = () => {
   fetchWaitingStudents()
+  // Poll only when WebSocket is disconnected
   pollTimerId = window.setInterval(() => {
-    fetchWaitingStudents()
+    if (!isConnected.value) {
+      fetchWaitingStudents()
+    }
   }, 5000)
 }
 
@@ -359,7 +502,7 @@ const copyExamCode = () => {
   }
 }
 
-// Lifecycle
+// ── Lifecycle ──────────────────────────────────────────────────────────────────
 onMounted(async () => {
   if (route.query.title) examTitle.value = route.query.title
   if (route.query.examCode) examCode.value = route.query.examCode
@@ -371,6 +514,7 @@ onMounted(async () => {
   await fetchExamInfo()
   isLoading.value = false
   startPolling()
+  await connectRealtime()
 
   countdownTimerId = window.setInterval(() => {
     nowMs.value = Date.now()
@@ -384,6 +528,10 @@ onUnmounted(() => {
   if (countdownTimerId) {
     window.clearInterval(countdownTimerId)
   }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+  }
+  disconnect()
 })
 </script>
 
@@ -533,6 +681,16 @@ onUnmounted(() => {
   height: 8px;
   border-radius: 50%;
   background: currentColor;
+}
+
+.wr-sync-dot--live {
+  background: var(--ds-success);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .wr-sync-status--syncing .wr-sync-dot {
@@ -933,6 +1091,47 @@ onUnmounted(() => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Flash events overlay */
+.wr-flash-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.wr-flash-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--ds-primary);
+  color: white;
+  border-radius: var(--ds-radius-xl);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35);
+  max-width: 320px;
+}
+
+.wr-flash-enter-active,
+.wr-flash-leave-active {
+  transition: all 0.3s ease;
+}
+
+.wr-flash-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.wr-flash-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
 }
 
 /* Responsive */

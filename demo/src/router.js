@@ -38,6 +38,7 @@ const router = createRouter({
     { path: '/verify-email', component: () => import('./components/login/VerifyEmail.vue'), meta: { guest: true } },
     { path: '/verify-email-pending', component: () => import('./components/login/VerifyEmailPending.vue'), meta: { guest: true } },
     { path: '/register', component: () => import('./components/login/RegistrationRoleSelection.vue'), meta: { guest: true } },
+    { path: '/auth/google/callback', component: () => import('./components/login/GoogleAuthCallback.vue'), meta: { guest: true } },
     { path: '/help-center', component: () => import('./components/help/HelpCenter.vue') },
     { path: '/select-role', component: () => import('./components/login/SelectRole.vue'), meta: { requiresAuth: true } },
     {

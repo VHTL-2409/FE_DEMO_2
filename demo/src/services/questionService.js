@@ -64,6 +64,56 @@ export const listExamQuestions = async (examId) => {
   return unwrapApiData(payload) || []
 }
 
+/**
+ * Map câu hỏi từ form (QuestionBuilder / QuestionEditor) sang payload API create.
+ * Hỗ trợ options dạng mảng { id, text } hoặc optionA–D.
+ */
+export function buildCreatePayloadFromFormQuestion(q) {
+  const content = (q?.content || '').trim()
+  const type = (q?.type || 'SINGLE_CHOICE').toString().toUpperCase()
+  let options = []
+  if (Array.isArray(q?.options) && q.options.length > 0) {
+    options = q.options.map((o, i) => ({
+      id: String(o?.id ?? i + 1),
+      text: String(o?.text ?? o?.content ?? o?.label ?? '').trim() || `Lựa chọn ${i + 1}`
+    }))
+  } else {
+    const labels = ['A', 'B', 'C', 'D']
+    ;['optionA', 'optionB', 'optionC', 'optionD'].forEach((key, i) => {
+      const text = (q?.[key] || '').trim()
+      if (text) options.push({ id: labels[i], text })
+    })
+  }
+  if ((type === 'SINGLE_CHOICE' || type === 'MULTIPLE_CHOICE') && options.length < 2) {
+    options = [
+      { id: 'A', text: (q?.optionA || '').trim() || 'A' },
+      { id: 'B', text: (q?.optionB || '').trim() || 'B' },
+      { id: 'C', text: (q?.optionC || '').trim() || 'C' },
+      { id: 'D', text: (q?.optionD || '').trim() || 'D' }
+    ]
+  }
+  const sw = Number(q?.scoreWeight ?? q?.score ?? 1)
+  const scoreWeight = Number.isFinite(sw) && sw > 0 ? sw : 1
+  let correctAnswer = q?.correctAnswer != null ? String(q.correctAnswer).trim() : ''
+  if (
+    (type === 'SINGLE_CHOICE' || type === 'MULTIPLE_CHOICE') &&
+    !correctAnswer &&
+    options.length > 0
+  ) {
+    correctAnswer = options[0].id
+  }
+  return {
+    content,
+    type,
+    scoreWeight,
+    options,
+    correctAnswer,
+    difficulty: q?.difficulty || null,
+    metadata: q?.metadata ?? null,
+    attachments: q?.attachments ?? null
+  }
+}
+
 export const createQuestion = async (examId, {
   content,
   type = 'SINGLE_CHOICE',
@@ -89,6 +139,49 @@ export const createQuestion = async (examId, {
   })
 
   return unwrapApiData(payload)
+}
+
+export const updateQuestion = async (examId, questionId, {
+  content,
+  type = 'SINGLE_CHOICE',
+  scoreWeight = 1,
+  options = [],
+  correctAnswer = '',
+  difficulty = null,
+  metadata = null,
+  attachments = null
+}) => {
+  const payload = await apiRequest(`/api/exams/${examId}/questions/${questionId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      content,
+      type,
+      scoreWeight,
+      options: serializeQuestionValue(options, '[]'),
+      correctAnswer: serializeQuestionValue(correctAnswer, ''),
+      difficulty,
+      metadata: serializeQuestionValue(metadata, null),
+      attachments: serializeQuestionValue(attachments, null)
+    })
+  })
+  return unwrapApiData(payload)
+}
+
+export const deleteQuestion = async (examId, questionId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/questions/${questionId}`, {
+    method: 'DELETE'
+  })
+  return payload
+}
+
+/** Ghi toàn bộ câu hỏi form lên server (dùng khi xuất bản đề từ wizard tạo đề). */
+export async function persistExamQuestionsFromForm(examId, questions) {
+  if (!examId || !Array.isArray(questions) || questions.length === 0) return
+  for (const q of questions) {
+    const payload = buildCreatePayloadFromFormQuestion(q)
+    if (!payload.content) continue
+    await createQuestion(examId, payload)
+  }
 }
 
 // previewImportFile và importQuestionsFromFile đã được chuyển sang importService.js

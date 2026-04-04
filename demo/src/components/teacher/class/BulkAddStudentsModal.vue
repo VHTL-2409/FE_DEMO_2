@@ -283,7 +283,9 @@ const handleFileSelect = (event) => {
 const handleFileDrop = (event) => {
   isDragOver.value = false
   const file = event.dataTransfer.files?.[0]
-  if (file && file.name.endsWith('.csv')) {
+  if (!file) return
+  const ext = (file.name || '').toLowerCase().replace(/^.*\./, '.')
+  if (ext === '.csv') {
     parseCsvFile(file)
   } else {
     toast.error('Vui lòng chọn file CSV hợp lệ')
@@ -397,8 +399,7 @@ const handleSubmitByIds = async () => {
     emit('added')
     close()
   } catch (err) {
-    errorMessage.value = err instanceof ApiError ? err.message : 'Không thể thêm học sinh.'
-    toast.error(errorMessage.value)
+    toast.error(err instanceof ApiError ? err.message : 'Không thể thêm học sinh.')
   } finally {
     loading.value = false
   }
@@ -425,8 +426,7 @@ const handleSubmitByCsv = async () => {
     }
     emit('added')
   } catch (err) {
-    errorMessage.value = err instanceof ApiError ? err.message : 'Không thể import học sinh.'
-    toast.error(errorMessage.value)
+    toast.error(err instanceof ApiError ? err.message : 'Không thể import học sinh.')
   } finally {
     loading.value = false
   }

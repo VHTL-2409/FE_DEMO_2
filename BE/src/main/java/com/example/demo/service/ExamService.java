@@ -98,6 +98,8 @@ public class ExamService {
                 .monitorRapidQuestionSwitch(Boolean.TRUE.equals(request.getMonitorRapidQuestionSwitch()) || request.getMonitorRapidQuestionSwitch() == null)
                 .monitorMultiMonitor(Boolean.TRUE.equals(request.getMonitorMultiMonitor()) || request.getMonitorMultiMonitor() == null)
                 .requireCameraMic(Boolean.TRUE.equals(request.getRequireCameraMic()) || request.getRequireCameraMic() == null)
+                .shuffleQuestions(Boolean.TRUE.equals(request.getShuffleQuestions()))
+                .shuffleAnswers(Boolean.TRUE.equals(request.getShuffleAnswers()))
                 .practice(false)
                 .build();
         return toResponse(examRepository.save(exam));
@@ -425,6 +427,12 @@ public class ExamService {
         } else if (exam.getRequireCameraMic() == null) {
             exam.setRequireCameraMic(Boolean.TRUE);
         }
+        if (request.getShuffleQuestions() != null) {
+            exam.setShuffleQuestions(request.getShuffleQuestions());
+        }
+        if (request.getShuffleAnswers() != null) {
+            exam.setShuffleAnswers(request.getShuffleAnswers());
+        }
         return toResponse(examRepository.save(exam));
     }
 
@@ -544,6 +552,8 @@ public class ExamService {
                 .monitorRapidQuestionSwitch(original.getMonitorRapidQuestionSwitch())
                 .monitorMultiMonitor(original.getMonitorMultiMonitor())
                 .requireCameraMic(original.getRequireCameraMic())
+                .shuffleQuestions(original.getShuffleQuestions())
+                .shuffleAnswers(original.getShuffleAnswers())
                 .practice(false)
                 .build();
         examRepository.save(copy);
@@ -645,6 +655,11 @@ public class ExamService {
     public Exam requireExam(Long examId) {
         return examRepository.findById(examId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<Exam> findById(Long examId) {
+        return examRepository.findById(examId);
     }
 
     @Transactional(readOnly = true)
@@ -796,6 +811,8 @@ public class ExamService {
                 .monitorRapidQuestionSwitch(exam.getMonitorRapidQuestionSwitch())
                 .monitorMultiMonitor(exam.getMonitorMultiMonitor())
                 .requireCameraMic(exam.getRequireCameraMic())
+                .shuffleQuestions(exam.getShuffleQuestions())
+                .shuffleAnswers(exam.getShuffleAnswers())
                 .build();
     }
 }

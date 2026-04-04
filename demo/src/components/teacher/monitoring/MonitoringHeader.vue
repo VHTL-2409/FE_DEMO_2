@@ -136,7 +136,6 @@ import { computed, ref, watch } from 'vue'
 const props = defineProps({
   examTitle: { type: String, default: 'Trung tâm giám sát' },
   classInfo: { type: String, default: '' },
-  roomsCount: { type: Number, default: 0 },
   onlineCount: { type: Number, default: 0 },
   alertCount: { type: Number, default: 0 },
   issueCount: { type: Number, default: 0 },

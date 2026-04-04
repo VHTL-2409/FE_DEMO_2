@@ -50,9 +50,9 @@
       </div>
 
       <!-- Schedule -->
-      <div v-if="form.startTime || form.endTime" class="epp__schedule">
-        <LucideIcon name="event" />
-        <span>{{ scheduleSummary }}</span>
+      <div v-if="scheduleMode" class="epp__schedule">
+        <LucideIcon :name="scheduleModeIcon" />
+        <span>{{ scheduleModeLabel }}</span>
       </div>
     </div>
 
@@ -112,6 +112,22 @@ const props = defineProps({
   form: { type: Object, default: () => ({}) }
 })
 
+const scheduleMode = computed(() => {
+  if (!props.form.startTime && !props.form.endTime) return 'flexible'
+  if (!props.form.startTime) return 'practice'
+  return 'scheduled'
+})
+
+const scheduleModeLabel = computed(() => {
+  if (!props.form.startTime && !props.form.endTime) return 'Thi tự do — không giới hạn thời gian'
+  return scheduleSummary.value
+})
+
+const scheduleModeIcon = computed(() => {
+  if (!props.form.startTime && !props.form.endTime) return 'all_inclusive'
+  return 'event'
+})
+
 const checklist = computed(() => [
   {
     key: 'info',
@@ -138,16 +154,26 @@ const checklist = computed(() => [
   {
     key: 'schedule',
     label: 'Lịch thi',
-    done: !!(props.form.startTime && props.form.endTime),
-    warn: !!(props.form.startTime || props.form.endTime) && !(props.form.startTime && props.form.endTime),
-    sub: props.form.startTime && props.form.endTime ? 'Đã thiết lập thời gian' : 'Cần đặt thời gian bắt đầu và kết thúc'
+    done: true,
+    warn: false,
+    sub: scheduleModeLabel.value || 'Chưa thiết lập'
   },
   {
     key: 'publish',
     label: 'Sẵn sàng xuất bản',
-    done: !!(props.form.title && props.form.subject && props.form.questions && props.form.questions.length > 0 && props.form.startTime && props.form.endTime),
+    done: !!(
+      props.form.title &&
+      props.form.subject &&
+      props.form.questions &&
+      props.form.questions.length > 0
+    ),
     warn: false,
-    sub: computed(() => props.form.title && props.form.subject && props.form.questions && props.form.questions.length > 0 && props.form.startTime && props.form.endTime ? 'Có thể xuất bản ngay' : 'Hoàn tất các bước trên trước').value
+    sub: computed(() => {
+      const hasInfo = !!(props.form.title && props.form.subject)
+      const hasQuestions = !!(props.form.questions && props.form.questions.length > 0)
+      if (hasInfo && hasQuestions) return 'Có thể xuất bản ngay'
+      return 'Hoàn tất thông tin và câu hỏi trước'
+    }).value
   }
 ])
 

@@ -218,7 +218,7 @@ import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiError } from '../../../services/apiClient'
 import { createExam, updateExam } from '../../../services/examService'
-import { importQuestionsFromFile } from '../../../services/questionService'
+import { persistExamQuestionsFromForm } from '../../../services/questionService'
 import { listClasses } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 
@@ -259,7 +259,6 @@ const form = reactive({
   questions: [],
   shuffleQuestions: false,
   shuffleAnswers: false,
-  importedFile: null,
   // Schedule
   startTime: '',
   endTime: '',
@@ -398,7 +397,11 @@ const isInfoValid = computed(() => {
 const isQuestionsValid = computed(() => form.questions.length > 0)
 
 const isScheduleValid = computed(() => {
-  if (!form.startTime || !form.endTime) return false
+  // Flexible/practice mode: no schedule required
+  if (!form.startTime && !form.endTime) return true
+  // One-sided: flexible (no start+end) = valid, practice (no start) = valid
+  if (!form.startTime || !form.endTime) return true
+  // Both filled: must be end > start
   const start = new Date(form.startTime)
   const end = new Date(form.endTime)
   return !isNaN(start) && !isNaN(end) && end > start
@@ -483,9 +486,9 @@ const handlePublish = async () => {
       await updateExam(examId, payload)
     }
 
-    // Import questions if any imported file
-    if (form.importedFile) {
-      await importQuestionsFromFile(examId, form.importedFile)
+    // Đồng bộ câu hỏi từ form lên DB (trước đây chỉ gọi import file nhưng importedFile không bao giờ được gán)
+    if (form.questions.length > 0) {
+      await persistExamQuestionsFromForm(examId, form.questions)
     }
 
     // Navigate to waiting room
@@ -552,7 +555,9 @@ function buildExamPayload() {
     monitorPrintScreen: form.monitorPrintScreen,
     monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
     monitorMultiMonitor: form.monitorMultiMonitor,
-    requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false
+    requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
+    shuffleQuestions: form.shuffleQuestions,
+    shuffleAnswers: form.shuffleAnswers
   }
 }
 

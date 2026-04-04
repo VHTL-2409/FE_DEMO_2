@@ -344,6 +344,7 @@ const onSubmit = async () => {
     })
 
     if (data?.verificationPending) {
+      toast.info('Vui lòng xác minh email để đăng nhập.')
       const token = data?.verificationUrl
         ? data.verificationUrl.replace(/^.*token=/, '')
         : ''
@@ -357,6 +358,7 @@ const onSubmit = async () => {
         }
       })
     } else if (data?.token) {
+      toast.success('Tạo tài khoản thành công! Vui lòng chọn vai trò.')
       router.push('/select-role')
     } else {
       router.push('/login')
@@ -364,11 +366,10 @@ const onSubmit = async () => {
   } catch (error) {
     if (error?.status === 409) {
       serverError.value = error?.payload?.message || 'Tài khoản hoặc email đã tồn tại.'
-      toast.error(serverError.value)
     } else {
       serverError.value = 'Đăng ký thất bại. Vui lòng thử lại.'
-      toast.error(serverError.value)
     }
+    toast.error(serverError.value)
   } finally {
     isSubmitting.value = false
   }

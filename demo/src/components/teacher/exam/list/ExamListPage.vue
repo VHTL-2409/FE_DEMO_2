@@ -399,13 +399,13 @@ const confirmDelete = async () => {
       selectedIds.value = []
     } else {
       await deleteExam(examToDelete.value.id)
-      toast.success('Đã xóa đề thi.')
+      toast.success(`Đã xóa đề thi "${examToDelete.value.title}".`)
     }
     showDeleteModal.value = false
     examToDelete.value = null
     await loadExams()
   } catch (err) {
-    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa đề thi.')
+    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa đề thi. Vui lòng thử lại.')
   } finally {
     deleteLoading.value = false
   }

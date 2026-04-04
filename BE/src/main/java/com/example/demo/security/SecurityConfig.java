@@ -33,7 +33,7 @@ public class SecurityConfig {
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             CustomUserDetailsService customUserDetailsService,
-            @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:4174,http://127.0.0.1:4174}") String allowedOrigins) {
+            @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:4174,http://127.0.0.1:4174,https://test1.nexquoteapp.com:444,https://www.nexquoteapp.com:444}") String allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.customUserDetailsService = customUserDetailsService;
         this.allowedOrigins = allowedOrigins;
@@ -70,7 +70,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/login", "/web/**", "/css/**", "/js/**", "/avatars/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password",
-                        "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/refresh").permitAll()
+                        "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/refresh",
+                        "/api/auth/oauth2/google/init", "/api/auth/oauth2/google/callback",
+                        "/api/auth/oauth2/google/status").permitAll()
                         .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers("/api/questions/template").permitAll()
                         .requestMatchers("/ws/**").permitAll()

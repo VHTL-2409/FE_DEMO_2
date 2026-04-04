@@ -273,6 +273,17 @@
         </div>
       </Transition>
     </Teleport>
+
+    <ConfirmDialog
+      v-model="showDeleteAllConfirm"
+      title="Xóa tất cả câu hỏi"
+      :message="`Bạn có chắc muốn xóa tất cả ${localQuestions.length} câu hỏi?`"
+      confirm-label="Xóa tất cả"
+      cancel-label="Hủy"
+      variant="warning"
+      icon="trash"
+      @confirm="onConfirmDeleteAll"
+    />
   </div>
 </template>
 
@@ -280,6 +291,7 @@
 import { ref, computed } from 'vue'
 import { API_BASE_URL } from '../../../services/apiClient'
 import { previewImportFile, validateImportFile } from '../../../services/importService'
+import ConfirmDialog from '../../../ui/ConfirmDialog.vue'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] },
@@ -300,6 +312,7 @@ const isImporting = ref(false)
 const importError = ref('')
 const showVersionModal = ref(false)
 const versionCount = ref(4)
+const showDeleteAllConfirm = ref(false)
 
 const templateCsvUrl = `${API_BASE_URL}/api/questions/template`
 const templateXlsxUrl = `${API_BASE_URL}/api/questions/template?format=xlsx`
@@ -346,9 +359,12 @@ const deleteAllQuestions = () => {
 
 const confirmDeleteAll = () => {
   if (localQuestions.value.length === 0) return
-  if (window.confirm(`Xóa tất cả ${localQuestions.value.length} câu hỏi?`)) {
-    deleteAllQuestions()
-  }
+  showDeleteAllConfirm.value = true
+}
+
+const onConfirmDeleteAll = () => {
+  deleteAllQuestions()
+  showDeleteAllConfirm.value = false
 }
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -404,11 +420,11 @@ const parseFileClientSide = async (file) => {
           // Parse header
           const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim())
           const questionIndex = headers.findIndex(h => h.includes('câu') || h.includes('content') || h.includes('question'))
-          const answerIndex = headers.findIndex(h => h.includes('đáp án') || h.includes('answer') || h.includes('correct'))
-          const optionAIndex = headers.findIndex(h => h === 'a' || h.includes('optiona'))
-          const optionBIndex = headers.findIndex(h => h === 'b' || h.includes('optionb'))
-          const optionCIndex = headers.findIndex(h => h === 'c' || h.includes('optionc'))
-          const optionDIndex = headers.findIndex(h => h === 'd' || h.includes('optiond'))
+          const answerIndex = headers.findIndex(h => h.includes('đáp án') || h.includes('answer') || h.includes('correct') || h.includes('đúng'))
+          const optionAIndex = headers.findIndex(h => h === 'a' || h === 'option a' || h === 'câu a')
+          const optionBIndex = headers.findIndex(h => h === 'b' || h === 'option b' || h === 'câu b')
+          const optionCIndex = headers.findIndex(h => h === 'c' || h === 'option c' || h === 'câu c')
+          const optionDIndex = headers.findIndex(h => h === 'd' || h === 'option d' || h === 'câu d')
           const scoreIndex = headers.findIndex(h => h.includes('điểm') || h.includes('score') || h.includes('weight'))
 
           const questions = []
@@ -499,19 +515,38 @@ const parseFileClientSide = async (file) => {
               const correctAnswer = answerIndex >= 0 ? String(row[answerIndex] || '').trim() : ''
               const score = scoreIndex >= 0 ? parseFloat(row[scoreIndex]) || 1 : 1
 
-              // Try to find option columns (A, B, C, D or Option A, Option B, etc.)
+              // Try to find option columns (A, B, C, D)
+              // Match by first letter of header or known prefixes
+              const optionLabelMap = { a: 'A', b: 'B', c: 'C', d: 'D' }
               const optionCols = []
               for (let col = 0; col < headers.length; col++) {
                 const h = headers[col]
-                if (h === 'a' || h === 'b' || h === 'c' || h === 'd' ||
-                    h.includes('option') || h.includes('đáp án')) {
-                  optionCols.push({ index: col, id: String.fromCharCode(65 + (col > 3 ? col - 4 : col)) })
+                // Match single letter A/B/C/D at start of header
+                if (h.length === 1 && optionLabelMap[h]) {
+                  optionCols.push({ index: col, id: optionLabelMap[h] })
+                } else {
+                  // Match "option A", "câu A", "A)", "Đáp án A", etc.
+                  for (const [letter, label] of Object.entries(optionLabelMap)) {
+                    const patterns = [
+                      `option ${letter}`,
+                      `câu ${letter}`,
+                      `đáp án ${letter}`,
+                      `${letter})`,
+                      `${letter}.`,
+                    ]
+                    if (patterns.some(p => h.includes(p))) {
+                      optionCols.push({ index: col, id: label })
+                      break
+                    }
+                  }
                 }
               }
+              // Sort by ID to ensure correct order: A, B, C, D
+              optionCols.sort((a, b) => a.id.localeCompare(b.id))
 
               const options = optionCols.slice(0, 4).map(({ index, id }) => ({
                 id,
-                text: String(row[index] || '').trim()
+                text: String(row[index] || '').replace(/^\uFEFF/, '').trim()
               })).filter(opt => opt.text)
 
               questions.push({
@@ -548,14 +583,17 @@ const parseFileClientSide = async (file) => {
 }
 
 const parseCsvLine = (line) => {
+  // Strip BOM (UTF-8 signature) at start of file
+  const cleaned = line.replace(/^\uFEFF/, '')
   const result = []
   let current = ''
   let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i]
     if (char === '"') {
       inQuotes = !inQuotes
-    } else if (char === ',' && !inQuotes) {
+    } else if ((char === ';' || char === ',') && !inQuotes) {
+      // Support both , and ; delimiters (Vietnam / Europe CSV)
       result.push(current.trim())
       current = ''
     } else {
@@ -579,21 +617,25 @@ const handleImport = async () => {
       try {
         const previewResult = await previewImportFile(selectedFile.value)
         if (previewResult && Array.isArray(previewResult)) {
-          questions = previewResult.map((q, i) => ({
+          questions = previewResult.map((q) => ({
             _localId: localIdCounter++,
             content: q.content || q.question || q.text || '',
             correctAnswer: q.correctAnswer || q.answer || q.correct || '',
-            score: parseFloat(q.score || q.scoreWeight || q.points || 1),
-            options: q.options || [],
+            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+            options: Array.isArray(q.options)
+              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+              : [],
             type: q.type || 'SINGLE_CHOICE'
           }))
         } else if (previewResult && previewResult.questions) {
-          questions = previewResult.questions.map((q, i) => ({
+          questions = previewResult.questions.map((q) => ({
             _localId: localIdCounter++,
             content: q.content || q.question || q.text || '',
             correctAnswer: q.correctAnswer || q.answer || q.correct || '',
-            score: parseFloat(q.score || q.scoreWeight || q.points || 1),
-            options: q.options || [],
+            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+            options: Array.isArray(q.options)
+              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+              : [],
             type: q.type || 'SINGLE_CHOICE'
           }))
         }

@@ -3,36 +3,21 @@
 
     <!-- Top controls bar (sticky) -->
     <div class="smt__controls">
-      <!-- Search -->
-      <div class="smt__search">
-        <LucideIcon name="search" />
-        <input
-          v-model="searchInput"
-          type="text"
-          class="smt__search-input"
-          placeholder="Tìm học sinh..."
-          @input="debouncedSearch"
-        />
-        <button v-if="searchInput" type="button" class="smt__search-clear" @click="searchInput = ''">
-          <LucideIcon name="close" />
-        </button>
-      </div>
-
-      <!-- Result count -->
-      <span class="smt__result-count">
-        {{ filteredStudents.length }} học sinh
-      </span>
-
       <!-- Sort -->
       <div class="smt__sort-group">
         <LucideIcon name="sort" />
-        <select v-model="sortBy" class="smt__select">
+        <select :value="sortBy" class="smt__select" @change="$emit('update:sortBy', $event.target.value)">
           <option value="risk">Theo rủi ro</option>
           <option value="name">Theo tên</option>
           <option value="status">Theo trạng thái</option>
           <option value="violations">Theo vi phạm</option>
         </select>
       </div>
+
+      <!-- Result count -->
+      <span class="smt__result-count">
+        {{ sortedStudents.length }} học sinh
+      </span>
     </div>
 
     <!-- Batch actions bar (sticky when active) -->
@@ -306,33 +291,26 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRiskLevel } from '../../../composables/useRiskLevel'
+
+const { clampScore, resolveLevel, label } = useRiskLevel()
 
 const props = defineProps({
   students: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  examId: { type: String, default: '' }
+  examId: { type: String, default: '' },
+  sortBy: { type: String, default: 'risk' }
 })
 
 const emit = defineEmits(['warn', 'pause', 'view-detail', 'batch-warn', 'batch-pause', 'batch-invalidate'])
 
-const searchInput = ref('')
-const sortBy = ref('risk')
 const selectedIds = ref([])
 const expandedIds = ref([])
 
-// Filter
-const filteredStudents = computed(() => {
-  if (!searchInput.value.trim()) return props.students
-  const q = searchInput.value.toLowerCase()
-  return props.students.filter(s =>
-    (s.userName || s.fullName || s.email || s.studentCode || '').toLowerCase().includes(q)
-  )
-})
-
-// Sort
+// Sort from parent prop (no local state)
 const sortedStudents = computed(() => {
-  const arr = [...filteredStudents.value]
-  switch (sortBy.value) {
+  const arr = [...props.students]
+  switch (props.sortBy) {
     case 'risk':
       return arr.sort((a, b) => (riskScore(b) || 0) - (riskScore(a) || 0))
     case 'name':
@@ -387,18 +365,9 @@ const debouncedSearch = () => {
 }
 
 // Risk helpers
-const riskScore = (student) => {
-  const s = student.riskScore || student.risk || 0
-  return Math.min(100, Math.max(0, Number(s)))
-}
+const riskScore = (student) => clampScore(student.riskScore || student.risk || 0)
 
-const riskLevel = (student) => {
-  const s = riskScore(student)
-  if (s >= 81) return 'critical'
-  if (s >= 61) return 'high_risk'
-  if (s >= 31) return 'suspicious'
-  return 'clean'
-}
+const riskLevel = (student) => resolveLevel(riskScore(student))
 
 const riskPercent = (student) => riskScore(student)
 

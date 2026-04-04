@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +41,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.example.demo.service.importer.FormatDetector;
+import com.example.demo.service.importer.extractor.CsvExtractor;
 @Service
 public class ImportXlsxService {
 
@@ -47,11 +50,16 @@ public class ImportXlsxService {
 
     private final QuestionRepository questionRepository;
     private final AiDifficultyAnalyzerService aiAnalyzer;
+    private final FormatDetector formatDetector;
+    private final CsvExtractor csvExtractor;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ImportXlsxService(QuestionRepository questionRepository, AiDifficultyAnalyzerService aiAnalyzer) {
+    public ImportXlsxService(QuestionRepository questionRepository, AiDifficultyAnalyzerService aiAnalyzer,
+            FormatDetector formatDetector, CsvExtractor csvExtractor) {
         this.questionRepository = questionRepository;
         this.aiAnalyzer = aiAnalyzer;
+        this.formatDetector = formatDetector;
+        this.csvExtractor = csvExtractor;
     }
 
     public int importQuestions(Exam exam, MultipartFile file) {
@@ -114,13 +122,121 @@ public class ImportXlsxService {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Markdown");
             }
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF, DOCX, JSON và Markdown");
+        if ("txt".equals(extension)) {
+            validateFile(file, "txt");
+            try {
+                String text = new String(file.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                return parseQuestionsFromText(exam, text);
+            } catch (IOException ex) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file TXT");
+            }
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file CSV, XLSX, PDF, DOCX, TXT, JSON và Markdown");
     }
 
     public int countQuestions(MultipartFile file) {
         Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
         return parseQuestions(previewExam, file).size();
     }
+
+    // ================================================================
+    //  PREVIEW METHODS — one per file format
+    // ================================================================
+
+    /**
+     * Parse và preview file PDF. Trả về danh sách câu hỏi đã parse cùng độ dài
+     * text gốc sau khi extract.
+     */
+    public PdfParseResult previewPdf(Exam exam, MultipartFile file) {
+        validateFile(file, "pdf");
+        String text;
+        try {
+            text = extractTextFromPdf(file.getInputStream());
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file PDF");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Định dạng PDF không hợp lệ hoặc file bị mã hóa");
+        }
+        Exam previewExam = exam != null ? exam : Exam.builder().title("preview").durationMinutes(1).build();
+        List<Question> questions = parseQuestionsFromText(previewExam, text);
+        return new PdfParseResult(questions, text.length());
+    }
+
+    /**
+     * Parse và preview file DOCX. Trả về danh sách câu hỏi đã parse cùng độ dài
+     * text gốc sau khi extract.
+     */
+    public DocxParseResult previewDocx(Exam exam, MultipartFile file) {
+        validateFile(file, "docx");
+        String text;
+        try {
+            text = extractTextFromDocx(file.getInputStream());
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể đọc file Word");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Định dạng Word không hợp lệ");
+        }
+        Exam previewExam = exam != null ? exam : Exam.builder().title("preview").durationMinutes(1).build();
+        List<Question> questions = parseQuestionsFromDocx(previewExam, text);
+        return new DocxParseResult(questions, text.length());
+    }
+
+    /**
+     * Parse và preview file XLSX. Trả về danh sách câu hỏi đã parse cùng số dòng
+     * trong sheet và flag isAzotaFormat.
+     */
+    public XlsxParseResult previewXlsx(Exam exam, MultipartFile file) {
+        validateFile(file, "xlsx");
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Map<String, Integer> headerIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
+            boolean isAzota = headerIndexes.containsKey("cauhỏi")
+                    && headerIndexes.values().stream().filter(v -> v >= 1 && v <= 11).count() >= 9;
+            Exam previewExam = exam != null ? exam : Exam.builder().title("preview").durationMinutes(1).build();
+            List<Question> questions;
+            if (isAzota) {
+                questions = parseQuestionsFromAzotaXlsx(previewExam, sheet, headerIndexes);
+            } else {
+                questions = parseQuestionsFromXlsxBody(previewExam, sheet, headerIndexes);
+            }
+            return new XlsxParseResult(questions, sheet.getLastRowNum() + 1, isAzota);
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read xlsx file");
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Invalid xlsx template format");
+        }
+    }
+
+    /** Container kết quả preview PDF. */
+    public record PdfParseResult(List<Question> questions, int rawTextLength) {}
+
+    /** Container kết quả preview DOCX. */
+    public record DocxParseResult(List<Question> questions, int rawTextLength) {}
+
+    /** Container kết quả preview XLSX. */
+    public record XlsxParseResult(List<Question> questions, int sourceRows, boolean isAzotaFormat) {}
+
+    /**
+     * Parse và preview file CSV. Trả về danh sách câu hỏi đã parse cùng số dòng
+     * trong file và charset được phát hiện.
+     */
+    public CsvParseResult previewCsv(Exam exam, MultipartFile file) {
+        validateFile(file, "csv");
+        Charset charset = detectCsvCharset(file);
+        char delimiter = detectCsvDelimiter(file, charset);
+        try {
+            List<Map<String, String>> rows = csvExtractor.readRows(file, charset, delimiter);
+            Exam previewExam = exam != null ? exam : Exam.builder().title("preview").durationMinutes(1).build();
+            List<Question> questions = parseQuestionsFromCsv(previewExam, file);
+            return new CsvParseResult(questions, rows.size(), charset.name());
+        } catch (RuntimeException ex) {
+            throw mapImportRuntimeException(ex, "Invalid CSV template format");
+        }
+    }
+
+    /** Container kết quả preview CSV. */
+    public record CsvParseResult(List<Question> questions, int sourceRows, String detectedCharset) {}
 
     public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
         return importQuestionsFromXlsx(exam, file, null);
@@ -135,50 +251,49 @@ public class ImportXlsxService {
     private List<Question> parseQuestionsFromXlsx(Exam exam, MultipartFile file) {
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             Sheet sheet = workbook.getSheetAt(0);
-            List<Question> questions = new ArrayList<>();
             Map<String, Integer> headerIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
-
-            // Detect Azota multi-version format: "Câu hỏi" in col 0, then 9 exam-code columns
-            boolean isAzotaMultiVersion = headerIndexes.containsKey("cauhỏi")
+            boolean isAzota = headerIndexes.containsKey("cauhỏi")
                     && headerIndexes.values().stream().filter(v -> v >= 1 && v <= 11).count() >= 9;
-            if (isAzotaMultiVersion) {
+            if (isAzota) {
                 return parseQuestionsFromAzotaXlsx(exam, sheet, headerIndexes);
             }
-
-            Map<String, Integer> hIndexes = extractXlsxHeaderIndexes(sheet.getRow(0));
-
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
-                if (row == null) continue;
-
-                String content = xlsxCellByHeader(row, hIndexes, 0, "content", "question", "cauhoi", "noidung", "cauho i");
-                String optionA = xlsxCellByHeader(row, hIndexes, 1, "optiona", "dapana", "dapanA", "dapan", "dapan a");
-                String optionB = xlsxCellByHeader(row, hIndexes, 2, "optionb", "dapanb", "dapanB", "dapan", "dapan b");
-                String optionC = xlsxCellByHeader(row, hIndexes, 3, "optionc", "dapanc", "dapanC", "dapan", "dapan c");
-                String optionD = xlsxCellByHeader(row, hIndexes, 4, "optiond", "dapand", "dapanD", "dapan", "dapan d");
-                String correctAnswer = xlsxCellByHeader(row, hIndexes, 5, "correctanswer", "dapandung", "dapan dung", "dapan d", "correctanswer03");
-                String scoreCell = xlsxCellByHeader(row, hIndexes, 6, "scoreweight", "points", "diem", "diemso", "diem so");
-                String difficulty = xlsxCellByHeader(row, hIndexes, 7, "difficulty", "domkho", "do kho");
-
-                if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
-                    try {
-                        ParsedQuestion pq = parseQuestionBlock(content, Map.of(), rowIndex + 1);
-                        if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
-                            addQuestionRow(questions, exam, pq.content, pq.optionA, pq.optionB, pq.optionC, pq.optionD,
-                                    pq.correctAnswer, "1.0", null, rowIndex + 1);
-                        }
-                    } catch (ApiException ignored) { }
-                } else {
-                    addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
-                            difficulty, rowIndex + 1);
-                }
-            }
-            return questions;
+            return parseQuestionsFromXlsxBody(exam, sheet, headerIndexes);
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read xlsx file");
         } catch (RuntimeException ex) {
             throw mapImportRuntimeException(ex, "Invalid xlsx template format");
         }
+    }
+
+    private List<Question> parseQuestionsFromXlsxBody(Exam exam, Sheet sheet, Map<String, Integer> headerIndexes) {
+        List<Question> questions = new ArrayList<>();
+        for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) continue;
+
+            String content = xlsxCellByHeader(row, headerIndexes, 0, "content", "question", "cauhoi", "noidung", "cauho i");
+            String optionA = xlsxCellByHeader(row, headerIndexes, 1, "optiona", "dapana", "dapanA", "dapan", "dapan a");
+            String optionB = xlsxCellByHeader(row, headerIndexes, 2, "optionb", "dapanb", "dapanB", "dapan", "dapan b");
+            String optionC = xlsxCellByHeader(row, headerIndexes, 3, "optionc", "dapanc", "dapanC", "dapan", "dapan c");
+            String optionD = xlsxCellByHeader(row, headerIndexes, 4, "optiond", "dapand", "dapanD", "dapan", "dapan d");
+            String correctAnswer = xlsxCellByHeader(row, headerIndexes, 5, "correctanswer", "dapandung", "dapan dung", "dapan d", "correctanswer03");
+            String scoreCell = xlsxCellByHeader(row, headerIndexes, 6, "scoreweight", "points", "diem", "diemso", "diem so");
+            String difficulty = xlsxCellByHeader(row, headerIndexes, 7, "difficulty", "domkho", "do kho");
+
+            if (isAzotaStyleBlock(content) && optionA.isBlank() && optionB.isBlank()) {
+                try {
+                    ParsedQuestion pq = parseQuestionBlock(content, Map.of(), rowIndex + 1);
+                    if (pq != null && pq.content != null && !pq.content.isBlank() && pq.correctAnswer != null) {
+                        addQuestionRow(questions, exam, pq.content, pq.optionA, pq.optionB, pq.optionC, pq.optionD,
+                                pq.correctAnswer, "1.0", null, rowIndex + 1);
+                    }
+                } catch (ApiException ignored) { }
+            } else {
+                addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD, correctAnswer, scoreCell,
+                        difficulty, rowIndex + 1);
+            }
+        }
+        return questions;
     }
 
     // ================================================================
@@ -865,9 +980,37 @@ public class ImportXlsxService {
                 Pattern.compile("^\\s*\\*?([A-Da-d])[\\-–—]\\s*(.+)$"),   // *D- option text  OR  D- option text
         };
 
+        // Special case: detect if the first "header" line is actually just "N." with
+        // question content on the NEXT line (doc_mau_2 format: "1.\nHỏi gì?\nA.\n*B.")
+        boolean firstLineIsHeaderOnly = false;
+        boolean headerOnlyChecked = false;
+
         for (String line : lines) {
             String trimmed = line.trim();
             if (trimmed.isBlank()) continue;
+
+            // Check special format: first line is ONLY "N." (no other content on that line)
+            if (!headerOnlyChecked && contentBuilder.length() == 0) {
+                Pattern pureHeaderPattern = Pattern.compile("(?m)^(?:Câu|Bài|Question)?\\s*(\\d+)[\\s.\\):\\-–—]\\s*$");
+                Matcher phm = pureHeaderPattern.matcher(trimmed);
+                if (phm.find()) {
+                    try {
+                        questionNumber = Integer.parseInt(phm.group(1));
+                        firstLineIsHeaderOnly = true;
+                        headerOnlyChecked = true;
+                    } catch (NumberFormatException ignored) { }
+                    continue;
+                }
+                headerOnlyChecked = true;
+            }
+
+            // If we detected a header-only first line, the NEXT non-blank line IS the question content
+            if (firstLineIsHeaderOnly && contentBuilder.length() == 0) {
+                if (contentBuilder.length() > 0) contentBuilder.append(" ");
+                contentBuilder.append(trimmed);
+                firstLineIsHeaderOnly = false;
+                continue;
+            }
 
             // Extract question number from header line
             if (questionNumber == null) {
@@ -1202,5 +1345,52 @@ public class ImportXlsxService {
     private ApiException mapImportRuntimeException(RuntimeException ex, String fallbackMessage) {
         if (ex instanceof ApiException apiException) return apiException;
         return new ApiException(HttpStatus.BAD_REQUEST, fallbackMessage);
+    }
+
+    private Charset detectCsvCharset(MultipartFile file) {
+        try {
+            byte[] sample = file.getBytes();
+            if (sample.length >= 3
+                    && (sample[0] & 0xFF) == 0xEF
+                    && (sample[1] & 0xFF) == 0xBB
+                    && (sample[2] & 0xFF) == 0xBF) {
+                return StandardCharsets.UTF_8;
+            }
+            if (sample.length >= 2 && (sample[0] & 0xFF) == 0xFF && (sample[1] & 0xFF) == 0xFE) {
+                return StandardCharsets.UTF_16LE;
+            }
+            if (sample.length >= 2 && (sample[0] & 0xFF) == 0xFE && (sample[1] & 0xFF) == 0xFF) {
+                return StandardCharsets.UTF_16BE;
+            }
+            return StandardCharsets.UTF_8;
+        } catch (IOException ex) {
+            return StandardCharsets.UTF_8;
+        }
+    }
+
+    private char detectCsvDelimiter(MultipartFile file, Charset charset) {
+        try {
+            String content = new String(file.getBytes(), charset);
+            String firstLine = content.lines().findFirst().orElse("");
+            Map<Character, Integer> scores = new HashMap<>();
+            for (char c : new char[]{',', ';', '\t'}) {
+                scores.put(c, countOccurrences(firstLine, c));
+            }
+            return scores.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(',');
+        } catch (IOException ex) {
+            return ',';
+        }
+    }
+
+    private int countOccurrences(String input, char delimiter) {
+        if (input == null || input.isBlank()) return 0;
+        int count = 0;
+        for (char c : input.toCharArray()) {
+            if (c == delimiter) count++;
+        }
+        return count;
     }
 }

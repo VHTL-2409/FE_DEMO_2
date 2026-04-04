@@ -308,6 +308,15 @@ const validate = () => {
   return Object.keys(errors.value).length === 0
 }
 
+const submitPasswordChange = () => {
+  if (!validate()) return
+  isSavingPassword.value = true
+  emit('change-password', {
+    currentPassword: passwordForm.currentPassword,
+    newPassword: passwordForm.newPassword
+  })
+}
+
 const closePasswordForm = () => {
   isChangingPassword.value = false
   passwordForm.currentPassword = ''
@@ -316,18 +325,12 @@ const closePasswordForm = () => {
   errors.value = {}
 }
 
-const submitPasswordChange = async () => {
-  if (!validate()) return
-  isSavingPassword.value = true
-  emit('change-password', {
-    currentPassword: passwordForm.currentPassword,
-    newPassword: passwordForm.newPassword
-  })
+const resetSavingState = () => {
   isSavingPassword.value = false
   closePasswordForm()
 }
 
-defineExpose({ isSavingPassword })
+defineExpose({ closePasswordForm, resetSavingState })
 </script>
 
 

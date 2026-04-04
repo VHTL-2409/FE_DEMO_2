@@ -29,8 +29,12 @@ export function validateOverview(form) {
 
 export function validateSchedule(form) {
   const errors = {}
+  // Flexible / 24-7 mode — OK (no schedule needed)
   if (!form.startTime && !form.endTime) {
-    // 24/7 mode — OK
+    return errors
+  }
+  // Practice mode (only endTime, no startTime) — OK
+  if (!form.startTime && form.endTime) {
     return errors
   }
   if (form.startTime && form.endTime) {
@@ -39,10 +43,17 @@ export function validateSchedule(form) {
     if (end <= start) {
       errors.endTime = 'Thời gian kết thúc phải sau thời gian bắt đầu'
     }
+    // Warn if window < duration
+    if (!errors.endTime) {
+      const windowMin = Math.round((end - start) / 60000)
+      if (form.durationMinutes && windowMin < form.durationMinutes) {
+        errors.endTime = `Cửa sổ thi (${windowMin} phút) ngắn hơn thời lượng làm bài (${form.durationMinutes} phút)`
+      }
+    }
+  } else if (!form.startTime && !form.endTime) {
+    // flexible — OK
   } else if (form.startTime && !form.endTime) {
     errors.endTime = 'Vui lòng đặt thời gian kết thúc'
-  } else if (!form.startTime && form.endTime) {
-    errors.startTime = 'Vui lòng đặt thời gian bắt đầu'
   }
   return errors
 }

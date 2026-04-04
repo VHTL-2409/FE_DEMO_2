@@ -1,8 +1,13 @@
 package com.example.demo.api;
 
 import com.example.demo.api.dto.ApiResponse;
+import com.example.demo.api.dto.question.CsvFilePreviewResponse;
+import com.example.demo.api.dto.question.DocxFilePreviewResponse;
 import com.example.demo.api.dto.question.FilePreviewResponse;
+import com.example.demo.api.dto.question.PdfFilePreviewResponse;
+import com.example.demo.api.dto.question.XlsxFilePreviewResponse;
 import com.example.demo.api.dto.question.ImportQuestionsResponse;
+import com.example.demo.api.dto.question.QuestionPreviewDto;
 import com.example.demo.api.dto.question.QuestionRequest;
 import com.example.demo.api.dto.question.QuestionResponse;
 import com.example.demo.domain.entity.Exam;
@@ -24,6 +29,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class QuestionController {
@@ -77,11 +83,88 @@ public class QuestionController {
         return ApiResponse.success(null, "Xóa câu hỏi thành công");
     }
 
+    @Deprecated
     @PostMapping(value = "/api/questions/file-preview", consumes = "multipart/form-data")
     public ApiResponse<FilePreviewResponse> previewFile(@RequestParam("file") MultipartFile file) {
         currentUserService.requireCurrentUser();
-        int total = importXlsxService.countQuestions(file);
-        return ApiResponse.success(new FilePreviewResponse(total));
+        Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
+        List<com.example.demo.domain.entity.Question> parsed = importXlsxService.parseQuestions(previewExam, file);
+        List<QuestionPreviewDto> dtos = parsed.stream().map(q -> QuestionPreviewDto.builder()
+                .content(q.getContent())
+                .correctAnswer(q.getCorrectAnswer())
+                .scoreWeight(q.getScoreWeight())
+                .type(q.getType() != null ? q.getType().name() : "SINGLE_CHOICE")
+                .options(parseOptionsForPreview(q.getOptions()))
+                .build()).toList();
+        return ApiResponse.success(new FilePreviewResponse(parsed.size(), dtos));
+    }
+
+    @PostMapping(value = "/api/questions/preview/pdf", consumes = "multipart/form-data")
+    public ApiResponse<PdfFilePreviewResponse> previewPdf(@RequestParam("file") MultipartFile file) {
+        currentUserService.requireCurrentUser();
+        Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
+        ImportXlsxService.PdfParseResult result = importXlsxService.previewPdf(previewExam, file);
+        List<QuestionPreviewDto> dtos = result.questions().stream().map(q -> toPreviewDto(q)).toList();
+        return ApiResponse.success(PdfFilePreviewResponse.builder()
+                .totalQuestions(result.questions().size())
+                .questions(dtos)
+                .rawTextLength(result.rawTextLength())
+                .fileName(file.getOriginalFilename())
+                .build());
+    }
+
+    @PostMapping(value = "/api/questions/preview/docx", consumes = "multipart/form-data")
+    public ApiResponse<DocxFilePreviewResponse> previewDocx(@RequestParam("file") MultipartFile file) {
+        currentUserService.requireCurrentUser();
+        Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
+        ImportXlsxService.DocxParseResult result = importXlsxService.previewDocx(previewExam, file);
+        List<QuestionPreviewDto> dtos = result.questions().stream().map(q -> toPreviewDto(q)).toList();
+        return ApiResponse.success(DocxFilePreviewResponse.builder()
+                .totalQuestions(result.questions().size())
+                .questions(dtos)
+                .rawTextLength(result.rawTextLength())
+                .fileName(file.getOriginalFilename())
+                .build());
+    }
+
+    @PostMapping(value = "/api/questions/preview/xlsx", consumes = "multipart/form-data")
+    public ApiResponse<XlsxFilePreviewResponse> previewXlsx(@RequestParam("file") MultipartFile file) {
+        currentUserService.requireCurrentUser();
+        Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
+        ImportXlsxService.XlsxParseResult result = importXlsxService.previewXlsx(previewExam, file);
+        List<QuestionPreviewDto> dtos = result.questions().stream().map(q -> toPreviewDto(q)).toList();
+        return ApiResponse.success(XlsxFilePreviewResponse.builder()
+                .totalQuestions(result.questions().size())
+                .questions(dtos)
+                .sourceRows(result.sourceRows())
+                .isAzotaFormat(result.isAzotaFormat())
+                .fileName(file.getOriginalFilename())
+                .build());
+    }
+
+    @PostMapping(value = "/api/questions/preview/csv", consumes = "multipart/form-data")
+    public ApiResponse<CsvFilePreviewResponse> previewCsv(@RequestParam("file") MultipartFile file) {
+        currentUserService.requireCurrentUser();
+        Exam previewExam = Exam.builder().title("preview").durationMinutes(1).build();
+        ImportXlsxService.CsvParseResult result = importXlsxService.previewCsv(previewExam, file);
+        List<QuestionPreviewDto> dtos = result.questions().stream().map(q -> toPreviewDto(q)).toList();
+        return ApiResponse.success(CsvFilePreviewResponse.builder()
+                .totalQuestions(result.questions().size())
+                .questions(dtos)
+                .sourceRows(result.sourceRows())
+                .detectedCharset(result.detectedCharset())
+                .fileName(file.getOriginalFilename())
+                .build());
+    }
+
+    private QuestionPreviewDto toPreviewDto(com.example.demo.domain.entity.Question q) {
+        return QuestionPreviewDto.builder()
+                .content(q.getContent())
+                .correctAnswer(q.getCorrectAnswer())
+                .scoreWeight(q.getScoreWeight())
+                .type(q.getType() != null ? q.getType().name() : "SINGLE_CHOICE")
+                .options(parseOptionsForPreview(q.getOptions()))
+                .build();
     }
 
     @PostMapping("/api/exams/{examId}/questions/import")
@@ -120,5 +203,41 @@ public class QuestionController {
         headers.setContentType(MediaType.parseMediaType("text/csv"));
         headers.setContentDisposition(ContentDisposition.attachment().filename("questions-template.csv").build());
         return ResponseEntity.ok().headers(headers).body(content);
+    }
+
+    /** Debug endpoint — xác nhận câu hỏi có trong DB hay không (chỉ admin). */
+    @GetMapping("/api/exams/{examId}/questions/_debug")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Object> debugQuestions(@PathVariable Long examId) {
+        var examOpt = examService.findById(examId);
+        if (examOpt.isEmpty()) {
+            return ApiResponse.error("Exam not found: " + examId);
+        }
+        var exam = examOpt.get();
+        var questions = questionService.findEntitiesByExam(exam);
+        return ApiResponse.success(java.util.Map.of(
+            "examId", examId,
+            "examTitle", exam.getTitle(),
+            "dbQuestionCount", questions.size(),
+            "questions", questions.stream().map(q -> java.util.Map.of(
+                "id", q.getId(),
+                "content", q.getContent() != null ? q.getContent().substring(0, Math.min(50, q.getContent().length())) : "null",
+                "type", q.getType(),
+                "scoreWeight", q.getScoreWeight()
+            )).toList()
+        ));
+    }
+
+    /** Parse the JSON options string into a list of {id, text} maps for the preview response. */
+    private List<Map<String, String>> parseOptionsForPreview(String optionsJson) {
+        if (optionsJson == null || optionsJson.isBlank()) return List.of();
+        try {
+            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> opts = mapper.readValue(optionsJson, List.class);
+            return opts;
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }

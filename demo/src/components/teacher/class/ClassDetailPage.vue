@@ -324,7 +324,9 @@ const loadClassDetail = async () => {
     const data = await getClassDetail(classId.value)
     classData.value = data
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'Không thể tải thông tin lớp học.'
+    const msg = err instanceof ApiError ? err.message : 'Không thể tải thông tin lớp học.'
+    error.value = msg
+    toast.error(msg)
   } finally {
     isLoading.value = false
   }

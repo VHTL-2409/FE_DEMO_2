@@ -133,7 +133,6 @@ const handleJoin = async () => {
   try {
     const result = await joinClassByCode(code)
     if (result) {
-      success.value = `Bạn đã tham gia lớp "${result.name || code}" thành công!`
       toast.success(`Đã tham gia lớp "${result.name || code}"!`)
       setTimeout(() => {
         emit('joined', result)

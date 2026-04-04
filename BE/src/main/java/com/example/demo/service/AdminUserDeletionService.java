@@ -1,17 +1,20 @@
 package com.example.demo.service;
 
 import com.example.demo.common.ApiException;
+import com.example.demo.domain.entity.ClassEntity;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.AuditLogRepository;
+import com.example.demo.repository.ClassRepository;
 import com.example.demo.repository.EmailVerificationTokenRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.ExamRepository;
 import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.PasswordResetTokenRepository;
+import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.RiskSnapshotRepository;
 import com.example.demo.repository.StudentProfileRepository;
 import com.example.demo.repository.TeacherProfileRepository;
@@ -37,8 +40,10 @@ public class AdminUserDeletionService {
     private final MonitoringEventRepository monitoringEventRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final TeacherProfileRepository teacherProfileRepository;
+    private final ClassRepository classRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public void deleteStudent(Long userId, User currentAdmin) {
@@ -63,6 +68,7 @@ public class AdminUserDeletionService {
         studentProfileRepository.deleteByUser(user);
         emailVerificationTokenRepository.deleteByUser(user);
         passwordResetTokenRepository.deleteByUser(user);
+        refreshTokenRepository.deleteByUser(user);
         user.getRoles().clear();
         userRepository.save(user);
         userRepository.delete(user);
@@ -84,9 +90,15 @@ public class AdminUserDeletionService {
             examService.deleteExam(e.getId(), currentAdmin);
         }
 
+        List<ClassEntity> teacherClasses = classRepository.findByTeacherId(userId);
+        if (!teacherClasses.isEmpty()) {
+            classRepository.deleteAll(teacherClasses);
+        }
+
         teacherProfileRepository.deleteByUser(user);
         emailVerificationTokenRepository.deleteByUser(user);
         passwordResetTokenRepository.deleteByUser(user);
+        refreshTokenRepository.deleteByUser(user);
         user.getRoles().clear();
         userRepository.save(user);
         userRepository.delete(user);

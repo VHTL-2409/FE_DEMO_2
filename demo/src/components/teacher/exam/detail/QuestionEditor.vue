@@ -373,10 +373,10 @@ const handleFileSelect = async (e) => {
 
 const processImportFile = async (file) => {
   importError.value = ''
-  const validTypes = ['.csv', '.xlsx', '.json']
+  const validTypes = ['.csv', '.xlsx', '.pdf', '.docx', '.json']
   const ext = '.' + file.name.split('.').pop().toLowerCase()
   if (!validTypes.includes(ext)) {
-    importError.value = 'Định dạng không hỗ trợ. Chỉ chấp nhận: .csv, .xlsx, .json'
+    importError.value = 'Dinh dang khong ho tro. Chi chap nhan: .csv, .xlsx, .pdf, .docx, .json'
     return
   }
 

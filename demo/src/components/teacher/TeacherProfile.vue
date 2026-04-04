@@ -69,6 +69,18 @@
       </template>
 
     </ProfileLayout>
+
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Xóa tài khoản"
+      message="Bạn có chắc chắn muốn xóa tài khoản?"
+      description="Hành động này không thể hoàn tác. Liên hệ quản trị viên để xóa tài khoản."
+      confirm-label="Đã hiểu"
+      cancel-label="Hủy"
+      variant="danger"
+      icon="trash-2"
+      @confirm="onConfirmDeleteAccount"
+    />
   </div>
 </template>
 
@@ -86,6 +98,7 @@ import ProfessionalInfoForm from './profile/ProfessionalInfoForm.vue'
 import SecuritySettings from './profile/SecuritySettings.vue'
 import NotificationSettings from './profile/NotificationSettings.vue'
 import PreferenceSettings from './profile/PreferenceSettings.vue'
+import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -93,6 +106,8 @@ const layoutRef = ref(null)
 const personalFormRef = ref(null)
 const professionalFormRef = ref(null)
 const securityRef = ref(null)
+
+const showDeleteConfirm = ref(false)
 
 const profile = ref(null)
 const isUploadingAvatar = ref(false)
@@ -165,8 +180,10 @@ const handleChangePassword = async ({ currentPassword, newPassword }) => {
   try {
     await changePassword({ currentPassword, newPassword })
     toast.success('Đổi mật khẩu thành công.')
+    securityRef.value?.resetSavingState()
   } catch {
     toast.error('Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.')
+    securityRef.value?.resetSavingState()
   }
 }
 
@@ -191,9 +208,12 @@ const handlePreferenceUpdate = ({ key, value }) => {
 
 // Delete account
 const handleDeleteAccount = () => {
-  if (confirm('Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.')) {
-    toast.error('Liên hệ quản trị viên để xóa tài khoản.')
-  }
+  showDeleteConfirm.value = true
+}
+
+const onConfirmDeleteAccount = () => {
+  showDeleteConfirm.value = false
+  toast.error('Liên hệ quản trị viên để xóa tài khoản.')
 }
 
 const goToDashboard = () => router.push('/teacher/dashboard')

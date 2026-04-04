@@ -14,32 +14,62 @@
             </div>
           </div>
 
-          <!-- Summary -->
+          <!-- Body -->
           <div class="sd__body">
+            <!-- Stat cards -->
             <div class="sd__summary-row">
-              <div class="sd__stat-card">
-                <p class="sd__stat-val">{{ answeredCount }}</p>
-                <p class="sd__stat-lbl">Đã trả lời / {{ totalQuestions }} câu</p>
+              <div class="sd__stat-card" :class="unansweredCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--ok'">
+                <div class="sd__stat-icon">
+                  <LucideIcon :name="unansweredCount > 0 ? 'radio_button_unchecked' : 'check_circle'" />
+                </div>
+                <div class="sd__stat-body">
+                  <p class="sd__stat-val" :class="unansweredCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--ok'">
+                    {{ answeredCount }}<span class="sd__stat-total">/{{ totalQuestions }}</span>
+                  </p>
+                  <p class="sd__stat-lbl">Đã trả lời</p>
+                </div>
               </div>
-              <div class="sd__stat-card">
-                <p class="sd__stat-val sd__stat-val--warn">{{ markedCount }}</p>
-                <p class="sd__stat-lbl">Đánh dấu xem lại</p>
+              <div class="sd__stat-card" :class="markedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
+                <div class="sd__stat-icon">
+                  <LucideIcon name="bookmark" />
+                </div>
+                <div class="sd__stat-body">
+                  <p class="sd__stat-val" :class="markedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
+                    {{ markedCount }}
+                  </p>
+                  <p class="sd__stat-lbl">Đánh dấu</p>
+                </div>
               </div>
-              <div class="sd__stat-card">
-                <p class="sd__stat-val">{{ skippedCount }}</p>
-                <p class="sd__stat-lbl">Đã mở nhưng bỏ qua</p>
+              <div class="sd__stat-card" :class="skippedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
+                <div class="sd__stat-icon">
+                  <LucideIcon name="skip_next" />
+                </div>
+                <div class="sd__stat-body">
+                  <p class="sd__stat-val" :class="skippedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
+                    {{ skippedCount }}
+                  </p>
+                  <p class="sd__stat-lbl">Bỏ qua</p>
+                </div>
               </div>
             </div>
 
             <!-- Warning if unanswered -->
             <div v-if="unansweredCount > 0" class="sd__warning">
-              <LucideIcon name="warning" />
-              <p>Bạn còn <strong>{{ unansweredCount }} câu chưa trả lời</strong> và {{ notVisitedCount }} câu chưa mở.</p>
+              <LucideIcon name="warning" class="sd__warning-icon" />
+              <div class="sd__warning-text">
+                <p class="sd__warning-title">Còn câu chưa trả lời!</p>
+                <p class="sd__warning-desc">
+                  {{ unansweredCount }} câu chưa trả lời và {{ notVisitedCount }} câu chưa mở.
+                  Bạn có chắc muốn nộp bài?
+                </p>
+              </div>
             </div>
 
-            <p class="sd__notice">
-              Bạn sẽ <strong>không thể thay đổi đáp án</strong> sau khi nộp bài.
-            </p>
+            <!-- Critical notice -->
+            <div class="sd__notice">
+              <LucideIcon name="lock" class="sd__notice-icon" />
+              <p>Sau khi nộp, bạn <strong>không thể thay đổi đáp án</strong>.</p>
+            </div>
           </div>
 
           <!-- Footer actions -->
@@ -50,21 +80,22 @@
               :disabled="isSubmitting"
               @click="$emit('update:modelValue', false)"
             >
+              <LucideIcon name="arrow_back" />
               Tiếp tục làm bài
             </button>
             <button
               type="button"
               id="submit-exam-confirm"
               class="sd__btn sd__btn--submit"
+              :class="{ 'sd__btn--all-done': unansweredCount === 0 && skippedCount === 0 }"
               :disabled="isSubmitting"
               @click="$emit('confirm')"
             >
-              <LucideIcon name="progress_activity" v-if="isSubmitting"  sd__spinner/>
-              <LucideIcon name="done_all" v-else />
+              <LucideIcon name="progress_activity" v-if="isSubmitting" class="sd__spinner"/>
+              <LucideIcon name="check_circle" v-else />
               {{ isSubmitting ? 'Đang nộp...' : 'Nộp bài ngay' }}
             </button>
           </div>
-
         </div>
       </div>
     </Transition>
@@ -88,12 +119,12 @@ defineEmits(['confirm', 'update:modelValue'])
 
 
 <style scoped>
-/* Overlay */
+/* ─── Overlay ─────────────────────────────────────────────────────────── */
 .sd-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
   z-index: 999;
   display: flex;
   align-items: center;
@@ -101,23 +132,23 @@ defineEmits(['confirm', 'update:modelValue'])
   padding: 1rem;
 }
 
-/* Modal */
+/* ─── Modal ───────────────────────────────────────────────────────────── */
 .sd {
   background: var(--ds-surface);
-  border: 1.5px solid var(--ds-border);
+  border: 2px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   overflow: hidden;
 }
 
 .dark .sd {
   border-color: var(--ds-border-strong);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
-/* Header */
+/* ─── Header ──────────────────────────────────────────────────────────── */
 .sd__header {
   display: flex;
   align-items: flex-start;
@@ -136,14 +167,14 @@ defineEmits(['confirm', 'update:modelValue'])
   width: 48px;
   height: 48px;
   border-radius: var(--ds-radius-xl);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
+  background: linear-gradient(135deg, var(--ds-success), #059669);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
-
 
 .sd__header-title {
   font-family: var(--ds-font-display);
@@ -162,7 +193,7 @@ defineEmits(['confirm', 'update:modelValue'])
   font-weight: 500;
 }
 
-/* Body */
+/* ─── Body ─────────────────────────────────────────────────────────────── */
 .sd__body {
   padding: 1.25rem;
   display: flex;
@@ -170,6 +201,7 @@ defineEmits(['confirm', 'update:modelValue'])
   gap: 0.875rem;
 }
 
+/* Stat cards */
 .sd__summary-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -178,27 +210,63 @@ defineEmits(['confirm', 'update:modelValue'])
 
 .sd__stat-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.625rem;
   padding: 0.75rem;
   border-radius: var(--ds-radius-xl);
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  text-align: center;
+  border: 1.5px solid;
+  transition: all 0.15s ease;
 }
 
-.dark .sd__stat-card { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+.sd__stat-card--ok {
+  background: var(--ds-success-soft);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+.sd__stat-card--warn {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.sd__stat-card--neutral {
+  background: var(--ds-gray-50);
+  border-color: var(--ds-border);
+}
+
+.dark .sd__stat-card--neutral { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+
+.sd__stat-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.sd__stat-card--ok .sd__stat-icon { color: var(--ds-success); }
+.sd__stat-card--warn .sd__stat-icon { color: var(--ds-warning); }
+.sd__stat-card--neutral .sd__stat-icon { color: var(--ds-text-muted); }
+
+.sd__stat-body { display: flex; flex-direction: column; gap: 0.125rem; }
 
 .sd__stat-val {
   font-family: var(--ds-font-display);
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 900;
-  color: var(--ds-primary);
   line-height: 1;
+  color: var(--ds-text);
 }
 
+.dark .sd__stat-val { color: #f1f5f9; }
+
+.sd__stat-val--ok { color: var(--ds-success); }
 .sd__stat-val--warn { color: var(--ds-warning); }
+.sd__stat-val--muted { color: var(--ds-text-muted); }
+
+.sd__stat-total {
+  font-size: 0.875rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
 
 .sd__stat-lbl {
   font-size: 0.6rem;
@@ -206,18 +274,18 @@ defineEmits(['confirm', 'update:modelValue'])
   color: var(--ds-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  text-align: center;
+  margin: 0;
 }
 
 /* Warning */
 .sd__warning {
   display: flex;
   align-items: flex-start;
-  gap: 0.625rem;
+  gap: 0.75rem;
   padding: 0.875rem 1rem;
   border-radius: var(--ds-radius-xl);
   background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.25);
+  border: 1.5px solid rgba(234, 179, 8, 0.3);
 }
 
 .sd__warning-icon {
@@ -227,28 +295,53 @@ defineEmits(['confirm', 'update:modelValue'])
   margin-top: 0.1rem;
 }
 
-.sd__warning p {
+.sd__warning-text { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.sd__warning-title {
   font-size: 0.8rem;
+  font-weight: 800;
   color: var(--ds-warning);
-  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sd__warning-desc {
+  font-size: 0.75rem;
+  color: var(--ds-text-secondary);
   margin: 0;
   line-height: 1.4;
 }
 
-.sd__warning strong { font-weight: 800; }
-
 /* Notice */
 .sd__notice {
-  font-size: 0.8rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-  text-align: center;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
 }
 
-.sd__notice strong { color: var(--ds-danger); font-weight: 700; }
+.dark .sd__notice { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
 
-/* Footer */
+.sd__notice-icon {
+  font-size: 1rem;
+  color: var(--ds-danger);
+  flex-shrink: 0;
+}
+
+.sd__notice p {
+  font-size: 0.8rem;
+  color: var(--ds-text-secondary);
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sd__notice strong { color: var(--ds-danger); font-weight: 800; }
+
+/* ─── Footer ────────────────────────────────────────────────────────────── */
 .sd__footer {
   display: flex;
   gap: 0.625rem;
@@ -257,7 +350,10 @@ defineEmits(['confirm', 'update:modelValue'])
   background: var(--ds-gray-50);
 }
 
-.dark .sd__footer { background: var(--ds-gray-800); border-top-color: var(--ds-border-strong); }
+.dark .sd__footer {
+  background: var(--ds-gray-800);
+  border-top-color: var(--ds-border-strong);
+}
 
 .sd__btn {
   flex: 1;
@@ -265,45 +361,57 @@ defineEmits(['confirm', 'update:modelValue'])
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   border-radius: var(--ds-radius-xl);
   font-size: 0.875rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all 0.15s ease;
   border: none;
   font-family: inherit;
-  min-height: 48px;
+  min-height: 52px;
+  letter-spacing: 0.01em;
 }
-
 
 .sd__btn:active:not(:disabled) { transform: scale(0.98); }
 
+/* Cancel */
 .sd__btn--cancel {
-  background: var(--ds-gray-100);
+  background: var(--ds-surface);
   color: var(--ds-text);
   border: 1.5px solid var(--ds-border);
 }
 
-.dark .sd__btn--cancel { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: var(--ds-gray-300); }
+.dark .sd__btn--cancel { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: var(--ds-gray-200); }
 
 .sd__btn--cancel:hover:not(:disabled) {
-  background: var(--ds-gray-200);
+  background: var(--ds-gray-100);
   border-color: var(--ds-gray-300);
 }
 
-.dark .sd__btn--cancel:hover:not(:disabled) { background: var(--ds-gray-700); }
+.dark .sd__btn--cancel:hover:not(:disabled) { background: var(--ds-gray-600); }
 
+/* Submit — most prominent, danger/final action */
 .sd__btn--submit {
-  background: var(--ds-primary);
+  background: linear-gradient(135deg, var(--ds-danger) 0%, #b91c1c 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
 }
 
 .sd__btn--submit:hover:not(:disabled) {
-  background: var(--ds-primary-hover, #4338ca);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5);
+  filter: brightness(1.05);
+}
+
+/* When all done — green to celebrate */
+.sd__btn--all-done {
+  background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
+}
+
+.sd__btn--all-done:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.5);
 }
 
 .sd__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
@@ -315,7 +423,7 @@ defineEmits(['confirm', 'update:modelValue'])
   to { transform: rotate(360deg); }
 }
 
-/* Transition */
+/* ─── Transition ───────────────────────────────────────────────────────── */
 .submodal-enter-active { animation: sdFadeIn 0.2s ease-out; }
 .submodal-leave-active { animation: sdFadeIn 0.15s ease-in reverse; }
 

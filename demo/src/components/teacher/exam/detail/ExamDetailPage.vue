@@ -349,7 +349,13 @@ import {
   deleteExam,
   getBrowserTimezone
 } from '../../../../services/examService'
-import { listExamQuestions } from '../../../../services/questionService'
+import {
+  listExamQuestions,
+  createQuestion,
+  updateQuestion,
+  buildCreatePayloadFromFormQuestion,
+  parseQuestionOptions
+} from '../../../../services/questionService'
 import { useToast } from '../../../../composables/useToast'
 import ExamDetailHeader from './ExamDetailHeader.vue'
 import ExamSummaryPanel from './ExamSummaryPanel.vue'
@@ -446,19 +452,22 @@ const loadExam = async () => {
 
     try {
       const qs = await listExamQuestions(id)
-      form.questions = (qs || []).map(q => ({
-        id: q.id,
-        content: q.content,
-        optionA: q.optionA || '',
-        optionB: q.optionB || '',
-        optionC: q.optionC || '',
-        optionD: q.optionD || '',
-        correctAnswer: q.correctAnswer || q.correctOption || '',
-        score: Number(q.scoreWeight || q.score || 1),
-        scoreWeight: q.scoreWeight,
-        type: q.type,
-        options: q.options
-      }))
+      form.questions = (qs || []).map(q => {
+        const opts = q.options ? parseQuestionOptions(q.options) : []
+        return {
+          id: q.id,
+          content: q.content,
+          optionA: opts.find(o => o.id === 'A' || o.id === '1')?.text || '',
+          optionB: opts.find(o => o.id === 'B' || o.id === '2')?.text || '',
+          optionC: opts.find(o => o.id === 'C' || o.id === '3')?.text || '',
+          optionD: opts.find(o => o.id === 'D' || o.id === '4')?.text || '',
+          correctAnswer: q.correctAnswer || q.correctOption || '',
+          score: Number(q.scoreWeight || q.score || 1),
+          scoreWeight: q.scoreWeight,
+          type: q.type,
+          options: opts
+        }
+      })
     } catch { /* questions optional */ }
   } catch (err) {
     toast.error(err instanceof ApiError ? err.message : 'Không thể tải đề thi.')
@@ -524,17 +533,73 @@ const buildPayload = () => ({
   requireCameraMic: form.requireCameraMic
 })
 
+/**
+ * Đồng bộ câu hỏi từ form lên backend.
+ * - Câu hỏi có `id` (server): update
+ * - Câu hỏi mới (chỉ có `_localId`): tạo mới rồi gán server id vào form
+ * - Câu hỏi đã xóa khỏi form: xóa khỏi server
+ */
+const syncQuestionsToServer = async () => {
+  if (!exam.value) return
+  const examId = exam.value.id
+
+  // Lấy danh sách câu hỏi đang có trên server
+  const serverQuestions = await listExamQuestions(examId)
+  const serverQuestionIds = new Set(serverQuestions.map(q => q.id))
+
+  // Map form.question id để so sánh
+  const formQuestionIds = new Set(
+    form.questions.filter(q => q.id != null).map(q => q.id)
+  )
+
+  // Xóa câu hỏi đã bị xóa khỏi form nhưng còn trên server
+  const toDelete = serverQuestions.filter(q => !formQuestionIds.has(q.id))
+  for (const q of toDelete) {
+    try {
+      await deleteQuestion(examId, q.id)
+    } catch {
+      // bỏ qua lỗi xóa từng câu
+    }
+  }
+
+  // Cập nhật / tạo câu hỏi từ form
+  const updatedForm = []
+  for (let i = 0; i < form.questions.length; i++) {
+    const q = form.questions[i]
+    const payload = buildCreatePayloadFromFormQuestion(q)
+    if (!payload.content) continue
+
+    try {
+      if (q.id != null) {
+        // Câu hỏi đã tồn tại → update
+        const updated = await updateQuestion(examId, q.id, payload)
+        updatedForm.push({ ...q, id: updated.id })
+      } else {
+        // Câu hỏi mới → create
+        const created = await createQuestion(examId, payload)
+        updatedForm.push({ ...q, id: created.id })
+      }
+    } catch {
+      // Giữ lại câu hỏi trong form để teacher có thể sửa
+      updatedForm.push(q)
+    }
+  }
+  form.questions = updatedForm
+}
+
 const handleSave = async () => {
   if (!exam.value) return
   saveLoading.value = true
   saveState.value = 'saving'
   try {
     const payload = buildPayload()
-    const updated = await updateExam(exam.value.id, payload)
+    await updateExam(exam.value.id, payload)
+    await syncQuestionsToServer()
+    const updated = await getExamDetail(exam.value.id)
     exam.value = updated
     hasUnsavedChanges = false
     saveState.value = 'saved'
-    toast.success('Đã lưu thay đổi.')
+    toast.success('Đã lưu đề thi và câu hỏi.')
     setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle' }, 4000)
   } catch (err) {
     saveState.value = 'error'
@@ -551,6 +616,7 @@ const handlePublish = async () => {
   try {
     const payload = buildPayload()
     await updateExam(exam.value.id, payload)
+    await syncQuestionsToServer()
     const updated = await publishExam(exam.value.id)
     exam.value = updated
     hasUnsavedChanges = false

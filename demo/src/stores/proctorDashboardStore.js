@@ -21,7 +21,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const filters = ref({
     search: '',
     riskBand: 'ALL',
-    status: 'ALL'
+    status: 'ALL',
+    timeRange: 'all'
   })
 
   const visibleCards = computed(() => {
@@ -41,7 +42,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
 
   const setCards = (nextCards) => {
     cards.value = Array.isArray(nextCards) ? nextCards : []
-    lastUpdatedAt.value = new Date().toISOString()
+    lastUpdatedAt.value = Date.now()
   }
 
   const upsertCard = (card) => {
@@ -53,7 +54,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       next.push(card)
     }
     cards.value = next
-    lastUpdatedAt.value = new Date().toISOString()
+    lastUpdatedAt.value = Date.now()
   }
 
   const setDetail = (attemptId, detail) => {
@@ -83,6 +84,37 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     selectedAttemptIds.value = []
   }
 
+  const sortCards = (sortBy) => {
+    const arr = [...visibleCards.value]
+    switch (sortBy) {
+      case 'risk':
+        return arr.sort((a, b) => (resolveRiskBand(b.riskScore) !== resolveRiskBand(a.riskScore)
+          ? bandOrder(resolveRiskBand(b.riskScore)) - bandOrder(resolveRiskBand(a.riskScore))
+          : (Number(b.riskScore || 0) - Number(a.riskScore || 0))))
+      case 'name':
+        return arr.sort((a, b) => (a.student || a.name || '').localeCompare(b.student || b.name || ''))
+      case 'violations':
+        return arr.sort((a, b) => (Number(b.violationCount || 0) - Number(a.violationCount || 0)))
+      case 'status':
+        return arr.sort((a, b) => statusOrder(a) - statusOrder(b))
+      default:
+        return arr
+    }
+  }
+
+  const bandOrder = (band) => {
+    const order = { CRITICAL: 0, HIGH_RISK: 1, SUSPICIOUS: 2, CLEAN: 3 }
+    return order[band] ?? 4
+  }
+
+  const statusOrder = (card) => {
+    const s = String(card.status || '').toUpperCase()
+    if (s === 'ACTIVE' || s === 'IN_PROGRESS') return 0
+    if (s === 'PAUSED' || s === 'STOPPED') return 1
+    if (s === 'SUBMITTED' || s === 'COMPLETED') return 2
+    return 3
+  }
+
   const setConnectionMode = (mode) => {
     connectionMode.value = mode || 'polling'
   }
@@ -97,7 +129,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     filters.value = {
       search: '',
       riskBand: 'ALL',
-      status: 'ALL'
+      status: 'ALL',
+      timeRange: 'all'
     }
   }
 
@@ -164,6 +197,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     toggleSelection,
     clearSelection,
     setConnectionMode,
-    reset
+    sortCards,
+    reset,
+    resolveRiskBand
   }
 })

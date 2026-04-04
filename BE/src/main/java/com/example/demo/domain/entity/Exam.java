@@ -95,6 +95,14 @@ public class Exam {
     @Column(name = "require_camera_mic")
     private Boolean requireCameraMic;
 
+    @Column(name = "shuffle_questions")
+    @Builder.Default
+    private Boolean shuffleQuestions = false;
+
+    @Column(name = "shuffle_answers")
+    @Builder.Default
+    private Boolean shuffleAnswers = false;
+
     /**
      * System-generated practice exams (student-owned). Formal exams created by teachers are false.
      */

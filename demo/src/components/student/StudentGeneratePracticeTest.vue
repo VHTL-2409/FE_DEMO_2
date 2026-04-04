@@ -224,11 +224,12 @@ const onFileChange = async (e) => {
 
   if (!file) return
 
-  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '']
-  const ext = (file.name || '').toLowerCase().slice(-5)
-  const validType = allowed.includes(file.type) || ext.endsWith('.csv') || ext.endsWith('.xlsx') || ext.endsWith('.pdf') || ext.endsWith('.docx')
+  const allowed = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', '']
+  const ext = (file.name || '').toLowerCase().replace(/^.*\./, '.')
+  const validExts = ['.csv', '.xlsx', '.pdf', '.docx', '.xls', '.doc']
+  const validType = allowed.includes(file.type) || validExts.includes(ext)
   if (!validType) {
-    toast.error('Định dạng tệp không hợp lệ. Vui lòng chọn CSV, XLSX, PDF hoặc Word.')
+    toast.error('Dinh dang tep khong hop le. Vui long chon CSV, XLSX, PDF hoac Word.')
     selectedFile.value = null
     fileName.value = ''
     return
@@ -243,17 +244,15 @@ const onFileChange = async (e) => {
   previewLoading.value = true
   try {
     const r = await previewImportFile(file)
-    const n = Number(r?.totalQuestions ?? 0)
+    const n = Number(r?.totalQuestions ?? r?.count ?? r?.questions?.length ?? r?.questionCount ?? 0)
     totalParsed.value = n
     if (n <= 0) {
       previewError.value = 'Không tìm thấy câu hỏi hợp lệ trong tệp.'
-      toast.error(previewError.value)
     } else {
       questionCountToImport.value = n <= 50 ? n : 50
     }
   } catch (err) {
-    previewError.value = err?.message || 'Không đọc được tệp.'
-    toast.error(previewError.value)
+    previewError.value = 'Lỗi đọc tệp. Vui lòng kiểm tra định dạng và thử lại.'
     selectedFile.value = null
     fileName.value = ''
   } finally {

@@ -144,7 +144,7 @@ const filteredExams = computed(() => {
         timeLeft: `${Math.max(0, total - elapsed)} phút`,
         leftLabel: 'Đang có mặt',
         timeLabel: 'Còn lại',
-        statusChip: 'Đang diễn ra'
+        statusChip: 'live'
       }
     })
 })

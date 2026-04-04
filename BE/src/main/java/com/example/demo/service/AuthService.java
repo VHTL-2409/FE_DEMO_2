@@ -18,6 +18,7 @@ import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -344,6 +345,122 @@ public class AuthService {
         userRepository.save(user);
         resetTokenRepository.delete(resetToken);
         log.info("Password reset completed for user: {}", user.getUsername());
+    }
+
+    /**
+     * Xử lý đăng nhập/đăng ký qua Google OAuth2.
+     * 1. Tìm user theo googleUid — nếu đã tồn tại thì login
+     * 2. Nếu chưa, tìm theo email — nếu tồn tại (user local) thì gán Google OAuth vào
+     * 3. Nếu chưa tồn tại — tạo user mới với thông tin từ Google
+     * Sau khi tìm/đăng ký, tạo JWT và refresh token như login thường.
+     */
+    @Transactional
+    public AuthResponse handleGoogleOAuth2(String email, String name, String googleUid) {
+        // 1. Tìm user theo googleUid
+        User user = userRepository.findByOauthUid(googleUid).orElse(null);
+
+        // 2. Nếu không tìm thấy theo uid, tìm theo email
+        if (user == null) {
+            user = userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+            if (user != null && user.getOauthUid() == null) {
+                // User local — gán Google OAuth vào tài khoản
+                user.setOauthProvider(User.OAuthProvider.GOOGLE);
+                user.setOauthUid(googleUid);
+                user.setEmailVerified(true);
+                userRepository.save(user);
+                log.info("Linked Google account to existing user: {}", user.getUsername());
+            }
+        }
+
+        // 3. Nếu vẫn không tìm thấy — tạo user mới
+        if (user == null) {
+            user = createOAuthUser(email, name, googleUid);
+        }
+
+        // 4. Kiểm tra enabled
+        if (!user.getEnabled()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị vô hiệu hóa.");
+        }
+
+        // 5. Tạo tokens (giống login thường)
+        return createAuthResponse(user, null, null);
+    }
+
+    /**
+     * Tạo user mới từ thông tin Google OAuth2.
+     * Dùng fullName từ Google làm username, email từ Google,
+     * và điền fullName vào cả user.fullName và profile.displayName.
+     */
+    private User createOAuthUser(String email, String name, String googleUid) {
+        String username = generateUniqueUsername(name, email);
+        User user = User.builder()
+                .username(username)
+                .email(email)
+                .password("") // OAuth user không có password
+                .emailVerified(true)
+                .fullName(name)
+                .oauthProvider(User.OAuthProvider.GOOGLE)
+                .oauthUid(googleUid)
+                .enabled(true)
+                .build();
+        User saved = userRepository.save(user);
+        profileService.createProfilesForUser(saved);
+
+        // Gán displayName vào profile để hiển thị ngay
+        try {
+            var displayName = name != null && !name.isBlank() ? name : username;
+            var req = new com.example.demo.api.dto.profile.ProfileUpdateRequest();
+            req.setDisplayName(displayName);
+            req.setFullName(name);
+            profileService.updateSharedProfile(saved, req);
+        } catch (Exception e) {
+            log.warn("Could not set displayName for Google OAuth user: {}", e.getMessage());
+        }
+
+        log.info("Created new Google OAuth user: {} ({})", username, email);
+        return saved;
+    }
+
+    /**
+     * Sinh username duy nhất từ name và email — tránh trùng với username local.
+     */
+    private String generateUniqueUsername(String name, String email) {
+        String base = name != null && !name.isBlank()
+                ? name.trim()
+                : email.split("@")[0].trim();
+        // Chuẩn hóa: thay khoảng trắng bằng dấu _, loại ký tự đặc biệt
+        String candidate = base.replaceAll("\\s+", "_").replaceAll("[^a-zA-Z0-9_]", "");
+        if (candidate.isEmpty()) candidate = "user";
+
+        String username = candidate;
+        int suffix = 1;
+        while (userRepository.existsByUsername(username)) {
+            username = candidate + suffix++;
+        }
+        return username;
+    }
+
+    /**
+     * Tạo AuthResponse cho user — dùng chung cho login thường và OAuth2.
+     */
+    private AuthResponse createAuthResponse(User user, String deviceInfo, String ipAddress) {
+        // Rotate refresh tokens
+        refreshTokenRepository.deleteByUser(user);
+        RefreshToken refreshToken = createRefreshToken(user,
+                deviceInfo != null ? deviceInfo : "Google OAuth2",
+                ipAddress);
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
+        String token = jwtService.generateToken(userDetails, jwtIssuer, jwtAudience);
+
+        log.info("User {} logged in via Google OAuth2.", user.getUsername());
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtService.getExpirationMs())
+                .username(user.getUsername())
+                .roles(extractRoleNames(user))
+                .build();
     }
 
     private static String generateSecureToken() {

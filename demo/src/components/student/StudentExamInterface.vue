@@ -1,53 +1,59 @@
 <template>
   <div class="ei-root">
-    <!-- ── Fixed Top Bar ─────────────────────────────────────── -->
+    <!-- Fixed Top Bar -->
     <div class="ei-topbar">
       <div class="ei-topbar__left">
         <!-- Exam title chip -->
         <div class="ei-topbar__exam-chip">
-          <LucideIcon name="quiz" size="14" />
+          <LucideIcon name="quiz" size="15" />
           <span class="ei-topbar__exam-title">{{ examTitle }}</span>
         </div>
-        <!-- Live device indicators -->
-        <div class="ei-topbar__devices">
-          <span class="ei-device" :class="cameraReady ? 'ei-device--on' : 'ei-device--off'">
-            <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="13" />
-          </span>
-          <span class="ei-device" :class="micReady ? 'ei-device--on' : 'ei-device--off'">
-            <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="13" />
-          </span>
-          <span class="ei-conn-dot" :class="isConnected ? 'ei-conn-dot--on' : 'ei-conn-dot--off'" />
+        <!-- Device status badges -->
+        <div class="ei-topbar__device-badges">
+          <div class="ei-device-badge" :class="cameraReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="12" />
+            <span>Camera</span>
+          </div>
+          <div class="ei-device-badge" :class="micReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="12" />
+            <span>Mic</span>
+          </div>
+          <div class="ei-device-badge ei-device-badge--ok">
+            <LucideIcon name="wifi" size="12" />
+            <span>Kết nối</span>
+          </div>
         </div>
       </div>
 
-      <!-- Timer — Circular countdown ring -->
+      <!-- Timer — Rectangular countdown -->
       <div class="ei-topbar__timer" :class="timerBarAccentClass">
-        <div class="ei-timer-ring-wrap">
-          <svg class="ei-timer-ring-svg" viewBox="0 0 72 72" width="60" height="60">
-            <!-- Background ring -->
-            <circle class="ei-timer-ring-bg" cx="36" cy="36" r="30" />
-            <!-- Progress ring -->
-            <circle
-              class="ei-timer-ring-prog"
-              cx="36" cy="36" r="30"
-              :stroke-dasharray="timerCircumference"
-              :stroke-dashoffset="timerRingOffset"
-            />
-          </svg>
-          <div class="ei-timer-ring-inner">
-            <span class="ei-timer-digits">{{ timerHours }}:{{ timerMinutes }}:{{ timerSeconds }}</span>
-          </div>
+        <LucideIcon name="timer" size="16" class="ei-topbar__timer-icon" />
+        <div class="ei-topbar__timer-digits">
+          <span class="ei-timer-unit">
+            <span class="ei-timer-val">{{ timerHours }}</span>
+            <span class="ei-timer-lbl">Giờ</span>
+          </span>
+          <span class="ei-timer-colon">:</span>
+          <span class="ei-timer-unit">
+            <span class="ei-timer-val">{{ timerMinutes }}</span>
+            <span class="ei-timer-lbl">Phút</span>
+          </span>
+          <span class="ei-timer-colon">:</span>
+          <span class="ei-timer-unit">
+            <span class="ei-timer-val">{{ timerSeconds }}</span>
+            <span class="ei-timer-lbl">Giây</span>
+          </span>
         </div>
         <!-- Progress bar below -->
-        <div class="ei-timer-progress">
-          <div class="ei-timer-progress__fill" :style="{ width: timerProgressWidth }" />
+        <div class="ei-topbar__timer-progress">
+          <div class="ei-topbar__timer-progress-fill" :style="{ width: timerProgressWidth }" />
         </div>
       </div>
 
       <!-- Right actions -->
       <div class="ei-topbar__right">
         <!-- Save status -->
-        <div v-if="saveStatusLabel" class="ei-save-status">
+        <div v-if="saveStatusLabel" class="ei-save-status" role="status" aria-live="polite">
           <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'" size="13" class="ei-save-icon ei-save-icon--spin" />
           <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'" size="13" class="ei-save-icon ei-save-icon--ok" />
           <LucideIcon name="schedule" v-else-if="hasPendingChanges" size="13" class="ei-save-icon ei-save-icon--pending" />
@@ -55,11 +61,16 @@
           <span class="ei-save-label">{{ saveStatusLabel }}</span>
         </div>
 
-        <button type="button" class="ei-btn ei-btn--outline" :disabled="isSuspended || saveStatus === 'saving'" @click="manualSaveDraft">
-          Lưu ngay
+        <!-- Manual save -->
+        <button type="button" class="ei-btn ei-btn--save" :disabled="isSuspended || saveStatus === 'saving'" @click="manualSaveDraft">
+          <LucideIcon name="save" size="14" />
+          <span>Lưu</span>
         </button>
-        <button type="button" class="ei-btn ei-btn--primary" :disabled="isSuspended" @click="openSubmitModal">
-          Nộp bài
+
+        <!-- Submit — most prominent -->
+        <button type="button" class="ei-btn ei-btn--submit" :disabled="isSuspended" @click="openSubmitModal">
+          <LucideIcon name="done_all" size="15" />
+          <span>Nộp bài</span>
         </button>
       </div>
     </div>
@@ -415,6 +426,19 @@
         </div>
       </template>
     </BaseModal>
+
+    <ConfirmDialog
+      v-model="showLeaveConfirm"
+      title="Rời bài thi?"
+      message="Bạn đang trong phiên thi. Đáp án đã được lưu cục bộ."
+      description="Rời đi sẽ không mất đáp án đã lưu."
+      confirm-label="Rời đi"
+      cancel-label="Tiếp tục thi"
+      variant="warning"
+      icon="log-out"
+      @confirm="onConfirmLeave"
+      @cancel="onCancelLeave"
+    />
   </div>
 </template>
 
@@ -433,10 +457,19 @@ import { parseBackendDate } from '../../utils/dateUtils.js'
 import BaseModal from '../shared/BaseModal.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
+import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+
+const showSubmitModal = ref(false)
+const showLeaveConfirm = ref(false)
+const pendingLeaveCallback = ref(null)
+const isSubmitting = ref(false)
+const questions = ref([])
+const examSurfaceReady = ref(false)
+const examLoadFailed = ref(false)
 
 const examTitle = computed(() => route.query.exam || 'Bài thi')
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
@@ -450,12 +483,6 @@ const examConfig = ref({
   monitorPrintScreen: true, monitorRapidQuestionSwitch: true,
   monitorMultiMonitor: true, requireCameraMic: true
 })
-
-const showSubmitModal = ref(false)
-const isSubmitting = ref(false)
-const questions = ref([])
-const examSurfaceReady = ref(false)
-const examLoadFailed = ref(false)
 
 // Popup states
 const showErrorPopup = ref(false)
@@ -547,6 +574,19 @@ const progressPercent = computed(() => {
   if (!questions.value.length) return 0
   return Math.round((answeredCount.value / questions.value.length) * 100)
 })
+const displayHours = computed(() => {
+  const h = Math.floor(remainingSeconds.value / 3600)
+  if (h === 0) return ''
+  return `${String(h).padStart(2, '0')}h `
+})
+
+const displayMinutes = computed(() => {
+  const totalMin = Math.floor(remainingSeconds.value / 60)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return h > 0 ? String(m).padStart(2, '0') : String(totalMin).padStart(2, '0')
+})
+
 const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 3600)).padStart(2, '0'))
 const timerMinutes = computed(() => String(Math.floor((remainingSeconds.value % 3600) / 60)).padStart(2, '0'))
 const timerSeconds = computed(() => String(remainingSeconds.value % 60).padStart(2, '0'))
@@ -771,6 +811,7 @@ const connectProctorRealtime = async () => {
         if (type === 'RISK_UPDATE') {
           syncRiskState({ riskScore: payload.riskScore, riskLevel: payload.riskLevel, status: payload.status })
           handleProctorActions([payload.actionTaken], payload)
+          // handleProctorActions đã hiện toast WARNING rồi → không toast lại
         }
       }
     }]
@@ -959,7 +1000,25 @@ const handleExamKeydown = (e) => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
 }
 
-onBeforeRouteLeave(() => { if (isSubmitting.value) return true; if (isPracticeExam.value) return true; return window.confirm('Chắc rời? Đáp án đã lưu cục bộ.') })
+onBeforeRouteLeave(() => {
+  if (isSubmitting.value) return true
+  if (isPracticeExam.value) return true
+  pendingLeaveCallback.value = null
+  showLeaveConfirm.value = true
+  return false
+})
+
+const onConfirmLeave = () => {
+  const cb = pendingLeaveCallback.value
+  pendingLeaveCallback.value = null
+  showLeaveConfirm.value = false
+  if (cb) cb()
+}
+
+const onCancelLeave = () => {
+  pendingLeaveCallback.value = null
+  showLeaveConfirm.value = false
+}
 
 onMounted(async () => {
   try {
@@ -1091,14 +1150,16 @@ onUnmounted(() => {
   gap: 1rem;
   padding: 0.75rem 1.25rem;
   background: var(--ds-surface);
-  border-bottom: 1px solid var(--ds-border);
+  border-bottom: 2px solid var(--ds-border);
   flex-shrink: 0;
   flex-wrap: wrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   position: sticky;
   top: 0;
   z-index: 50;
 }
+
+.dark .ei-topbar { border-bottom-color: var(--ds-border-strong); }
 
 .ei-topbar__left {
   display: flex;
@@ -1108,21 +1169,23 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+/* Exam chip */
 .ei-topbar__exam-chip {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   padding: 0.375rem 0.875rem;
-  background: var(--ds-primary-soft);
-  border: 1px solid var(--ds-primary-border);
+  background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%);
   border-radius: var(--ds-radius-full);
-  color: var(--ds-primary);
+  color: white;
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 200px;
+  box-shadow: 0 2px 8px rgba(79,70,229,0.3);
+  flex-shrink: 0;
 }
 
 .ei-topbar__exam-title {
@@ -1131,147 +1194,165 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.ei-topbar__devices {
+/* Device badges */
+.ei-topbar__device-badges {
   display: flex;
   align-items: center;
   gap: 0.375rem;
 }
 
-.ei-device {
+.ei-device-badge {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--ds-radius-md);
-  transition: all 0.2s ease;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+  font-weight: 800;
+  border: 1.5px solid;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.ei-device--on { background: var(--ds-success-soft); color: var(--ds-success); }
-.ei-device--off { background: var(--ds-danger-soft); color: var(--ds-danger); }
-
-.ei-conn-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.ei-conn-dot--on { background: var(--ds-success); box-shadow: 0 0 0 2px var(--ds-success-soft); animation: eiPulse 2s ease-in-out infinite; }
-.ei-conn-dot--off { background: var(--ds-gray-300); }
-
-@keyframes eiPulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(22,163,74,0.2); }
-  50% { box-shadow: 0 0 0 4px rgba(22,163,74,0.1); }
+.ei-device-badge--ok {
+  background: var(--ds-success-soft);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: var(--ds-success);
 }
 
-/* Timer — Circular countdown */
+.ei-device-badge--fail {
+  background: var(--ds-danger-soft);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: var(--ds-danger);
+  animation: eiDeviceBlink 2s ease-in-out infinite;
+}
+
+@keyframes eiDeviceBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Timer — rectangular, prominent */
 .ei-topbar__timer {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.375rem 1rem;
-  background: var(--ds-gray-50);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
+  gap: 0.625rem;
+  padding: 0.5rem 1rem;
+  background: var(--ds-surface);
+  border: 2px solid var(--ds-border);
+  border-radius: var(--ds-radius-xl);
   transition: all 0.3s ease;
-  min-width: 130px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
 
+.dark .ei-topbar__timer { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+
 .ei-timer--warn {
-  border-color: rgba(245,158,11,0.4);
+  border-color: rgba(245,158,11,0.5);
   background: rgba(245,158,11,0.06);
 }
 
 .ei-timer--danger {
-  border-color: rgba(220,38,38,0.4);
+  border-color: rgba(220,38,38,0.5);
   background: rgba(220,38,38,0.06);
-  animation: eiTimerBorderPulse 1s ease-in-out infinite;
+  animation: eiTimerPulse 1.5s ease-in-out infinite;
 }
 
-@keyframes eiTimerBorderPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.3); }
-  50% { box-shadow: 0 0 0 4px rgba(220,38,38,0); }
+@keyframes eiTimerPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(220,38,38,0.2); }
+  50% { box-shadow: 0 2px 20px rgba(220,38,38,0.45); }
 }
 
-/* Circular ring */
-.ei-timer-ring-wrap {
-  position: relative;
+.ei-topbar__timer-icon {
+  color: var(--ds-primary);
+  flex-shrink: 0;
+}
+
+.ei-timer--warn .ei-topbar__timer-icon { color: var(--ds-warning); }
+.ei-timer--danger .ei-topbar__timer-icon { color: var(--ds-danger); }
+
+.ei-topbar__timer-digits {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.25rem;
 }
 
-.ei-timer-ring-svg {
-  transform: rotate(-90deg);
-}
-
-.ei-timer-ring-bg {
-  fill: none;
-  stroke: var(--ds-gray-200);
-  stroke-width: 4;
-}
-
-.dark .ei-timer-ring-bg { stroke: rgba(79,70,229,0.15); }
-
-.ei-timer-ring-prog {
-  fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
-}
-
-.ei-timer .ei-timer-ring-prog { stroke: var(--ds-primary); }
-.ei-timer--warn .ei-timer-ring-prog { stroke: var(--ds-warning); }
-.ei-timer--danger .ei-timer-ring-prog { stroke: var(--ds-danger); }
-
-.ei-timer-ring-inner {
-  position: absolute;
-  inset: 0;
+.ei-timer-unit {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 0.05rem;
+  min-width: 30px;
 }
 
-.ei-timer-digits {
+.ei-timer-val {
   font-family: var(--ds-font-display);
-  font-size: 0.6rem;
+  font-size: 1.125rem;
   font-weight: 900;
-  letter-spacing: 0.04em;
   color: var(--ds-text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-.ei-timer--warn .ei-timer-digits { color: var(--ds-warning); }
-.ei-timer--danger .ei-timer-digits { color: var(--ds-danger); }
+.dark .ei-timer-val { color: #f1f5f9; }
 
-.dark .ei-timer-digits { color: var(--ds-text); }
+.ei-timer--warn .ei-timer-val { color: var(--ds-warning); }
+.ei-timer--danger .ei-timer-val { color: var(--ds-danger); }
 
-/* Progress bar below */
-.ei-timer-progress {
+.ei-timer-lbl {
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.ei-timer-colon {
+  font-family: var(--ds-font-display);
+  font-size: 1.125rem;
+  font-weight: 300;
+  color: var(--ds-gray-300);
+  line-height: 1;
+  align-self: flex-start;
+  margin-top: 1px;
+  min-width: 6px;
+  text-align: center;
+}
+
+.dark .ei-timer-colon { color: var(--ds-gray-600); }
+.ei-timer--warn .ei-timer-colon { color: rgba(234,179,8,0.35); }
+.ei-timer--danger .ei-timer-colon { color: rgba(220,38,38,0.35); }
+
+.ei-topbar__timer-progress {
   width: 100%;
-  height: 3px;
-  background: var(--ds-gray-200);
-  border-radius: 2px;
+  height: 4px;
+  background: var(--ds-gray-100);
+  border-radius: var(--ds-radius-full);
   overflow: hidden;
+  margin-top: 0.25rem;
+  flex-shrink: 0;
 }
 
-.dark .ei-timer-progress { background: rgba(79,70,229,0.15); }
+.dark .ei-topbar__timer-progress { background: var(--ds-gray-700); }
 
-.ei-timer-progress__fill {
+.ei-topbar__timer-progress-fill {
   height: 100%;
-  background: var(--ds-primary);
-  border-radius: 2px;
-  transition: width 1s linear;
+  background: linear-gradient(90deg, var(--ds-primary), #6366f1);
+  border-radius: var(--ds-radius-full);
+  transition: width 1s linear, background 0.3s ease;
 }
 
-.ei-timer--warn .ei-timer-progress__fill { background: var(--ds-warning); }
-.ei-timer--danger .ei-timer-progress__fill { background: var(--ds-danger); }
+.ei-timer--warn .ei-topbar__timer-progress-fill { background: var(--ds-warning); }
+.ei-timer--danger .ei-topbar__timer-progress-fill { background: linear-gradient(90deg, var(--ds-danger), #b91c1c); }
 
 /* Right actions */
 .ei-topbar__right {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 
@@ -1279,16 +1360,22 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
   color: var(--ds-text-muted);
-  white-space: nowrap;
 }
+
+.dark .ei-save-status { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
 
 .ei-save-icon--spin { animation: eiSpin 1s linear infinite; color: var(--ds-info); }
 .ei-save-icon--ok { color: var(--ds-success); }
 .ei-save-icon--pending { color: var(--ds-warning); }
 .ei-save-icon--err { color: var(--ds-danger); }
+.ei-save-label { white-space: nowrap; }
 
 @keyframes eiSpin { to { transform: rotate(360deg); } }
 
@@ -1300,28 +1387,50 @@ onUnmounted(() => {
   padding: 0.5rem 1rem;
   border-radius: var(--ds-radius-xl);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.15s ease;
   border: 1.5px solid transparent;
   font-family: inherit;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
-.ei-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ei-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
-.ei-btn--outline {
+/* Save button */
+.ei-btn--save {
   background: var(--ds-surface);
   border-color: var(--ds-border);
   color: var(--ds-text-secondary);
 }
-.ei-btn--outline:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); background: var(--ds-primary-soft); }
 
-.ei-btn--primary {
-  background: var(--ds-primary);
-  color: white;
-  box-shadow: 0 2px 8px rgba(79,70,229,0.3);
+.dark .ei-btn--save { border-color: var(--ds-border-strong); color: var(--ds-gray-300); background: var(--ds-gray-800); }
+
+.ei-btn--save:hover:not(:disabled) {
+  border-color: var(--ds-primary-border);
+  color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  transform: translateY(-1px);
 }
-.ei-btn--primary:hover:not(:disabled) { background: var(--edu-primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.4); }
+
+/* Submit button — most prominent */
+.ei-btn--submit {
+  background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.ei-btn--submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(22, 163, 74, 0.45);
+  filter: brightness(1.05);
+}
+
+.ei-btn--submit:active:not(:disabled) {
+  transform: translateY(0);
+}
 
 /* ── Fullscreen warning ─────────────────────────────── */
 .ei-fs-warn {

@@ -59,6 +59,16 @@ public class ExamEventService {
     @Value("${demo.proctoring.fullscreen.exit-cooldown-seconds:30}")
     private long fullscreenExitCooldownSeconds;
 
+    /**
+     * Per-signal-type rate limits — maximum signals of each type allowed within the window.
+     * Prevents a single signal type (e.g. TAB_SWITCH) from being spammed to inflate risk scores.
+     */
+    @Value("${demo.proctoring.rate-limit.signal-window-seconds:300}")
+    private long signalRateLimitWindowSeconds;
+
+    @Value("${demo.proctoring.rate-limit.max-per-signal:10}")
+    private int signalRateLimitMaxPerSignal;
+
     @Transactional
     public EventBatchResponse ingestBatch(Long attemptId, EventBatchRequest request, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
@@ -85,6 +95,11 @@ public class ExamEventService {
 
             String normalizedType = normalizeEventType(item.getEventType());
             if (isDuplicateBurst(attempt, normalizedType)) {
+                droppedCount++;
+                continue;
+            }
+
+            if (isSignalRateLimited(attempt, normalizedType)) {
                 droppedCount++;
                 continue;
             }
@@ -237,6 +252,21 @@ public class ExamEventService {
                 attempt,
                 eventType,
                 VietNamTime.now().minusSeconds(eventDedupeSeconds));
+    }
+
+    /**
+     * Per-signal-type rate limiting.
+     * A given signal type (e.g. TAB_SWITCH) can only be recorded a maximum number of times
+     * within the configurable window (default: 10 times per 5 minutes).
+     * This prevents a single event type from being spammed to artificially inflate the risk score.
+     */
+    private boolean isSignalRateLimited(ExamAttempt attempt, String eventType) {
+        if (signalRateLimitWindowSeconds <= 0 || signalRateLimitMaxPerSignal <= 0) {
+            return false;
+        }
+        LocalDateTime cutoff = VietNamTime.now().minusSeconds(signalRateLimitWindowSeconds);
+        long recent = fraudSignalRepository.countByAttemptAndSignalTypeSince(attempt, eventType, cutoff);
+        return recent >= signalRateLimitMaxPerSignal;
     }
 
     private void applyFingerprintConsistency(ExamAttempt attempt, String normalizedFingerprint, String source) {

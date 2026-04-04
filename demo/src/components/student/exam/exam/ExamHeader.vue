@@ -8,91 +8,92 @@
       <div class="ehead__exam-info">
         <p class="ehead__exam-title">{{ examTitle }}</p>
         <p class="ehead__exam-meta">
-          Câu {{ currentIndex + 1 }} / {{ totalQuestions }}
+          <span class="ehead__question-badge">
+            Câu {{ currentIndex + 1 }} / {{ totalQuestions }}
+          </span>
         </p>
       </div>
     </div>
 
-    <!-- Center: device status -->
-    <div v-if="showDevices" class="ehead__devices">
-      <div class="ehead__device-item" :class="cameraReady ? 'ehead__device-item--ok' : 'ehead__device-item--fail'">
-        <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" />
-        <span>{{ cameraReady ? 'Camera' : 'Camera tắt' }}</span>
+    <!-- Center: timer (always visible, prominent) -->
+    <div class="ehead__center">
+      <div class="ehead__timer-wrap" :class="timerWrapClass">
+        <!-- Circular ring -->
+        <svg class="ehead__ring" viewBox="0 0 60 60" aria-hidden="true">
+          <circle class="ehead__ring-track" cx="30" cy="30" r="26" />
+          <circle
+            class="ehead__ring-fill"
+            cx="30" cy="30" r="26"
+            :stroke-dasharray="ringDasharray"
+            :stroke-dashoffset="ringDashoffset"
+            :class="ringClass"
+          />
+        </svg>
+        <!-- Time display -->
+        <div class="ehead__timer-inner">
+          <span class="ehead__timer-main" :class="timerMainClass">
+            {{ timerHours }}:{{ timerMinutes }}
+          </span>
+          <span class="ehead__timer-sec" :class="timerSecClass">{{ timerSeconds }}s</span>
+        </div>
       </div>
-      <div class="ehead__device-dot" />
-      <div class="ehead__device-item" :class="micReady ? 'ehead__device-item--ok' : 'ehead__device-item--fail'">
-        <LucideIcon :name="micReady ? 'mic' : 'mic_off'" />
-        <span>{{ micReady ? 'Mic' : 'Mic tắt' }}</span>
-      </div>
-      <div class="ehead__device-dot" />
-      <div class="ehead__device-item ehead__device-item--ok">
-        <LucideIcon name="wifi" />
-        <span>Kết nối</span>
+      <!-- Time label -->
+      <div class="ehead__timer-label">
+        <span v-if="timeWarning" class="ehead__timer-label-text" :class="timeWarningClass">
+          {{ timeWarning }}
+        </span>
+        <span v-else class="ehead__timer-label-text">Còn lại</span>
       </div>
     </div>
 
-    <!-- Right: timer + save + actions -->
+    <!-- Right: device status + save + actions -->
     <div class="ehead__right">
-      <!-- Progress bar -->
-      <div v-if="initialRemainingForProgress > 0" class="ehead__progress-wrap">
-        <progress
-          class="ehead__progress"
-          :class="progressBarClass"
-          :value="remainingSeconds"
-          :max="initialRemainingForProgress"
-          :aria-valuenow="remainingSeconds"
-          :aria-valuemin="0"
-          :aria-valuemax="initialRemainingForProgress"
-          :aria-label="timerAriaLabel"
-        />
-      </div>
-
-      <!-- Timer -->
-      <div class="ehead__timer" :class="timerClass">
-        <div class="ehead__timer-unit">
-          <span class="ehead__timer-val">{{ timerHours }}</span>
-          <span class="ehead__timer-lbl">Giờ</span>
+      <!-- Device status badges -->
+      <div v-if="showDevices" class="ehead__device-badges">
+        <div class="ehead__badge" :class="cameraReady ? 'ehead__badge--ok' : 'ehead__badge--fail'">
+          <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" />
+          <span>Camera</span>
         </div>
-        <span class="ehead__timer-sep">:</span>
-        <div class="ehead__timer-unit">
-          <span class="ehead__timer-val">{{ timerMinutes }}</span>
-          <span class="ehead__timer-lbl">Phút</span>
+        <div class="ehead__badge" :class="micReady ? 'ehead__badge--ok' : 'ehead__badge--fail'">
+          <LucideIcon :name="micReady ? 'mic' : 'mic_off'" />
+          <span>Mic</span>
         </div>
-        <span class="ehead__timer-sep">:</span>
-        <div class="ehead__timer-unit">
-          <span class="ehead__timer-val">{{ timerSeconds }}</span>
-          <span class="ehead__timer-lbl">Giây</span>
+        <div class="ehead__badge ehead__badge--ok">
+          <LucideIcon name="wifi" />
+          <span>Kết nối</span>
         </div>
       </div>
 
       <!-- Save status -->
       <div v-if="saveStatusLabel" class="ehead__save" role="status" aria-live="polite">
-        <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'"  ehead__save-icon ehead__save-icon--spin/>
-        <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'"  ehead__save-icon ehead__save-icon--ok/>
-        <LucideIcon name="schedule" v-else-if="hasPendingChanges"  ehead__save-icon ehead__save-icon--pending/>
-        <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'"  ehead__save-icon ehead__save-icon--fail/>
+        <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'" class="ehead__save-icon ehead__save-icon--spin"/>
+        <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'" class="ehead__save-icon ehead__save-icon--ok"/>
+        <LucideIcon name="schedule" v-else-if="hasPendingChanges" class="ehead__save-icon ehead__save-icon--pending"/>
+        <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'" class="ehead__save-icon ehead__save-icon--fail"/>
         <span class="ehead__save-text">{{ saveStatusLabel }}</span>
       </div>
 
       <!-- Manual save -->
       <button
         type="button"
-        class="ehead__action-btn"
+        class="ehead__save-btn"
         :disabled="isSuspended || saveStatus === 'saving'"
         @click="$emit('manual-save')"
       >
-        Lưu ngay
+        <LucideIcon name="save" />
+        <span>Lưu</span>
       </button>
 
       <!-- Submit -->
       <button
         type="button"
         class="ehead__submit-btn"
+        :class="{ 'ehead__submit-btn--critical': isTimeCritical }"
         :disabled="isSuspended"
         @click="$emit('open-submit')"
       >
         <LucideIcon name="done_all" />
-        Nộp bài
+        <span>Nộp bài</span>
       </button>
     </div>
   </div>
@@ -121,32 +122,59 @@ const props = defineProps({
 
 defineEmits(['manual-save', 'open-submit'])
 
+// ─── Time ratio ─────────────────────────────────────────────────────────────────
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-const timerClass = computed(() => {
+const timeRatio = computed(() => {
   const max = Math.max(props.initialRemainingForProgress, 1)
-  const ratio = props.remainingSeconds / max
-  if (ratio < 0.2) return prefersReducedMotion() ? '' : 'ehead__timer--critical'
-  if (ratio <= 0.5) return 'ehead__timer--warning'
-  return ''
+  return props.remainingSeconds / max
 })
 
-const progressBarClass = computed(() => {
-  const max = Math.max(props.initialRemainingForProgress, 1)
-  const ratio = props.remainingSeconds / max
-  if (ratio < 0.2) return prefersReducedMotion() ? '' : 'ehead__progress--critical'
-  if (ratio <= 0.5) return 'ehead__progress--warning'
-  return ''
+const isTimeWarning = computed(() => timeRatio.value <= 0.5 && timeRatio.value >= 0.2)
+const isTimeCritical = computed(() => timeRatio.value < 0.2)
+
+// ─── Timer display class ─────────────────────────────────────────────────────────
+const timerWrapClass = computed(() => ({
+  'ehead__timer-wrap--warning': isTimeWarning.value,
+  'ehead__timer-wrap--critical': isTimeCritical.value && !prefersReducedMotion()
+}))
+
+const timerMainClass = computed(() => ({
+  'ehead__timer-main--warning': isTimeWarning.value,
+  'ehead__timer-main--critical': isTimeCritical.value
+}))
+
+const timerSecClass = computed(() => ({
+  'ehead__timer-sec--warning': isTimeWarning.value,
+  'ehead__timer-sec--critical': isTimeCritical.value
+}))
+
+const timeWarning = computed(() => {
+  if (isTimeCritical.value) return 'Sắp hết giờ!'
+  if (isTimeWarning.value) return 'Còn ít thời gian'
+  return null
 })
 
-const timerAriaLabel = computed(() => {
-  const m = Math.floor(props.remainingSeconds / 60)
-  const sec = props.remainingSeconds % 60
-  return `Thời gian còn lại: ${m} phút ${sec} giây`
+const timeWarningClass = computed(() => ({
+  'ehead__timer-label-text--warning': isTimeWarning.value,
+  'ehead__timer-label-text--critical': isTimeCritical.value
+}))
+
+// ─── Ring SVG ──────────────────────────────────────────────────────────────────
+const CIRCUMFERENCE = 2 * Math.PI * 26 // r=26
+
+const ringDasharray = computed(() => `${CIRCUMFERENCE}`)
+const ringDashoffset = computed(() => {
+  const ratio = timeRatio.value
+  return CIRCUMFERENCE * (1 - Math.min(1, Math.max(0, ratio)))
 })
+
+const ringClass = computed(() => ({
+  'ehead__ring-fill--warning': isTimeWarning.value,
+  'ehead__ring-fill--critical': isTimeCritical.value && !prefersReducedMotion()
+}))
 </script>
-
 
 <style scoped>
 .ehead {
@@ -155,18 +183,18 @@ const timerAriaLabel = computed(() => {
   gap: 1rem;
   padding: 0.75rem 1.25rem;
   background: var(--ds-surface);
-  border-bottom: 1px solid var(--ds-border);
-  box-shadow: var(--ds-shadow-xs);
+  border-bottom: 2px solid var(--ds-border);
   position: sticky;
   top: 0;
   z-index: 50;
   flex-wrap: wrap;
-  min-height: 60px;
+  min-height: 64px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 
 .dark .ehead { border-bottom-color: var(--ds-border-strong); }
 
-/* Left */
+/* ─── Left ─────────────────────────────────────────────────────────────── */
 .ehead__left {
   display: flex;
   align-items: center;
@@ -178,270 +206,324 @@ const timerAriaLabel = computed(() => {
   width: 40px;
   height: 40px;
   border-radius: var(--ds-radius-lg);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
+  background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
-
 
 .ehead__exam-info { min-width: 0; }
 
 .ehead__exam-title {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 800;
   color: var(--ds-text);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 200px;
+  max-width: 180px;
 }
 
 .dark .ehead__exam-title { color: #f1f5f9; }
 
 .ehead__exam-meta {
-  font-size: 0.7rem;
-  color: var(--ds-text-muted);
   margin: 0.125rem 0 0;
-  font-weight: 600;
 }
 
-/* Devices */
-.ehead__devices {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.875rem;
+.ehead__question-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
   border-radius: var(--ds-radius-full);
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
-.dark .ehead__devices { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
-
-.ehead__device-item {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-
-.ehead__device-item--ok { color: var(--ds-success); }
-.ehead__device-item--fail { color: var(--ds-danger); }
-
-.ehead__device-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--ds-gray-300);
-  flex-shrink: 0;
-}
-
-.dark .ehead__device-dot { background: var(--ds-gray-600); }
-
-/* Right */
-.ehead__right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-
-/* Progress bar */
-.ehead__progress-wrap {
-  width: 120px;
-  min-width: 80px;
-}
-
-.ehead__progress {
-  width: 100%;
-  height: 6px;
-  border-radius: var(--ds-radius-full);
-  appearance: none;
-  background: var(--ds-gray-200);
-  overflow: hidden;
-}
-
-.ehead__progress::-webkit-progress-value {
-  background: var(--ds-primary);
-  border-radius: var(--ds-radius-full);
-  transition: width 0.5s ease;
-}
-
-.ehead__progress--warning::-webkit-progress-value { background: var(--ds-warning); }
-.ehead__progress--critical::-webkit-progress-value { background: var(--ds-danger); }
-
-.ehead__progress--critical {
-  animation: eheadBlink 1.5s ease-in-out infinite;
-}
-
-@keyframes eheadBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
-}
-
-/* Timer */
-.ehead__timer {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  flex-shrink: 0;
-}
-
-.dark .ehead__timer { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
-
-.ehead__timer--warning {
-  background: rgba(234, 179, 8, 0.08);
-  border-color: rgba(234, 179, 8, 0.25);
-}
-
-.ehead__timer--critical {
-  background: var(--ds-danger-soft);
-  border-color: rgba(220, 38, 38, 0.25);
-  animation: eheadBlink 1.5s ease-in-out infinite;
-}
-
-.ehead__timer-unit {
+/* ─── Center: Timer ───────────────────────────────────────────────────── */
+.ehead__center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 28px;
+  gap: 0.125rem;
+  flex-shrink: 0;
 }
 
-.ehead__timer-val {
+.ehead__timer-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.ehead__timer-wrap--warning {
+  filter: drop-shadow(0 0 6px rgba(234, 179, 8, 0.4));
+}
+
+.ehead__timer-wrap--critical {
+  animation: eheadTimerPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes eheadTimerPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.4)); }
+  50% { filter: drop-shadow(0 0 14px rgba(220, 38, 38, 0.7)); }
+}
+
+.ehead__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ehead__ring-track {
+  fill: none;
+  stroke: var(--ds-gray-200);
+  stroke-width: 4;
+}
+
+.dark .ehead__ring-track { stroke: var(--ds-gray-700); }
+
+.ehead__ring-fill {
+  fill: none;
+  stroke: var(--ds-primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+}
+
+.ehead__ring-fill--warning { stroke: var(--ds-warning); }
+.ehead__ring-fill--critical { stroke: var(--ds-danger); }
+
+.ehead__timer-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.ehead__timer-main {
   font-family: var(--ds-font-display);
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 900;
   color: var(--ds-text);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
-.dark .ehead__timer-val { color: #f1f5f9; }
+.dark .ehead__timer-main { color: #f1f5f9; }
 
-.ehead__timer--warning .ehead__timer-val { color: var(--ds-warning); }
-.ehead__timer--critical .ehead__timer-val { color: var(--ds-danger); }
+.ehead__timer-main--warning { color: var(--ds-warning); }
+.ehead__timer-main--critical { color: var(--ds-danger); }
 
-.ehead__timer-lbl {
-  font-size: 0.5rem;
+.ehead__timer-sec {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ehead__timer-sec--warning { color: var(--ds-warning); opacity: 0.8; }
+.ehead__timer-sec--critical { color: var(--ds-danger); opacity: 0.9; }
+
+.ehead__timer-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ehead__timer-label-text {
+  font-size: 0.6rem;
   font-weight: 700;
   color: var(--ds-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  line-height: 1;
-  margin-top: 0.1rem;
+  white-space: nowrap;
 }
 
-.ehead__timer-sep {
-  font-size: 1rem;
-  font-weight: 300;
-  color: var(--ds-gray-300);
-  line-height: 1;
+.ehead__timer-label-text--warning { color: var(--ds-warning); }
+.ehead__timer-label-text--critical { color: var(--ds-danger); animation: eheadBlink 1.5s ease-in-out infinite; }
+
+/* ─── Right ───────────────────────────────────────────────────────────── */
+.ehead__right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
 }
 
-.dark .ehead__timer-sep { color: var(--ds-gray-600); }
+/* Device badges */
+.ehead__device-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.ehead__badge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+  font-weight: 800;
+  border: 1.5px solid;
+  letter-spacing: 0.02em;
+}
+
+.ehead__badge--ok {
+  background: var(--ds-success-soft);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: var(--ds-success);
+}
+
+.ehead__badge--fail {
+  background: var(--ds-danger-soft);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: var(--ds-danger);
+  animation: eheadBlink 2s ease-in-out infinite;
+}
 
 /* Save status */
 .ehead__save {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.7rem;
-  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
   color: var(--ds-text-muted);
-  max-width: 180px;
-  min-width: 100px;
 }
 
-.ehead__save-icon { font-size: 0.875rem; }
+.dark .ehead__save { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+
+.ehead__save-icon { font-size: 0.75rem; }
 .ehead__save-icon--spin { animation: eheadSpin 1s linear infinite; }
 .ehead__save-icon--ok { color: var(--ds-success); }
 .ehead__save-icon--pending { color: var(--ds-warning); }
 .ehead__save-icon--fail { color: var(--ds-danger); }
 
-.ehead__save-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.ehead__save-text { white-space: nowrap; }
 
-@keyframes eheadSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Buttons */
-.ehead__action-btn {
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--ds-radius-lg);
+/* Save button */
+.ehead__save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--ds-radius-xl);
   font-size: 0.75rem;
   font-weight: 700;
-  background: transparent;
+  background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
-  color: var(--ds-text-muted);
+  color: var(--ds-text-secondary);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all 0.15s ease;
   font-family: inherit;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
-.dark .ehead__action-btn { border-color: var(--ds-border-strong); color: var(--ds-gray-400); }
+.dark .ehead__save-btn { border-color: var(--ds-border-strong); color: var(--ds-gray-300); }
 
-.ehead__action-btn:hover:not(:disabled) {
+.ehead__save-btn:hover:not(:disabled) {
   border-color: var(--ds-primary-border);
   color: var(--ds-primary);
   background: var(--ds-primary-soft);
 }
 
-.ehead__action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ehead__save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Submit button — most prominent */
 .ehead__submit-btn {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
   border-radius: var(--ds-radius-xl);
-  font-size: 0.8rem;
-  font-weight: 800;
-  background: var(--ds-primary);
+  font-size: 0.875rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
   border: none;
   color: white;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+  letter-spacing: 0.02em;
 }
 
 .ehead__submit-btn:hover:not(:disabled) {
-  background: var(--ds-primary-hover, #4338ca);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
+  filter: brightness(1.05);
 }
 
-.ehead__submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.ehead__submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
 
+.ehead__submit-btn--critical {
+  background: linear-gradient(135deg, var(--ds-danger) 0%, #b91c1c 100%);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  animation: eheadSubmitPulse 1.5s ease-in-out infinite;
+}
 
-/* Responsive */
+.ehead__submit-btn--critical:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+  filter: brightness(1.08);
+}
+
+@keyframes eheadSubmitPulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35); }
+  50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.6); }
+}
+
+.ehead__submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* ─── Shared animations ───────────────────────────────────────────────── */
+@keyframes eheadSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes eheadBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .ehead__devices { display: none; }
-  .ehead__progress-wrap { display: none; }
+  .ehead__device-badges { display: none; }
   .ehead__save { display: none; }
   .ehead { gap: 0.5rem; padding: 0.5rem 0.75rem; }
+  .ehead__exam-title { max-width: 120px; }
+  .ehead__timer-wrap { width: 50px; height: 50px; }
+  .ehead__timer-main { font-size: 0.75rem; }
+  .ehead__timer-sec { font-size: 0.55rem; }
 }
 
 @media (max-width: 480px) {
-  .ehead__action-btn { display: none; }
+  .ehead__save-btn span { display: none; }
+  .ehead__submit-btn span { display: none; }
+  .ehead__submit-btn { padding: 0.5rem 0.75rem; }
+  .ehead__save-btn { padding: 0.375rem 0.625rem; }
 }
 </style>
