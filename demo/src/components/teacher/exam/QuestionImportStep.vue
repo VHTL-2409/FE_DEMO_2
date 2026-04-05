@@ -67,6 +67,49 @@
         </div>
       </div>
 
+      <!-- Đọc câu hỏi — ngay dưới khung file, trước tùy chọn hiển thị -->
+      <div class="ec-import-actions ec-import-actions--after-dropzone">
+        <button
+          type="button"
+          class="ec-btn ec-btn--primary"
+          :disabled="!selectedFile || isImporting"
+          @click="handleImport"
+        >
+          <LucideIcon name="progress_activity" v-if="isImporting" class="ec-spin" />
+          <LucideIcon name="upload" v-else />
+          {{ isImporting ? parsingStatus || 'Đang xử lý...' : 'Đọc câu hỏi' }}
+        </button>
+      </div>
+
+      <!-- Server-side parsing progress -->
+      <div v-if="isParsingServer && isImporting" class="ec-qb-parse-progress">
+        <div class="ec-qb-progress-bar">
+          <div class="ec-qb-progress-fill" :style="{ width: `${parsingProgress}%` }" />
+        </div>
+        <p class="ec-qb-progress-status">{{ parsingStatus }}</p>
+      </div>
+
+      <!-- Import result summary — ngay dưới nút đọc, trước tùy chọn hiển thị -->
+      <Transition name="ec-slide">
+        <div v-if="importSuccess && importedCount > 0" class="ec-import-success">
+          <div class="ec-import-success__icon">
+            <LucideIcon name="check_circle" />
+          </div>
+          <div class="ec-import-success__content">
+            <p class="ec-import-success__title">Đọc thành công {{ importedCount }} câu hỏi</p>
+            <p class="ec-import-success__desc">Nhấn "Tiếp theo" để xem và chỉnh sửa câu hỏi</p>
+          </div>
+          <button
+            type="button"
+            class="ec-import-success__add-more"
+            @click="showAddMore = !showAddMore"
+          >
+            <LucideIcon name="add" />
+            Thêm file khác
+          </button>
+        </div>
+      </Transition>
+
       <!-- Display options (apply to the whole exam) -->
       <div class="ec-field">
         <label class="ec-field__label">Tùy chọn hiển thị</label>
@@ -176,27 +219,6 @@
         </div>
       </Transition>
 
-      <!-- Import result summary -->
-      <Transition name="ec-slide">
-        <div v-if="importSuccess && importedCount > 0" class="ec-import-success">
-          <div class="ec-import-success__icon">
-            <LucideIcon name="check_circle" />
-          </div>
-          <div class="ec-import-success__content">
-            <p class="ec-import-success__title">Đọc thành công {{ importedCount }} câu hỏi</p>
-            <p class="ec-import-success__desc">Nhấn "Tiếp theo" để xem và chỉnh sửa câu hỏi</p>
-          </div>
-          <button
-            type="button"
-            class="ec-import-success__add-more"
-            @click="showAddMore = !showAddMore"
-          >
-            <LucideIcon name="add" />
-            Thêm file khác
-          </button>
-        </div>
-      </Transition>
-
       <!-- Add more file section -->
       <Transition name="ec-slide">
         <div v-if="showAddMore && importedCount > 0" class="ec-add-more">
@@ -234,22 +256,20 @@
               </button>
             </div>
           </div>
+          <div class="ec-import-actions ec-import-actions--add-more">
+            <button
+              type="button"
+              class="ec-btn ec-btn--primary"
+              :disabled="!selectedFile || isImporting"
+              @click="handleImport"
+            >
+              <LucideIcon name="progress_activity" v-if="isImporting" class="ec-spin" />
+              <LucideIcon name="upload" v-else />
+              {{ isImporting ? 'Đang xử lý...' : 'Đọc câu hỏi' }}
+            </button>
+          </div>
         </div>
       </Transition>
-
-      <!-- Actions -->
-      <div class="ec-import-actions">
-        <button
-          type="button"
-          class="ec-btn ec-btn--primary"
-          :disabled="!selectedFile || isImporting"
-          @click="handleImport"
-        >
-          <LucideIcon name="progress_activity" v-if="isImporting" class="ec-spin" />
-          <LucideIcon name="upload" v-else />
-          {{ isImporting ? 'Đang xử lý...' : 'Đọc câu hỏi' }}
-        </button>
-      </div>
 
     </div>
   </div>
@@ -258,7 +278,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { API_BASE_URL } from '../../../services/apiClient'
-import { previewImportFile } from '../../../services/importService'
+import {
+  previewImportFile,
+  uploadExamPdf,
+  getExamImportPreview,
+  waitForExamImportSession,
+  checkPythonParserHealth,
+  validateImportFile
+} from '../../../services/importService'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] },
@@ -281,6 +308,12 @@ const importSuccess = ref(false)
 const importedCount = ref(0)
 const showAddMore = ref(false)
 const versionCount = ref(4)
+const isParsingServer = ref(false)
+const parsingStatus = ref('')
+const parsingProgress = ref(0)
+const sessionId = ref(null)
+const sessionStatus = ref(null)
+const pythonAvailable = ref(null)
 
 const localShuffleQuestions = computed({
   get: () => props.shuffleQuestions,
@@ -338,18 +371,6 @@ const removeFile = () => {
   selectedFile.value = null
   importError.value = ''
   if (fileInput.value) fileInput.value.value = ''
-}
-
-const validateImportFile = (file) => {
-  const maxSize = 10 * 1024 * 1024
-  if (file.size > maxSize) {
-    throw new Error('File quá lớn. Tối đa 10MB.')
-  }
-  const ext = file.name.split('.').pop().toLowerCase()
-  const allowedExts = ['csv', 'xlsx', 'pdf', 'docx', 'json', 'md', 'markdown']
-  if (!allowedExts.includes(ext)) {
-    throw new Error('Định dạng file không được hỗ trợ. Vui lòng dùng CSV, XLSX, PDF, Word, JSON hoặc Markdown.')
-  }
 }
 
 const parseFileClientSide = async (file) => {
@@ -544,13 +565,58 @@ const handleImport = async () => {
   if (!selectedFile.value) return
   isImporting.value = true
   importError.value = ''
+  isParsingServer.value = false
+  sessionId.value = null
+  sessionStatus.value = null
   try {
-    let questions = await parseFileClientSide(selectedFile.value)
+    const ext = selectedFile.value.name.split('.').pop().toLowerCase()
+    let questions = null
 
-    if (!questions || questions.length === 0) {
+    // ── PDF / DOCX → exam-import pipeline (Python parser) ──
+    if (ext === 'pdf' || ext === 'docx') {
+      isParsingServer.value = true
+      parsingProgress.value = 5
+      parsingStatus.value = 'Đang tải file lên...'
+      const res = await uploadExamPdf(selectedFile.value)
+      sessionId.value = res.sessionId
+      sessionStatus.value = res.status || 'UPLOADED'
+      parsingProgress.value = 30
+      parsingStatus.value = 'Đang parse với Python...'
+
+      const preview = await waitForExamImportSession(res.sessionId, {
+        intervalMs: 1500,
+        maxAttempts: 120
+      })
+
+      if (preview?.status === 'FAILED' || preview?.questions?.length === 0) {
+        importError.value = preview?.report?.warnings?.[0]
+          || 'Parse thất bại. Vui lòng thử file khác.'
+        return
+      }
+
+      parsingProgress.value = 90
+      parsingStatus.value = 'Đang tải kết quả...'
+      questions = (preview.questions || []).map((q) => ({
+        _localId: localIdCounter++,
+        content: q.content || q.text || q.question || '',
+        correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+        score: parseFloat(q.scoreWeight || q.scoreWeight || q.score || q.points || 1),
+        options: Array.isArray(q.options)
+          ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+          : [],
+        type: (q.type || 'SINGLE_CHOICE').toUpperCase().includes('ESSAY') ? 'ESSAY' : 'SINGLE_CHOICE',
+        parseConfidence: q.parseConfidence || q.confidence || null,
+        render: q.render || null
+      }))
+      parsingProgress.value = 100
+      parsingStatus.value = 'Hoàn thành!'
+      isParsingServer.value = false
+
+    // ── CSV → BE server-side parser (QuizParserEngine) ──
+    } else if (ext === 'csv') {
       try {
         const previewResult = await previewImportFile(selectedFile.value)
-        if (previewResult && Array.isArray(previewResult)) {
+        if (previewResult && Array.isArray(previewResult) && previewResult.length > 0) {
           questions = previewResult.map((q) => ({
             _localId: localIdCounter++,
             content: q.content || q.question || q.text || '',
@@ -561,7 +627,7 @@ const handleImport = async () => {
               : [],
             type: q.type || 'SINGLE_CHOICE'
           }))
-        } else if (previewResult && previewResult.questions) {
+        } else if (previewResult && previewResult.questions && previewResult.questions.length > 0) {
           questions = previewResult.questions.map((q) => ({
             _localId: localIdCounter++,
             content: q.content || q.question || q.text || '',
@@ -574,8 +640,49 @@ const handleImport = async () => {
           }))
         }
       } catch (apiErr) {
-        console.warn('API preview failed:', apiErr)
+        console.warn('CSV API preview failed, falling back to client parse:', apiErr)
       }
+      if (!questions || questions.length === 0) {
+        questions = await parseFileClientSide(selectedFile.value)
+      }
+
+    // ── XLSX → BE server-side parser ──
+    } else if (ext === 'xlsx') {
+      try {
+        const previewResult = await previewImportFile(selectedFile.value)
+        if (previewResult && Array.isArray(previewResult) && previewResult.length > 0) {
+          questions = previewResult.map((q) => ({
+            _localId: localIdCounter++,
+            content: q.content || q.question || q.text || '',
+            correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+            options: Array.isArray(q.options)
+              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+              : [],
+            type: q.type || 'SINGLE_CHOICE'
+          }))
+        } else if (previewResult && previewResult.questions && previewResult.questions.length > 0) {
+          questions = previewResult.questions.map((q) => ({
+            _localId: localIdCounter++,
+            content: q.content || q.question || q.text || '',
+            correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+            options: Array.isArray(q.options)
+              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+              : [],
+            type: q.type || 'SINGLE_CHOICE'
+          }))
+        }
+      } catch (apiErr) {
+        console.warn('XLSX API preview failed, falling back to client parse:', apiErr)
+      }
+      if (!questions || questions.length === 0) {
+        questions = await parseFileClientSide(selectedFile.value)
+      }
+
+    // ── Other formats (json, md…) → client-side only ──
+    } else {
+      questions = await parseFileClientSide(selectedFile.value)
     }
 
     if (!questions || questions.length === 0) {
@@ -601,6 +708,9 @@ const handleImport = async () => {
     }
   } finally {
     isImporting.value = false
+    isParsingServer.value = false
+    parsingProgress.value = 0
+    parsingStatus.value = ''
   }
 }
 </script>
@@ -915,6 +1025,14 @@ const handleImport = async () => {
   gap: 0.75rem;
 }
 
+.ec-import-actions--after-dropzone {
+  margin-top: 0.25rem;
+}
+
+.ec-import-actions--add-more {
+  margin-top: 0.75rem;
+}
+
 .ec-btn {
   display: inline-flex;
   align-items: center;
@@ -1173,5 +1291,38 @@ const handleImport = async () => {
   font-size: 0.75rem;
   color: var(--ds-text-muted);
   justify-content: center;
+}
+
+/* ── Server-side parse progress ──────────────────────────────── */
+
+.ec-qb-parse-progress {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--ds-primary-soft);
+  border: 1px solid rgba(79,70,229,0.15);
+  border-radius: var(--ds-radius-xl);
+}
+
+.ec-qb-progress-bar {
+  height: 6px;
+  background: rgba(79,70,229,0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.ec-qb-progress-fill {
+  height: 100%;
+  background: var(--ds-primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.ec-qb-progress-status {
+  font-size: 0.78rem;
+  color: var(--ds-primary);
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
 }
 </style>

@@ -24,6 +24,7 @@ import re
 
 from .docx_base import DocxBaseParser
 from ..schemas import ExamMeta, ParsedQuestion, QuestionType, RenderMode, RenderInfo, TemplateType
+from ..utils.section_detector import SectionKind
 
 
 class Template04DocxVietParser(DocxBaseParser):
@@ -148,7 +149,7 @@ class Template04DocxVietParser(DocxBaseParser):
                     block_lines.append(next_t)
                     j += 1
 
-                q = self._parse_mcq_block(q_num, block_lines)
+                q = self._parse_mcq_block(q_num, block_lines, section="Phần 1 - Trắc nghiệm")
                 questions.append(q)
                 i = j
             else:
@@ -156,8 +157,8 @@ class Template04DocxVietParser(DocxBaseParser):
 
         return questions
 
-    def _parse_mcq_block(self, q_num: int, lines: list[str]) -> ParsedQuestion:
-        """Parse a single MCQ block into a ParsedQuestion."""
+    def _parse_mcq_block(self, q_num: int, lines: list[str], section: str = None) -> ParsedQuestion:
+        """Parse a single MCQ block into a ParsedQuestion with section awareness."""
         # First line is the header: "N. (0.200 Point)"
         header = lines[0] if lines else ""
         question_text_lines = []
@@ -170,7 +171,7 @@ class Template04DocxVietParser(DocxBaseParser):
             if not t:
                 continue
 
-            # Option line: "A. ..." or "*C. ..." or "A. ..." (with asterisk)
+            # Option line: "A. ..." or "*C. ..." (asterisk before letter)
             m = re.match(r"^(\*?)([A-D])\.\s*(.*)$", t)
             if m:
                 asterisk, letter, content = m.group(1), m.group(2).upper(), m.group(3).strip()
@@ -199,7 +200,7 @@ class Template04DocxVietParser(DocxBaseParser):
 
         confidence = self._calc_confidence(stem, options, answer, issues)
 
-        return self._build_question(
+        question = self._build_question(
             number=q_num,
             text=stem,
             q_type=QuestionType.MULTIPLE_CHOICE,
@@ -209,12 +210,16 @@ class Template04DocxVietParser(DocxBaseParser):
             issues=issues,
         )
 
-    def _parse_fill_section(self, paragraphs, start_num: int) -> list[ParsedQuestion]:
-        """Parse fill-in-the-blank questions from Phần 2.
+        # Apply section awareness fields
+        question.section = section or "Phần 1 - Trắc nghiệm"
+        question.sectionKind = SectionKind.MCQ.value
+        question.answerLocation = "inline" if answer else "none"
+        question.needsGrading = False
 
-        Format: "N. (0.250 Point)Câu hỏi?" / "- Đáp án text"
-        Answer is a short text (not A/B/C/D).
-        """
+        return question
+
+    def _parse_fill_section(self, paragraphs, start_num: int) -> list[ParsedQuestion]:
+        """Parse fill-in-the-blank questions from Phần 2."""
         questions = []
         q_num = start_num + 1
         i = 0
@@ -259,21 +264,29 @@ class Template04DocxVietParser(DocxBaseParser):
 
                 answer_text = " ".join(answer_parts).strip()
 
-                questions.append(self._build_question(
+                question = self._build_question(
                     number=q_num,
                     text=raw_question,
                     q_type=QuestionType.FILL_BLANK,
                     answer=answer_text or None,
                     confidence=0.9 if answer_text else 0.5,
                     issues=[] if answer_text else ["Fill-in without extracted answer."],
-                ))
+                )
+
+                # Apply section awareness fields
+                question.section = "Phần 2 - Điền đáp án"
+                question.sectionKind = SectionKind.QUESTION.value
+                question.answerLocation = "inline" if answer_text else "none"
+                question.needsGrading = False
+
+                questions.append(question)
             else:
                 i += 1
 
         return questions
 
     def _parse_essay_section(self, paragraphs, start_num: int) -> list[ParsedQuestion]:
-        """Parse essay questions from TỰ LUẬN section."""
+        """Parse essay questions from TỰ LUẬN section with section awareness."""
         questions = []
         q_num = start_num + 1
 
@@ -289,13 +302,22 @@ class Template04DocxVietParser(DocxBaseParser):
             if m:
                 q_num = int(m.group(1))
                 raw_question = m.group(2).strip()
-                questions.append(self._build_question(
+
+                question = self._build_question(
                     number=q_num,
                     text=raw_question,
                     q_type=QuestionType.ESSAY,
                     confidence=0.8,
                     issues=["Essay — requires teacher grading."],
-                ))
+                )
+
+                # Apply section awareness fields
+                question.section = "Phần 3 - Tự luận"
+                question.sectionKind = SectionKind.ESSAY.value
+                question.answerLocation = "none"
+                question.needsGrading = True
+
+                questions.append(question)
             elif not re.match(r"^[A-D]\.|\*|Phần", t):
                 # Possibly a multi-line essay question; append as continuation
                 if questions and questions[-1].type == QuestionType.ESSAY:

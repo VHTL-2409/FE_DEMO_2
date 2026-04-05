@@ -18,6 +18,9 @@ from enum import Enum
 class SectionKind(Enum):
     MCQ = "mcq"
     ESSAY = "essay"
+    ANSWER_KEY = "answer"
+    SOLUTION = "solution"
+    QUESTION = "question"
     UNKNOWN = "unknown"
 
 
@@ -25,7 +28,7 @@ class SectionKind(Enum):
 class Section:
     start_line: int
     end_line: int
-    kind: SectionKind  # ESSAY / MCQ / UNKNOWN
+    kind: SectionKind  # ESSAY / MCQ / ANSWER_KEY / SOLUTION / QUESTION / UNKNOWN
     title: str | None = None  # matched header text, if any
 
 
@@ -103,6 +106,18 @@ def _detect_kind(line: str) -> SectionKind | None:
     if "tựluận" in n:
         return SectionKind.ESSAY
 
+    # ── New: Answer key section patterns ──────────────────────────────────────
+    if "đápán" in n or "bảngđápán" in n or "answerkey" in n:
+        return SectionKind.ANSWER_KEY
+
+    # NEW: Solution section patterns
+    if "lờigiải" in n or "giảichi tiết" in n or "solution" in n:
+        return SectionKind.SOLUTION
+
+    # NEW: Question section pattern
+    if "phầncâuhỏi" in n:
+        return SectionKind.QUESTION
+
     # Neutral
     if "trắcnghiệm" in n:
         return SectionKind.MCQ
@@ -126,6 +141,16 @@ def _title_for(n: str, kind: SectionKind | None) -> str | None:
         if "tựluận" in n: return "Tự luận"
         if _has_roman_suffix(n, "sectionii") or _has_roman_suffix(n, "partii"): return "Section II"
         return "Essay"
+    if kind == SectionKind.ANSWER_KEY:
+        if "bảngđápán" in n: return "Bảng đáp án"
+        if "answerkey" in n: return "Answer Key"
+        return "Đáp án"
+    if kind == SectionKind.SOLUTION:
+        if "lờigiải" in n or "giảichi tiết" in n: return "Lời giải chi tiết"
+        if "solution" in n: return "Solution"
+        return "Lời giải"
+    if kind == SectionKind.QUESTION:
+        return "Phần câu hỏi"
     return None
 
 
@@ -137,6 +162,9 @@ def detect_sections(text: str) -> list[Section]:
       - "Phần I" / "Phần 1" / "Section I" / "Part I" → MCQ
       - "Phần II" / "Phần 2" / "Tự luận" / "Section II" → ESSAY
       - "Phần III" etc. → use parity: odd=MCQ, even=ESSAY
+      - "Đáp án" / "Bảng đáp án" / "Answer Key" → ANSWER_KEY
+      - "Lời giải" / "Giải chi tiết" / "Solution" → SOLUTION
+      - "Phần câu hỏi" → QUESTION
       - Fallback: single UNKNOWN section covering the whole text
 
     The returned sections are non-overlapping and sorted by start_line.

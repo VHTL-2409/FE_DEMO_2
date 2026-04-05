@@ -33,6 +33,7 @@ class AnswerExtractor:
       7. "Chọn B." / "→ Chọn đáp án A."  — Vietnamese per-question inline
       8. "Đáp án B"             — Vietnamese dapan standalone
       9. "Câu 1: A"             — câu format
+      10. "*D. Option text"     — asterisk prefix marks correct answer (inline)
     """
 
     # Priority order: most specific patterns first
@@ -111,6 +112,13 @@ class AnswerExtractor:
                 re.IGNORECASE
             ),
         },
+        # Format 10: Asterisk prefix "*D" standalone (marks correct answer in inline format)
+        {
+            "name": "asterisk_prefix",
+            "pattern": re.compile(
+                r"(?<![A-Za-z\d])\*([A-Da-d])\b",
+            ),
+        },
     ]
 
     # Markers that indicate the start of the answer section.
@@ -138,40 +146,50 @@ class AnswerExtractor:
         """Extract all answer entries from text.
 
         Strategy:
-          1. Try in tail (last N lines).
-          2. If < 5 answers found, search backward from ANSWER_MARKER sections.
-          3. Try Vietnamese inline per-question format from full text.
+          1. First try câu format "Câu N: A" in tail
+          2. Then try all other numbered formats in tail (for best results: 1-D, 1.D, 1.D)
+          3. Fall back to ANSWER_MARKER sections
+          4. For Vietnamese exam PDFs with "Chọn X." in solutions, use Câu correlation
         """
         if self._answers is not None:
             return self._answers
 
         answers: list[AnswerEntry] = []
-
-        # ── Step 1: scan tail ─────────────────────────────────────────────────
         lines = self.text.split("\n")
         tail_text = "\n".join(lines[-self.tail_lines:]) if len(lines) > self.tail_lines else self.text
 
-        for fmt in self.FORMATS:
-            entries = self._extract_format(tail_text, fmt["name"], fmt["pattern"])
-            if entries and len(entries) >= 2:
-                answers = entries
-                break
+        # ── Step 1: try câu format in tail ───────────────────────────────────
+        answers = self._extract_cau_format(tail_text)
 
-        # Also try câu format (in case it was missed above)
-        if not answers:
-            answers = self._extract_cau_format(tail_text)
+        # ── Step 2: try all numbered formats in tail ─────────────────────────
+        if len(answers) < 5:
+            for fmt in self.FORMATS:
+                entries = self._extract_format(tail_text, fmt["name"], fmt["pattern"])
+                # Skip câu format here (already tried in step 1)
+                if entries and len(entries) >= len(answers) and fmt["name"] != "cau_format":
+                    answers = entries
+                    if len(answers) >= 30:
+                        break
 
-        # ── Step 2: fallback to ANSWER_MARKER sections ───────────────────────
-        if not answers or len(answers) < 5:
+        # ── Step 3: fallback to ANSWER_MARKER sections ────────────────────────
+        if len(answers) < 5:
             marker_answers = self._extract_from_answer_markers()
             if marker_answers and len(marker_answers) > len(answers):
                 answers = marker_answers
 
-        # ── Step 3: try Vietnamese inline per-question from full text ───────
-        if not answers or len(answers) < 2:
+        # ── Step 4: Vietnamese inline per-question with Câu correlation ───────
+        # This is critical for pdf_mau_3.pdf where answers are "Chọn X." in solutions
+        # Only use if we need more answers
+        if len(answers) < 40:
             inline_answers = self._extract_vietnamese_inline()
-            if inline_answers and len(inline_answers) >= len(answers):
-                answers = inline_answers
+            valid_inlines = [e for e in inline_answers if e.number > 0]
+            if len(valid_inlines) >= 30:
+                # Merge: add answers for questions not already found
+                existing_nums = {e.number for e in answers if e.number > 0}
+                for entry in valid_inlines:
+                    if entry.number not in existing_nums:
+                        answers.append(entry)
+                answers.sort(key=lambda x: x.number if x.number > 0 else 999)
 
         # Normalize letter case
         for entry in answers:
@@ -208,21 +226,41 @@ class AnswerExtractor:
     def _extract_vietnamese_inline(self) -> list[AnswerEntry]:
         """
         Extract Vietnamese inline answers: 'Chọn B.', '→ Chọn đáp án A.'
-        These appear in per-question format (no sequential numbering).
-        Returns entries without question numbers — use carefully.
+        These appear at the end of each question's solution section.
+        Correlates each 'Chọn X.' with the preceding 'Câu N:' to get the question number.
         """
         entries: list[AnswerEntry] = []
         pat = re.compile(
             r"(?i)(?:→\s*)?Chọn\s*(?:đáp\s*án\s*)?([A-Da-d])\s*[\.\)]",
         )
+
+        # Find all Câu N: positions for correlation
+        cau_pattern = re.compile(r"(?i)Câu\s+(\d+)\s*[:\.]")
+        cau_positions: list[tuple[int, int]] = []  # (start_pos, question_number)
+        for m in cau_pattern.finditer(self.text):
+            try:
+                cau_positions.append((m.start(), int(m.group(1))))
+            except ValueError:
+                pass
+
         for m in pat.finditer(self.text):
             ans = m.group(1).upper()
+
+            # Find the Câu N: that precedes this 'Chọn' (if any)
+            q_num = 0
+            for pos, num in cau_positions:
+                if pos < m.start():
+                    q_num = num  # keep the last one before this match
+                else:
+                    break
+
             entries.append(AnswerEntry(
-                number=0,  # no question number
+                number=q_num,
                 answer=ans,
-                confidence=0.6,
+                confidence=0.6 if q_num == 0 else 0.9,
                 format_used="vietnamese_inline",
             ))
+
         return entries
 
     def _extract_format(
@@ -235,7 +273,7 @@ class AnswerExtractor:
         entries: list[AnswerEntry] = []
         try:
             for m in pattern.finditer(text):
-                if name in ("vietnamese_inline", "vietnamese_dapan"):
+                if name in ("vietnamese_inline", "vietnamese_dapan", "asterisk_prefix"):
                     num = 0
                     ans = m.group(1)
                 else:

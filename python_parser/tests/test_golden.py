@@ -92,13 +92,16 @@ def _assert_question_numbers_sequential(questions: list[ParsedQuestion]):
         assert not gaps, f"Gap in question numbering: missing {gaps}"
 
 
-def _assert_options_structure(questions: list[ParsedQuestion]):
+def _assert_options_structure(
+    questions: list[ParsedQuestion],
+    max_incomplete_ratio: float = 0.5,
+):
     """
     For multiple-choice questions, check that A/B/C/D options exist.
     A question is considered MCQ if it has 2+ non-empty options.
 
     Relaxed for math PDFs: some questions may have broken text and missing options.
-    Allow up to 50% of MCQ questions to be incomplete.
+    Allow up to max_incomplete_ratio of MCQ questions to lack a full A–D set.
     """
     mcq_without_options = []
     for q in questions:
@@ -109,9 +112,8 @@ def _assert_options_structure(questions: list[ParsedQuestion]):
 
     if not mcq_without_options:
         return  # all MCQ have complete options
-    # Allow up to 50% of MCQ questions to be incomplete (math broken text)
     mcq_count = sum(1 for q in questions if q.type == QuestionType.MULTIPLE_CHOICE)
-    if mcq_count > 0 and len(mcq_without_options) / mcq_count <= 0.5:
+    if mcq_count > 0 and len(mcq_without_options) / mcq_count <= max_incomplete_ratio:
         return  # relaxed threshold
     assert len(mcq_without_options) == 0, (
         f"MCQ questions missing A/B/C/D options: {mcq_without_options}"
@@ -279,7 +281,10 @@ def _golden_test(
                 f"threshold {max_allowed}/{len(mcq_qs)} = {max_allowed/len(mcq_qs):.0%}"
             )
     else:
-        _assert_options_structure(questions)
+        _assert_options_structure(
+            questions,
+            max_incomplete_ratio=fixture.get("max_mcq_incomplete_options_ratio", 0.5),
+        )
 
     # ════════════════════════════════════════════════════════════════════════
     # 11. REPORT FIELDS
@@ -927,7 +932,10 @@ class TestQuestionJsonSchema:
 
         _assert_json_schema(questions, meta, report)
         _assert_question_numbers_sequential(questions)
-        _assert_options_structure(questions)
+        _assert_options_structure(
+            questions,
+            max_incomplete_ratio=fixture.get("max_mcq_incomplete_options_ratio", 0.5),
+        )
 
     @pytest.mark.parametrize("fixture_key,parser_fn", [
         ("GOLDEN_TEMPLATE_04", _t04),

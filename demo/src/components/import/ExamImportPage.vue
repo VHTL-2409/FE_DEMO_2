@@ -64,6 +64,20 @@
           </button>
         </div>
 
+        <!-- Quick action buttons below upload zone -->
+        <div v-if="!activeSessionId" class="eip__quick-actions">
+          <button type="button" class="eip__action-card-btn" @click="goToImport">
+            <LucideIcon name="upload_file" size="20" />
+            <span class="eip__action-card-title">Nhập từ site</span>
+            <span class="eip__action-card-sub">Parse đề thi từ website</span>
+          </button>
+          <button type="button" class="eip__action-card-btn" @click="goToCreateExam">
+            <LucideIcon name="add_circle" size="20" />
+            <span class="eip__action-card-title">Tạo đề thi mới</span>
+            <span class="eip__action-card-sub">Tạo đề thi thủ công</span>
+          </button>
+        </div>
+
         <!-- Parsing progress -->
         <div v-else-if="sessionStatus === 'UPLOADED' || sessionStatus === 'PARSING'" class="eip__parsing">
           <div class="eip__parsing-inner">
@@ -101,9 +115,11 @@
         <!-- Questions list -->
         <div v-if="parsedQuestions.length > 0" class="eip__questions">
           <div class="eip__qlist-header">
-            <div class="eip__qlist-title">
-              <LucideIcon name="quiz" size="16" />
-              <span>Danh sách câu hỏi ({{ parsedQuestions.length }})</span>
+            <div class="eip__qlist-top">
+              <div class="eip__qlist-title">
+                <LucideIcon name="quiz" size="16" />
+                <span>Danh sách câu hỏi ({{ parsedQuestions.length }})</span>
+              </div>
             </div>
             <div class="eip__qlist-filters">
               <select v-model="filterType" class="eip__filter-select">
@@ -510,6 +526,14 @@ function typeLabel(type) {
   return m[String(type || '').toLowerCase()] || 'Trắc nghiệm'
 }
 
+function goToCreateExam() {
+  router.push('/teacher/exams/create')
+}
+
+function goToImport() {
+  router.push('/teacher/import')
+}
+
 // ─── Confirm import ──────────────────────────────────────────
 async function handleConfirm() {
   if (!activeSessionId.value) return
@@ -766,6 +790,60 @@ watch(expandedIds, (set) => {
   cursor: not-allowed;
 }
 
+/* ── Quick action buttons ── */
+.eip__quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.eip__action-card-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 1rem;
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.dark .eip__action-card-btn {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+  color: #f1f5f9;
+}
+
+.eip__action-card-btn:hover {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
+
+.eip__action-card-btn:first-child:hover {
+  border-color: var(--ds-info);
+  background: var(--ds-info-soft);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+}
+
+.eip__action-card-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ds-text);
+}
+
+.dark .eip__action-card-title { color: #f1f5f9; }
+
+.eip__action-card-sub {
+  font-size: 0.7rem;
+  color: var(--ds-text-muted);
+}
+
 /* ── Parsing ── */
 .eip__parsing {
   display: flex;
@@ -925,16 +1003,22 @@ watch(expandedIds, (set) => {
 
 .eip__qlist-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--ds-border);
-  flex-wrap: wrap;
 }
 
 .dark .eip__qlist-header {
   border-bottom-color: var(--ds-border-strong);
+}
+
+.eip__qlist-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .eip__qlist-title {
@@ -947,6 +1031,53 @@ watch(expandedIds, (set) => {
 }
 
 .dark .eip__qlist-title { color: #f1f5f9; }
+
+.eip__qlist-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.eip__create-exam-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--ds-radius-lg);
+  border: none;
+  background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+}
+
+.eip__create-exam-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+}
+
+.eip__import-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1.5px solid var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.eip__import-link-btn:hover {
+  background: var(--ds-primary);
+  color: white;
+}
 
 .eip__qlist-filters {
   display: flex;

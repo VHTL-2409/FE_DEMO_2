@@ -30,6 +30,7 @@ class TemplateType(str, Enum):
     TEMPLATE_03_MATH_ANSWER_GRID = "template_03_math_answer_grid"
     TEMPLATE_04_DOCX_VIETNAMESE = "template_04_docx_vietnamese"
     TEMPLATE_05_DOCX_DATABASE = "template_05_docx_database"
+    TEMPLATE_06_ENGLISH_EXAM = "template_06_english_exam"
 
 
 # ─── Render ───────────────────────────────────────────────────────────────────
@@ -56,6 +57,11 @@ class ParsedQuestion(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     render: RenderInfo = Field(default_factory=RenderInfo)
     issues: list[str] = Field(default_factory=list)
+    # Section awareness fields
+    section: Optional[str] = Field(default=None, description="Section name, e.g. 'Phần I - Trắc nghiệm'")
+    sectionKind: Optional[str] = Field(default=None, description="Section kind: 'mcq', 'essay', 'answer', 'solution'")
+    answerLocation: str = Field(default="inline", description="Where answer was found: 'inline', 'answer_table', 'none'")
+    needsGrading: bool = Field(default=False, description="True for essay questions requiring teacher grading")
 
 
 # ─── Metadata ────────────────────────────────────────────────────────────────

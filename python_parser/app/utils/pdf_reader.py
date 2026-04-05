@@ -157,6 +157,65 @@ class PdfReader:
             parts.append(f"\n[--- Trang {page_num} ---]\n")
         return "\n".join(parts)
 
+    def get_all_text_layout_aware(self) -> str:
+        """
+        Extract text with proper line grouping for 2-column layouts.
+        Groups spans by Y coordinate (within 5pt threshold), sorts by X, joins with space.
+        This fixes issues where options from different columns get merged.
+        """
+        Y_THRESHOLD = 5  # points - spans within this Y range are on same line
+
+        all_page_texts = []
+
+        for page_num in range(1, self.page_count + 1):
+            page = self._open()[page_num - 1]
+            blocks = page.get_text("dict")["blocks"]
+
+            # Collect all spans with coordinates
+            spans = []
+            for block in blocks:
+                if block["type"] == 0:
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            x0, y0 = span["origin"]
+                            text = span["text"]
+                            if text.strip():
+                                spans.append((y0, x0, text))
+
+            # Sort by Y then X
+            spans.sort(key=lambda s: (round(s[0] / Y_THRESHOLD) * Y_THRESHOLD, s[1]))
+
+            # Group spans by Y (same line)
+            lines: list[list[tuple[float, str]]] = []
+            current_line: list[tuple[float, str]] = []
+            current_y_group = None
+
+            for y, x, text in spans:
+                y_group = round(y / Y_THRESHOLD) * Y_THRESHOLD
+                if current_y_group is None or abs(y_group - current_y_group) < Y_THRESHOLD:
+                    current_line.append((x, text))
+                    current_y_group = y_group
+                else:
+                    if current_line:
+                        lines.append(current_line)
+                    current_line = [(x, text)]
+                    current_y_group = y_group
+
+            if current_line:
+                lines.append(current_line)
+
+            # Format each line: sort by X, join with space
+            formatted_lines = []
+            for line in lines:
+                line.sort(key=lambda l: l[0])
+                line_text = " ".join(t for _, t in line)
+                formatted_lines.append(line_text)
+
+            all_page_texts.append("\n".join(formatted_lines))
+            all_page_texts.append(f"\n[--- Trang {page_num} ---]\n")
+
+        return "".join(all_page_texts)
+
     def render_page_as_image(
         self,
         page_num: int,

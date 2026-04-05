@@ -58,12 +58,17 @@ class Template03MathAnswerGridParser(BaseParser):
         """Score: high for math with answer grid and solution section."""
         return profile.score_template_03
 
+    def _get_text_layout_aware(self) -> str:
+        """Get text with proper line grouping for 2-column layouts."""
+        return self.reader.get_all_text_layout_aware()
+
     def _parse_impl(self) -> tuple[list[ParsedQuestion], ExamMeta]:
         """Main parsing logic for template 03."""
         start = time.time()
         questions: list[ParsedQuestion] = []
 
-        full_text = self.get_all_text()
+        # Use layout-aware text extraction for 2-column PDFs
+        full_text = self._get_text_layout_aware()
         meta = self.extract_meta(full_text)
 
         # ─── Step 1: Identify sections ──────────────────────────────────────
@@ -88,12 +93,25 @@ class Template03MathAnswerGridParser(BaseParser):
         self._solutions = self._extract_solutions(solution_section)
 
         # ─── Step 4: Parse questions ───────────────────────────────────────
-        question_section = self._sections.get("questions", full_text)
+        # The questions section now contains the actual questions (or is empty if not found)
+        question_section = self._sections.get("questions", "")
+
+        # If questions section is empty or too short, extract from full_text
+        if not question_section.strip() or len(question_section.strip()) < 200:
+            # Find questions before the solution section
+            question_section = self._truncate_before_answer_or_solution(full_text)
+            question_section = self._trim_before_first_real_cau_one(question_section)
+        else:
+            # Questions section exists, just trim before first real question
+            question_section = self._trim_before_first_real_cau_one(question_section)
+
+        section_spans = detect_sections(question_section)
         blocks = self._split_question_blocks(question_section)
 
         for block in blocks:
             q = self._parse_question_block(block)
             if q:
+                self._apply_section_tags(q, question_section, section_spans)
                 questions.append(q)
 
         # Sort
@@ -110,7 +128,6 @@ class Template03MathAnswerGridParser(BaseParser):
         Returns dict: {"questions": "", "answer": "", "solution": ""}
         """
         sections: dict[str, str] = {"questions": "", "answer": "", "solution": ""}
-        current_section = "questions"
 
         # Patterns that mark section boundaries
         question_start = re.compile(
@@ -162,6 +179,58 @@ class Template03MathAnswerGridParser(BaseParser):
             sections["questions"] = text
 
         return sections
+
+    def _truncate_before_answer_or_solution(self, text: str) -> str:
+        """
+        Cắt phần lời giải chi tiết (trùng nhãn Câu 1…50).
+        Không dùng 'Phần đáp án' đầu đề — thường nằm trong khung hướng dẫn ngắn.
+        """
+        m = re.search(r"(?is)HƯỚNG\s*DẪN\s*GIẢI\s*CHI\s*TIẾT", text)
+        if m is not None and m.start() > 1500:
+            return text[: m.start()].strip()
+        return text
+
+    def _trim_before_first_real_cau_one(self, text: str) -> str:
+        """
+        Bỏ phần đầu đề trước câu 1 thật.
+        Bỏ qua 'Ví dụ: Câu 1:…' trong khung hướng dẫn.
+        """
+        for m in re.finditer(r"(?is)Câu\s+1\s*[:\.]\s*", text):
+            before = text[max(0, m.start() - 120) : m.start()].lower()
+            if "ví dụ" in before:
+                continue
+            after = text[m.end() : m.end() + 100].strip()
+            if len(after) < 12:
+                continue
+            if after.startswith("…") or after.startswith(","):
+                continue
+            return text[m.start() :].strip()
+        return text
+
+    def _apply_section_tags(
+        self,
+        question: ParsedQuestion,
+        question_section_text: str,
+        sections: list,
+    ) -> None:
+        """Gắn Phần I (TN) / Phần II (TL) theo vị trí dòng trong phần câu hỏi."""
+        m = re.search(rf"(?is)Câu\s+{question.number}\s*[:\.]", question_section_text)
+        if not m:
+            return
+        line_idx = question_section_text.count("\n", 0, m.start())
+        for section in sections:
+            if section.kind not in (SectionKind.MCQ, SectionKind.ESSAY):
+                continue
+            if section.start_line <= line_idx < section.end_line:
+                question.section = section.title
+                question.sectionKind = section.kind.value
+                if section.kind == SectionKind.ESSAY:
+                    question.type = QuestionType.ESSAY
+                    question.needsGrading = True
+                    question.options = {}
+                else:
+                    question.needsGrading = False
+                break
 
     def _split_question_blocks(self, text: str) -> list[ParsedBlock]:
         """Split question section into individual question blocks."""
@@ -276,47 +345,65 @@ class Template03MathAnswerGridParser(BaseParser):
         )
 
     def _parse_options(self, text: str) -> dict[str, str]:
-        """Parse answer options from question text."""
+        """Parse answer options from question text.
+
+        Handles both single-line and multi-line options (common in math PDFs where
+        formulas span multiple lines). Each option starts with "A." / "B." / etc.
+
+        The PDF text extraction from pdf_mau_3 puts "A. " on its own line followed by
+        the formula content on subsequent lines.
+        """
         options: dict[str, str] = {}
 
-        # Try separate lines first
-        option_re = re.compile(r"^\s*([A-D])\.\s*(.+)$", re.MULTILINE)
-        for m in option_re.finditer(text):
-            letter = m.group(1)
-            content = m.group(2).strip()
-            if content:
-                options[letter] = content
+        # Strategy: Find all option header positions, then extract content between them
+        # Pattern: lines that START with "X. " (option header)
+        lines = text.split("\n")
 
-        # If not enough, try inline merged format
-        if len(options) < 2:
-            inline_re = re.compile(
-                r"([A-D])\.\s*([^\nA-D]{1,80}?)(?=\s+[A-D]\.|\s*$)"
-            )
-            for m in inline_re.finditer(text):
+        # Find all option header positions
+        option_positions: list[tuple[int, str]] = []  # (line_index, letter)
+        for i, line in enumerate(lines):
+            m = re.match(r"^\s*([A-D])\.\s*$", line)
+            if m:
+                option_positions.append((i, m.group(1)))
+
+        # If no header-only options found, try to find inline options
+        if not option_positions:
+            inline_pattern = re.compile(r"^\s*([A-D])\.\s*(.+)$", re.MULTILINE)
+            for m in inline_pattern.finditer(text):
                 letter = m.group(1)
                 content = m.group(2).strip()
-                if content and letter not in options:
+                if content:
                     options[letter] = content
+            return options
+
+        # Extract content between option headers
+        for idx, (line_idx, letter) in enumerate(option_positions):
+            # Collect lines after the option header until next option or end
+            content_lines = []
+            for i in range(line_idx + 1, len(lines)):
+                line = lines[i]
+                # Stop if we hit another option header
+                if re.match(r"^\s*[A-D]\.\s*$", line):
+                    break
+                # Collect non-empty lines
+                stripped = line.strip()
+                if stripped:
+                    content_lines.append(stripped)
+
+            option_text = " ".join(content_lines)
+            if option_text:
+                options[letter] = option_text
 
         return options
 
     def _extract_stem(self, text: str, options: dict[str, str]) -> str:
-        """Extract question stem."""
+        """Extract question stem (text before the first option letter)."""
         lines = text.split("\n")
-        option_letter = None
-
-        for line in lines:
-            m = re.match(r"^\s*([A-D])\.\s*", line)
-            if m:
-                option_letter = m.group(1)
-                break
-
-        if option_letter is None:
-            return text.strip()
-
         result: list[str] = []
+
         for line in lines:
-            if re.match(rf"^\s*{option_letter}\.\s*", line):
+            # Stop when we hit an option letter
+            if re.match(r"^\s*[A-D]\.\s*", line):
                 break
             result.append(line)
 

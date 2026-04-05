@@ -37,6 +37,7 @@ class PdfProfile:
     score_template_03: float = 0.0
     score_template_04: float = 0.0  # DOCX Vietnamese
     score_template_05: float = 0.0  # DOCX Database
+    score_template_06: float = 0.0  # English exam (pdf_mau_2_new)
 
 
 def build_pdf_profile(pdf_path: str) -> PdfProfile:
@@ -200,6 +201,7 @@ def build_pdf_profile(pdf_path: str) -> PdfProfile:
     profile.score_template_03 = _score_template_03(profile)
     profile.score_template_04 = _score_template_04(profile)
     profile.score_template_05 = _score_template_05(profile)
+    profile.score_template_06 = _score_template_06(profile)
 
     # Select most likely
     scores = [
@@ -290,3 +292,47 @@ def _score_template_05(profile: PdfProfile) -> float:
     scoring function only handles PDF-based profiles (returns 0.0).
     """
     return 0.0
+
+
+def _score_template_06(profile: PdfProfile) -> float:
+    """
+    Score for Template 06: English THPT exam (pdf_mau_2_new style).
+    Characteristics:
+      - Vietnamese header with English content
+      - "Question N:" format (English)
+      - Answer key at end: "1-D 2-C 3-A" format
+      - 50 MCQ questions
+      - Clean text, no formulas
+    """
+    score = 0.0
+
+    # Strong signal: has Question N: pattern
+    if profile.has_question_pattern:
+        score += 0.4
+
+    # English language detected
+    if profile.language == "en":
+        score += 0.15
+
+    # Vietnamese THPT exam header present (mixed language is typical)
+    if profile.language == "mixed":
+        score += 0.1
+
+    # Clean text (no formula noise)
+    if profile.formula_noise_score < 0.02:
+        score += 0.15
+    elif profile.formula_noise_score < 0.05:
+        score += 0.1
+
+    # Has answer section at end
+    if profile.has_answer_section:
+        score += 0.1
+
+    # No essay section (pure MCQ)
+    if not profile.has_essay_section:
+        score += 0.1
+
+    # Vietnamese exam patterns in content (typical for THPT exams with mixed content)
+    score += 0.15  # Base score for this specific exam type
+
+    return min(score, 1.0)

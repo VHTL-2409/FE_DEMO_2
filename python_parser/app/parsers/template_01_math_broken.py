@@ -33,6 +33,7 @@ from ..profiler import PdfProfile
 from ..utils.pdf_reader import PdfReader
 from ..utils.text_normalizer import normalize
 from ..utils.image_cropper import crop_question
+from ..utils.section_detector import detect_sections, SectionKind
 
 
 @dataclass
@@ -67,19 +68,23 @@ class Template01MathBrokenParser(BaseParser):
         super().__init__(pdf_path, session_id)
         self._essay_cutoff_idx: int = 0  # index in blocks after which is essay
         self._answer_key: dict[int, str] = {}
+        self._essay_section_open: bool = False
 
     def can_handle(self, profile: PdfProfile, file_path: str = "") -> float:
         """Score: high for Vietnamese math with formula noise and answer key."""
         return profile.score_template_01
 
+    def _get_text_layout_aware(self) -> str:
+        """Get text with proper line grouping for 2-column layouts."""
+        return self.reader.get_all_text_layout_aware()
+
     def _parse_impl(self) -> tuple[list[ParsedQuestion], ExamMeta]:
-        """Main parsing logic for template 01."""
+        """Main parsing logic for template 01 with section-aware parsing."""
         start = time.time()
         questions: list[ParsedQuestion] = []
 
-        # Get full text and extract answer key first
-        full_text = self.get_all_text()
-        self._answer_key = self._extract_answer_key(full_text)
+        # Use layout-aware text extraction for 2-column PDFs
+        full_text = self._get_text_layout_aware()
 
         # Extract metadata
         meta = self.extract_meta(full_text)
@@ -91,21 +96,38 @@ class Template01MathBrokenParser(BaseParser):
             if page_count > 0 else (612.0, 792.0)
         )
 
-        # ─── Step 1: Parse blocks using PyMuPDF with layout info ───────────────
-        math_blocks = self._parse_layout_blocks(page_width, page_height)
+        # ─── Step 1: Detect sections using section_detector ────────────────────
+        sections = detect_sections(full_text)
 
-        # ─── Step 2: Split into MCQ and essay sections ──────────────────────────
+        # Extract answer key from ANSWER_KEY section if found
+        self._answer_key = self._extract_answer_key_from_sections(full_text, sections)
+        if not self._answer_key:
+            # Fallback to tail extraction
+            self._answer_key = self._extract_answer_key(full_text)
+
+        # ─── Step 2: Parse blocks using PyMuPDF with layout info ───────────────
+        self._essay_section_open = False
+        math_blocks = self._parse_layout_blocks(page_width, page_height)
+        # Split merged "Câu 4 + Phần II" blocks; emit essay blocks with is_essay=True
+        math_blocks = self._expand_blocks_at_essay_boundary(math_blocks)
+        # Drop exam header text that shares the same PDF block as "Câu N"
+        for b in math_blocks:
+            b.raw_text = self._trim_preamble_before_question(b.raw_text, b.question_num)
+
+        # ─── Step 3: Split into MCQ and essay sections ──────────────────────────
         mcq_blocks, essay_blocks = self._split_mcq_essay(math_blocks, full_text)
 
-        # ─── Step 3: Parse MCQ blocks ──────────────────────────────────────────
+        # ─── Step 4: Parse MCQ blocks with section info ────────────────────────
         for block in mcq_blocks:
-            q = self._parse_mcq_block(block, page_width, page_height)
+            ctx = self._section_context_for_block(is_essay=False, sections=sections)
+            q = self._parse_mcq_block(block, page_width, page_height, ctx)
             if q:
                 questions.append(q)
 
-        # ─── Step 4: Parse essay blocks ────────────────────────────────────────
+        # ─── Step 5: Parse essay blocks with section info ──────────────────────
         for block in essay_blocks:
-            q = self._parse_essay_block(block)
+            ctx = self._section_context_for_block(is_essay=True, sections=sections)
+            q = self._parse_essay_block(block, ctx)
             if q:
                 questions.append(q)
 
@@ -119,6 +141,156 @@ class Template01MathBrokenParser(BaseParser):
         meta.template = TemplateType.TEMPLATE_01_MATH_BROKEN
 
         return questions, meta
+
+    def _extract_answer_key_from_sections(
+        self,
+        full_text: str,
+        sections: list,
+    ) -> dict[int, str]:
+        """Extract answer key specifically from ANSWER_KEY section."""
+        from ..utils.answer_extractor import AnswerExtractor
+
+        lines = full_text.split("\n")
+        for section in sections:
+            if section.kind == SectionKind.ANSWER_KEY:
+                # Extract text for this section
+                section_lines = lines[section.start_line:section.end_line]
+                section_text = "\n".join(section_lines)
+                extractor = AnswerExtractor(section_text)
+                answers = extractor.get_as_dict()
+                if answers:
+                    return answers
+        return {}
+
+    def _section_context_for_block(self, is_essay: bool, sections: list) -> dict:
+        """Pick MCQ vs essay section title from detect_sections (not only the first)."""
+        want = SectionKind.ESSAY if is_essay else SectionKind.MCQ
+        for section in sections:
+            if section.kind == want:
+                return {
+                    "section": section.title,
+                    "sectionKind": section.kind.value,
+                    "answerLocation": "none" if is_essay else "inline",
+                }
+        return {
+            "section": "PHẦN II" if is_essay else "PHẦN I",
+            "sectionKind": SectionKind.ESSAY.value if is_essay else SectionKind.MCQ.value,
+            "answerLocation": "none" if is_essay else "inline",
+        }
+
+    def _trim_preamble_before_question(self, text: str, question_num: int) -> str:
+        """Strip đề header / hướng dẫn merged in the same block as 'Câu N'."""
+        if not text or question_num <= 0:
+            return text
+        for label in ("Câu", "Bài"):
+            m = re.search(rf"(?i){label}\s+{question_num}(?!\d)", text)
+            if m:
+                return text[m.start():].strip()
+        return text.strip()
+
+    def _expand_blocks_at_essay_boundary(
+        self,
+        blocks: list[MathBrokenBlock],
+    ) -> list[MathBrokenBlock]:
+        """When Phần II is merged into the last MCQ block, split and build essay blocks."""
+        out: list[MathBrokenBlock] = []
+        for b in blocks:
+            out.extend(self._split_one_block_at_essay_section(b))
+        return out
+
+    def _split_one_block_at_essay_section(
+        self,
+        b: MathBrokenBlock,
+    ) -> list[MathBrokenBlock]:
+        text = b.raw_text
+        if self._essay_section_open:
+            return [
+                MathBrokenBlock(
+                    question_num=b.question_num,
+                    raw_text=b.raw_text,
+                    page=b.page,
+                    y0=b.y0,
+                    y1=b.y1,
+                    bbox=b.bbox,
+                    is_essay=True,
+                )
+            ]
+
+        parts = re.split(
+            r"(?is)(?=(?:^|\n)\s*Phần\s*(?:II|2|hai)\b\s*[:\.\-]?)",
+            text,
+            maxsplit=1,
+        )
+        if len(parts) < 2 or not parts[1].strip():
+            return [b]
+
+        mcq_part = parts[0].strip()
+        tail = parts[1].strip()
+        result: list[MathBrokenBlock] = []
+        if mcq_part:
+            result.append(
+                MathBrokenBlock(
+                    question_num=b.question_num,
+                    raw_text=mcq_part,
+                    page=b.page,
+                    y0=b.y0,
+                    y1=b.y1,
+                    bbox=b.bbox,
+                    is_essay=False,
+                )
+            )
+        essay_chunks = self._essay_blocks_from_tail(tail, b.page, b.bbox, b.y1)
+        result.extend(essay_chunks)
+        if tail.strip():
+            # Đã gặp Phần II — các block tiếp theo (tách trang) vẫn là tự luận
+            self._essay_section_open = True
+        return result if result else [b]
+
+    def _essay_blocks_from_tail(
+        self,
+        tail: str,
+        page: int,
+        bbox: tuple[float, float, float, float],
+        y_anchor: float,
+    ) -> list[MathBrokenBlock]:
+        """Parse 'Phần II … Câu 5 … Câu 6 …' tail into separate essay blocks."""
+        tail = re.sub(
+            r"(?is)^\s*Phần\s*(?:II|2|hai)\s*[:\.\-]?\s*(?:Tự\s*luận|TỰ\s*LUẬN)?\s*",
+            "",
+            tail,
+            count=1,
+        ).strip()
+        tail = re.sub(r"(?is)^\s*Tự\s*luận\s*[:\.\-]?\s*\n?", "", tail, count=1).strip()
+
+        first_hdr = re.search(r"(?mi)^\s*(?:Câu|Bài)\s+(\d+)", tail)
+        if not first_hdr:
+            return []
+        if first_hdr.start() > 0:
+            tail = tail[first_hdr.start():].strip()
+
+        headers = list(re.finditer(r"(?mi)^\s*(?:Câu|Bài)\s+(\d+)", tail))
+        blocks: list[MathBrokenBlock] = []
+        for i, m in enumerate(headers):
+            try:
+                num = int(m.group(1))
+            except ValueError:
+                continue
+            start = m.start()
+            end = headers[i + 1].start() if i + 1 < len(headers) else len(tail)
+            chunk = tail[start:end].strip()
+            if chunk:
+                blocks.append(
+                    MathBrokenBlock(
+                        question_num=num,
+                        raw_text=chunk,
+                        page=page,
+                        y0=y_anchor,
+                        y1=y_anchor,
+                        bbox=bbox,
+                        is_essay=True,
+                    )
+                )
+        return blocks
 
     def _parse_layout_blocks(
         self,
@@ -223,20 +395,23 @@ class Template01MathBrokenParser(BaseParser):
         essay_blocks: list[MathBrokenBlock] = []
         in_essay = False
 
-        # Detect essay section header
         essay_patterns = [
             r"Phần\s*II\s*[:\.\-]",
+            r"Phần\s*2\s*[:\.\-]",
             r"Phần\s*Tự\s*Luận",
-            r"Tự\s*luận",
+            r"(?i)(?:^|\n)\s*Tự\s*luận\s*[:\.\-]",
         ]
 
         for block in blocks:
-            for pat in essay_patterns:
-                if re.search(pat, block.raw_text, re.IGNORECASE):
-                    in_essay = True
-                    break
+            if block.is_essay:
+                in_essay = True
+            elif not in_essay:
+                for pat in essay_patterns:
+                    if re.search(pat, block.raw_text, re.IGNORECASE):
+                        in_essay = True
+                        break
+            block.is_essay = in_essay
             if in_essay:
-                block.is_essay = True
                 essay_blocks.append(block)
             else:
                 mcq_blocks.append(block)
@@ -248,8 +423,9 @@ class Template01MathBrokenParser(BaseParser):
         block: MathBrokenBlock,
         page_width: float,
         page_height: float,
+        section_info: dict,
     ) -> Optional[ParsedQuestion]:
-        """Parse a single MCQ block."""
+        """Parse a single MCQ block with section awareness."""
         if block.question_num <= 0:
             return None
 
@@ -287,10 +463,13 @@ class Template01MathBrokenParser(BaseParser):
 
         # Get answer from answer key
         answer = self._answer_key.get(num)
+        answer_location = "answer_table" if num in self._answer_key else "inline"
         if answer is None:
             # Try inline
             from ..utils.answer_extractor import extract_inline_answer
             answer = extract_inline_answer(text)
+            if answer:
+                answer_location = "inline"
 
         parsed_block = ParsedBlock(
             raw_text=text,
@@ -299,7 +478,7 @@ class Template01MathBrokenParser(BaseParser):
             bbox=block.bbox,
         )
 
-        return self.build_question(
+        question = self.build_question(
             block=parsed_block,
             options=valid_options,
             q_type=QuestionType.MULTIPLE_CHOICE if valid_options else QuestionType.ESSAY,
@@ -310,22 +489,45 @@ class Template01MathBrokenParser(BaseParser):
             issues=issues,
         )
 
+        # Apply section awareness fields
+        question.section = section_info.get("section")
+        question.sectionKind = section_info.get("sectionKind") or SectionKind.MCQ.value
+        question.answerLocation = answer_location
+        question.needsGrading = False
+
+        return question
+
     def _parse_essay_block(
         self,
         block: MathBrokenBlock,
+        section_info: dict,
     ) -> Optional[ParsedQuestion]:
-        """Parse a single essay block."""
+        """Parse a single essay block with section awareness."""
         if block.question_num <= 0:
             return None
 
         text = block.raw_text
-        # Remove the question header from text
+        # Remove first-line header: "Câu 5 (4đ)." / "Câu 7 (1đ)." (điểm trong ngoặc tiếng Việt)
+        lines = text.split("\n")
+        if lines:
+            lines[0] = re.sub(
+                r"^\s*(?:Câu|Bài)\s+\d+(?:\s*\([^)]*\))?\s*[\.:]?\s*",
+                "",
+                lines[0],
+                flags=re.IGNORECASE,
+            )
+        text = "\n".join(lines).strip()
         text = re.sub(
-            r"Câu\s*(\d+)\s*[\(\[]?\d+[\)\]]?\s*",
+            r"^\s*\(?\s*\d+\s*đ\s*\)?\s*[\.:]?\s*",
             "",
             text,
-            flags=re.IGNORECASE
+            flags=re.IGNORECASE,
         ).strip()
+        text = re.split(
+            r"(?i)\n?\s*-{3,}\s*hết\s*-{0,}",
+            text,
+            maxsplit=1,
+        )[0].strip()
 
         parsed_block = ParsedBlock(
             raw_text=text,
@@ -334,7 +536,7 @@ class Template01MathBrokenParser(BaseParser):
             bbox=block.bbox,
         )
 
-        return self.build_question(
+        question = self.build_question(
             block=parsed_block,
             options={},
             q_type=QuestionType.ESSAY,
@@ -342,6 +544,14 @@ class Template01MathBrokenParser(BaseParser):
             render_mode=RenderMode.IMAGE,  # essay = always image mode for math
             bbox=block.bbox,
         )
+
+        # Apply section awareness fields
+        question.section = section_info.get("section")
+        question.sectionKind = section_info.get("sectionKind") or SectionKind.ESSAY.value
+        question.answerLocation = "none"
+        question.needsGrading = True
+
+        return question
 
     def _parse_options(self, text: str) -> dict[str, str]:
         """

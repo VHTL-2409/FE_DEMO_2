@@ -76,6 +76,8 @@ GOLDEN_TEMPLATE_03 = {
     "min_question_count": 1,        # ≥ 1 (section detection may yield 1-50)
     "min_answer_count": 0,          # 0 if answer key section not detected
     "min_confidence": 0.30,        # avg confidence ≥ 0.30
+    # Toán THPT: text vỡ dòng → nhiều MCQ không gom đủ khóa A–D
+    "max_mcq_incomplete_options_ratio": 0.85,
     "max_image_ratio": 1.00,       # any ratio (2 questions = no meaningful test)
     "expected_answers": {},         # answer key format may vary
     "forbidden_issues": [

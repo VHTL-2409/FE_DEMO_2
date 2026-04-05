@@ -30,7 +30,11 @@ from ..schemas import (
 )
 from ..profiler import PdfProfile
 from ..utils.answer_extractor import AnswerExtractor
-from ..utils.section_detector import detect_sections, has_essay_section, SectionKind
+from ..utils.section_detector import (
+    detect_sections,
+    has_essay_section,
+    SectionKind,
+)
 
 
 class Template02CleanMcqParser(BaseParser):
@@ -52,12 +56,17 @@ class Template02CleanMcqParser(BaseParser):
         """Score: high for clean English MCQ PDFs."""
         return profile.score_template_02
 
+    def _get_text_layout_aware(self) -> str:
+        """Get text with proper line grouping for 2-column layouts."""
+        return self.reader.get_all_text_layout_aware()
+
     def _parse_impl(self) -> tuple[list[ParsedQuestion], ExamMeta]:
         """Main parsing logic for template 02."""
         start = time.time()
         questions: list[ParsedQuestion] = []
 
-        full_text = self.get_all_text()
+        # Use layout-aware text extraction for 2-column PDFs
+        full_text = self._get_text_layout_aware()
         meta = self.extract_meta(full_text)
 
         # Extract answer key
@@ -88,10 +97,12 @@ class Template02CleanMcqParser(BaseParser):
         # Sort by question number
         questions.sort(key=lambda x: x.number)
 
+        self._apply_section_tags(questions, full_text)
+
         # Apply sequential answers to questions by position
         if sequential_answers:
             for i, q in enumerate(questions):
-                if q.answer is None:
+                if q.answer is None and q.type == QuestionType.MULTIPLE_CHOICE:
                     ans = sequential_answers.get(i + 1)
                     if ans:
                         q.answer = ans
@@ -101,6 +112,34 @@ class Template02CleanMcqParser(BaseParser):
         meta.template = TemplateType.TEMPLATE_02_CLEAN_MCQ
 
         return questions, meta
+
+    def _apply_section_tags(
+        self,
+        questions: list[ParsedQuestion],
+        full_text: str,
+    ) -> None:
+        """Gắn Part I / Part II (hoặc Phần I/II) để FE phân biệt TN vs tự luận."""
+        sections = detect_sections(full_text)
+        for q in questions:
+            m = re.search(
+                rf"Question\s+{q.number}\s*[:\.\)]",
+                full_text,
+                re.IGNORECASE,
+            )
+            if not m:
+                continue
+            line_idx = full_text.count("\n", 0, m.start())
+            for section in sections:
+                if section.kind not in (SectionKind.MCQ, SectionKind.ESSAY):
+                    continue
+                if section.start_line <= line_idx < section.end_line:
+                    q.section = section.title
+                    q.sectionKind = section.kind.value
+                    if section.kind == SectionKind.ESSAY:
+                        q.type = QuestionType.ESSAY
+                        q.needsGrading = True
+                        q.options = {}
+                    break
 
     def _split_question_blocks(self, text: str) -> list[ParsedBlock]:
         """
@@ -225,15 +264,68 @@ class Template02CleanMcqParser(BaseParser):
     def _parse_options(self, text: str) -> dict[str, str]:
         """
         Parse A/B/C/D options from question text.
-        Handles three formats:
-          1. Standard: "A. content" on one line
-          2. Inline merged: "A. content   B. content" on one line
+        Handles multiple formats:
+          1. Standard: "A. content" on separate lines
+          2. Inline merged: "A. content   B. content   C. content   D. content" on one line
           3. 2-column orphan: "A. word" without other options on same line
              (from pronunciation/stress questions with 2-column layout)
         """
         options: dict[str, str] = {}
 
-        # Pass 1: Standard "A. content" on one line
+        # Pre-process: First, extract only the options line (before instruction text)
+        # Remove instruction text like "Mark the letter..." that may follow options
+        first_option_pos = -1
+        first_option_letter = None
+        for match in re.finditer(r'\b([A-D])\.\s', text):
+            if first_option_pos == -1:
+                first_option_pos = match.start()
+                first_option_letter = match.group(1)
+
+        # If we found options, only process from first option to either:
+        # - end of line (newline followed by non-option text)
+        # - or end of all 4 options
+        if first_option_pos >= 0:
+            # Find where the options section ends
+            lines = text.split('\n')
+            options_text = ""
+            in_options = False
+            for line in lines:
+                stripped = line.strip()
+                # Start of options
+                if re.match(rf'^\s*{first_option_letter}\.\s', line) and not in_options:
+                    in_options = True
+                    options_text = stripped + "\n"
+                elif in_options:
+                    # Check if this line starts with an option letter
+                    if re.match(r'^\s*[A-D]\.\s', stripped):
+                        options_text += stripped + "\n"
+                    else:
+                        # Stop if we hit non-option text
+                        break
+            if options_text:
+                text = options_text
+
+        # Pass 1: Inline merged on single line - "A. liberty   B.  reliable   C.  revival   D.  final"
+        # Match all 4 options on one line - split by " A." pattern
+        inline_line = text.strip()
+        first_line = inline_line.split('\n')[0] if '\n' in inline_line else inline_line
+        if first_line and '\n' not in first_line[:80]:
+            # Single line - try to split by " A. ", " B. ", " C. ", " D. " patterns
+            parts = re.split(r'\s+([A-D])\.\s+', ' ' + first_line)
+            # parts[0] is empty, parts[1]='A', parts[2]='liberty   B', parts[3]='B', parts[4]='reliable   C', etc
+            i = 1
+            while i < len(parts) - 1:
+                letter = parts[i]
+                content = parts[i + 1].strip() if i + 1 < len(parts) else ""
+                # Remove trailing option letter if present
+                content = re.sub(r'\s+[A-D]\.\s*$', '', content).strip()
+                if letter in 'ABCD' and content:
+                    options[letter] = content
+                i += 2
+            if len(options) >= 2:
+                return options
+
+        # Pass 2: Standard "A. content" on separate lines (MULTILINE)
         option_re = re.compile(r"^\s*([A-D])\.\s*(.+)$", re.MULTILINE)
         for m in option_re.finditer(text):
             letter = m.group(1)
@@ -241,25 +333,7 @@ class Template02CleanMcqParser(BaseParser):
             if content:
                 options[letter] = content
 
-        # Pass 2: Inline merged "A. content   B. content" on one line
-        # (from 2-column pronunciation layout where both A and B are on same line)
-        if len(options) < 4:
-            merged_re = re.compile(r"([A-D])\.\s*([^\n]{1,60}?)(?=\s+[A-D]\.|\s*$)")
-            for m in merged_re.finditer(text):
-                letter = m.group(1)
-                content = m.group(2).strip()
-                if letter not in options and content:
-                    options[letter] = content
-                elif not options.get(letter) and content:
-                    options[letter] = content
-
         # Pass 3: Orphan lines — single letter.word without other options on same line
-        # Detects 2-column pronunciation format:
-        #   A. knowledgeable   B. prosperity
-        #   C. open
-        #   C. development   D. paper
-        # Orphan lines have no period after the word (single word = option text).
-        # Assign by detecting which letter is missing from options.
         if len(options) < 4:
             orphan_re = re.compile(r"^([A-D])\.\s*(\S+)\s*$", re.MULTILINE)
             found_letters = set(options.keys())
@@ -268,10 +342,8 @@ class Template02CleanMcqParser(BaseParser):
             for m in orphan_re.finditer(text):
                 letter = m.group(1)
                 word = m.group(2).strip()
-                # Only consider if this letter is not yet filled
                 if letter not in found_letters:
                     orphan_assignments.append((letter, word))
-            # Sort orphans by expected letter order and assign
             orphan_assignments.sort(key=lambda x: expected_order.index(x[0]) if x[0] in expected_order else 99)
             for letter, word in orphan_assignments:
                 if letter not in options:
@@ -363,6 +435,11 @@ class Template02CleanMcqParser(BaseParser):
             sequential: dict[int, str] = {}
             for i, entry in enumerate(raw_answers):
                 sequential[i + 1] = entry.answer  # 1-indexed
+            return {"__sequential__": sequential}
+
+        # Đáp án dạng "Dạng 1.A, 2.B" nhưng extractor trả number=0 — map theo thứ tự
+        if raw_answers and all(e.number == 0 for e in raw_answers) and len(raw_answers) >= 2:
+            sequential = {i + 1: e.answer for i, e in enumerate(raw_answers)}
             return {"__sequential__": sequential}
 
         return numbered

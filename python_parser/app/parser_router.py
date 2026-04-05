@@ -15,6 +15,7 @@ from .parsers.template_02_clean_mcq import Template02CleanMcqParser
 from .parsers.template_03_math_answer_grid import Template03MathAnswerGridParser
 from .parsers.template_04_docx_viet import Template04DocxVietParser
 from .parsers.template_05_docx_database import Template05DocxDatabaseParser
+from .parsers.template_06_english_exam import Template06EnglishExamParser
 from .schemas import (
     ParseResponse,
     ParseReport,
@@ -33,6 +34,7 @@ _PARSERS: list[type[BaseParser]] = [
     Template03MathAnswerGridParser,
     Template04DocxVietParser,
     Template05DocxDatabaseParser,
+    Template06EnglishExamParser,
 ]
 
 
@@ -64,7 +66,8 @@ class ParserRouter:
         print(f"[router] PDF profile: lang={profile.language}, "
               f"template_scores: 01={profile.score_template_01:.2f}, "
               f"02={profile.score_template_02:.2f}, "
-              f"03={profile.score_template_03:.2f}",
+              f"03={profile.score_template_03:.2f}, "
+              f"06={profile.score_template_06:.2f}",
               flush=True)
 
         # Step 2: Select parser (score-based)

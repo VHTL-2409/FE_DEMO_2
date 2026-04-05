@@ -7,10 +7,10 @@ import { apiRequest, unwrapApiData } from './apiClient'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Các định dạng file được hỗ trợ */
-export const SUPPORTED_IMPORT_FORMATS = ['csv', 'xlsx', 'pdf', 'docx', 'txt']
+export const SUPPORTED_IMPORT_FORMATS = ['csv', 'xlsx', 'pdf', 'docx', 'txt', 'json', 'md', 'markdown']
 
 /** Giá trị accept cho input file (dùng trong <input accept="...">) */
-export const IMPORT_FILE_ACCEPT = '.csv,.xlsx,.pdf,.docx,.txt'
+export const IMPORT_FILE_ACCEPT = '.csv,.xlsx,.pdf,.docx,.txt,.json,.md,.markdown'
 
 /** Dung lượng tối đa: 10 MB */
 export const IMPORT_FILE_MAX_SIZE_MB = 10

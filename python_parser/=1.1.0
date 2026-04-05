@@ -1,0 +1,1 @@
+cd /home/vhtl/Desktop/FE_DEMO_2/python_parser && source .venv/bin/activate && uvicorn app.main:app --reload

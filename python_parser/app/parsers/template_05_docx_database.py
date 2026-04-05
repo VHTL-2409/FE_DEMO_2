@@ -20,6 +20,7 @@ import re
 
 from .docx_base import DocxBaseParser
 from ..schemas import ExamMeta, ParsedQuestion, QuestionType, RenderMode, RenderInfo, TemplateType
+from ..utils.section_detector import SectionKind
 
 
 class Template05DocxDatabaseParser(DocxBaseParser):
@@ -93,7 +94,7 @@ class Template05DocxDatabaseParser(DocxBaseParser):
 
     def _parse_question_block(self, q_num: int, lines: list[str]) -> ParsedQuestion:
         """
-        Parse a single question block:
+        Parse a single question block with section awareness:
         - Lines starting with "A.", "B.", "C.", "D." or "*A.", "*B.", etc. → options
         - The asterisk prefix marks the correct answer
         - All remaining lines → question stem
@@ -143,7 +144,7 @@ class Template05DocxDatabaseParser(DocxBaseParser):
 
         confidence = self._calc_confidence(stem, options, answer, issues)
 
-        return self._build_question(
+        question = self._build_question(
             number=q_num,
             text=stem,
             q_type=QuestionType.MULTIPLE_CHOICE,
@@ -152,6 +153,14 @@ class Template05DocxDatabaseParser(DocxBaseParser):
             confidence=confidence,
             issues=issues,
         )
+
+        # Apply section awareness fields
+        question.section = "Cơ sở dữ liệu"
+        question.sectionKind = SectionKind.MCQ.value
+        question.answerLocation = "inline" if answer else "none"
+        question.needsGrading = False
+
+        return question
 
     def _calc_confidence(self, stem, options, answer, issues):
         """Calculate confidence score."""
