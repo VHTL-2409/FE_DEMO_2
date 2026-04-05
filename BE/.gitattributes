@@ -1,1 +1,4 @@
 *.cmd text eol=crlf
+
+
+*.pyc

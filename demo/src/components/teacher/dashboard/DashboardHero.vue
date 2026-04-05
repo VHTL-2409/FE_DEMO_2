@@ -1,58 +1,53 @@
 <template>
-  <div class="td-hero ds-animate-fade-up">
-    <!-- Main hero card -->
+  <div class="td-hero">
     <div class="td-hero__main">
-      <div class="td-hero__left">
-        <div class="td-hero__eyebrow">
-          <span class="td-hero__eyebrow-dot" />
-          <span>{{ timeOfDayLabel }}</span>
-          <span class="td-hero__eyebrow-date">{{ todayLabel }}</span>
+      <div class="td-hero__eyebrow">
+        <span class="td-hero__eyebrow-dot" />
+        <span>{{ timeOfDayLabel }}</span>
+        <span class="td-hero__eyebrow-date">{{ todayLabel }}</span>
+      </div>
+      <h1 class="td-hero__title">
+        Chào buổi {{ timeOfDayLabel }}, <span class="td-hero__name">{{ teacherName }}</span>
+      </h1>
+      <p class="td-hero__subtitle">{{ heroSubtitle }}</p>
+    </div>
+
+    <div class="td-hero__stats">
+      <div class="td-hero__stat" :class="{ 'td-hero__stat--active': liveExamCount > 0 }">
+        <div class="td-hero__stat-icon-wrap">
+          <LucideIcon name="timer" />
         </div>
-        <h1 class="td-hero__title">
-          Chào buổi {{ timeOfDayLabel }}, <span class="td-hero__name">{{ teacherName }}</span>
-        </h1>
-        <p class="td-hero__subtitle">{{ heroSubtitle }}</p>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ liveExamCount }}</span>
+          <span class="td-hero__stat-label">Kỳ thi đang diễn ra</span>
+        </div>
       </div>
 
-      <!-- Quick stats strip -->
-      <div class="td-hero__stats">
-        <div class="td-hero__stat" :class="{ 'td-hero__stat--active': liveExamCount > 0 }">
-          <div class="td-hero__stat-icon-wrap">
-            <LucideIcon name="timer" />
-          </div>
-          <div class="td-hero__stat-body">
-            <span class="td-hero__stat-value">{{ liveExamCount }}</span>
-            <span class="td-hero__stat-label">Kỳ thi đang diễn ra</span>
-          </div>
+      <div class="td-hero__stat-divider" />
+
+      <div class="td-hero__stat">
+        <div class="td-hero__stat-icon-wrap">
+          <LucideIcon name="group" />
         </div>
-
-        <div class="td-hero__stat-divider" />
-
-        <div class="td-hero__stat">
-          <div class="td-hero__stat-icon-wrap">
-            <LucideIcon name="group" />
-          </div>
-          <div class="td-hero__stat-body">
-            <span class="td-hero__stat-value">{{ activeStudentCount }}</span>
-            <span class="td-hero__stat-label">Học sinh đang hoạt động</span>
-          </div>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ activeStudentCount }}</span>
+          <span class="td-hero__stat-label">Học sinh đang hoạt động</span>
         </div>
+      </div>
 
-        <div class="td-hero__stat-divider" />
+      <div class="td-hero__stat-divider" />
 
-        <div class="td-hero__stat" :class="{ 'td-hero__stat--alert': alertCount > 0 }">
-          <div class="td-hero__stat-icon-wrap">
-            <LucideIcon name="warning" />
-          </div>
-          <div class="td-hero__stat-body">
-            <span class="td-hero__stat-value">{{ alertCount }}</span>
-            <span class="td-hero__stat-label">Cảnh báo cần xử lý</span>
-          </div>
+      <div class="td-hero__stat" :class="{ 'td-hero__stat--alert': alertCount > 0 }">
+        <div class="td-hero__stat-icon-wrap">
+          <LucideIcon name="warning" />
+        </div>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ alertCount }}</span>
+          <span class="td-hero__stat-label">Cảnh báo cần xử lý</span>
         </div>
       </div>
     </div>
 
-    <!-- CTA buttons -->
     <div class="td-hero__actions">
       <button
         v-if="liveExamCount > 0"
@@ -71,7 +66,7 @@
       </button>
 
       <button type="button" class="td-hero__cta td-hero__cta--primary" @click="$emit('create-exam')">
-        <div class="td-hero__cta-icon-wrap td-hero__cta-icon-wrap--primary">
+        <div class="td-hero__cta-icon-wrap">
           <LucideIcon name="add_circle" />
         </div>
         <span class="td-hero__cta-text">
@@ -119,10 +114,7 @@ const heroSubtitle = computed(() => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* Ultra Simplified Hero */
 
 .td-hero {
   display: flex;
@@ -133,28 +125,19 @@ const heroSubtitle = computed(() => {
   background: linear-gradient(135deg, #ffffff 0%, #f5f4ff 60%, #ede9fe 100%);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  box-shadow: var(--ds-shadow-sm);
   position: relative;
   overflow: hidden;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation: fadeUp 0.4s ease-out;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .dark .td-hero {
   background: linear-gradient(135deg, #1e293b 0%, #1e1b4b 60%, #1e1b4b 100%);
   border-color: rgba(79, 70, 229, 0.2);
-}
-
-/* Decorative background element */
-.td-hero::before {
-  content: '';
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.06) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 .td-hero__main {
@@ -181,12 +164,12 @@ const heroSubtitle = computed(() => {
   height: 6px;
   border-radius: 50%;
   background: var(--ds-primary);
-  animation: td-hero-pulse 2s ease-in-out infinite;
+  animation: dotPulse 2s ease-in-out infinite;
 }
 
-@keyframes td-hero-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .td-hero__eyebrow-date {
@@ -206,18 +189,9 @@ const heroSubtitle = computed(() => {
   margin: 0;
 }
 
-.dark .td-hero__title {
-  color: var(--ds-gray-100, #f1f5f9);
-}
-
-.td-hero__name {
-  color: var(--ds-primary);
-}
-
-.dark .td-hero__name {
-  color: var(--ds-primary);
-  opacity: 0.85;
-}
+.dark .td-hero__title { color: var(--ds-gray-100, #f1f5f9); }
+.td-hero__name { color: var(--ds-primary); }
+.dark .td-hero__name { opacity: 0.85; }
 
 .td-hero__subtitle {
   font-size: 0.875rem;
@@ -227,19 +201,10 @@ const heroSubtitle = computed(() => {
   max-width: 480px;
 }
 
-@media (min-width: 1400px) {
-  .td-hero__subtitle { max-width: 600px; }
-}
+@media (min-width: 1400px) { .td-hero__subtitle { max-width: 600px; } }
+@media (min-width: 1600px) { .td-hero__subtitle { max-width: 750px; } }
+@media (min-width: 1920px) { .td-hero__subtitle { max-width: 850px; } }
 
-@media (min-width: 1600px) {
-  .td-hero__subtitle { max-width: 750px; }
-}
-
-@media (min-width: 1920px) {
-  .td-hero__subtitle { max-width: 850px; }
-}
-
-/* Quick stats strip */
 .td-hero__stats {
   display: flex;
   align-items: center;
@@ -249,13 +214,10 @@ const heroSubtitle = computed(() => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   backdrop-filter: blur(4px);
-  box-shadow: var(--ds-shadow-xs);
   width: fit-content;
 }
 
-.dark .td-hero__stats {
-  background: rgba(30, 41, 59, 0.8);
-}
+.dark .td-hero__stats { background: rgba(30, 41, 59, 0.8); }
 
 .td-hero__stat {
   display: flex;
@@ -264,13 +226,8 @@ const heroSubtitle = computed(() => {
   padding: 0 1rem;
 }
 
-.td-hero__stat:first-child {
-  padding-left: 0;
-}
-
-.td-hero__stat:last-child {
-  padding-right: 0;
-}
+.td-hero__stat:first-child { padding-left: 0; }
+.td-hero__stat:last-child { padding-right: 0; }
 
 .td-hero__stat-divider {
   width: 1px;
@@ -289,12 +246,10 @@ const heroSubtitle = computed(() => {
   color: var(--ds-text-muted);
   flex-shrink: 0;
   font-size: 1.125rem;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.dark .td-hero__stat-icon-wrap {
-  background: var(--ds-gray-700);
-}
+.dark .td-hero__stat-icon-wrap { background: var(--ds-gray-700); }
 
 .td-hero__stat--active .td-hero__stat-icon-wrap {
   background: var(--ds-success-soft);
@@ -320,13 +275,8 @@ const heroSubtitle = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.dark .td-hero__stat-value {
-  color: var(--ds-gray-100, #f1f5f9);
-}
-
-.td-hero__stat--alert .td-hero__stat-value {
-  color: var(--ds-danger);
-}
+.dark .td-hero__stat-value { color: var(--ds-gray-100, #f1f5f9); }
+.td-hero__stat--alert .td-hero__stat-value { color: var(--ds-danger); }
 
 .td-hero__stat-label {
   font-size: 0.65rem;
@@ -337,7 +287,6 @@ const heroSubtitle = computed(() => {
   white-space: nowrap;
 }
 
-/* CTA Actions */
 .td-hero__actions {
   display: flex;
   flex-direction: column;
@@ -353,9 +302,7 @@ const heroSubtitle = computed(() => {
   border-radius: var(--ds-radius-xl);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: left;
   min-width: 220px;
 }
@@ -367,7 +314,7 @@ const heroSubtitle = computed(() => {
 }
 
 .td-hero__cta--live:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3);
 }
 
@@ -378,13 +325,11 @@ const heroSubtitle = computed(() => {
 }
 
 .td-hero__cta--primary:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
 }
 
-.td-hero__cta:active {
-  transform: translateY(0) scale(0.98);
-}
+.td-hero__cta:active { transform: translateY(0) scale(0.98); }
 
 .td-hero__cta-icon-wrap {
   width: 40px;
@@ -397,17 +342,11 @@ const heroSubtitle = computed(() => {
   color: white;
   flex-shrink: 0;
   font-size: 1.25rem;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
-}
-
-.td-hero__cta-icon-wrap--primary {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  transition: transform 0.2s ease;
 }
 
 .td-hero__cta:hover .td-hero__cta-icon-wrap {
-  transform: scale(1.15) rotate(-5deg);
-  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.1);
 }
 
 .td-hero__cta-live-dot {
@@ -415,7 +354,7 @@ const heroSubtitle = computed(() => {
   height: 8px;
   border-radius: 50%;
   background: white;
-  animation: td-hero-pulse 1.5s ease-in-out infinite;
+  animation: dotPulse 1.5s ease-in-out infinite;
   flex-shrink: 0;
   margin-left: auto;
 }
@@ -439,50 +378,25 @@ const heroSubtitle = computed(() => {
   font-weight: 500;
 }
 
-/* Responsive */
 @media (max-width: 900px) {
   .td-hero {
     flex-direction: column;
     align-items: flex-start;
     padding: 1.5rem;
   }
-
-  .td-hero__actions {
-    flex-direction: row;
-    width: 100%;
-  }
-
-  .td-hero__cta {
-    flex: 1;
-    min-width: 0;
-  }
+  .td-hero__actions { flex-direction: row; width: 100%; }
+  .td-hero__cta { flex: 1; min-width: 0; }
 }
 
 @media (max-width: 600px) {
-  .td-hero__stats {
-    flex-direction: column;
-    width: 100%;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
+  .td-hero__stats { flex-direction: column; width: 100%; align-items: flex-start; gap: 0.75rem; }
+  .td-hero__stat-divider { width: 100%; height: 1px; }
+  .td-hero__stat { padding: 0; }
+  .td-hero__actions { flex-direction: column; }
+}
 
-  .td-hero__stat-divider {
-    width: 100%;
-    height: 1px;
-  }
-
-  .td-hero__stat {
-    padding: 0;
-  }
-
-  .td-hero__actions {
-    flex-direction: column;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .td-hero, .td-hero__eyebrow-dot, .td-hero__cta-live-dot { animation: none; }
+  .td-hero:hover .td-hero__cta { transform: none; }
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

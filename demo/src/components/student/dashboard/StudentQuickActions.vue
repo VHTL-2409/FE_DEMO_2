@@ -45,11 +45,19 @@ const actions = [
 
 
 <style scoped>
+/* GPU-accelerated fadeInUp animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
 .sq {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
+  /* Optimize paint */
+  contain: layout style;
 }
 
 .dark .sq {
@@ -120,7 +128,10 @@ const actions = [
     background 0.2s ease;
   text-align: center;
   font-family: inherit;
-  animation: fadeInUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+  /* GPU optimization - animate once */
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .sq__grid .sq__action:nth-child(1) { animation-delay: 0.05s; }
@@ -130,9 +141,9 @@ const actions = [
 .sq__grid .sq__action:nth-child(5) { animation-delay: 0.25s; }
 .sq__grid .sq__action:nth-child(6) { animation-delay: 0.3s; }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+.sq__action:hover {
+  transform: translateY(-3px) translateZ(0);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
 }
 
 .dark .sq__action {

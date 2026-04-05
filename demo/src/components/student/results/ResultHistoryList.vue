@@ -2,7 +2,7 @@
   <div class="ehl">
     <!-- Loading -->
     <div v-if="loading" class="ehl__loading">
-      <div v-for="i in 4" :key="i" class="ehl__skel-card">
+      <div v-for="i in 4" :key="i" class="ehl__skel-card" :style="{ animationDelay: `${i * 0.1}s` }">
         <div class="ehl__skel ehl__skel--icon" />
         <div class="ehl__skel-body">
           <div class="ehl__skel ehl__skel--title" />
@@ -73,25 +73,25 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="ehl__pagination">
+      <div v-if="totalPages > 1" class="ehl__pagination" :class="{ 'ehl__pagination--loading': pageLoading }">
         <span class="ehl__pagination-info">Hiển thị {{ sessions.length }} / {{ totalCount }} phiên</span>
         <div class="ehl__pagination-btns">
           <button
             type="button"
             class="ehl__page-btn"
-            :disabled="currentPage <= 1"
+            :disabled="currentPage <= 1 || pageLoading"
             @click="$emit('prev-page')"
           >
-            <LucideIcon name="chevron_left" />
+            <LucideIcon name="chevron_left" :class="pageLoading ? 'ehl-spin' : ''" />
           </button>
           <span class="ehl__page-current">Trang {{ currentPage }} / {{ totalPages }}</span>
           <button
             type="button"
             class="ehl__page-btn"
-            :disabled="currentPage >= totalPages"
+            :disabled="currentPage >= totalPages || pageLoading"
             @click="$emit('next-page')"
           >
-            <LucideIcon name="chevron_right" />
+            <LucideIcon name="chevron_right" :class="pageLoading ? 'ehl-spin' : ''" />
           </button>
         </div>
       </div>
@@ -105,6 +105,7 @@ import { computed } from 'vue'
 const props = defineProps({
   sessions: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  pageLoading: { type: Boolean, default: false },
   currentPage: { type: Number, default: 1 },
   totalPages: { type: Number, default: 1 },
   totalCount: { type: Number, default: 0 },
@@ -134,12 +135,20 @@ const scoreBadgeClass = (score) => {
   border-radius: var(--ds-radius-2xl);
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
+  animation: ehlCardFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.dark .ehl__skel-card { border-color: var(--ds-border-strong); }
+
+@keyframes ehlCardFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .ehl__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: ehlShimmer 1.5s infinite;
+  animation: ehlShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
 }
 
@@ -149,8 +158,8 @@ const scoreBadgeClass = (score) => {
 }
 
 @keyframes ehlShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .ehl__skel--icon { width: 48px; height: 48px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }
@@ -416,7 +425,20 @@ const scoreBadgeClass = (score) => {
 .ehl__page-btn:hover:not(:disabled) { border-color: var(--ds-primary-border); color: var(--ds-primary); background: var(--ds-primary-soft); }
 .ehl__page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.ehl__pagination--loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .ehl__page-current { font-size: 0.8rem; font-weight: 600; color: var(--ds-text-muted); min-width: 80px; text-align: center; }
+
+/* Spin animation */
+.ehl-spin {
+  animation: ehlSpin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes ehlSpin { to { transform: rotate(360deg); } }
 
 /* Responsive */
 @media (max-width: 480px) {

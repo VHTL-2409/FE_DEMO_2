@@ -14,6 +14,8 @@
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Force GPU compositing */
+  transform: translateZ(0);
 }
 
 /* --- Tailwind v4 core animation keyframes --- */
@@ -27,8 +29,8 @@
 
 /* --- Custom keyframes --- */
 @keyframes teacherFadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(12px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 @keyframes teacherFloatSlow {
   0%, 100% { transform: translate3d(0, 0, 0); }
@@ -39,29 +41,30 @@
   50%       { transform: translate3d(0, 8px, 0); }
 }
 @keyframes pulseRing {
-  0%   { transform: scale(0.95); opacity: 1; }
-  50%  { transform: scale(1.05); opacity: 0.7; }
-  100% { transform: scale(0.95); opacity: 1; }
+  0%   { transform: scale(0.95) translateZ(0); opacity: 1; }
+  50%  { transform: scale(1.05) translateZ(0); opacity: 0.7; }
+  100% { transform: scale(0.95) translateZ(0); opacity: 1; }
 }
 @keyframes modalOverlayIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 @keyframes modalContentIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from { opacity: 0; transform: scale(0.96) translateY(8px) translateZ(0); }
+  to   { opacity: 1; transform: scale(1) translateY(0) translateZ(0); }
 }
 /* ── GPU shimmer variant — uses transform+opacity instead of background-position.
     No paint, fully GPU. Best for reduced-motion / low-end devices. ── */
 @keyframes gpu-shimmer {
-  0%   { opacity: 0.5; transform: scaleX(0.3); }
-  50%  { opacity: 1;   transform: scaleX(1);   }
-  100% { opacity: 0.5; transform: scaleX(0.3); }
+  0%   { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1) translateZ(0); }
+  100% { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
 }
 .animate-gpu-shimmer {
   animation: gpu-shimmer 1.6s ease-in-out infinite;
   transform-origin: left;
   will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 @keyframes shimmer {
@@ -69,55 +72,56 @@
   100% { background-position:  200% 0; }
 }
 @keyframes fadeScale {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px) scale(0.98) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
 }
 @keyframes checkPop {
-  0%   { transform: scale(0); opacity: 0; }
-  70%  { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0%   { transform: scale(0) translateZ(0); opacity: 0; }
+  70%  { transform: scale(1.2) translateZ(0); opacity: 1; }
+  100% { transform: scale(1) translateZ(0); opacity: 1; }
 }
 
 /* ─── Fade Up variants ─── */
 /* 10px — for card-level entrance (InsightCard, RecentResultCard, UpcomingExamCard) */
 @keyframes fadeUpSm {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 /* 12px — standard global fade-up */
 @keyframes fadeLeft {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(-10px) translateZ(0); }
+  to   { opacity: 1; transform: translateX(0) translateZ(0); }
 }
 
 /* --- Fade Up classes (12px teacherFadeUp) --- */
-.animate-fade-up          { animation: teacherFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-fade-up-delay    { animation: teacherFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
-.animate-fade-up-slow     { animation: teacherFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
-.animate-fade-up-xslow    { animation: teacherFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
+.animate-fade-up          { animation: teacherFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; transform: translateZ(0); }
+.animate-fade-up-delay    { animation: teacherFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; transform: translateZ(0); }
+.animate-fade-up-slow     { animation: teacherFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; transform: translateZ(0); }
+.animate-fade-up-xslow    { animation: teacherFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; transform: translateZ(0); }
 
 /* --- Float --- */
-.animate-float-slow       { animation: teacherFloatSlow 8s ease-in-out infinite; }
-.animate-float-delay      { animation: teacherFloatDelay 9s ease-in-out infinite; }
-.animate-float-fast       { animation: teacherFloatSlow 5s ease-in-out infinite; }
+.animate-float-slow       { animation: teacherFloatSlow 8s ease-in-out infinite; transform: translateZ(0); }
+.animate-float-delay      { animation: teacherFloatDelay 9s ease-in-out infinite; transform: translateZ(0); }
+.animate-float-fast       { animation: teacherFloatSlow 5s ease-in-out infinite; transform: translateZ(0); }
 
 /* --- Pulse ring --- */
-.animate-pulse-ring       { animation: pulseRing 2s ease-in-out infinite; }
+.animate-pulse-ring       { animation: pulseRing 2s ease-in-out infinite; transform: translateZ(0); }
 
 /* --- Modal --- */
 .animate-modal-overlay    { animation: modalOverlayIn 0.2s ease-out; }
-.animate-modal-content    { animation: modalContentIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-modal-content    { animation: modalContentIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); transform: translateZ(0); }
 
 /* --- Shimmer / skeleton --- */
 .animate-shimmer {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
 /* --- Spin --- */
-.animate-spin-slow { animation: animate-spin 3s linear infinite; }
+.animate-spin-slow { animation: animate-spin 3s linear infinite; transform: translateZ(0); }
 
 /* --- Glass card --- */
 .glass-card {
@@ -222,26 +226,30 @@
   transition:
     opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  /* GPU optimization */
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 .page-leave-active {
   transition:
     opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
     transform 0.22s cubic-bezier(0.4, 0, 1, 1);
+  will-change: transform, opacity;
 }
 .page-enter-from {
   opacity: 0;
-  transform: translateX(20px) scale(0.985);
+  transform: translateX(20px) scale(0.985) translateZ(0);
   filter: blur(1px);
 }
 .page-leave-to {
   opacity: 0;
-  transform: translateX(-12px) scale(0.99);
+  transform: translateX(-12px) scale(0.99) translateZ(0);
   filter: blur(0.5px);
 }
 .page-enter-to,
 .page-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateX(0) scale(1) translateZ(0);
   filter: blur(0);
 }
 

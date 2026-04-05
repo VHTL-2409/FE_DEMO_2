@@ -50,9 +50,10 @@ const formattedValue = computed(() => {
 
 
 <style scoped>
+/* GPU-accelerated fadeInUp animation */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .ssc {
@@ -69,7 +70,12 @@ const formattedValue = computed(() => {
     border-color 0.2s ease;
   min-width: 0;
   cursor: default;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  /* GPU optimization - animate once */
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  /* Optimize paint */
+  contain: layout style;
 }
 
 .sdl__kpis .ssc:nth-child(1) { animation-delay: 0.2s; }

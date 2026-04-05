@@ -1,10 +1,10 @@
 <template>
-  <div class="ec-page">
+  <div class="ec-page ds-animate-fade-up">
     <!-- Body: top header strip + form columns -->
     <div class="ec-body">
 
       <!-- Page header: breadcrumb + save status + action buttons -->
-      <div class="ec-page-header">
+      <div class="ec-page-header tui-panel--anim">
         <div class="ec-page-header__breadcrumb">
           <RouterLink class="ec-page-header__bc-link" to="/teacher/exams/list">
             <LucideIcon name="assignment" />
@@ -18,11 +18,11 @@
             <LucideIcon :name="saveStatusIcon" />
             <span>{{ saveStatusLabel }}</span>
           </div>
-          <button type="button" class="ec-btn ec-btn--ghost" @click="handleSaveDraft">
+          <button type="button" class="ec-btn ec-btn--ghost tui-btn tui-btn--ghost" @click="handleSaveDraft">
             <LucideIcon name="save" />
             <span>Lưu nháp</span>
           </button>
-          <button type="button" class="ec-btn ec-btn--primary" @click="handlePublish" :disabled="!canPublish">
+          <button type="button" class="ec-btn ec-btn--primary tui-btn tui-btn--primary" @click="handlePublish" :disabled="!canPublish">
             <LucideIcon name="rocket_launch" />
             <span>Xuất bản</span>
           </button>
@@ -37,7 +37,7 @@
           <div class="ec-form-scroll">
 
           <!-- Progress steps -->
-          <div class="ec-steps">
+          <div class="ec-steps tui-panel tui-panel--anim" style="animation-delay: 0.05s">
             <button
               v-for="(step, i) in steps"
               :key="step.id"
@@ -74,12 +74,19 @@
             v-model:maxAttempts="form.maxAttempts"
           />
 
-          <!-- Section: Phân tích đề thi -->
-          <QuestionBuilder
-            v-show="activeStep === 'questions'"
+          <!-- Section: Nhập file câu hỏi -->
+          <QuestionImportStep
+            v-show="activeStep === 'import'"
             v-model:questions="form.questions"
             v-model:shuffleQuestions="form.shuffleQuestions"
             v-model:shuffleAnswers="form.shuffleAnswers"
+          />
+
+          <!-- Section: Chỉnh sửa câu hỏi -->
+          <QuestionReviewStep
+            v-show="activeStep === 'review'"
+            v-model:questions="form.questions"
+            @back-to-import="activeStep = 'import'"
           />
 
           <!-- Section: Lịch thi -->
@@ -224,7 +231,8 @@ import { useToast } from '../../../composables/useToast'
 
 import ExamInfoSection from './ExamInfoSection.vue'
 import ExamConfigSection from './ExamConfigSection.vue'
-import QuestionBuilder from './QuestionBuilder.vue'
+import QuestionImportStep from './QuestionImportStep.vue'
+import QuestionReviewStep from './QuestionReviewStep.vue'
 import ScheduleSection from './ScheduleSection.vue'
 import ProctoringSection from './ProctoringSection.vue'
 import ExamPreviewPanel from './ExamPreviewPanel.vue'
@@ -237,7 +245,8 @@ const toast = useToast()
 const steps = [
   { id: 'info', label: 'Thông tin' },
   { id: 'config', label: 'Cấu hình' },
-  { id: 'questions', label: 'Phân tích đề thi' },
+  { id: 'import', label: 'Nhập file' },
+  { id: 'review', label: 'Chỉnh sửa' },
   { id: 'schedule', label: 'Lịch thi' },
   { id: 'proctor', label: 'Giám sát' }
 ]
@@ -454,7 +463,7 @@ const handlePublish = async () => {
     }
     if (!isQuestionsValid.value) {
       toast.error('Vui lòng thêm ít nhất 1 câu hỏi.')
-      activeStep.value = 'questions'
+      activeStep.value = 'import'
       return
     }
     if (!isScheduleValid.value) {
@@ -567,7 +576,12 @@ function generateExamCode() {
 
 // Auto-mark step complete when data filled
 watch(isInfoValid, (v) => { if (v) completedSteps.value.add('info') })
-watch(isQuestionsValid, (v) => { if (v) completedSteps.value.add('questions') })
+watch(isQuestionsValid, (v) => {
+  if (v) {
+    completedSteps.value.add('import')
+    completedSteps.value.add('review')
+  }
+})
 watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 </script>
 

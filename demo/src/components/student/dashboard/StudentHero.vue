@@ -121,9 +121,10 @@ const nextAction = computed(() => {
 
 
 <style scoped>
+/* GPU-accelerated fadeInUp animation */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .sh {
@@ -138,7 +139,13 @@ const nextAction = computed(() => {
   box-shadow: var(--ds-shadow-sm);
   position: relative;
   overflow: hidden;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  /* GPU optimization - only animate once */
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  /* Optimize paint */
+  content-visibility: auto;
+  contain: layout style;
 }
 
 .dark .sh {
@@ -183,19 +190,22 @@ const nextAction = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* GPU optimization for animation */
+  will-change: transform;
+  transform: translateZ(0);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
   animation: wave 3s ease-in-out infinite;
 }
 
 .sh__greeting-row:hover .sh__wave-icon {
-  transform: scale(1.15) rotate(-8deg);
+  transform: scale(1.15) rotate(-8deg) translateZ(0);
   background: rgba(79, 70, 229, 0.2);
 }
 
-
+/* GPU-accelerated wave animation using transform3d */
 @keyframes wave {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+  0%, 100% { transform: rotate(-5deg) translateZ(0); }
+  50% { transform: rotate(5deg) translateZ(0); }
 }
 
 .sh__greeting-text {

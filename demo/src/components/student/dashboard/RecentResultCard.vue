@@ -19,7 +19,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="rrc__loading">
-      <div v-for="i in 4" :key="i" class="rrc__skel-item">
+      <div v-for="i in 4" :key="i" class="rrc__skel-item" :style="{ animationDelay: `${i * 0.08}s` }">
         <div class="rrc__skel rrc__skel--icon" />
         <div class="rrc__skel-content">
           <div class="rrc__skel rrc__skel--title" />
@@ -119,14 +119,23 @@ const passChipClass = (score) => {
 
 
 <style scoped>
-/* fadeUpSm — shared 10px fade-up keyframe (defined in animation.css, accessible globally) */
+/* GPU-accelerated animations */
+@keyframes fadeUpSm {
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
 
 .rrc {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.3s both;
+  /* GPU optimization - animate once */
+  animation: fadeUpSm 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  /* Optimize paint */
+  contain: layout style;
 }
 
 .dark .rrc {
@@ -218,18 +227,29 @@ const passChipClass = (score) => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  animation: rrcFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes rrcFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .rrc__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: rrcShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
 }
 
 .dark .rrc__skel {
   background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
   background-size: 200% 100%;
+}
+
+@keyframes rrcShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .rrc__skel-content { flex: 1; display: flex; flex-direction: column; gap: 0.375rem; }

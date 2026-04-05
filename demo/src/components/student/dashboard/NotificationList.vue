@@ -18,7 +18,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="nl__loading">
-      <div v-for="i in 3" :key="i" class="nl__skel-item">
+      <div v-for="i in 3" :key="i" class="nl__skel-item" :style="{ animationDelay: `${i * 0.08}s` }">
         <div class="nl__skel nl__skel--dot" />
         <div class="nl__skel-content">
           <div class="nl__skel nl__skel--title" />
@@ -142,11 +142,19 @@ const timeAgo = (value) => {
 
 
 <style scoped>
+/* GPU-accelerated animations */
+@keyframes nlFadeIn {
+  from { opacity: 0; transform: translateX(-8px) translateZ(0); }
+  to { opacity: 1; transform: translateX(0) translateZ(0); }
+}
+
 .nl {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
+  /* Optimize paint */
+  contain: layout style;
 }
 
 .dark .nl {
@@ -232,13 +240,16 @@ const timeAgo = (value) => {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  animation: nlFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .nl__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: nlShimmer 1.5s infinite;
+  animation: nlShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
+  /* GPU optimization */
+  will-change: transform, opacity;
 }
 
 .dark .nl__skel {
@@ -247,8 +258,8 @@ const timeAgo = (value) => {
 }
 
 @keyframes nlShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: 200% 0; transform: translateZ(0); }
+  100% { background-position: -200% 0; transform: translateZ(0); }
 }
 
 .nl__skel--dot { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }

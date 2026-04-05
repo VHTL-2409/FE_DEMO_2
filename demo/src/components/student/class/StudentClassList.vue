@@ -57,10 +57,23 @@
       <span class="scl__result-count">{{ filteredClasses.length }} lớp</span>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="scl__loading">
-      <div class="scl__spinner"></div>
-      <p>Đang tải danh sách lớp học...</p>
+    <!-- Skeleton Loading -->
+    <div v-if="isLoading" class="scl__skeleton">
+      <div v-for="i in 6" :key="i" class="scl__skel-card" :style="{ animationDelay: `${i * 0.08}s` }">
+        <div class="scl__skel-card-header">
+          <div class="scl__skel scl__skel--icon"></div>
+          <div class="scl__skel scl__skel--badge"></div>
+        </div>
+        <div class="scl__skel-card-body">
+          <div class="scl__skel scl__skel--title"></div>
+          <div class="scl__skel scl__skel--desc"></div>
+          <div class="scl__skel scl__skel--meta"></div>
+        </div>
+        <div class="scl__skel-card-footer">
+          <div class="scl__skel scl__skel--stat"></div>
+          <div class="scl__skel scl__skel--btn"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -124,34 +137,44 @@
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="scl__pagination">
-      <button
-        type="button"
-        class="scl__page-btn"
-        :disabled="currentPage === 1"
-        @click="currentPage--"
-      >
-        <LucideIcon name="chevron_left" />
-      </button>
-      <div class="scl__page-numbers">
+      <p class="scl__pagination-info">
+        Trang <strong>{{ currentPage }}</strong> / {{ totalPages }}
+        &nbsp;&middot;&nbsp;
+        {{ formatNum(filteredClasses.length) }} lớp học
+      </p>
+      <div class="scl__pagination-controls">
         <button
-          v-for="page in visiblePages"
-          :key="page"
           type="button"
-          class="scl__page-num"
-          :class="{ 'scl__page-num--active': page === currentPage }"
-          @click="currentPage = page"
+          class="scl__page-btn"
+          :disabled="currentPage === 1 || isPageLoading"
+          @click="goPage(currentPage - 1)"
         >
-          {{ page }}
+          <LucideIcon name="chevron_left" :class="isPageLoading ? 'scl-spin' : ''" />
+          <span>Trước</span>
+        </button>
+        <div class="scl__page-numbers">
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            type="button"
+            class="scl__page-num"
+            :class="{ 'scl__page-num--active': page === currentPage }"
+            :disabled="isPageLoading"
+            @click="goPage(page)"
+          >
+            {{ page }}
+          </button>
+        </div>
+        <button
+          type="button"
+          class="scl__page-btn"
+          :disabled="currentPage === totalPages || isPageLoading"
+          @click="goPage(currentPage + 1)"
+        >
+          <span>Sau</span>
+          <LucideIcon name="chevron_right" :class="isPageLoading ? 'scl-spin' : ''" />
         </button>
       </div>
-      <button
-        type="button"
-        class="scl__page-btn"
-        :disabled="currentPage === totalPages"
-        @click="currentPage++"
-      >
-        <LucideIcon name="chevron_right" />
-      </button>
     </div>
 
     <!-- Join Class Modal -->
@@ -232,6 +255,7 @@ const toast = useToast()
 // State
 const classes = ref([])
 const isLoading = ref(false)
+const isPageLoading = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const PAGE_SIZE = 9
@@ -300,6 +324,19 @@ const loadClasses = async () => {
 }
 
 // Handlers
+const goPage = (page) => {
+  if (page < 1 || page > totalPages.value || isPageLoading.value) return
+  isPageLoading.value = true
+  currentPage.value = page
+  setTimeout(() => {
+    isPageLoading.value = false
+  }, 300)
+}
+
+const formatNum = (num) => {
+  return new Intl.NumberFormat('vi-VN').format(num)
+}
+
 const openClassDetail = (cls) => {
   selectedClass.value = cls
   showDetailModal.value = true
@@ -527,7 +564,85 @@ onMounted(loadClasses)
 
 .dark .scl__result-count { background: var(--ds-gray-700); color: var(--ds-text-muted); }
 
-/* Loading */
+/* Skeleton Loading */
+.scl__skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.scl__skel-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: sclFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.dark .scl__skel-card {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+}
+
+.scl__skel {
+  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
+  background-size: 200% 100%;
+  animation: sclShimmer 1.2s ease-in-out infinite;
+  border-radius: var(--ds-radius-md);
+}
+
+.dark .scl__skel {
+  background: linear-gradient(90deg, var(--ds-gray-700) 25%, var(--ds-gray-600) 50%, var(--ds-gray-700) 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes sclShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes sclFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scl__skel-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.scl__skel--icon { width: 48px; height: 48px; border-radius: var(--ds-radius-xl); }
+.scl__skel--badge { width: 60px; height: 24px; border-radius: var(--ds-radius-lg); }
+
+.scl__skel-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scl__skel--title { height: 18px; width: 70%; }
+.scl__skel--desc { height: 12px; width: 90%; }
+.scl__skel--meta { height: 12px; width: 50%; }
+
+.scl__skel-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ds-border);
+  margin-top: auto;
+}
+
+.dark .scl__skel-card-footer { border-top-color: var(--ds-border-strong); }
+
+.scl__skel--stat { height: 14px; width: 80px; }
+.scl__skel--btn { height: 36px; width: 120px; border-radius: var(--ds-radius-xl); }
+
+/* Loading State */
 .scl__loading {
   display: flex;
   flex-direction: column;
@@ -769,27 +884,48 @@ onMounted(loadClasses)
 .scl__pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--ds-border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background: var(--ds-surface);
+  border-radius: var(--ds-radius-xl);
+}
+
+.dark .scl__pagination { border-top-color: var(--ds-border-strong); }
+
+.scl__pagination-info {
+  font-size: 0.75rem;
+  color: var(--ds-text-muted);
+  margin: 0;
+  font-weight: 600;
+}
+
+.scl__pagination-controls {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
 }
 
 .scl__page-btn {
-  width: 40px;
-  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.875rem;
   border-radius: var(--ds-radius-xl);
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
   color: var(--ds-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .dark .scl__page-btn { background: var(--ds-gray-800); border-color: var(--ds-border-strong); color: var(--ds-text-muted); }
-.scl__page-btn:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); background: var(--ds-primary-soft); }
+.scl__page-btn:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); background: var(--ds-primary-soft); transform: translateY(-1px); }
 .scl__page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .scl__page-numbers {
@@ -799,8 +935,8 @@ onMounted(loadClasses)
 }
 
 .scl__page-num {
-  min-width: 40px;
-  height: 40px;
+  min-width: 36px;
+  height: 36px;
   border-radius: var(--ds-radius-lg);
   border: 1.5px solid transparent;
   background: transparent;
@@ -809,22 +945,44 @@ onMounted(loadClasses)
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.scl__page-num:hover:not(.scl__page-num--active) {
+.scl__page-num:hover:not(.scl__page-num--active):not(:disabled) {
   background: var(--ds-gray-100);
   color: var(--ds-text);
 }
 
-.dark .scl__page-num:hover:not(.scl__page-num--active) { background: var(--ds-gray-700); color: var(--ds-text); }
+.dark .scl__page-num:hover:not(.scl__page-num--active):not(:disabled) { background: var(--ds-gray-700); color: var(--ds-text); }
 
 .scl__page-num--active {
   background: var(--ds-primary);
   color: white;
   border-color: var(--ds-primary);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.scl__page-num:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Spin animation */
+.scl-spin {
+  animation: sclSpin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes sclSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .scl__pagination {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .scl__pagination-controls {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* Buttons */

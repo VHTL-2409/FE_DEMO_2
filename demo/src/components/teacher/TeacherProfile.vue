@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[var(--ds-bg)] min-h-full">
+  <div class="bg-[var(--ds-bg)] min-h-full ds-animate-fade-up">
     <ProfileLayout ref="layoutRef">
 
       <!-- Header slot -->

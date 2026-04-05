@@ -12,11 +12,35 @@ docs/
 everything-claude-code/
 /stitch_new
 *.ps1
-.typeui-temp/
+.typeui-temp
 *.txt
+
+# Python virtual environments
+.venv/
+venv/
+*/__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Node modules (exclude subdirs that are actual projects)
+*/node_modules/
+!demo/node_modules/
+
+# Build outputs
+demo/dist/
+demo_2/dist/
+
+# AI service venv
+ai-service/.venv/
+
 # Production env (chứa mật khẩu, secret)
 .env
 /demo_2
+*.pyc
 # AI multi-key secrets (chứa API key — không commit)
 secrets/
 .typeui-temp
+
+

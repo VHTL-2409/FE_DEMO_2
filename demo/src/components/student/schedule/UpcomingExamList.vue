@@ -2,7 +2,7 @@
   <div class="uel">
     <!-- Loading state -->
     <div v-if="loading" class="uel__loading">
-      <div v-for="i in 4" :key="i" class="uel__skel-card">
+      <div v-for="i in 4" :key="i" class="uel__skel-card" :style="{ animationDelay: `${i * 0.1}s` }">
         <div class="uel__skel uel__skel--icon" />
         <div class="uel__skel-body">
           <div class="uel__skel uel__skel--title" />
@@ -105,12 +105,18 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
   border-radius: var(--ds-radius-2xl);
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
+  animation: uelFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes uelFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .uel__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: uelShimmer 1.5s infinite;
+  animation: uelShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
 }
 
@@ -120,8 +126,8 @@ const emptyDesc = computed(() => emptyConfig[props.emptyType]?.desc || '')
 }
 
 @keyframes uelShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .uel__skel--icon { width: 80px; height: 60px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }

@@ -1,5 +1,5 @@
 <template>
-  <div class="cmp">
+  <div class="cmp ds-animate-fade-up">
     <!-- Page Header -->
     <TeacherPageHeader
       icon="groups"
@@ -8,7 +8,7 @@
       subtitle="Tổ chức học sinh theo lớp để dễ dàng quản lý"
     >
       <template #actions>
-        <button type="button" class="cmp__btn cmp__btn--primary" @click="openCreateModal">
+        <button type="button" class="cmp__btn cmp__btn--primary tui-btn tui-btn--primary" @click="openCreateModal">
           <LucideIcon name="add" />
           Tạo lớp mới
         </button>
@@ -16,38 +16,38 @@
     </TeacherPageHeader>
 
     <!-- Stats Cards -->
-    <div class="cmp__stats">
-      <div class="cmp__stat-card cmp__stat-card--primary">
+    <div class="cmp__stats tui-stat-grid tui-panel tui-panel--anim">
+      <div class="cmp__stat-card cmp__stat-card--primary tui-kpi-card tui-kpi-card--primary cmp__stat-1">
         <div class="cmp__stat-icon">
           <LucideIcon name="groups" />
         </div>
         <div class="cmp__stat-content">
-          <p class="cmp__stat-val">{{ allClasses.length }}</p>
-          <p class="cmp__stat-label">Lớp học</p>
+          <p class="cmp__stat-val tui-kpi-value">{{ allClasses.length }}</p>
+          <p class="cmp__stat-label tui-kpi-label">Lớp học</p>
         </div>
       </div>
-      <div class="cmp__stat-card cmp__stat-card--success">
+      <div class="cmp__stat-card cmp__stat-card--success tui-kpi-card tui-kpi-card--success cmp__stat-2">
         <div class="cmp__stat-icon">
           <LucideIcon name="users" />
         </div>
         <div class="cmp__stat-content">
-          <p class="cmp__stat-val">{{ totalStudents }}</p>
-          <p class="cmp__stat-label">Tổng học sinh</p>
+          <p class="cmp__stat-val tui-kpi-value">{{ totalStudents }}</p>
+          <p class="cmp__stat-label tui-kpi-label">Tổng học sinh</p>
         </div>
       </div>
-      <div class="cmp__stat-card cmp__stat-card--amber">
+      <div class="cmp__stat-card cmp__stat-card--amber tui-kpi-card tui-kpi-card--warning cmp__stat-3">
         <div class="cmp__stat-icon">
           <LucideIcon name="bar_chart_2" />
         </div>
         <div class="cmp__stat-content">
-          <p class="cmp__stat-val">{{ averageStudents }}</p>
-          <p class="cmp__stat-label">HS/Lớp (TB)</p>
+          <p class="cmp__stat-val tui-kpi-value">{{ averageStudents }}</p>
+          <p class="cmp__stat-label tui-kpi-label">HS/Lớp (TB)</p>
         </div>
       </div>
     </div>
 
     <!-- Search & Filter Bar -->
-    <div class="cmp__toolbar">
+    <div class="cmp__toolbar tui-panel tui-panel--anim cmp__toolbar--anim">
       <div class="cmp__search">
         <LucideIcon name="search" class="cmp__search-icon" />
         <input
@@ -496,11 +496,26 @@ onMounted(loadClasses)
 .cmp__stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 0;
+  border: 1px solid var(--ds-gray-200);
+  border-radius: var(--ds-radius-lg, 14px);
+  overflow: hidden;
+  background: var(--ds-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 @media (max-width: 640px) {
   .cmp__stats { grid-template-columns: 1fr; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+@keyframes slideInPanel {
+  from { opacity: 0; transform: translateY(8px) scale(0.99) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
 }
 
 .cmp__stat-card {
@@ -508,17 +523,49 @@ onMounted(loadClasses)
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1.25rem 1.5rem;
+  padding: 1.125rem 1.25rem;
   background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
+  border: none;
+  border-right: 1px solid var(--ds-gray-200);
+  border-radius: 0;
   overflow: hidden;
+  /* GPU optimization */
+  transform: translateZ(0);
+  will-change: transform;
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Staggered animations using nth-child */
+.cmp__stat-1 { animation-delay: 0.05s; }
+.cmp__stat-2 { animation-delay: 0.1s; }
+.cmp__stat-3 { animation-delay: 0.15s; }
+
+/* KPI left accent border */
+.cmp__stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.tui-kpi-card--primary::before  { background: var(--ds-primary); }
+.tui-kpi-card--success::before { background: var(--ds-success); }
+.tui-kpi-card--warning::before  { background: var(--ds-warning); }
+
+.cmp__stat-card:last-child { border-right: none; }
+.cmp__stat-card:hover { background: var(--ds-gray-50); }
+.cmp__stat-card:hover::before { opacity: 1; }
 
 .dark .cmp__stat-card {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
 }
+
+.dark .cmp__stat-card:hover { background: rgba(255,255,255,0.03); }
 
 .cmp__stat-icon {
   width: 48px;
@@ -529,24 +576,28 @@ onMounted(loadClasses)
   justify-content: center;
   flex-shrink: 0;
   font-size: 1.25rem;
+  /* GPU optimization */
+  transform: translateZ(0);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cmp__stat-card:hover .cmp__stat-icon {
+  transform: scale(1.08) rotate(-3deg) translateZ(0);
 }
 
 .cmp__stat-card--primary .cmp__stat-icon {
   background: var(--ds-primary-soft);
   color: var(--ds-primary);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
 .cmp__stat-card--success .cmp__stat-icon {
   background: var(--ds-success-soft);
   color: var(--ds-success);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
 }
 
 .cmp__stat-card--amber .cmp__stat-icon {
   background: rgba(245, 158, 11, 0.1);
   color: var(--ds-warning);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
 }
 
 .cmp__stat-content {
@@ -555,20 +606,26 @@ onMounted(loadClasses)
 }
 
 .cmp__stat-val {
-  font-size: 1.75rem;
+  font-size: 1.625rem;
   font-weight: 800;
   color: var(--ds-text);
   margin: 0;
   line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  /* GPU optimization */
+  transform: translateZ(0);
 }
 
-.dark .cmp__stat-val { color: var(--ds-text); }
+.dark .cmp__stat-val { color: #f1f5f9; }
 
 .cmp__stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--ds-text-muted);
-  margin: 0.375rem 0 0;
-  font-weight: 600;
+  margin: 0.25rem 0 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* Toolbar */
@@ -578,6 +635,15 @@ onMounted(loadClasses)
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-gray-200);
+  border-radius: var(--ds-radius-lg, 14px);
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.cmp__toolbar--anim {
+  animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 
 .cmp__search {
@@ -682,9 +748,10 @@ onMounted(loadClasses)
   border-top-color: var(--ds-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  transform: translateZ(0);
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Grid */
 .cmp__grid {
@@ -693,16 +760,20 @@ onMounted(loadClasses)
   gap: 1.25rem;
 }
 
-/* Card Animation */
+/* Card Animation - GPU Optimized */
 .card-enter-active,
 .card-leave-active {
-  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .card-enter-from,
 .card-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+}
+
+.card-enter-from .cmp__card,
+.card-leave-to .cmp__card {
+  transform: scale(0.95) translateZ(0);
 }
 
 .card-move {
@@ -715,7 +786,10 @@ onMounted(loadClasses)
   border-radius: var(--ds-radius-2xl);
   padding: 0;
   cursor: pointer;
-  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* GPU optimization */
+  transform: translateZ(0);
+  will-change: transform;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -729,7 +803,7 @@ onMounted(loadClasses)
 .cmp__card:hover {
   border-color: var(--ds-primary);
   box-shadow: 0 8px 32px rgba(79, 70, 229, 0.12);
-  transform: translateY(-4px);
+  transform: translateY(-4px) translateZ(0);
 }
 
 .cmp__card-header {
@@ -955,7 +1029,7 @@ onMounted(loadClasses)
   border-color: var(--ds-primary);
 }
 
-/* Buttons */
+/* Buttons - GPU Optimized */
 .cmp__btn {
   display: inline-flex;
   align-items: center;
@@ -966,7 +1040,10 @@ onMounted(loadClasses)
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.4, 0, 0.2, 1);
+  /* GPU optimization */
+  transform: translateZ(0);
+  will-change: transform;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
@@ -978,7 +1055,7 @@ onMounted(loadClasses)
 }
 
 .cmp__btn--primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) translateZ(0);
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
 }
 
@@ -1003,7 +1080,7 @@ onMounted(loadClasses)
   box-shadow: 0 4px 16px rgba(220, 38, 38, 0.2);
 }
 
-.cmp__btn--danger:hover { background: #dc2626; box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3); }
+.cmp__btn--danger:hover { background: #dc2626; }
 .cmp__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
 .cmp__btn-spinner {
@@ -1013,9 +1090,10 @@ onMounted(loadClasses)
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  transform: translateZ(0);
 }
 
-/* Modal */
+/* Modal - GPU Optimized */
 .cmp__modal-overlay {
   position: fixed;
   inset: 0;
@@ -1036,6 +1114,9 @@ onMounted(loadClasses)
   padding: 2rem;
   box-shadow: 0 24px 64px rgba(0,0,0,0.25);
   text-align: center;
+  /* GPU optimization */
+  transform: translateZ(0);
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark .cmp__modal { background: var(--ds-gray-800); }
@@ -1101,10 +1182,10 @@ onMounted(loadClasses)
   justify-content: center;
 }
 
-/* Modal Transitions */
+/* Modal Transitions - GPU Optimized */
 .modal-enter-active,
 .modal-leave-active {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease;
 }
 
 .modal-enter-from,
@@ -1114,7 +1195,7 @@ onMounted(loadClasses)
 
 .modal-enter-from .cmp__modal,
 .modal-leave-to .cmp__modal {
-  transform: scale(0.95);
+  transform: scale(0.95) translateZ(0);
 }
 
 /* Success Modal */
@@ -1180,9 +1261,21 @@ onMounted(loadClasses)
   margin: 0;
 }
 </style>
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  .cmp__card,
+  .cmp__btn,
+  .cmp__stat-card,
+  .cmp__modal,
+  .card-enter-active,
+  .card-leave-active {
+    animation: none !important;
     transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  }
+  .cmp__card:hover,
+  .cmp__btn:hover,
+  .cmp__card:hover .cmp__stat-icon {
+    transform: none !important;
   }
 }

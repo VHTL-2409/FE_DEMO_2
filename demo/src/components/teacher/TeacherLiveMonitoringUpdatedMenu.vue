@@ -1,5 +1,5 @@
 <template>
-  <div class="lm-wrapper">
+  <div class="lm-wrapper ds-animate-fade-up">
     <!-- Control Center Layout -->
     <ControlCenterLayout>
       <!-- Header slot: MonitoringHeader -->

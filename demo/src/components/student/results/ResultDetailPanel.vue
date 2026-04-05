@@ -332,7 +332,7 @@ const optionClass = (item, option) => {
 .rdp__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: rdpShimmer 1.5s ease-in-out infinite;
+  animation: rdpShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
   will-change: transform, opacity;
   transform-origin: left;

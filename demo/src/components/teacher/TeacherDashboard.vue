@@ -32,8 +32,7 @@
 
       <!-- 4. Recent Submissions + Quick Actions -->
       <div class="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
-        <!-- Recent Submissions -->
-        <div class="td-panel">
+        <div class="td-panel td-panel--1">
           <SubmissionList
             :exams="examTableData"
             @view-exam="openExamResult"
@@ -42,18 +41,17 @@
           />
         </div>
 
-        <!-- Quick Actions -->
-        <div class="td-panel">
+        <div class="td-panel td-panel--2">
           <QuickActionGrid @action="handleQuickAction" />
         </div>
       </div>
 
       <!-- 5. Weekly Schedule + Insights -->
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-        <div class="td-panel">
+        <div class="td-panel td-panel--3">
           <SchedulePanel :schedule-series="scheduleSeries" />
         </div>
-        <div class="td-panel">
+        <div class="td-panel td-panel--4">
           <InsightCard
             :exams="examTableData"
             :stats="kpiStats"
@@ -72,7 +70,6 @@ import { ApiError } from '../../services/apiClient'
 import { listExams } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 
-// Dashboard sub-components
 import DashboardHero from './dashboard/DashboardHero.vue'
 import DashboardKpiGrid from './dashboard/DashboardKpiGrid.vue'
 import MonitoringCard from './dashboard/MonitoringCard.vue'
@@ -86,7 +83,6 @@ const toast = useToast()
 
 const rawExams = ref([])
 
-// ─── Exam helpers ────────────────────────────────────────────
 const getExamStatusMeta = (exam) => {
   if (!exam.isActive) {
     return { key: 'draft', label: 'Bản nháp' }
@@ -133,7 +129,6 @@ const statusCounts = computed(() =>
 const activeStudentCount = computed(() => statusCounts.value.started * 3)
 const alertCount = ref(0)
 
-// Live exam data for the monitoring card
 const liveExam = computed(() => {
   const started = exams.value.find(e => getExamStatusMeta(e).key === 'started')
   if (!started) return null
@@ -147,7 +142,6 @@ const liveExam = computed(() => {
   }
 })
 
-// ─── KPI Stats ────────────────────────────────────────────────
 const kpiStats = computed(() => ({
   total: rawExams.value.length,
   active: statusCounts.value.started,
@@ -157,7 +151,6 @@ const kpiStats = computed(() => ({
   activeTrend: null
 }))
 
-// ─── Table data ──────────────────────────────────────────────
 const examTableData = computed(() =>
   exams.value.slice(0, 8).map(exam => {
     const { key, label } = getExamStatusMeta(exam)
@@ -175,7 +168,6 @@ const examTableData = computed(() =>
   })
 )
 
-// ─── Schedule series ──────────────────────────────────────────
 const padDateKey = (d) => {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -208,10 +200,8 @@ const scheduleSeries = computed(() => {
   }
 })
 
-// ─── Teacher name ─────────────────────────────────────────────
 const teacherName = ref('Giáo viên')
 
-// ─── Navigation ───────────────────────────────────────────────
 const goToMonitoring = () => router.push('/teacher/live-monitoring')
 const goToList = () => router.push('/teacher/exams/list')
 const goToCreate = () => router.push('/teacher/exams/create')
@@ -233,8 +223,6 @@ const handleQuickAction = (actionId) => {
   }
 }
 
-// ─── Data loading ────────────────────────────────────────────
-// Reads from sessionStorage if prefetched by RedirectPage
 const loadExams = async () => {
   try {
     const cached = sessionStorage.getItem('prefetch_teacher_data')
@@ -255,6 +243,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Ultra Simplified Dashboard */
+
 .td-page {
   min-height: 100vh;
 }
@@ -264,6 +254,20 @@ onMounted(async () => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   padding: 1.375rem;
-  box-shadow: var(--ds-shadow-xs);
+  animation: panelIn 0.35s ease-out both;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.td-panel--1 { animation-delay: 0.05s; }
+.td-panel--2 { animation-delay: 0.1s; }
+.td-panel--3 { animation-delay: 0.15s; }
+.td-panel--4 { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .td-panel { animation: none; }
 }
 </style>

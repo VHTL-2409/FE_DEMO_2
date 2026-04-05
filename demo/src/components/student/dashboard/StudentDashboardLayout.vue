@@ -1,17 +1,17 @@
 <template>
-  <div class="sdl">
+  <div ref="containerRef" class="sdl">
     <!-- Hero section -->
-    <div class="sdl__hero">
+    <div class="sdl__hero" :class="{ 'sdl--visible': isVisible }">
       <slot name="hero" />
     </div>
 
     <!-- KPI strip -->
-    <div v-if="$slots.kpis" class="sdl__kpis">
+    <div v-if="$slots.kpis" class="sdl__kpis" :class="{ 'sdl--visible': isVisible }">
       <slot name="kpis" />
     </div>
 
     <!-- Main content: 2-column on large screens -->
-    <div class="sdl__main">
+    <div class="sdl__main" :class="{ 'sdl--visible': isVisible }">
       <!-- Left column (main content) -->
       <div class="sdl__main-col">
         <slot name="main" />
@@ -26,12 +26,22 @@
 </template>
 
 <script setup>
+import { useIntersectionObserver } from '../../../composables/useIntersectionObserver'
+
+// Use intersection observer for optimized animation triggering
+// Only animate when component enters viewport
+const { containerRef, isVisible } = useIntersectionObserver({
+  threshold: 0.05,
+  rootMargin: '0px 0px -20px 0px',
+  once: true
+})
 </script>
 
 <style scoped>
+/* GPU-accelerated fadeInUp animation */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .sdl {
@@ -41,18 +51,33 @@
   padding: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
+  /* Optimize paint layers */
+  content-visibility: auto;
+  contain: layout style;
 }
 
-/* Entrance animations */
+/* Entrance animations - GPU accelerated, triggered by visibility class */
 .sdl__hero {
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.05s both;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.sdl--visible .sdl__hero {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
 .sdl__kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.15s both;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.sdl--visible .sdl__kpis {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
 }
 
 .sdl__main {
@@ -60,7 +85,13 @@
   grid-template-columns: 1fr 320px;
   gap: 1.5rem;
   align-items: start;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.25s both;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.sdl--visible .sdl__main {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
 }
 
 .sdl__main-col {

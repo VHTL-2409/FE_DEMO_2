@@ -71,6 +71,7 @@
         <ResultHistoryList
           :sessions="sessions"
           :loading="isLoading"
+          :page-loading="isPageLoading"
           :current-page="currentPage"
           :total-pages="totalPages"
           :total-count="totalCount"
@@ -115,6 +116,7 @@ watch(activeTab, () => { currentPage.value = 1 })
 // ── Session list ────────────────────────────────────────────────────────────────
 const attempts = ref([])
 const isLoading = ref(false)
+const isPageLoading = ref(false)
 const PAGE_SIZE = 10
 const currentPage = ref(1)
 
@@ -157,8 +159,22 @@ const sessions = computed(() => {
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
-const goToPrevPage = () => { if (currentPage.value > 1) currentPage.value-- }
-const goToNextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
+const goToPrevPage = () => {
+  if (currentPage.value > 1) {
+    isPageLoading.value = true
+    currentPage.value--
+    setTimeout(() => { isPageLoading.value = false }, 300)
+  }
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    isPageLoading.value = true
+    currentPage.value++
+    setTimeout(() => { isPageLoading.value = false }, 300)
+  }
+}
+
 const goDashboard = () => router.push('/student/dashboard')
 
 // ── Navigate to result detail ────────────────────────────────────────────────────

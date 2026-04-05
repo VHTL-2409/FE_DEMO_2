@@ -1,5 +1,5 @@
 <template>
-  <div class="sth">
+  <div class="sth" style="contain: layout style;">
     <div class="sth__inner">
       <div class="sth__top">
         <!-- Brand -->
@@ -22,11 +22,13 @@
               class="sth__icon-btn"
               :class="{ 'sth__icon-btn--active': showNotificationPanel }"
               @click="showNotificationPanel = !showNotificationPanel"
+              aria-label="Thông báo"
             >
               <LucideIcon name="notifications" size="18" />
               <span
                 v-if="hasUnread"
                 class="sth__notif-badge"
+                aria-label="Thông báo chưa đọc"
               >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
             </button>
             <Transition name="sth-dropdown">
@@ -61,6 +63,7 @@
               type="button"
               class="sth__avatar-btn"
               @click="showProfileMenu = !showProfileMenu"
+              aria-label="Menu hồ sơ"
             >
               <div class="sth__avatar">{{ avatarLabel }}</div>
             </button>
@@ -108,9 +111,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { clearAuthSession, fetchMyProfile } from '../../services/authService'
+import { storeToRefs } from 'pinia'
+import { useAuthStore } from '../../stores/authStore'
+import { clearAuthSession } from '../../services/authService'
 import { useNotifications } from '../../composables/useNotifications'
 import AppLogo from '../common/AppLogo.vue'
 
@@ -139,7 +144,9 @@ defineProps({
 
 const router = useRouter()
 const route = useRoute()
-const profile = ref(null)
+
+// Use auth store data directly - no extra API call needed
+const { user: authUser } = storeToRefs(useAuthStore())
 
 const studentMenu = [
   { key: 'dashboard', label: 'Trang chủ', path: '/student/dashboard', icon: 'home' },
@@ -149,8 +156,9 @@ const studentMenu = [
   { key: 'profile',    label: 'Hồ sơ',     path: '/student/profile',      icon: 'account_circle' }
 ]
 
-const displayName = computed(() => profile.value?.username || 'Học sinh')
-const displayId = computed(() => (profile.value?.id ? `ID: ${profile.value.id}` : ''))
+// Use authStore user data directly - no API call
+const displayName = computed(() => authUser.value?.username || 'Học sinh')
+const displayId = computed(() => (authUser.value?.id ? `ID: ${authUser.value.id}` : ''))
 const avatarLabel = computed(() => displayName.value.slice(0, 1).toUpperCase())
 
 const isMenuActive = (key) => {
@@ -173,14 +181,6 @@ const isMenuActive = (key) => {
   return false
 }
 
-const loadProfile = async () => {
-  try {
-    profile.value = await fetchMyProfile()
-  } catch {
-    profile.value = null
-  }
-}
-
 const handleLogout = () => {
   clearAuthSession()
   router.push('/login')
@@ -190,10 +190,6 @@ const handleGoToProfile = () => {
   showProfileMenu.value = false
   router.push('/student/profile')
 }
-
-onMounted(() => {
-  loadProfile()
-})
 </script>
 
 <style scoped>
@@ -208,6 +204,7 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(20px) saturate(200%);
   border-bottom: 1px solid var(--color-border);
   box-shadow: 0 1px 0 var(--color-border), 0 4px 20px rgba(15, 23, 42, 0.04);
+  contain: layout style;
 }
 
 .dark .sth {
@@ -315,11 +312,14 @@ onMounted(() => {
   animation: badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both,
              badge-pulse 2s ease-in-out 0.3s infinite;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  /* GPU optimization */
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
 }
 
 @keyframes badge-pop {
-  from { transform: scale(0); }
-  to   { transform: scale(1); }
+  from { transform: scale(0) translateZ(0); }
+  to   { transform: scale(1) translateZ(0); }
 }
 
 @keyframes badge-pulse {
@@ -559,12 +559,15 @@ onMounted(() => {
   transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1.5px solid transparent;
   background: transparent;
-  animation: nav-slide-in 0.35s ease backwards;
+  /* GPU optimization - use faster easing and translateZ for compositing */
+  animation: nav-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 @keyframes nav-slide-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .sth__nav-link:hover {

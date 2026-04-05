@@ -92,32 +92,46 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 
-// Dashboard components
-import StudentDashboardLayout from './dashboard/StudentDashboardLayout.vue'
-import StudentHero from './dashboard/StudentHero.vue'
-import StudentStatCard from './dashboard/StudentStatCard.vue'
-import UpcomingExamCard from './dashboard/UpcomingExamCard.vue'
-import RecentResultCard from './dashboard/RecentResultCard.vue'
-import StudentQuickActions from './dashboard/StudentQuickActions.vue'
-import NotificationList from './dashboard/NotificationList.vue'
+// Dashboard components - using dynamic imports for better initial load
+const StudentDashboardLayout = defineAsyncComponent(() =>
+  import('./dashboard/StudentDashboardLayout.vue')
+)
+const StudentHero = defineAsyncComponent(() =>
+  import('./dashboard/StudentHero.vue')
+)
+const StudentStatCard = defineAsyncComponent(() =>
+  import('./dashboard/StudentStatCard.vue')
+)
+const UpcomingExamCard = defineAsyncComponent(() =>
+  import('./dashboard/UpcomingExamCard.vue')
+)
+const RecentResultCard = defineAsyncComponent(() =>
+  import('./dashboard/RecentResultCard.vue')
+)
+const StudentQuickActions = defineAsyncComponent(() =>
+  import('./dashboard/StudentQuickActions.vue')
+)
+const NotificationList = defineAsyncComponent(() =>
+  import('./dashboard/NotificationList.vue')
+)
 
 const router = useRouter()
 const toast = useToast()
 
-// Data
-const attempts = ref([])
+// Data - use shallowRef for large arrays to avoid deep reactivity overhead
+const attempts = shallowRef([])
 const isLoadingAttempts = ref(false)
 const studentName = ref('Học sinh')
 
 // Upcoming exams (placeholder - would come from exam schedule API)
-const upcomingExams = ref([])
+const upcomingExams = shallowRef([])
 
-// Computed: submitted attempts
+// Computed: submitted attempts - memoized with cache
 const submittedAttempts = computed(() =>
   attempts.value.filter(a =>
     ['SUBMITTED', 'AUTO_SUBMITTED', 'COMPLETED'].includes(String(a.status || '').toUpperCase())
@@ -134,11 +148,12 @@ const pendingAttempts = computed(() =>
 )
 const pendingCount = computed(() => pendingAttempts.value.length)
 
-// Average score
+// Average score - optimized calculation
 const avgScoreValue = computed(() => {
-  if (!submittedAttempts.value.length) return null
-  const total = submittedAttempts.value.reduce((sum, a) => sum + Number(a.score || 0), 0)
-  return (total / submittedAttempts.value.length).toFixed(1)
+  const submitted = submittedAttempts.value
+  if (!submitted.length) return null
+  const total = submitted.reduce((sum, a) => sum + Number(a.score || 0), 0)
+  return (total / submitted.length).toFixed(1)
 })
 
 const avgScoreDisplay = computed(() => {
@@ -156,9 +171,10 @@ const avgScoreAccent = computed(() => {
 
 // Pass rate
 const passRateValue = computed(() => {
-  if (!submittedAttempts.value.length) return 0
-  const passCount = submittedAttempts.value.filter(a => Number(a.score || 0) >= 50).length
-  return (passCount / submittedAttempts.value.length) * 100
+  const submitted = submittedAttempts.value
+  if (!submitted.length) return 0
+  const passCount = submitted.filter(a => Number(a.score || 0) >= 50).length
+  return (passCount / submitted.length) * 100
 })
 
 const passRateDisplay = computed(() => {
@@ -173,16 +189,16 @@ const passRateAccent = computed(() => {
   return 'danger'
 })
 
-// New scores (attempts submitted in last 7 days)
+// New scores (attempts submitted in last 7 days) - memoized date calculation
+const sevenDaysAgo = ref(Date.now() - 7 * 24 * 60 * 60 * 1000)
 const newScoresCount = computed(() => {
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
   return submittedAttempts.value.filter(a => {
     const submitted = new Date(a.submittedAt || 0).getTime()
-    return submitted >= sevenDaysAgo
+    return submitted >= sevenDaysAgo.value
   }).length
 })
 
-// Recent results for RecentResultCard
+// Recent results - cached and memoized
 const recentResults = computed(() => {
   return [...submittedAttempts.value]
     .sort((a, b) => {
@@ -222,10 +238,9 @@ const notifications = computed(() => {
   }
 
   // Recent new scores
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
   for (const attempt of submittedAttempts.value.slice(0, 3)) {
     const submitted = new Date(attempt.submittedAt || 0).getTime()
-    if (submitted >= sevenDaysAgo) {
+    if (submitted >= sevenDaysAgo.value) {
       items.push({
         id: `score-${attempt.id}`,
         title: 'Kết quả thi mới',

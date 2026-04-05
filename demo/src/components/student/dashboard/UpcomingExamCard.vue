@@ -19,7 +19,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="uec__loading">
-      <div v-for="i in 3" :key="i" class="uec__skel-item">
+      <div v-for="i in 3" :key="i" class="uec__skel-item" :style="{ animationDelay: `${i * 0.08}s` }">
         <div class="uec__skel uec__skel--icon" />
         <div class="uec__skel-content">
           <div class="uec__skel uec__skel--title" />
@@ -166,14 +166,23 @@ const formatDateTime = (value) => {
 
 
 <style scoped>
-/* fadeUpSm — shared 10px fade-up keyframe (defined in animation.css, accessible globally) */
+/* GPU-accelerated animations */
+@keyframes fadeUpSm {
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
 
 .uec {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
+  /* GPU optimization - animate once */
+  animation: fadeUpSm 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  /* Optimize paint */
+  contain: layout style;
 }
 
 .dark .uec {
@@ -267,18 +276,29 @@ const formatDateTime = (value) => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  animation: uecFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes uecFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .uec__skel {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: uecShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
 }
 
 .dark .uec__skel {
   background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
   background-size: 200% 100%;
+}
+
+@keyframes uecShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .uec__skel--icon { width: 40px; height: 40px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }

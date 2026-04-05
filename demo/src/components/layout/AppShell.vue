@@ -84,8 +84,12 @@ watch(sidebarCollapsed, (val) => {
   height: 100dvh;
   overflow-y: auto;
   background: var(--db-surface-2);
+  /* GPU optimization - smooth transition */
   transition: padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: padding-left;
+  /* Optimize rendering */
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .db-app-shell__main::-webkit-scrollbar {
