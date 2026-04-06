@@ -247,7 +247,12 @@
 
             <!-- Question text -->
             <div class="ei-q-content">
-              <h2 class="ei-q-text">{{ currentQuestion.content }}</h2>
+              <h2 class="ei-q-text">
+                <MathDisplay
+                  :content="currentQuestion.content"
+                  :latex-content="currentQuestion.latexContent"
+                />
+              </h2>
             </div>
 
             <!-- Answer options -->
@@ -457,6 +462,7 @@ import { parseBackendDate } from '../../utils/dateUtils.js'
 import BaseModal from '../shared/BaseModal.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
+import MathDisplay from '../shared/MathDisplay.vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const route = useRoute()
@@ -1053,7 +1059,16 @@ onMounted(async () => {
       monitorMultiMonitor: examDetail?.monitorMultiMonitor !== false, requireCameraMic: examDetail?.requireCameraMic !== false
     }
 
-    questions.value = questionList.map(item => ({ id: item.id, content: item.content, type: item.type || 'SINGLE_CHOICE', options: parseQuestionOptions(item.options), metadata: parseQuestionJson(item.metadata, null), attachments: parseQuestionJson(item.attachments, []) }))
+    questions.value = questionList.map((item) => ({
+      id: item.id,
+      content: item.content,
+      type: item.type || 'SINGLE_CHOICE',
+      options: parseQuestionOptions(item.options),
+      metadata: parseQuestionJson(item.metadata, null),
+      attachments: parseQuestionJson(item.attachments, []),
+      latexContent: item.latexContent ?? item.latex_content ?? null,
+      latexOptions: item.latexOptions ?? item.latex_options ?? null
+    }))
     examSurfaceReady.value = true
 
     const serverAnswers = (draftData?.answers || []).reduce((acc, answer) => {
@@ -1754,6 +1769,16 @@ onUnmounted(() => {
   color: var(--ds-text);
   line-height: 1.6;
   margin: 0;
+}
+
+/* KaTeX rendered math in questions */
+.ei-q-text :deep(.katex) {
+  font-size: 1.05em;
+}
+
+.ei-q-text :deep(.katex-display) {
+  margin: 0.75em 0;
+  overflow-x: auto;
 }
 
 .ei-q-answer {

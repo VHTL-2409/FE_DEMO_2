@@ -2,6 +2,10 @@ package com.example.demo.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -30,9 +34,44 @@ public class Answer {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @Column(name = "selected_answer", nullable = false, columnDefinition = "TEXT")
+    // MCQ answer
+    @Column(name = "selected_answer", columnDefinition = "TEXT")
     private String selectedAnswer;
 
-    @Column(name = "correct", nullable = false)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "selected_options", columnDefinition = "jsonb")
+    private String selectedOptions;
+
+    // Essay answer
+    @Column(name = "essay_content", columnDefinition = "TEXT")
+    private String essayContent;
+
+    // Scoring MCQ
+    @Column(name = "correct")
     private Boolean correct;
+
+    // Scoring Essay (manual grading)
+    @Column(name = "essay_score", columnDefinition = "DECIMAL(5,2)")
+    private Double essayScore;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "essay_scored_by")
+    private User essayScoredBy;
+
+    @Column(name = "essay_scored_at")
+    private LocalDateTime essayScoredAt;
+
+    // Draft tracking (when was answer last saved)
+    @Column(name = "is_marked")
+    @Builder.Default
+    private Boolean isMarked = false;
+
+    @Column(name = "saved_at")
+    private LocalDateTime savedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void onSave() {
+        this.savedAt = LocalDateTime.now();
+    }
 }

@@ -27,7 +27,7 @@ public class ExamImportController {
     private final ExamService examService;
 
     /**
-     * Upload PDF và parse bằng Python FastAPI service.
+     * Upload PDF hoặc DOCX và parse bằng Python FastAPI service.
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ExamImportResponse> uploadAndParse(

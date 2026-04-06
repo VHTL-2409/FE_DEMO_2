@@ -31,7 +31,14 @@ from ..schemas import (
 )
 from ..profiler import PdfProfile
 from ..utils.pdf_reader import PdfReader
-from ..utils.text_normalizer import normalize
+from ..utils.text_normalizer import (
+    normalize,
+    normalize_math_text,
+    formula_analysis,
+    split_merged_options,
+    fix_question_number_spacing,
+)
+from ..utils.latex_converter import convert_to_latex
 from ..utils.image_cropper import crop_question
 from ..utils.section_detector import detect_sections, SectionKind
 
@@ -375,7 +382,79 @@ class Template01MathBrokenParser(BaseParser):
             t = b["text"].strip()
             if t:
                 lines.append(t)
-        return "\n".join(lines)
+        raw_text = "\n".join(lines)
+        # Apply secondary option grouping for math PDFs
+        bbox = self._blocks_to_bbox(sorted_blocks) if sorted_blocks else (0, 0, 0, 0)
+        return self._group_options_by_column(lines, bbox)
+
+    def _group_options_by_column(
+        self,
+        raw_lines: list[str],
+        bbox: tuple[float, float, float, float],
+    ) -> str:
+        """
+        Secondary grouping: within a question block, group option letters (A., B., C., D.)
+        with their math content that may be on adjacent text spans at the same X column.
+
+        PDF extraction splits options across multiple text blocks because math symbols
+        (like {, }, S, =, −) are on separate spans. This function re-associates
+        content with its option letter by X-position clustering.
+
+        Returns reassembled option text like:
+            "A. { S = - }\nB. ..."
+        """
+        if not raw_lines:
+            return ""
+
+        # Find option letter positions (A., B., C., D.) and their X coordinates
+        # These come from the PDF layout: A.≈77, B.≈206, C.≈335, D.≈464 (on 612-wide page)
+        OPTION_COLUMNS = {"A": 77, "B": 206, "C": 335, "D": 464}
+        TOLERANCE = 40  # px tolerance for column matching
+
+        option_starts: dict[str, float] = {}
+        for line in raw_lines:
+            m = re.match(r"^\s*([A-D])\.\s*", line)
+            if m:
+                # Try to find X position from bbox (if available)
+                # For now, estimate from known column positions
+                letter = m.group(1)
+                if letter not in option_starts:
+                    option_starts[letter] = OPTION_COLUMNS.get(letter, 0)
+
+        if not option_starts:
+            return "\n".join(raw_lines)
+
+        # Rebuild lines: for each option, include its math content
+        result_lines: list[str] = []
+        current_option: str | None = None
+        current_text_parts: list[str] = []
+
+        for line in raw_lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            opt_m = re.match(r"^\s*([A-D])(?:\.|\))\s*(.*)$", stripped)
+            if opt_m:
+                # Flush previous option
+                if current_option and current_text_parts:
+                    result_lines.append(f"{current_option}. " + " ".join(current_text_parts))
+                current_option = opt_m.group(1)
+                content = opt_m.group(2).strip()
+                current_text_parts = [content] if content else []
+            else:
+                # Content line — append to current option
+                if current_option:
+                    current_text_parts.append(stripped)
+                else:
+                    # Orphan content before any option — keep as stem line
+                    result_lines.append(stripped)
+
+        # Flush last option
+        if current_option and current_text_parts:
+            result_lines.append(f"{current_option}. " + " ".join(current_text_parts))
+
+        return "\n".join(result_lines) if result_lines else "\n".join(raw_lines)
 
     def _blocks_to_bbox(self, blocks: list[dict]) -> tuple[float, float, float, float]:
         """Compute bounding box that covers all blocks."""
@@ -432,15 +511,22 @@ class Template01MathBrokenParser(BaseParser):
         text = block.raw_text
         num = block.question_num
 
+        # Normalize math text: preserve math symbols, fix broken expressions
+        text_normalized = normalize_math_text(text)
+
         # Check formula noise level
-        formula_noise = self._calculate_formula_noise(text)
+        formula_noise = self._calculate_formula_noise(text_normalized)
         high_noise = formula_noise > 0.2
 
-        # Parse options
-        options = self._parse_options(text)
+        # Parse options from normalized text
+        options = self._parse_options(text_normalized)
 
-        # Determine render mode
-        render_mode = RenderMode.IMAGE if high_noise else RenderMode.TEXT
+        # Determine render mode - prefer LATEX for math content
+        if high_noise:
+            render_mode = RenderMode.IMAGE
+        else:
+            render_mode = RenderMode.LATEX  # Use LaTeX for better rendering
+
         issues: list[str] = []
         confidence = 0.9 if options else 0.5
 
@@ -467,16 +553,19 @@ class Template01MathBrokenParser(BaseParser):
         if answer is None:
             # Try inline
             from ..utils.answer_extractor import extract_inline_answer
-            answer = extract_inline_answer(text)
+            answer = extract_inline_answer(text_normalized)
             if answer:
                 answer_location = "inline"
 
         parsed_block = ParsedBlock(
-            raw_text=text,
+            raw_text=text_normalized,
             question_num=num,
             page=block.page,
             bbox=block.bbox,
         )
+
+        # Analyze formula content for rendering hints
+        hints = formula_analysis(text_normalized)
 
         question = self.build_question(
             block=parsed_block,
@@ -494,6 +583,18 @@ class Template01MathBrokenParser(BaseParser):
         question.sectionKind = section_info.get("sectionKind") or SectionKind.MCQ.value
         question.answerLocation = answer_location
         question.needsGrading = False
+        # Attach formula hints for FE rendering decision
+        question.formulaHints = hints
+
+        # Convert to LaTeX for frontend rendering
+        question.latexContent = convert_to_latex(text_normalized, mode="auto")
+
+        # Convert options to LaTeX
+        if valid_options:
+            question.latexOptions = {
+                k: convert_to_latex(v, mode="inline")
+                for k, v in valid_options.items()
+            }
 
         return question
 
@@ -529,6 +630,9 @@ class Template01MathBrokenParser(BaseParser):
             maxsplit=1,
         )[0].strip()
 
+        # Normalize math text (preserve symbols, fix broken expressions)
+        text = normalize_math_text(text)
+
         parsed_block = ParsedBlock(
             raw_text=text,
             question_num=block.question_num,
@@ -536,12 +640,15 @@ class Template01MathBrokenParser(BaseParser):
             bbox=block.bbox,
         )
 
+        # Analyze formula content
+        hints = formula_analysis(text)
+
         question = self.build_question(
             block=parsed_block,
             options={},
             q_type=QuestionType.ESSAY,
             confidence=0.7,
-            render_mode=RenderMode.IMAGE,  # essay = always image mode for math
+            render_mode=RenderMode.LATEX,  # Use LaTeX for essay with math
             bbox=block.bbox,
         )
 
@@ -550,82 +657,66 @@ class Template01MathBrokenParser(BaseParser):
         question.sectionKind = section_info.get("sectionKind") or SectionKind.ESSAY.value
         question.answerLocation = "none"
         question.needsGrading = True
+        question.formulaHints = hints
+
+        # Convert to LaTeX for frontend rendering
+        question.latexContent = convert_to_latex(text, mode="block")
 
         return question
 
     def _parse_options(self, text: str) -> dict[str, str]:
         """
         Parse answer options from block text.
-        Handles FOUR formats:
-          1. Standard: "A. x²" on one line
-          2. Empty marker: "A." (no content on that line)
-          3. Inline merged: "A. x² B. y² C. z² D. t²" on one line
-          4. Orphan letter-word: "A x²" without period (math broken text)
+        Supports:
+          - A. / A) / A． / A: at line start
+          - Multi-line content after empty "A." / "A)"
+          - One-line merged: "... A. x B. y C. z D. w"
+          - Orphan "A word" (broken PDF) as last resort
         """
         options: dict[str, str] = {}
+        opt_header = re.compile(r"^\s*([A-D])(?:\.|\)|．|:)\s*(.*)$")
 
-        # Pass 1: Standard "A. content" — allow empty content too
         lines = text.split("\n")
-        option_letter = None
-        option_letters_found: list[str] = []
-
-        for i, line in enumerate(lines):
+        active: str | None = None
+        for line in lines:
             stripped = line.strip()
-            # Detect option marker — may have empty content after period
-            m = re.match(r"^\s*([A-D])\.\s*(.*)$", stripped)
+            if not stripped:
+                continue
+            m = opt_header.match(stripped)
             if m:
                 letter = m.group(1)
-                content = m.group(2).strip()
-                option_letter = letter
-                option_letters_found.append(letter)
-                if content:
-                    options[letter] = content
-                    option_letter = None  # content found, stop accumulating
+                rest = m.group(2).strip()
+                active = letter
+                if rest:
+                    options[letter] = rest
+                    active = None
+            elif active:
+                # Continuation for "A." / "A)" with content on following lines
+                if not re.match(r"^\s*([A-D])(?:\.|\)|．|:)", stripped):
+                    prev = options.get(active, "")
+                    options[active] = (prev + " " + stripped).strip() if prev else stripped
+            # lines before first option: ignored here (stay in stem text)
 
-        # Pass 2: Accumulate content lines after empty-option markers
-        # When we found "A." with no content, subsequent lines are its content
-        # until we hit another option marker or exhausted lines
-        if option_letter is not None and option_letter in option_letters_found:
-            i = lines.index(next(l for l in lines if re.match(rf"^\s*{option_letter}\.", l.strip()))) + 1
-            content_parts: list[str] = []
-            for j in range(i, len(lines)):
-                next_line = lines[j].strip()
-                if not next_line:
-                    continue
-                if re.match(r"^\s*[A-D]\.\s*", next_line):
-                    break
-                content_parts.append(next_line)
-            if content_parts:
-                options[option_letter] = " ".join(content_parts).strip()
-
-        # Pass 3: Inline merged "A. x² B. y² C. z² D. t²" on one line
         if len(options) < 2:
             merged_pattern = re.compile(
-                r"([A-D])\.\s*([^\nA-D]{0,80}?)(?=\s+[A-D]\.|\s*$)"
+                r"([A-D])(?:\.|\)|．|:)\s*([^\nA-D]{0,200}?)(?=\s+[A-D](?:\.|\)|．|:)|\s*$)"
             )
-            for m in merged_pattern.finditer(text):
+            for m in merged_pattern.finditer(text.replace("\n", " ")):
                 letter = m.group(1)
                 content = m.group(2).strip()
-                if letter not in options:
-                    options[letter] = content
-                elif not options[letter] and content:
-                    options[letter] = content
+                if letter not in options or not options[letter]:
+                    if content:
+                        options[letter] = content
 
-        # Pass 4: Orphan letter-word "A x²" without period (broken math text)
-        # In broken text, formula content may appear as:
-        #   "A" on one line, "x²" on next line (no period separator)
         if len(options) < 2:
-            orphan_letter_pattern = re.compile(r"^\s*([A-D])\s+(\S+.*)$", re.MULTILINE)
-            last_letter = None
+            orphan_letter_pattern = re.compile(
+                r"^\s*([A-D])\s+(\S+.*)$", re.MULTILINE
+            )
             for m in orphan_letter_pattern.finditer(text):
                 letter = m.group(1)
                 word = m.group(2).strip()
-                if letter not in options:
+                if letter not in options and word:
                     options[letter] = word
-                    last_letter = letter
-                elif last_letter == letter and options[letter] == word:
-                    # Possible continuation — add to existing
-                    pass
 
         return options
 

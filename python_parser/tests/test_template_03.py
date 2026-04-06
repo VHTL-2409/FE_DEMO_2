@@ -231,6 +231,30 @@ D. x = 4"""
         assert len(options) >= 2
 
 
+class TestPdfMau3StemBoundary:
+    """pdf_mau_3: đề kết thúc trước dòng A.; bỏ mảnh công thức lạc giữa đề và A."""
+
+    def test_orphan_math_line_removed_from_stem(self):
+        from app.parsers.base import ParsedBlock
+
+        inner = (
+            "Hàm số nào sau đây đồng biến trên khoảng ( − ∞ +∞ ; ) .\n"
+            "3 + 2 2 x 3 + 2\n"
+            "A. y = 1\n"
+            "B. y = 2\n"
+            "C. y = 3\n"
+            "D. y = 4\n"
+        )
+        block = ParsedBlock(raw_text=f"Câu 1: {inner}", question_num=1, page=1)
+        parser = Template03MathAnswerGridParser.__new__(Template03MathAnswerGridParser)
+        parser._answer_key = {}
+        parser._solutions = {}
+        q = parser._parse_question_block(block)
+        stem_part = q.text.split("A.")[0]
+        assert "3 + 2" not in stem_part
+        assert "đồng biến" in stem_part
+
+
 # ─── Formula Noise ─────────────────────────────────────────────────────────────
 
 class TestFormulaNoise:

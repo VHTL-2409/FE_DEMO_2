@@ -198,7 +198,7 @@ export const waitForImportJob = async (
 // ─── Exam PDF Import (Python Parser) ────────────────────────────────────────
 
 /**
- * Upload PDF để parse bằng Python FastAPI service.
+ * Upload PDF hoặc DOCX để parse bằng Python FastAPI service.
  * @param {File} file
  * @param {{ examId?: number, forceTemplate?: string }} options
  */

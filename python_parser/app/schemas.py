@@ -22,6 +22,7 @@ class QuestionType(str, Enum):
 class RenderMode(str, Enum):
     TEXT = "text"
     IMAGE = "image"
+    LATEX = "latex"  # New: render as LaTeX (KaTeX/MathJax)
 
 
 class TemplateType(str, Enum):
@@ -50,7 +51,17 @@ class ParsedQuestion(BaseModel):
     type: QuestionType = QuestionType.MULTIPLE_CHOICE
     page: int = 1
     text: str = ""
+    # LaTeX version of text for frontend rendering (wrapped with $...$ or $$...$$)
+    latexContent: Optional[str] = Field(
+        default=None,
+        description="LaTeX formatted content for KaTeX/MathJax rendering. Example: '$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$'"
+    )
     options: dict[str, str] = Field(default_factory=dict)  # {"A": "...", "B": "...", ...}
+    # LaTeX version of options for frontend rendering
+    latexOptions: Optional[dict[str, str]] = Field(
+        default=None,
+        description="LaTeX formatted options. Example: {'A': '$\\frac{1}{2}$', 'B': '$\\frac{1}{3}$'}"
+    )
     subQuestions: list[ParsedQuestion] = Field(default_factory=list)
     answer: Optional[str] = None  # "A", "B", "C", "D", or full text for essay
     explanation: Optional[str] = None
@@ -62,6 +73,11 @@ class ParsedQuestion(BaseModel):
     sectionKind: Optional[str] = Field(default=None, description="Section kind: 'mcq', 'essay', 'answer', 'solution'")
     answerLocation: str = Field(default="inline", description="Where answer was found: 'inline', 'answer_table', 'none'")
     needsGrading: bool = Field(default=False, description="True for essay questions requiring teacher grading")
+    # Math rendering hints — used by FE to decide rendering strategy
+    formulaHints: Optional[dict] = Field(
+        default=None,
+        description="Math rendering hints: {'hasSuperscript': True, 'hasGreek': False, 'hasOperators': True, 'formulaScore': 0.3}"
+    )
 
 
 # ─── Metadata ────────────────────────────────────────────────────────────────

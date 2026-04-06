@@ -57,6 +57,38 @@ public class Question {
     @Column(name = "attachments", columnDefinition = "jsonb")
     private String attachments;
 
+    /**
+     * LaTeX formatted content for frontend rendering (KaTeX/MathJax).
+     * Wrapped with $...$ for inline or $$...$$ for block math.
+     * Example: "$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$"
+     */
+    @Column(name = "latex_content", columnDefinition = "TEXT")
+    private String latexContent;
+
+    /**
+     * LaTeX formatted options for frontend rendering.
+     * Stored as JSON: {"A": "$\\frac{1}{2}$", "B": "$\\frac{1}{3}$", ...}
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "latex_options", columnDefinition = "jsonb")
+    private String latexOptions;
+
+    // Essay-specific fields
+    @Column(name = "essay_max_length")
+    @Builder.Default
+    private Integer essayMaxLength = 4000;
+
+    @Column(name = "essay_sample_answer", columnDefinition = "TEXT")
+    private String essaySampleAnswer;
+
+    @Column(name = "shuffle_options")
+    @Builder.Default
+    private Boolean shuffleOptions = false;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "options_order", columnDefinition = "jsonb")
+    private String optionsOrder;
+
     @PrePersist
     @PreUpdate
     private void applyDefaults() {

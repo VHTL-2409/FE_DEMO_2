@@ -72,7 +72,11 @@
         >
           <span class="epp__check-icon">
             <LucideIcon name="check_circle" v-if="item.done" />
-            <LucideIcon name="warning" v-else-if="item.warn"  epp__check-icon--warn/>
+            <LucideIcon
+              v-else-if="item.warn"
+              name="warning"
+              class="epp__check-icon--warn"
+            />
             <LucideIcon name="radio_button_unchecked" v-else />
           </span>
           <div class="epp__check-body">
@@ -132,13 +136,13 @@ const checklist = computed(() => [
   {
     key: 'info',
     label: 'Thông tin đề thi',
-    done: !!(props.form.title && props.form.subject),
-    warn: !props.form.title && !!props.form.subject,
-    sub: props.form.title ? props.form.title : 'Cần có tên đề và môn học'
+    done: !!(props.form.title && (props.form.subject || props.form.classId)),
+    warn: !props.form.title && !!(props.form.subject || props.form.classId),
+    sub: props.form.title ? props.form.title : 'Cần có tên và môn/lớp'
   },
   {
-    key: 'config',
-    label: 'Cấu hình thi',
+    key: 'settings',
+    label: 'Cài đặt',
     done: !!(props.form.durationMinutes && props.form.durationMinutes > 0),
     sub: props.form.durationMinutes ? `Thời lượng ${props.form.durationMinutes} phút` : 'Thiết lập thời lượng thi'
   },
@@ -148,31 +152,26 @@ const checklist = computed(() => [
     done: props.form.questions && props.form.questions.length > 0,
     warn: false,
     sub: props.form.questions && props.form.questions.length > 0
-      ? `${props.form.questions.length} câu hỏi đã thêm`
-      : 'Thêm ít nhất 1 câu hỏi'
-  },
-  {
-    key: 'schedule',
-    label: 'Lịch thi',
-    done: true,
-    warn: false,
-    sub: scheduleModeLabel.value || 'Chưa thiết lập'
+      ? `${props.form.questions.length} câu — bước Nhập file rồi Chỉnh sửa`
+      : 'Bước «Nhập file» đọc đề, bước «Chỉnh sửa» kiểm tra câu hỏi'
   },
   {
     key: 'publish',
     label: 'Sẵn sàng xuất bản',
     done: !!(
       props.form.title &&
-      props.form.subject &&
+      (props.form.subject || props.form.classId) &&
+      props.form.durationMinutes &&
       props.form.questions &&
       props.form.questions.length > 0
     ),
     warn: false,
     sub: computed(() => {
-      const hasInfo = !!(props.form.title && props.form.subject)
+      const hasInfo = !!(props.form.title && (props.form.subject || props.form.classId))
+      const hasConfig = !!(props.form.durationMinutes && props.form.durationMinutes > 0)
       const hasQuestions = !!(props.form.questions && props.form.questions.length > 0)
-      if (hasInfo && hasQuestions) return 'Có thể xuất bản ngay'
-      return 'Hoàn tất thông tin và câu hỏi trước'
+      if (hasInfo && hasConfig && hasQuestions) return 'Có thể xuất bản ngay'
+      return 'Hoàn tất thông tin, cài đặt và câu hỏi'
     }).value
   }
 ])

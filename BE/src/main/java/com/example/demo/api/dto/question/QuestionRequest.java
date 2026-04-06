@@ -27,4 +27,10 @@ public class QuestionRequest {
     private String metadata;
 
     private String attachments;
+
+    /** LaTeX stem for KaTeX (optional). */
+    private String latexContent;
+
+    /** JSON object map id → LaTeX per option (optional). */
+    private String latexOptions;
 }

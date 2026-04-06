@@ -113,6 +113,10 @@
             <span>{{ tpl.title }}</span>
           </button>
         </div>
+        <p v-if="localTitle" class="ec-templates__hint">
+          <LucideIcon name="info" size="12" />
+          Nhấn mẫu để điền nhanh môn học và mô tả
+        </p>
       </div>
     </div>
   </div>
@@ -377,6 +381,15 @@ const applyTemplate = (tpl) => {
 
 .dark .ec-template-btn:hover {
   background: rgba(79, 70, 229, 0.15);
+}
+
+.ec-templates__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.7rem;
+  color: var(--ds-text-muted);
+  margin: 0;
 }
 </style>
 @media (prefers-reduced-motion: reduce) {

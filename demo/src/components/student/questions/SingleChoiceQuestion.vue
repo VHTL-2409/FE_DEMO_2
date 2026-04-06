@@ -15,13 +15,19 @@
         @change="onPick(option.id)"
       />
       <span class="eq-opt__radio" aria-hidden="true" />
-      <span class="eq-opt__text">{{ option.text }}</span>
+      <span class="eq-opt__text">
+        <MathDisplay
+          :content="option.text"
+          :latex-content="getLatexOption(option.id)"
+        />
+      </span>
     </label>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import MathDisplay from '../../shared/MathDisplay.vue'
 
 const props = defineProps({
   question: {
@@ -40,7 +46,26 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const normalizedOptions = computed(() => (Array.isArray(props.question?.options) ? props.question.options : []))
+const normalizedOptions = computed(() => {
+  const opts = props.question?.options || []
+  return Array.isArray(opts) ? opts : []
+})
+
+// Get LaTeX version of an option if available
+const getLatexOption = (optionId) => {
+  const latexOptions = props.question?.latexOptions
+  if (!latexOptions) return null
+  // latexOptions can be object or JSON string
+  if (typeof latexOptions === 'string') {
+    try {
+      const parsed = JSON.parse(latexOptions)
+      return parsed[optionId] || null
+    } catch {
+      return null
+    }
+  }
+  return latexOptions[optionId] || null
+}
 
 const isSelected = (optionId) => String(props.modelValue ?? '') === String(optionId)
 

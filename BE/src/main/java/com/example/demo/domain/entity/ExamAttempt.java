@@ -86,4 +86,15 @@ public class ExamAttempt {
 
     @Column(name = "last_integrity_check_at")
     private LocalDateTime lastIntegrityCheckAt;
+
+    @Column(name = "last_saved_at")
+    private LocalDateTime lastSavedAt;
+
+    @Column(name = "save_count")
+    @Builder.Default
+    private Integer saveCount = 0;
+
+    @Column(name = "submit_count")
+    @Builder.Default
+    private Integer submitCount = 0;
 }

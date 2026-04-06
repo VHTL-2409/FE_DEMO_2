@@ -286,6 +286,7 @@ import {
   checkPythonParserHealth,
   validateImportFile
 } from '../../../services/importService'
+import { normalizeImportedExamQuestion } from '../../../utils/mathTextNormalize'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] },
@@ -596,18 +597,41 @@ const handleImport = async () => {
 
       parsingProgress.value = 90
       parsingStatus.value = 'Đang tải kết quả...'
-      questions = (preview.questions || []).map((q) => ({
-        _localId: localIdCounter++,
-        content: q.content || q.text || q.question || '',
-        correctAnswer: q.correctAnswer || q.answer || q.correct || '',
-        score: parseFloat(q.scoreWeight || q.scoreWeight || q.score || q.points || 1),
-        options: Array.isArray(q.options)
-          ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
-          : [],
-        type: (q.type || 'SINGLE_CHOICE').toUpperCase().includes('ESSAY') ? 'ESSAY' : 'SINGLE_CHOICE',
-        parseConfidence: q.parseConfidence || q.confidence || null,
-        render: q.render || null
-      }))
+      questions = (preview.questions || []).map((q) => {
+        const latexContent = q.latexContent ?? q.latex_content ?? null
+        const rawLatexOpts = q.latexOptions ?? q.latex_options ?? null
+        let optionRows = []
+        if (Array.isArray(q.options)) {
+          optionRows = q.options.map((o) => ({
+            id: o.id || o.key || 'A',
+            text: o.text || o.value || ''
+          }))
+        } else if (typeof q.options === 'object' && q.options !== null) {
+          optionRows = Object.entries(q.options).map(([id, text]) => ({
+            id: String(id),
+            text: String(text ?? '')
+          }))
+          optionRows.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+        }
+        return {
+          _localId: localIdCounter++,
+          content: q.content || q.text || q.question || '',
+          correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+          score: parseFloat(q.scoreWeight || q.scoreWeight || q.score || q.points || 1),
+          options: optionRows,
+          type: (q.type || 'SINGLE_CHOICE').toUpperCase().includes('ESSAY') ? 'ESSAY' : 'SINGLE_CHOICE',
+          parseConfidence: q.parseConfidence || q.confidence || null,
+          render: q.render || null,
+          ...(latexContent != null && String(latexContent).trim() !== ''
+            ? { latexContent: String(latexContent).trim() }
+            : {}),
+          ...(rawLatexOpts != null && typeof rawLatexOpts === 'object'
+            ? { latexOptions: rawLatexOpts }
+            : rawLatexOpts != null && String(rawLatexOpts).trim() !== ''
+              ? { latexOptions: String(rawLatexOpts) }
+              : {})
+        }
+      })
       parsingProgress.value = 100
       parsingStatus.value = 'Hoàn thành!'
       isParsingServer.value = false
@@ -690,8 +714,10 @@ const handleImport = async () => {
       return
     }
 
+    const normalizedBatch = questions.map((q) => normalizeImportedExamQuestion(q))
+
     const currentQuestions = [...props.questions]
-    const newQuestions = [...currentQuestions, ...questions]
+    const newQuestions = [...currentQuestions, ...normalizedBatch]
     emit('update:questions', newQuestions)
 
     importedCount.value = questions.length

@@ -73,9 +73,9 @@ GOLDEN_TEMPLATE_02 = {
 GOLDEN_TEMPLATE_03 = {
     "file_pattern": "pdf_mau_3.pdf",
     "template_type": "template_03_math_answer_grid",
-    "min_question_count": 1,        # ≥ 1 (section detection may yield 1-50)
-    "min_answer_count": 0,          # 0 if answer key section not detected
-    "min_confidence": 0.30,        # avg confidence ≥ 0.30
+    "min_question_count": 45,        # ≥ 45 cau (sau khi sua parser)
+    "min_answer_count": 30,          # ≥ 30 dap an
+    "min_confidence": 0.50,        # avg confidence ≥ 0.50
     # Toán THPT: text vỡ dòng → nhiều MCQ không gom đủ khóa A–D
     "max_mcq_incomplete_options_ratio": 0.85,
     "max_image_ratio": 1.00,       # any ratio (2 questions = no meaningful test)

@@ -37,6 +37,31 @@ SUBSCRIPT_MAP = {
     "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
 }
 
+# Math symbols to PRESERVE (never strip or modify)
+_MATH_SYMBOLS = frozenset({
+    "−", "×", "÷", "·", "±", "∓", "√", "∛", "∜",
+    "∫", "∑", "∏", "∂", "∆", "∇",
+    "∈", "∉", "⊂", "⊃", "⊆", "⊇", "⊄", "⊅",
+    "∪", "∩", "∅", "∞",
+    "ℝ", "ℤ", "ℕ", "ℚ", "ℂ", "ℼ",
+    "→", "←", "↔", "⇒", "⇐", "⇔",
+    "≥", "≤", "≠", "≈", "≡", "∝",
+    "⊕", "⊗", "⊙", "⊖",
+    "∀", "∃", "∄", "∧", "∨", "¬", "⊤", "⊥",
+    "°", "′", "″", "‰", "‱",
+    "⊂⊃", "⊆⊇",
+})
+
+# Greek letters to PRESERVE
+_GREEK_SYMBOLS = frozenset({
+    "α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ",
+    "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ",
+    "φ", "χ", "ψ", "ω",
+    "Α", "Β", "Γ", "Δ", "Ε", "Ζ", "Η", "Θ", "Ι", "Κ",
+    "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ", "Σ", "Τ", "Υ",
+    "Φ", "Χ", "Ψ", "Ω",
+})
+
 
 def normalize(text: str) -> str:
     """
@@ -66,6 +91,38 @@ def normalize(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
+
+
+def sanitize_word_equation_pua(text: str, *, strip_private_use: bool = True) -> str:
+    """
+    Word/Equation → PDF thường nhét ký tự vào vùng Private Use (U+F000–U+F8FF).
+
+    - strip_private_use=True: xóa các ký tự PUA (dùng cho phần đề — bỏ khung rỗng).
+    - strip_private_use=False: chỉ đổi vô cực; giữ PUA trong đáp án để không mất phân số Word.
+    """
+    if not text:
+        return text
+    pua_infinity = {
+        "\uf0a5": "∞",
+        "\uf0b5": "∞",
+    }
+    out: list[str] = []
+    for ch in text:
+        if ch in pua_infinity:
+            out.append(pua_infinity[ch])
+            continue
+        o = ord(ch)
+        if 0xF000 <= o <= 0xF8FF:
+            if strip_private_use:
+                out.append(" ")
+            else:
+                out.append(ch)
+            continue
+        out.append(ch)
+    s = "".join(out)
+    s = re.sub(r" {2,}", " ", s)
+    s = re.sub(r" *\n *", "\n", s)
+    return s.strip()
 
 
 def unsuperscript(text: str) -> str:
@@ -258,3 +315,114 @@ def normalize_full(text: str, blocks: Optional[list[TextBlock]] = None) -> str:
     text = split_merged_options(text)
     text = fix_dashed_options(text)
     return text
+
+
+def normalize_math_text(text: str, *, preserve_private_use: bool = False) -> str:
+    """
+    Normalize math exam text while PRESERVING math symbols.
+
+    Rules:
+      - Preserve: all math operators (−×÷·√∫∑∏∂∆∈∉⊂⊃∪∩ℝℤℕ→←↔≥≤≠≈)
+      - Preserve: Greek letters (αβγδεθλμπσφψω)
+      - Convert superscripts: ²→^2, ³→^3, ¹→^1
+      - Convert: (− → (-), (−) → (-)
+      - Fix fullwidth punctuation
+      - Fix broken formula characters
+
+    preserve_private_use: True = giữ U+F000–F0FF (đáp án Word Equation trong PDF).
+    """
+    if not text:
+        return text
+
+    # Normalize unicode (NFC)
+    text = unicodedata.normalize("NFC", text)
+
+    # Fix fullwidth punctuation
+    for fw, normal in _FW_MAP.items():
+        text = text.replace(fw, normal)
+
+    # Replace UTF-8 BOM / replacement chars
+    text = text.replace("\ufeff", "")
+    text = text.replace("\ufffd", "")
+
+    # Remove garbled private-use chars (stem); giữ lại nếu preserve_private_use (đáp án)
+    if not preserve_private_use:
+        text = re.sub(r"[\uf000-\uf0ff]", "", text)
+
+    # Convert superscripts to ASCII form (for readability in textarea)
+    for sup, normal in SUPERSCRIPT_MAP.items():
+        text = text.replace(sup, normal)
+    for sub, normal in SUBSCRIPT_MAP.items():
+        text = text.replace(sub, normal)
+
+    # Fix broken dashes: multiple ___ or broken bars
+    text = re.sub(r"[_\u2015\u2014\u2500]{2,}", "---", text)
+
+    # Fix math expression fragments that got separated
+    # "(- " → "(-", "(-)" → "(-)"
+    text = re.sub(r"\(\s*-\s+", "(-", text)
+    text = re.sub(r"\(\s*-", "(-", text)
+    text = re.sub(r"-\s+\)", "-)", text)
+    text = re.sub(r"-\s+,", "-,", text)
+
+    # Fix multiple spaces in math expressions
+    text = re.sub(r"[ \t]{2,}", " ", text)
+
+    return text.strip()
+
+
+def has_math_content(text: str) -> bool:
+    """
+    Detect if text contains math formula content.
+    Used to decide whether to render as IMAGE or TEXT.
+    """
+    if not text:
+        return False
+
+    math_chars = len(re.findall(
+        r"[²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ"
+        r"−×÷·±∓√∛∜∫∑∏∂∆∇"
+        r"∈∉⊂⊃⊆⊇⊄⊅∪∩∅∞"
+        r"ℝℤℕℚℂℼ→←↔⇒⇐⇔≥≤≠≈≡∝",
+        text
+    ))
+    # Also check for math keywords
+    math_keywords = len(re.findall(
+        r"(?:sqrt|sin|cos|tan|log|lim|sum|prod|int|delta|theta|pi|alpha|beta|gamma)",
+        text,
+        re.IGNORECASE
+    ))
+    return math_chars >= 3 or math_keywords >= 2
+
+
+def formula_analysis(text: str) -> dict:
+    """
+    Analyze math content in text and return rendering hints.
+    Used by parsers to set formulaHints on ParsedQuestion.
+    """
+    if not text:
+        return {"hasSuperscript": False, "hasGreek": False,
+                "hasOperators": False, "hasFractions": False, "formulaScore": 0.0}
+
+    superscripts = len(re.findall(r"[²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ]", text))
+    greek = len(re.findall(r"[αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ]", text))
+    operators = len(re.findall(
+        r"[−×÷·±∓√∫∑∏∂∆∈∉⊂⊃⊆⊇∪∩→←↔⇒⇐⇔≥≤≠≈≡]", text
+    ))
+    fractions = len(re.findall(r"\([^)]*?\)", text))  # rough fraction detection
+
+    # Count total math-relevant chars vs total
+    math_relevant = re.findall(
+        r"[²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ−×÷·±∓√∫∑∏∂∆∈∉⊂⊃⊆⊇∪∩→←↔⇒⇐⇔≥≤≠≈≡"
+        r"αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ]",
+        text
+    )
+    formula_score = min(len(math_relevant) / max(len(text), 1) * 3, 1.0)
+
+    return {
+        "hasSuperscript": superscripts >= 2,
+        "hasGreek": greek >= 2,
+        "hasOperators": operators >= 3,
+        "hasFractions": fractions >= 2,
+        "formulaScore": round(formula_score, 2),
+    }

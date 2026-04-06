@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -66,7 +66,7 @@ public class ExamImportService {
     // ─── Public API ───────────────────────────────────────────────────────────
 
     /**
-     * Upload PDF và gửi sang Python FastAPI để parse.
+     * Upload PDF hoặc DOCX và gửi sang Python FastAPI để parse.
      * Chạy async — trả về session ngay lập tức.
      */
     @Transactional
@@ -77,24 +77,38 @@ public class ExamImportService {
             @Nullable String forceTemplate) {
 
         if (file == null || file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Tệp PDF đang trống");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Tệp đang trống");
+        }
+
+        final byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không đọc được nội dung tệp");
         }
 
         String ext = extensionOf(file.getOriginalFilename());
-        if (!ext.equalsIgnoreCase("pdf")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ file PDF");
+        if (!ext.equalsIgnoreCase("pdf") && !ext.equalsIgnoreCase("docx")) {
+            ext = sniffExtensionFromBytes(fileBytes);
         }
+        if (!ext.equalsIgnoreCase("pdf") && !ext.equalsIgnoreCase("docx")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Chỉ hỗ trợ file PDF hoặc DOCX (kiểm tra tên file có đuôi .pdf / .docx)");
+        }
+        String extNorm = ext.equalsIgnoreCase("docx") ? "docx" : "pdf";
 
-        String storedPath = storeFile(file);
+        String storedPath = storeExamImportBytes(fileBytes, file.getOriginalFilename(), extNorm);
         String sessionKey = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
+        String defaultName = "docx".equals(extNorm) ? "exam.docx" : "exam.pdf";
 
         ExamImportSession session = ExamImportSession.builder()
                 .sessionId(sessionKey)
                 .user(actor)
                 .exam(exam)
-                .originalFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "exam.pdf")
-                .fileType("pdf")
+                .originalFileName(originalName.isBlank() ? defaultName : originalName)
+                .fileType(extNorm)
                 .storagePath(storedPath)
                 .status(ExamImportSession.SessionStatus.UPLOADED)
                 .pythonServiceUrl(pythonParserClient.isHealthy()
@@ -114,7 +128,7 @@ public class ExamImportService {
                 .sessionId(session.getId())
                 .sessionKey(sessionKey)
                 .status(ExamImportSession.SessionStatus.UPLOADED.name())
-                .message("Đang parse file PDF, vui lòng chờ...")
+                .message("Đang parse file, vui lòng chờ...")
                 .build();
     }
 
@@ -413,6 +427,8 @@ public class ExamImportService {
         return ImportPreviewQuestionDto.builder()
                 .index(index)
                 .content(dto.getText())
+                .latexContent(dto.getLatexContent())  // LaTeX content for math rendering
+                .latexOptions(dto.getLatexOptions())  // LaTeX options for math rendering
                 .type(type)
                 .options(opts)
                 .correctAnswer(dto.getAnswer())
@@ -428,6 +444,7 @@ public class ExamImportService {
 
     private Question toQuestionEntity(Exam exam, ImportPreviewQuestionDto dto, int rowNum) {
         String optionsJson;
+        String latexOptionsJson = null;
         try {
             List<Map<String, Object>> opts = dto.getOptions() == null
                     ? List.of()
@@ -441,7 +458,7 @@ public class ExamImportService {
 
         QuestionType qType = parseQuestionType(dto.getType());
 
-        return Question.builder()
+        Question question = Question.builder()
                 .exam(exam)
                 .content(dto.getContent() != null ? dto.getContent() : "")
                 .type(qType)
@@ -450,6 +467,22 @@ public class ExamImportService {
                 .correctAnswer(dto.getCorrectAnswer() != null ? dto.getCorrectAnswer() : "")
                 .difficulty(dto.getDifficulty())
                 .build();
+
+        // Set LaTeX content if available (from parsed PDF with math formulas)
+        // The latexContent would come from the ParsedQuestionDto via ImportPreviewQuestionDto
+        // For now, we set it based on dto content - actual LaTeX comes from Python parser
+        if (dto.getLatexContent() != null) {
+            question.setLatexContent(dto.getLatexContent());
+        }
+        if (dto.getLatexOptions() != null) {
+            try {
+                question.setLatexOptions(objectMapper.writeValueAsString(dto.getLatexOptions()));
+            } catch (JsonProcessingException ex) {
+                // Ignore
+            }
+        }
+
+        return question;
     }
 
     private String mapQuestionType(String pythonType) {
@@ -474,15 +507,18 @@ public class ExamImportService {
         };
     }
 
-    private String storeFile(MultipartFile file) {
+    private String storeExamImportBytes(byte[] data, String originalFilename, String extNorm) {
         try {
             Path storageRoot = Path.of(storageDir);
             Files.createDirectories(storageRoot);
-            String safeName = sanitizeFileName(file.getOriginalFilename());
+            String safeName = sanitizeFileName(originalFilename, extNorm);
             Path target = storageRoot.resolve(System.currentTimeMillis() + "-" + safeName);
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(
+                    target,
+                    data,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE);
             return target.toAbsolutePath().toString();
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu tệp import");
@@ -517,10 +553,25 @@ public class ExamImportService {
         return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
     }
 
-    private String sanitizeFileName(String rawName) {
-        String safe = rawName == null ? "upload.pdf"
+    /** Nhận diện PDF / DOCX khi tên file thiếu đuôi (DOCX là ZIP — bắt đầu bằng PK). */
+    private static String sniffExtensionFromBytes(byte[] data) {
+        if (data == null || data.length < 2) {
+            return "";
+        }
+        if (data.length >= 4 && data[0] == '%' && data[1] == 'P' && data[2] == 'D' && data[3] == 'F') {
+            return "pdf";
+        }
+        if (data[0] == 'P' && data[1] == 'K') {
+            return "docx";
+        }
+        return "";
+    }
+
+    private String sanitizeFileName(String rawName, String extensionLowercase) {
+        String fallback = "docx".equalsIgnoreCase(extensionLowercase) ? "upload.docx" : "upload.pdf";
+        String safe = rawName == null ? fallback
                 : rawName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        return safe.isBlank() ? "upload.pdf" : safe;
+        return safe.isBlank() ? fallback : safe;
     }
 
     private String writeJson(Object value) {

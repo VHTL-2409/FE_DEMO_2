@@ -41,6 +41,8 @@ public class QuestionService {
             .difficulty(payload.difficulty())
             .metadata(payload.metadata())
             .attachments(payload.attachments())
+            .latexContent(payload.latexContent())
+            .latexOptions(payload.latexOptions())
             .build();
         return toResponse(questionRepository.save(question), true);
     }
@@ -66,6 +68,8 @@ public class QuestionService {
         question.setDifficulty(payload.difficulty());
         question.setMetadata(payload.metadata());
         question.setAttachments(payload.attachments());
+        question.setLatexContent(payload.latexContent());
+        question.setLatexOptions(payload.latexOptions());
         return toResponse(questionRepository.save(question), true);
     }
 
@@ -119,6 +123,13 @@ public class QuestionService {
                 ? null
                 : request.getDifficulty().trim().toUpperCase();
 
+        String latexContent = request.getLatexContent() == null || request.getLatexContent().isBlank()
+                ? null
+                : request.getLatexContent().trim();
+        String latexOptions = request.getLatexOptions() == null || request.getLatexOptions().isBlank()
+                ? null
+                : request.getLatexOptions().trim();
+
         return new QuestionPayload(
                 request.getContent().trim(),
                 type,
@@ -127,7 +138,9 @@ public class QuestionService {
                 correctAnswer,
                 difficulty,
                 metadata,
-                attachments
+                attachments,
+                latexContent,
+                latexOptions
         );
     }
 
@@ -143,6 +156,8 @@ public class QuestionService {
             .difficulty(question.getDifficulty())
             .metadata(question.getMetadata())
             .attachments(question.getAttachments())
+            .latexContent(question.getLatexContent())
+            .latexOptions(question.getLatexOptions())
             .build();
     }
 
@@ -154,7 +169,9 @@ public class QuestionService {
             String correctAnswer,
             String difficulty,
             String metadata,
-            String attachments
+            String attachments,
+            String latexContent,
+            String latexOptions
     ) {
     }
 }

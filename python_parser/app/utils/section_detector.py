@@ -13,6 +13,7 @@ Usage:
 """
 from dataclasses import dataclass
 from enum import Enum
+import re
 
 
 class SectionKind(Enum):
@@ -28,150 +29,167 @@ class SectionKind(Enum):
 class Section:
     start_line: int
     end_line: int
-    kind: SectionKind  # ESSAY / MCQ / ANSWER_KEY / SOLUTION / QUESTION / UNKNOWN
-    title: str | None = None  # matched header text, if any
+    kind: SectionKind
+    title: str | None = None
 
-
-# ── Normalize helper ─────────────────────────────────────────────────────────
 
 def _normalize(line: str) -> str:
-    """Lowercase and remove spaces/tabs for compact matching."""
-    return line.lower().replace(" ", "").replace("\t", "").replace("\u3000", "")
-
-
-# ── Section detection ────────────────────────────────────────────────────────
-
-def _has_roman_suffix(n: str, suffix: str) -> bool:
-    """
-    Check if n ends with suffix (roman numeral or digit) NOT followed by
-    additional letters. E.g. "phầnii" matches but "phầniii" does NOT.
-    """
-    idx = n.rfind(suffix)
-    if idx == -1:
-        return False
-    rest = n[idx + len(suffix):]
-    return len(rest) == 0 or not rest[0].isalpha()
+    """Lowercase and remove tabs/ideographic spaces."""
+    return line.lower().replace("\t", "").replace("\u3000", "")
 
 
 def _detect_kind(line: str) -> SectionKind | None:
     """
     Return the section kind for a single line, or None if it is not a header.
 
-    Pattern ordering (IMPORTANT):
-      1. Check longer suffixes FIRST to prevent partial matches
-         (e.g. "phầnii" before "phầni", "phầniii" before "phầnii")
-      2. Section number (Phần I/II/III…) takes priority over "Tự luận" keyword
-      3. Roman numeral parity: I=1, III=3 → MCQ (odd); II=2, IV=4 → ESSAY (even)
+    Detection strategy: simple startswith() checks at the START of the normalized line,
+    followed by immediate non-letter check. This avoids all complex Unicode/NFC edge cases.
     """
-    n = _normalize(line)
+    n = _normalize(line).strip()
 
-    # ── Roman numeral and digit suffixes (higher priority) ─────────────────────
-    # "phầnIII" / "sectionIII" → odd = MCQ, even = ESSAY
-    # "phầnII" / "sectionII" / "partII" → ESSAY
-    # "phầnI" / "sectionI" / "partI" → MCQ
-    # "phần2" / "section2" / "part2" → ESSAY
-    # "phần1" / "section1" / "part1" → MCQ
-    import re
+    # ── 1. Roman numeral sections (must be at START of line) ─────────────────
+    # "Phần I" → "phần i ", "Phần III" → "phần iii ", "Phần II" → "phần ii "
+    # We use startswith() so that "phần iii" does NOT match "phần ii" (ends differently)
+    roman_section_mcq = [
+        "phần i", "phần iii", "phần v",
+        "phần vii", "phần ix",
+        "section i", "section iii",
+        "part i",
+    ]
+    roman_section_essay = [
+        "phần ii", "phần iv", "phần vi",
+        "phần viii", "phần x",
+        "section ii", "part ii",
+    ]
 
-    # Roman numeral: III, IV, V, VI, VII, VIII, IX, X → parity determines kind
-    roman_parity = {
-        "iii": 1,  # MCQ
-        "iv": 2,   # ESSAY
-        "v": 1,    # MCQ
-        "vi": 2,   # ESSAY
-        "vii": 1,  # MCQ
-        "viii": 2, # ESSAY
-        "ix": 1,   # MCQ
-        "x": 2,    # ESSAY
-    }
-    for roman, parity in roman_parity.items():
-        if _has_roman_suffix(n, f"phần{roman}"):
-            return SectionKind.MCQ if parity == 1 else SectionKind.ESSAY
-        if _has_roman_suffix(n, f"section{roman}") or _has_roman_suffix(n, f"part{roman}"):
-            return SectionKind.MCQ if parity == 1 else SectionKind.ESSAY
+    for prefix in roman_section_mcq:
+        # Check startswith and that what follows is not a letter
+        if n.startswith(prefix) and (len(n) == len(prefix) or not (n[len(prefix)].isalpha())):
+            return SectionKind.MCQ
+    for prefix in roman_section_essay:
+        if n.startswith(prefix) and (len(n) == len(prefix) or not (n[len(prefix)].isalpha())):
+            return SectionKind.ESSAY
 
-    # Roman numeral I / II (must check II before I to avoid "II" matching as "I")
-    if _has_roman_suffix(n, "phầnii") or _has_roman_suffix(n, "sectionii") or _has_roman_suffix(n, "partii"):
-        return SectionKind.ESSAY
-    if _has_roman_suffix(n, "phầni") or _has_roman_suffix(n, "sectioni") or _has_roman_suffix(n, "parti"):
-        return SectionKind.MCQ
-
-    # Arabic digits 1-9
-    m = re.search(r"phần(\d)", n) or re.search(r"section(\d)", n) or re.search(r"part(\d)", n)
-    if m:
-        num = int(m.group(1))
+    # ── 2. Arabic digit sections (must be at START) ───────────────────────────
+    # "phần 1", "phần 1.", "phần1"
+    arabic_m = re.match(r"^(phần|section|part)\s*(\d)", n)
+    if arabic_m:
+        num = int(arabic_m.group(2))
         return SectionKind.MCQ if num % 2 == 1 else SectionKind.ESSAY
 
-    # Vietnamese keyword "tự luận" (only if no section number was found)
-    if "tựluận" in n:
+    # ── 3. Keyword-only sections ──────────────────────────────────────────────
+    if n.startswith("tự luận") or n.startswith("tựluận"):
         return SectionKind.ESSAY
+    if n.startswith("trắc nghiệm") or n.startswith("trắcnghiệm"):
+        return SectionKind.MCQ
 
-    # ── New: Answer key section patterns ──────────────────────────────────────
-    if "đápán" in n or "bảngđápán" in n or "answerkey" in n:
+    # ── 4. Answer key patterns ───────────────────────────────────────────
+    if re.match(r"^đáp án|^đápán|^bảng đáp án|^bảngđápán|^answer key", n):
         return SectionKind.ANSWER_KEY
 
-    # NEW: Solution section patterns
-    if "lờigiải" in n or "giảichi tiết" in n or "solution" in n:
+    # ── 5. Solution section patterns ──────────────────────────────────────
+    if re.match(r"^lời giải|^lờigiải|^giải chi tiết|^solution", n):
         return SectionKind.SOLUTION
 
-    # NEW: Question section pattern
-    if "phầncâuhỏi" in n:
+    # ── 6. Question section pattern ───────────────────────────────────────
+    if re.match(r"^phần câu hỏi|^phầncâuhỏi", n):
         return SectionKind.QUESTION
 
-    # Neutral
-    if "trắcnghiệm" in n:
-        return SectionKind.MCQ
-    if "bàithi" in n or n.startswith("mục"):
+    # ── 7. Neutral fallback ───────────────────────────────────────────────
+    if n.startswith("bàithi") or n.startswith("mục"):
         return SectionKind.UNKNOWN
 
     return None
 
 
 def _title_for(n: str, kind: SectionKind | None) -> str | None:
+    """Return a readable title for the detected section."""
     if kind is None:
         return None
+    stripped = n.strip()
+
     if kind == SectionKind.MCQ:
-        if _has_roman_suffix(n, "phầni") or _has_roman_suffix(n, "phần1"): return "PHẦN I"
-        if "trắcnghiệm" in n: return "Trắc nghiệm"
-        if _has_roman_suffix(n, "phầniii"): return "PHẦN III"
-        if _has_roman_suffix(n, "sectioni") or _has_roman_suffix(n, "parti"): return "Section I"
+        # Check from longest to shortest to avoid partial matches
+        for pat, title in [
+            ("phần viii", "PHẦN VIII"), ("phần vii", "PHẦN VII"),
+            ("phần ix", "PHẦN IX"), ("phần x", "PHẦN X"),
+            ("phần iii", "PHẦN III"), ("phần vi", "PHẦN VI"),
+            ("phần iv", "PHẦN IV"), ("phần v", "PHẦN V"),
+            ("phần ii", "PHẦN II"), ("phần i", "PHẦN I"),
+            ("phần 10", "PHẦN X"), ("phần 9", "PHẦN IX"),
+            ("phần 8", "PHẦN VIII"), ("phần 7", "PHẦN VII"),
+            ("phần 6", "PHẦN VI"), ("phần 5", "PHẦN V"),
+            ("phần 4", "PHẦN IV"), ("phần 3", "PHẦN III"),
+            ("phần 2", "PHẦN II"), ("phần 1", "PHẦN I"),
+            ("section 1", "Section I"), ("section i", "Section I"),
+            ("part 3", "Part III"), ("part iii", "Part III"),
+            ("part 2", "Part II"), ("part ii", "Part II"),
+            ("part 1", "Part I"), ("part i", "Part I"),
+        ]:
+            if stripped.startswith(pat):
+                return title
+        if stripped.startswith("trắc nghiệm") or stripped.startswith("trắcnghiệm"):
+            return "Trắc nghiệm"
         return "MCQ"
+
     if kind == SectionKind.ESSAY:
-        if _has_roman_suffix(n, "phầnii") or _has_roman_suffix(n, "phần2"): return "PHẦN II"
-        if "tựluận" in n: return "Tự luận"
-        if _has_roman_suffix(n, "sectionii") or _has_roman_suffix(n, "partii"): return "Section II"
-        return "Essay"
+        for pat, title in [
+            ("phần viii", "PHẦN VIII"), ("phần vii", "PHẦN VII"),
+            ("phần ix", "PHẦN IX"), ("phần x", "PHẦN X"),
+            ("phần iii", "PHẦN III"), ("phần vi", "PHẦN VI"),
+            ("phần iv", "PHẦN IV"), ("phần v", "PHẦN V"),
+            ("phần ii", "PHẦN II"), ("phần i", "PHẦN I"),
+            ("phần 10", "PHẦN X"), ("phần 9", "PHẦN IX"),
+            ("phần 8", "PHẦN VIII"), ("phần 7", "PHẦN VII"),
+            ("phần 6", "PHẦN VI"), ("phần 5", "PHẦN V"),
+            ("phần 4", "PHẦN IV"), ("phần 3", "PHẦN III"),
+            ("phần 2", "PHẦN II"), ("phần 1", "PHẦN I"),
+            ("section 2", "Section II"), ("section ii", "Section II"),
+            ("section 1", "Section I"), ("section i", "Section I"),
+            ("part 3", "Part III"), ("part ii", "Part II"),
+            ("part 2", "Part II"), ("part i", "Part I"),
+        ]:
+            if stripped.startswith(pat):
+                return title
+        if stripped.startswith("tự luận") or stripped.startswith("tựluận"):
+            return "Tự luận"
+        return "Tự luận"
+
     if kind == SectionKind.ANSWER_KEY:
-        if "bảngđápán" in n: return "Bảng đáp án"
-        if "answerkey" in n: return "Answer Key"
+        if stripped.startswith("bảng đáp án") or stripped.startswith("bảngđápán"):
+            return "Bảng đáp án"
+        if stripped.startswith("answer key"):
+            return "Answer Key"
         return "Đáp án"
+
     if kind == SectionKind.SOLUTION:
-        if "lờigiải" in n or "giảichi tiết" in n: return "Lời giải chi tiết"
-        if "solution" in n: return "Solution"
+        if stripped.startswith("lời giải") or stripped.startswith("lờigiải"):
+            return "Lời giải chi tiết"
+        if stripped.startswith("giải chi tiết") or stripped.startswith("giảichi tiết"):
+            return "Giải chi tiết"
+        if stripped.startswith("solution"):
+            return "Solution"
         return "Lời giải"
+
     if kind == SectionKind.QUESTION:
         return "Phần câu hỏi"
+
     return None
 
 
 def detect_sections(text: str) -> list[Section]:
     """
-    Scan *text* (multi-line string) and return a list of Section spans.
+    Scan text and return a list of Section spans.
 
     Detection rules:
-      - "Phần I" / "Phần 1" / "Section I" / "Part I" → MCQ
-      - "Phần II" / "Phần 2" / "Tự luận" / "Section II" → ESSAY
-      - "Phần III" etc. → use parity: odd=MCQ, even=ESSAY
-      - "Đáp án" / "Bảng đáp án" / "Answer Key" → ANSWER_KEY
-      - "Lời giải" / "Giải chi tiết" / "Solution" → SOLUTION
-      - "Phần câu hỏi" → QUESTION
-      - Fallback: single UNKNOWN section covering the whole text
-
-    The returned sections are non-overlapping and sorted by start_line.
+      - "Phần I" / "Phần 1" → MCQ
+      - "Phần II" / "Phần 2" / "Tự luận" → ESSAY
+      - "Phần III" etc. → parity: odd=MCQ, even=ESSAY
+      - "Đáp án" → ANSWER_KEY
+      - "Lời giải" → SOLUTION
     """
     lines = text.split("\n")
     sections: list[Section] = []
-
     current_kind: SectionKind | None = None
     current_start = 0
     current_title: str | None = None
@@ -180,9 +198,7 @@ def detect_sections(text: str) -> list[Section]:
         line = raw_line.rstrip()
         if not line:
             continue
-
         detected = _detect_kind(line)
-
         if detected is not None:
             if current_kind is not None and current_kind != detected:
                 if current_start < i:

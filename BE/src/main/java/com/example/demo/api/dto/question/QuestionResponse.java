@@ -18,4 +18,6 @@ public class QuestionResponse {
     private String difficulty;
     private String metadata;
     private String attachments;
+    private String latexContent;
+    private String latexOptions;
 }

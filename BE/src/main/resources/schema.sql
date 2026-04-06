@@ -103,8 +103,15 @@ CREATE INDEX IF NOT EXISTS idx_import_job_issues_job_resolved ON import_job_issu
 ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS type VARCHAR(32);
 ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS metadata JSONB;
 ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS attachments JSONB;
+-- LaTeX columns for math rendering
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS latex_content TEXT;
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS latex_options JSONB;
 UPDATE questions SET type = 'SINGLE_CHOICE' WHERE type IS NULL;
 ALTER TABLE IF EXISTS questions ALTER COLUMN correct_answer TYPE TEXT;
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS essay_max_length INT DEFAULT 4000;
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS essay_sample_answer TEXT;
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS shuffle_options BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS options_order JSONB;
 ALTER TABLE IF EXISTS answers ALTER COLUMN selected_answer TYPE TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam_status_started
@@ -179,3 +186,41 @@ ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS shuffle_answers  BOOLEAN DE
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(20) DEFAULT 'NONE';
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS oauth_uid VARCHAR(255);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth_uid ON users(oauth_uid);
+
+-- =====================================================
+-- MIGRATE: answers table - add essay fields
+-- =====================================================
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS selected_options JSONB;
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS essay_content TEXT;
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS score DECIMAL(5,2);
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS essay_score DECIMAL(5,2);
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS essay_scored_by BIGINT REFERENCES users(id);
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS essay_scored_at TIMESTAMP;
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS is_marked BOOLEAN DEFAULT FALSE;
+ALTER TABLE answers ADD COLUMN IF NOT EXISTS saved_at TIMESTAMP;
+
+-- =====================================================
+-- EXAM ATTEMPT tracking fields
+-- =====================================================
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_saved_at TIMESTAMP;
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS save_count INT DEFAULT 0;
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS submit_count INT DEFAULT 0;
+
+-- =====================================================
+-- DROP unused columns from migrated tables
+-- =====================================================
+-- exam_schedules table was dropped (using exam.start_time/end_time)
+-- exam_attempts.schedule_id is orphaned after dropping exam_schedules
+ALTER TABLE exam_attempts DROP COLUMN IF EXISTS schedule_id;
+
+-- =====================================================
+-- DROP unused NEW tables (xóa bảng thừa sau khi migrate)
+-- =====================================================
+-- exam_answer_drafts: dùng answers thay thế
+DROP TABLE IF EXISTS exam_answer_drafts;
+-- import_sessions: không cần
+DROP TABLE IF EXISTS import_sessions;
+-- exam_schedules: dùng exam.start_time/end_time
+DROP TABLE IF EXISTS exam_schedules;
+-- exam_questions: dùng lại questions table
+DROP TABLE IF EXISTS exam_questions;

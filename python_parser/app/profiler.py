@@ -17,6 +17,8 @@ class PdfProfile:
     """Structural fingerprint of a PDF exam document."""
     file_path: str
     total_pages: int = 0
+    """First ~4 pages of text for routing heuristics (THPT / pdf_mau_3 style)."""
+    head_text_sample: str = ""
     language: str = "unknown"          # "vi", "en", "mixed"
     has_cau_pattern: bool = False
     has_question_pattern: bool = False
@@ -49,6 +51,16 @@ def build_pdf_profile(pdf_path: str) -> PdfProfile:
         profile.total_pages = len(doc)
     except Exception:
         return profile
+
+    # Sample first pages for THPT / answer-grid style detection (pdf_mau_3, etc.)
+    sample_n = min(4, len(doc))
+    head_chunks: list[str] = []
+    for pi in range(sample_n):
+        try:
+            head_chunks.append(doc[pi].get_text())
+        except Exception:
+            pass
+    profile.head_text_sample = "\n".join(head_chunks)[:24000]
 
     total_chars = 0
     question_count = 0
@@ -214,6 +226,33 @@ def build_pdf_profile(pdf_path: str) -> PdfProfile:
     return profile
 
 
+def _thpt_math_grid_exam_heuristic(head: str) -> bool:
+    """
+    Đề Toán THPT / Sở GD kiểu pdf_mau_3: nhiều câu 'Câu N:', có mô tả đáp án/lời giải,
+    thường có '50 câu trắc nghiệm' hoặc 'THPT QG' trong phần đầu.
+    PDF này không nên dùng template_01 (tách span từng ký tự).
+    """
+    if not head or len(head) < 80:
+        return False
+    h = head
+    low = h.lower()
+    cau_colon_hits = len(re.findall(r"Câu\s+\d+\s*:", h, flags=re.IGNORECASE))
+    if cau_colon_hits >= 2 and re.search(
+        r"THPT\s*QG|50\s*câu\s*trắc\s*nghiệm|ĐỀ\s*THI\s*THỬ|ĐỀ\s*THI\s*THPT",
+        h,
+        re.IGNORECASE,
+    ):
+        return True
+    if "sở gd" in low or "sở giáo dục" in low:
+        if cau_colon_hits >= 2 and "môn" in low and (
+            "toán" in low or "trắc nghiệm" in low
+        ):
+            return True
+    if "phần đáp án" in low and "câu hỏi" in low and cau_colon_hits >= 2:
+        return True
+    return False
+
+
 def _score_template_01(profile: PdfProfile) -> float:
     """Score for Template 01: math broken text (pdf_mau_1 style)."""
     score = 0.0
@@ -231,7 +270,11 @@ def _score_template_01(profile: PdfProfile) -> float:
     if profile.total_pages <= 5:
         score += 0.1  # short exam
 
-    return min(score, 1.0)
+    # pdf_mau_3 / THPT đề dài: layout span-based parser 01 làm vỡ công thức từng ký tự
+    if _thpt_math_grid_exam_heuristic(profile.head_text_sample):
+        score -= 0.42
+
+    return max(0.0, min(score, 1.0))
 
 
 def _score_template_02(profile: PdfProfile) -> float:
@@ -272,6 +315,10 @@ def _score_template_03(profile: PdfProfile) -> float:
     # Extra bonus if BOTH answer_grid AND solution_section are present
     if profile.has_answer_grid and profile.has_solution_section:
         score += 0.1
+
+    # Đề kiểu pdf_mau_3: phần đáp án có thể nằm cuối file (head sample không bắt được grid)
+    if _thpt_math_grid_exam_heuristic(profile.head_text_sample):
+        score += 0.55
 
     return min(score, 1.0)
 

@@ -292,8 +292,14 @@ def _golden_test(
     assert report.questionCount == len(questions), (
         f"report.questionCount {report.questionCount} != len(questions) {len(questions)}"
     )
-    assert report.answerCount == len(answered), (
-        f"report.answerCount {report.answerCount} != answered {len(answered)}"
+    answered_mcq = [
+        q
+        for q in questions
+        if q.type == QuestionType.MULTIPLE_CHOICE and q.answer and str(q.answer).strip()
+    ]
+    assert report.answerCount == len(answered_mcq), (
+        f"report.answerCount {report.answerCount} != MCQ answered {len(answered_mcq)} "
+        f"(total with answer incl. essay: {len(answered)})"
     )
     assert report.selectedTemplate.value == expected_template
 

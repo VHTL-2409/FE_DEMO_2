@@ -65,16 +65,23 @@
             :is-loading-classes="isLoadingClasses"
           />
 
-          <!-- Section: Cấu hình thi -->
-          <ExamConfigSection
-            v-show="activeStep === 'config'"
-            v-model:duration="form.durationMinutes"
-            v-model:showAnswers="form.showAnswersAfterEnd"
-            v-model:allowReview="form.allowReview"
-            v-model:maxAttempts="form.maxAttempts"
-          />
+          <!-- Section: Cài đặt (gộp Cấu hình + Lịch thi) -->
+          <div v-show="activeStep === 'settings'" class="ec-merged-section">
+            <ExamConfigSection
+              v-model:duration="form.durationMinutes"
+              v-model:showAnswers="form.showAnswersAfterEnd"
+              v-model:allowReview="form.allowReview"
+              v-model:maxAttempts="form.maxAttempts"
+            />
+            <ScheduleSection
+              v-model:startTime="form.startTime"
+              v-model:endTime="form.endTime"
+              v-model:timezone="form.timezone"
+              v-model:durationMinutes="form.durationMinutes"
+            />
+          </div>
 
-          <!-- Section: Nhập file câu hỏi -->
+          <!-- Bước riêng: chỉ nhập file / đọc câu hỏi -->
           <QuestionImportStep
             v-show="activeStep === 'import'"
             v-model:questions="form.questions"
@@ -82,20 +89,11 @@
             v-model:shuffleAnswers="form.shuffleAnswers"
           />
 
-          <!-- Section: Chỉnh sửa câu hỏi -->
+          <!-- Bước riêng: chỉnh sửa danh sách câu hỏi -->
           <QuestionReviewStep
-            v-show="activeStep === 'review'"
+            v-show="activeStep === 'edit'"
             v-model:questions="form.questions"
-            @back-to-import="activeStep = 'import'"
-          />
-
-          <!-- Section: Lịch thi -->
-          <ScheduleSection
-            v-show="activeStep === 'schedule'"
-            v-model:startTime="form.startTime"
-            v-model:endTime="form.endTime"
-            v-model:timezone="form.timezone"
-            v-model:durationMinutes="form.durationMinutes"
+            @back-to-import="goToImportStep"
           />
 
           <!-- Section: Giám sát -->
@@ -244,10 +242,9 @@ const toast = useToast()
 // ─── Steps definition ────────────────────────────────────────
 const steps = [
   { id: 'info', label: 'Thông tin' },
-  { id: 'config', label: 'Cấu hình' },
+  { id: 'settings', label: 'Cài đặt' },
   { id: 'import', label: 'Nhập file' },
-  { id: 'review', label: 'Chỉnh sửa' },
-  { id: 'schedule', label: 'Lịch thi' },
+  { id: 'edit', label: 'Chỉnh sửa' },
   { id: 'proctor', label: 'Giám sát' }
 ]
 
@@ -374,6 +371,14 @@ const jumpToStep = (stepId) => {
   activeStep.value = stepId
 }
 
+const goToImportStep = () => {
+  activeStep.value = 'import'
+  const el = document.querySelector('.ec-form-scroll')
+  if (el) {
+    el.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
 // ─── Save status ───────────────────────────────────────────────
 const saveStatusLabel = computed(() => {
   if (saveState.value === 'saving') return 'Đang lưu...'
@@ -416,10 +421,15 @@ const isScheduleValid = computed(() => {
   return !isNaN(start) && !isNaN(end) && end > start
 })
 
+const isConfigValid = computed(() => {
+  if (!form.durationMinutes || form.durationMinutes < 5) return false
+  return isScheduleValid.value
+})
+
 const canPublish = computed(() =>
   isInfoValid.value &&
+  isConfigValid.value &&
   isQuestionsValid.value &&
-  isScheduleValid.value &&
   !isSubmitting.value
 )
 
@@ -461,14 +471,14 @@ const handlePublish = async () => {
       activeStep.value = 'info'
       return
     }
-    if (!isQuestionsValid.value) {
-      toast.error('Vui lòng thêm ít nhất 1 câu hỏi.')
-      activeStep.value = 'import'
+    if (!isConfigValid.value) {
+      toast.error('Vui lòng thiết lập thời lượng thi.')
+      activeStep.value = 'settings'
       return
     }
-    if (!isScheduleValid.value) {
-      toast.error('Vui lòng thiết lập lịch thi hợp lệ.')
-      activeStep.value = 'schedule'
+    if (!isQuestionsValid.value) {
+      toast.error('Vui lòng thêm ít nhất 1 câu hỏi.')
+      activeStep.value = 'edit'
       return
     }
     return
@@ -576,13 +586,13 @@ function generateExamCode() {
 
 // Auto-mark step complete when data filled
 watch(isInfoValid, (v) => { if (v) completedSteps.value.add('info') })
+watch(isConfigValid, (v) => { if (v) completedSteps.value.add('settings') })
 watch(isQuestionsValid, (v) => {
   if (v) {
     completedSteps.value.add('import')
-    completedSteps.value.add('review')
+    completedSteps.value.add('edit')
   }
 })
-watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
 </script>
 
 <style scoped>
@@ -884,6 +894,13 @@ watch(isScheduleValid, (v) => { if (v) completedSteps.value.add('schedule') })
   overflow-y: auto;
   padding-right: 0.5rem;
   margin-right: -0.5rem;
+}
+
+/* Merged section wrapper for combined steps */
+.ec-merged-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 /* ===== Form Navigation — sticky at bottom ===== */

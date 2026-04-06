@@ -70,6 +70,18 @@ export const useExamSessionStore = defineStore('examSession', () => {
     }
   }
 
+  const setEssayAnswer = (questionId, content) => {
+    const key = toAnswerKey(questionId)
+    answers.value = {
+      ...answers.value,
+      [key]: content
+    }
+    visitedQuestions.value = {
+      ...visitedQuestions.value,
+      [key]: true
+    }
+  }
+
   const setMarked = (questionId, marked = true) => {
     markedQuestions.value = {
       ...markedQuestions.value,
@@ -173,6 +185,7 @@ export const useExamSessionStore = defineStore('examSession', () => {
     hydrateSession,
     setQuestionList,
     setAnswer,
+    setEssayAnswer,
     setMarked,
     toggleMarked,
     setVisited,

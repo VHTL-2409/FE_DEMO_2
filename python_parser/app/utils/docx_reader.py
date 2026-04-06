@@ -13,6 +13,8 @@ try:
 except ImportError:
     HAS_DOCX = False
 
+from .text_normalizer import normalize as normalize_extracted_text
+
 
 @dataclass
 class DocxParagraph:
@@ -43,7 +45,7 @@ class DocxReader:
         doc = docx.Document(docx_path)
         paragraphs = []
         for para in doc.paragraphs:
-            text = para.text.strip()
+            text = normalize_extracted_text(para.text.strip())
             if text:
                 paragraphs.append(text)
         return "\n\n".join(paragraphs)
@@ -61,7 +63,7 @@ class DocxReader:
         result = []
         doc = docx.Document(docx_path)
         for idx, para in enumerate(doc.paragraphs):
-            text = para.text.strip()
+            text = normalize_extracted_text(para.text.strip())
             if text:
                 style_name = para.style.name if para.style else None
                 result.append(DocxParagraph(

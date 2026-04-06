@@ -15,7 +15,7 @@
       <!-- Back to import -->
       <button type="button" class="ec-back-btn" @click="$emit('back-to-import')">
         <LucideIcon name="arrow_back" />
-        Quay lại nhập file
+        Về bước Nhập file
       </button>
 
       <!-- Questions list -->
@@ -51,7 +51,7 @@
         <div v-if="localQuestions.length === 0" class="ec-qb-empty">
           <LucideIcon name="quiz" />
           <p>Chưa có câu hỏi nào</p>
-          <p>Vui lòng quay lại bước trước để nhập file</p>
+          <p>Quay lại bước <strong>Nhập file</strong> để tải lên và đọc câu hỏi</p>
         </div>
 
         <div v-else class="ec-qb-items">
@@ -125,12 +125,20 @@
                 </div>
                 <div class="ec-qb-section__body">
                   <textarea
-                    class="ec-question-textarea"
+                    class="ec-question-textarea ec-question-textarea--math"
                     :value="q.content"
                     rows="3"
                     placeholder="Nhập nội dung câu hỏi..."
                     @input="updateQuestionContent(i, $event)"
                   />
+                  <div class="ec-qb-math-preview">
+                    <span class="ec-qb-math-preview__label">Xem trước hiển thị (công thức / ký hiệu)</span>
+                    <MathDisplay
+                      class="ec-qb-math-preview__body"
+                      :content="q.content || ''"
+                      :latex-content="q.latexContent ?? null"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -208,6 +216,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import ConfirmDialog from '../../ui/ConfirmDialog.vue'
+import MathDisplay from '../../shared/MathDisplay.vue'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] }
@@ -756,6 +765,30 @@ const onConfirmDeleteAll = () => {
   outline: none;
   border-color: var(--ds-primary);
   box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+
+.ec-question-textarea--math {
+  font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'DejaVu Math TeX Gyre', serif;
+}
+
+.ec-qb-math-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px dashed var(--ds-border);
+  background: var(--ds-surface-elevated, var(--ds-surface));
+}
+
+.ec-qb-math-preview__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.ec-qb-math-preview__body {
+  font-size: 0.9rem;
 }
 
 .ec-qb-item__options {

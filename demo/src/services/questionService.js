@@ -149,6 +149,20 @@ export function buildCreatePayloadFromFormQuestion(q) {
   ) {
     correctAnswer = options[0].id
   }
+  let latexContent = null
+  if (q?.latexContent != null && String(q.latexContent).trim() !== '') {
+    latexContent = String(q.latexContent).trim()
+  }
+  let latexOptions = null
+  if (q?.latexOptions != null && q.latexOptions !== '') {
+    latexOptions =
+      typeof q.latexOptions === 'string'
+        ? q.latexOptions.trim()
+        : JSON.stringify(q.latexOptions)
+    if (latexOptions === '' || latexOptions === '{}') {
+      latexOptions = null
+    }
+  }
   return {
     content,
     type,
@@ -157,7 +171,9 @@ export function buildCreatePayloadFromFormQuestion(q) {
     correctAnswer,
     difficulty: q?.difficulty || null,
     metadata: q?.metadata ?? null,
-    attachments: q?.attachments ?? null
+    attachments: q?.attachments ?? null,
+    ...(latexContent != null ? { latexContent } : {}),
+    ...(latexOptions != null ? { latexOptions } : {}),
   }
 }
 
@@ -169,20 +185,30 @@ export const createQuestion = async (examId, {
   correctAnswer = '',
   difficulty = null,
   metadata = null,
-  attachments = null
+  attachments = null,
+  latexContent = null,
+  latexOptions = null
 }) => {
+  const body = {
+    content,
+    type,
+    scoreWeight,
+    options: serializeQuestionValue(options, '[]'),
+    correctAnswer: serializeQuestionValue(correctAnswer, ''),
+    difficulty,
+    metadata: serializeQuestionValue(metadata, null),
+    attachments: serializeQuestionValue(attachments, null)
+  }
+  if (latexContent != null && String(latexContent).trim() !== '') {
+    body.latexContent = String(latexContent).trim()
+  }
+  if (latexOptions != null && String(latexOptions).trim() !== '') {
+    body.latexOptions =
+      typeof latexOptions === 'string' ? latexOptions.trim() : JSON.stringify(latexOptions)
+  }
   const payload = await apiRequest(`/api/exams/${examId}/questions`, {
     method: 'POST',
-    body: JSON.stringify({
-      content,
-      type,
-      scoreWeight,
-      options: serializeQuestionValue(options, '[]'),
-      correctAnswer: serializeQuestionValue(correctAnswer, ''),
-      difficulty,
-      metadata: serializeQuestionValue(metadata, null),
-      attachments: serializeQuestionValue(attachments, null)
-    })
+    body: JSON.stringify(body)
   })
 
   return unwrapApiData(payload)
@@ -196,20 +222,30 @@ export const updateQuestion = async (examId, questionId, {
   correctAnswer = '',
   difficulty = null,
   metadata = null,
-  attachments = null
+  attachments = null,
+  latexContent = null,
+  latexOptions = null
 }) => {
+  const body = {
+    content,
+    type,
+    scoreWeight,
+    options: serializeQuestionValue(options, '[]'),
+    correctAnswer: serializeQuestionValue(correctAnswer, ''),
+    difficulty,
+    metadata: serializeQuestionValue(metadata, null),
+    attachments: serializeQuestionValue(attachments, null)
+  }
+  if (latexContent != null && String(latexContent).trim() !== '') {
+    body.latexContent = String(latexContent).trim()
+  }
+  if (latexOptions != null && String(latexOptions).trim() !== '') {
+    body.latexOptions =
+      typeof latexOptions === 'string' ? latexOptions.trim() : JSON.stringify(latexOptions)
+  }
   const payload = await apiRequest(`/api/exams/${examId}/questions/${questionId}`, {
     method: 'PUT',
-    body: JSON.stringify({
-      content,
-      type,
-      scoreWeight,
-      options: serializeQuestionValue(options, '[]'),
-      correctAnswer: serializeQuestionValue(correctAnswer, ''),
-      difficulty,
-      metadata: serializeQuestionValue(metadata, null),
-      attachments: serializeQuestionValue(attachments, null)
-    })
+    body: JSON.stringify(body)
   })
   return unwrapApiData(payload)
 }

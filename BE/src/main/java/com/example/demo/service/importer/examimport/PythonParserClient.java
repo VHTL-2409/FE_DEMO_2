@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * REST client gọi Python FastAPI service tại {@code python_parser/}.
+ * REST client gọi Python FastAPI service tại {@code python_parser/} (PDF và DOCX).
  *
  * Mặc định: http://localhost:8000
  * Timeout: 120s cho text, 240s cho OCR-heavy PDFs.
@@ -44,7 +44,7 @@ public class PythonParserClient {
     /**
      * Gọi POST /parse-exam với file upload.
      *
-     * @param file          PDF file (multipart)
+     * @param file          PDF hoặc DOCX (multipart)
      * @param sessionId     session ID để truy vết
      * @param forceTemplate override template (null = auto-detect)
      * @return raw JSON map từ Python FastAPI response

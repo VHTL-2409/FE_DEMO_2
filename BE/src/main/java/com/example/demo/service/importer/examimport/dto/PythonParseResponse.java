@@ -63,12 +63,20 @@ public class PythonParseResponse {
         dto.setType((String) raw.get("type"));
         dto.setPage(toInt(raw.get("page")));
         dto.setText((String) raw.get("text"));
-        dto.setOptions((java.util.Map<String, String>) raw.get("options"));
+
+        // LaTeX fields for math rendering
+        dto.setLatexContent((String) raw.get("latexContent"));
+        dto.setLatexOptions((Map<String, String>) raw.get("latexOptions"));
+
+        dto.setOptions((Map<String, String>) raw.get("options"));
         dto.setSubQuestions((List<ParsedQuestionDto>) raw.get("subQuestions"));
         dto.setAnswer((String) raw.get("answer"));
         dto.setExplanation((String) raw.get("explanation"));
         dto.setConfidence(toDouble(raw.get("confidence")));
         dto.setIssues((List<String>) raw.get("issues"));
+
+        // Math rendering hints
+        dto.setFormulaHints((Map<String, Object>) raw.get("formulaHints"));
 
         Object renderRaw = raw.get("render");
         if (renderRaw instanceof Map) {
