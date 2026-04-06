@@ -1,0 +1,28 @@
+# python_parser/requirements.txt
+# Các thư viện tối ưu cho đọc file DOCX/PDF
+
+# ─── FastAPI & Server ─────────────────────────────────────────────────────────
+fastapi>=0.110.0              # Web framework
+uvicorn[standard]>=0.27.0    # ASGI server
+
+# ─── DOCX ────────────────────────────────────────────────────────────────────
+python-docx>=1.1.0          # Đọc DOCX, trích xuất text, tables, styles
+
+# ─── PDF Text Extraction ──────────────────────────────────────────────────────
+pdfplumber>=0.11.0         # Ưu tiên - tốt nhất cho tiếng Việt, bảng, layout
+pdfminer.six>=20231228     # Fallback cho text extraction
+PyMuPDF>=1.24.0            # Rendering PDF, crop images, metadata
+
+# ─── OCR (cho scanned PDFs) ───────────────────────────────────────────────────
+pytesseract>=0.3.10        # Gọi Tesseract OCR từ Python
+Pillow>=10.0.0             # Xử lý ảnh: grayscale, contrast, preprocessing
+
+# ─── Optional: Advanced Processing ────────────────────────────────────────────
+pypdf2>=3.0.0              # Alternative PDF reader (nếu cần backup)
+camelot-py>=0.11.0         # Table extraction chuyên sâu (PDF tables)
+tabula-py>=2.9.0           # Đọc bảng từ PDF
+openpyxl>=3.1.0            # Đọc Excel (nếu cần export Excel)
+
+# ─── Development/Testing ──────────────────────────────────────────────────────
+pytest>=8.0.0              # Testing
+pytest-cov>=4.1.0          # Coverage reports
