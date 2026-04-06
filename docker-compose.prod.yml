@@ -102,6 +102,18 @@ services:
     networks:
       - app-network
 
+  python-parser:
+    build:
+      context: ./python_parser
+      dockerfile: Dockerfile
+    ports:
+      - "${DOCKER_PYTHON_PARSER_PUBLISH:-127.0.0.1:8000}:8000"
+    volumes:
+      - python-parser-temp:/tmp
+    restart: "no"
+    networks:
+      - app-network
+
   fe:
     build:
       context: ./demo
@@ -129,3 +141,4 @@ networks:
 
 volumes:
   pgdata:
+  python-parser-temp:
