@@ -84,13 +84,16 @@ body {
   flex-direction: column;
   font-family: var(--font-sans);
   line-height: 1.5;
-  background:
-    linear-gradient(180deg, var(--edu-bg-light) 0%, var(--edu-bg-light) 100%);
+  background: var(--edu-bg-light);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: clip;
-  overflow-y: hidden;
+  overflow-x: hidden;
+  /* overflow-y must be 'visible' (default) so child scroll containers
+     (e.g. .db-app-shell__main { height: 100dvh; overflow-y: auto })
+     can scroll independently. Using 'hidden' here would clip all child
+     overflow, making dashboards blank even though content exists. */
+  overflow-y: visible;
 }
 
 #app {

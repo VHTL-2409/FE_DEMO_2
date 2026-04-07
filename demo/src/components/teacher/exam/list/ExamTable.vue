@@ -237,7 +237,7 @@ const formatTime = (d) => fmt(d, { hour: '2-digit', minute: '2-digit' })
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 .eltable__loading p {
   font-size: 0.875rem;

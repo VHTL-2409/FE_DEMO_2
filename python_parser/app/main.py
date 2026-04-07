@@ -194,6 +194,59 @@ async def parse_exam_filepath(body: FilePathRequest):
         raise HTTPException(500, f"Parse failed: {e}")
 
 
+@app.get("/parse-exam/debug")
+async def debug_reconstruct(filePath: str):
+    """
+    Debug endpoint: inspect the reconstructed rows and question regions
+    for a given PDF path without doing full parsing.
+
+    Useful for verifying:
+      - Reconstructed rows look correct (no "x ²" corruption)
+      - Question boundaries are detected
+      - Option markers are found
+
+    Query params:
+      - filePath: absolute path to the PDF file
+
+    Returns:
+      - row_samples: first 30 reconstructed rows with y-coordinates
+      - question_regions: detected question boundaries
+      - total_rows / total_questions
+    """
+    if not os.path.isfile(filePath):
+        raise HTTPException(404, f"File not found: {filePath}")
+
+    from .utils.math_text_engine import MathPdfTextEngine
+
+    engine = MathPdfTextEngine(filePath)
+    result = engine.extract()
+
+    return {
+        "total_pages": result.debug_info.get("total_pages"),
+        "total_rows": result.debug_info.get("total_rows"),
+        "total_questions": result.debug_info.get("total_questions"),
+        "row_samples": [
+            {
+                "y": r.y_center,
+                "token_count": len(r.tokens),
+                "text": r.text[:120],
+            }
+            for r in result.rows[:50]
+        ],
+        "question_regions": [
+            {
+                "number": q.number,
+                "page": q.page,
+                "y0": round(q.y0, 1),
+                "y1": round(q.y1, 1),
+                "line_count": len(q.raw_lines),
+                "first_line": q.raw_lines[0][:80] if q.raw_lines else "",
+            }
+            for q in result.questions
+        ],
+    }
+
+
 @app.get("/parse-exam/profile")
 async def profile_pdf(filePath: str):
     """

@@ -117,32 +117,37 @@
                 </button>
               </div>
 
-              <!-- Câu hỏi — section riêng -->
+              <!-- Câu hỏi — xem trước đọc (MathDisplay) + textarea chỉnh sửa tách biệt -->
               <div class="ec-qb-section">
                 <div class="ec-qb-section__header">
                   <LucideIcon name="quiz" size="14" />
                   <span>Câu hỏi</span>
                 </div>
                 <div class="ec-qb-section__body">
-                  <textarea
-                    class="ec-question-textarea ec-question-textarea--math"
-                    :value="q.content"
-                    rows="3"
-                    placeholder="Nhập nội dung câu hỏi..."
-                    @input="updateQuestionContent(i, $event)"
-                  />
-                  <div class="ec-qb-math-preview">
-                    <span class="ec-qb-math-preview__label">Xem trước hiển thị (công thức / ký hiệu)</span>
+                  <div class="ec-qb-preview-label">Xem trước</div>
+                  <div class="ec-qb-preview-surface" aria-readonly="true">
                     <MathDisplay
-                      class="ec-qb-math-preview__body"
                       :content="q.content || ''"
                       :latex-content="q.latexContent ?? null"
+                      :content-type="q.contentType ?? q.content_type ?? null"
+                      source-preference="latex-first"
+                      class="ec-qb-preview-surface__math"
+                    />
+                  </div>
+                  <div class="ec-qb-edit-label">Chỉnh sửa nguồn (văn bản / $...$)</div>
+                  <div class="ec-qb-question-surface">
+                    <textarea
+                      class="ec-qb-question-surface__textarea"
+                      :value="q.content"
+                      rows="5"
+                      placeholder="Chỉnh sửa nội dung (dùng $...$ hoặc $$...$$ cho công thức)..."
+                      @input="updateQuestionContent(i, $event)"
                     />
                   </div>
                 </div>
               </div>
 
-              <!-- Đáp án — section riêng -->
+              <!-- Đáp án — một lần hiển thị (latex-first), input chỉnh sửa riêng -->
               <div v-if="!isEssayType(q)" class="ec-qb-section">
                 <div class="ec-qb-section__header">
                   <LucideIcon name="checklist" size="14" />
@@ -162,14 +167,39 @@
                         <LucideIcon v-if="isCorrectAnswer(q, opt.id)" name="check" size="14" />
                         <span v-else>{{ opt.id }}</span>
                       </div>
-                      <input
-                        type="text"
-                        class="ec-qb-option-card__text"
-                        :value="opt.text"
-                        placeholder="Nhập nội dung đáp án..."
-                        @input="updateOptionText(i, opt.id, $event)"
-                        @click.stop
-                      />
+                      <div class="ec-qb-option-card__content">
+                        <div
+                          v-if="isEditingOption(i, opt.id)"
+                          class="ec-qb-option-card__edit"
+                          @click.stop
+                        >
+                          <input
+                            type="text"
+                            class="ec-qb-option-card__text"
+                            :value="opt.text"
+                            placeholder="Nhập nội dung đáp án..."
+                            @input="updateOptionText(i, opt.id, $event)"
+                            @blur="closeOptionEdit"
+                            @keydown.escape.prevent="closeOptionEdit"
+                            @click.stop
+                          />
+                        </div>
+                        <div v-else class="ec-qb-option-card__display">
+                          <MathDisplay
+                            :content="opt.text"
+                            :latex-content="getLatexOption(q, opt.id)"
+                            source-preference="latex-first"
+                            class="ec-qb-option-card__math"
+                          />
+                          <button
+                            type="button"
+                            class="ec-qb-option-edit-btn"
+                            @click="openOptionEdit(i, opt.id, $event)"
+                          >
+                            Sửa
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -213,7 +243,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import ConfirmDialog from '../../ui/ConfirmDialog.vue'
 import MathDisplay from '../../shared/MathDisplay.vue'
@@ -229,6 +259,8 @@ const emit = defineEmits([
 
 const showDeleteAllConfirm = ref(false)
 const expandedIds = ref(new Set([0, 1, 2]))
+/** `${questionIndex}-${optionId}` — chỉ một ô đáp án đang sửa; tránh preview + input trùng nhau */
+const editingOptionKey = ref<string | null>(null)
 
 const allExpanded = computed(() => {
   return localQuestions.value.length > 0 && expandedIds.value.size === localQuestions.value.length
@@ -396,18 +428,47 @@ const getSortedOptions = (question) => {
 const isCorrectAnswer = (question, optionId) => {
   if (!question.correctAnswer) return false
   const correct = String(question.correctAnswer).toUpperCase()
+  const oid = String(optionId).toUpperCase()
   if (correct.includes(',')) {
-    return correct.split(',').map(s => s.trim()).includes(optionId)
+    return correct.split(',').map(s => s.trim().toUpperCase()).includes(oid)
   }
-  return correct === optionId
+  return correct === oid
 }
 
-/** Có ít nhất một hàng đáp án đang được highlight là đúng (không lặp lại bằng dòng chữ) */
-const questionShowsCorrectHighlight = (question) => {
-  for (const opt of getSortedOptions(question)) {
-    if (isCorrectAnswer(question, opt.id)) return true
+function optionEditKey(questionIndex: number, optionId: string): string {
+  return `${questionIndex}-${optionId}`
+}
+
+function isEditingOption(questionIndex: number, optionId: string): boolean {
+  return editingOptionKey.value === optionEditKey(questionIndex, optionId)
+}
+
+function openOptionEdit(questionIndex: number, optionId: string, e?: Event): void {
+  e?.stopPropagation()
+  editingOptionKey.value = optionEditKey(questionIndex, optionId)
+}
+
+function closeOptionEdit(): void {
+  editingOptionKey.value = null
+}
+
+const getLatexOption = (question, optionId: string) => {
+  const lo = question.latexOptions
+  if (!lo) return null
+  if (typeof lo === 'object') {
+    const v = lo[optionId] ?? lo[optionId.toUpperCase()]
+    return v != null && String(v).trim() !== '' ? String(v) : null
   }
-  return false
+  if (typeof lo === 'string') {
+    try {
+      const parsed = JSON.parse(lo) as Record<string, string>
+      const v = parsed[optionId] ?? parsed[optionId.toUpperCase()]
+      return v != null && String(v).trim() !== '' ? String(v) : null
+    } catch {
+      return null
+    }
+  }
+  return null
 }
 
 const updateQuestionContent = (index, event) => {
@@ -427,6 +488,26 @@ const updateOptionText = (questionIndex, optionId, event) => {
     options.push({ id: optionId, text: event.target.value })
   }
   question.options = options
+  // Bỏ latex đáp án đã sửa — tránh preview latex-first vẫn dùng bản cũ, trùng/lệch với input
+  const lo = question.latexOptions
+  if (lo != null) {
+    if (typeof lo === 'object') {
+      const next = { ...lo }
+      delete next[optionId]
+      delete next[optionId.toUpperCase()]
+      question.latexOptions = Object.keys(next).length > 0 ? next : undefined
+    } else if (typeof lo === 'string') {
+      try {
+        const parsed = JSON.parse(lo) as Record<string, string>
+        delete parsed[optionId]
+        delete parsed[optionId.toUpperCase()]
+        question.latexOptions =
+          Object.keys(parsed).length > 0 ? JSON.stringify(parsed) : undefined
+      } catch {
+        question.latexOptions = undefined
+      }
+    }
+  }
   updated[questionIndex] = question
   localQuestions.value = updated
 }
@@ -447,20 +528,21 @@ const updateEssayAnswer = (index, event) => {
 const toggleCorrectAnswer = (questionIndex, optionId) => {
   const updated = [...localQuestions.value]
   const question = { ...updated[questionIndex] }
+  const oid = String(optionId).toUpperCase()
   const currentCorrect = String(question.correctAnswer || '').toUpperCase()
 
   let newCorrect
   if (currentCorrect.includes(',')) {
-    const correctList = currentCorrect.split(',').map(s => s.trim())
-    if (correctList.includes(optionId)) {
-      correctList.splice(correctList.indexOf(optionId), 1)
+    const correctList = currentCorrect.split(',').map(s => s.trim().toUpperCase())
+    if (correctList.includes(oid)) {
+      correctList.splice(correctList.indexOf(oid), 1)
       newCorrect = correctList.join(',')
     } else {
-      correctList.push(optionId)
+      correctList.push(oid)
       newCorrect = correctList.sort().join(',')
     }
   } else {
-    newCorrect = currentCorrect === optionId ? '' : optionId
+    newCorrect = currentCorrect === oid ? '' : oid
   }
 
   question.correctAnswer = newCorrect
@@ -767,28 +849,185 @@ const onConfirmDeleteAll = () => {
   box-shadow: 0 0 0 3px var(--ds-primary-ring);
 }
 
-.ec-question-textarea--math {
-  font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'DejaVu Math TeX Gyre', serif;
-}
-
-.ec-qb-math-preview {
-  margin-top: 0.75rem;
-  padding: 0.75rem 0.875rem;
-  border-radius: var(--ds-radius-lg);
-  border: 1px dashed var(--ds-border);
-  background: var(--ds-surface-elevated, var(--ds-surface));
-}
-
-.ec-qb-math-preview__label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
+.ec-qb-preview-label,
+.ec-qb-edit-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--ds-text-muted);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
-.ec-qb-math-preview__body {
+.ec-qb-edit-label {
+  margin-top: 0.75rem;
+}
+
+.ec-qb-preview-surface {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  padding: 0.625rem 0.875rem;
+  background: var(--ds-gray-50, #f8fafc);
+  min-height: 2.5rem;
+}
+
+.dark .ec-qb-preview-surface {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-gray-800, #1e293b);
+}
+
+.ec-qb-preview-surface__math {
   font-size: 0.9rem;
+}
+
+.ec-qb-option-card__display {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.ec-qb-option-card__math {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.ec-qb-option-edit-btn {
+  flex-shrink: 0;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ec-qb-option-edit-btn:hover {
+  border-color: var(--ds-primary-border);
+  color: var(--ds-primary);
+}
+
+.dark .ec-qb-option-edit-btn {
+  background: var(--ds-gray-700);
+  border-color: var(--ds-border-strong);
+}
+
+.ec-qb-option-card__edit {
+  width: 100%;
+}
+
+/* Câu hỏi: preview đọc + textarea chỉnh sửa */
+.ec-qb-question-surface {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+  background: var(--ds-surface);
+}
+
+.dark .ec-qb-question-surface {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-gray-700);
+}
+
+.ec-qb-question-surface__textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.625rem 0.875rem;
+  border: none;
+  border-radius: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background: var(--ds-gray-50, #f8fafc);
+  color: var(--ds-text);
+  resize: vertical;
+  min-height: 100px;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+}
+
+.dark .ec-qb-question-surface__textarea {
+  background: var(--ds-gray-800, #1e293b);
+  color: var(--ds-text);
+}
+
+.ec-qb-question-surface__textarea:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-primary-ring);
+}
+
+.ec-qb-question-surface__editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--ds-border);
+  background: var(--ds-gray-50, #f8fafc);
+}
+
+.dark .ec-qb-question-surface__editor-actions {
+  border-top-color: var(--ds-border-strong);
+  background: var(--ds-gray-800, #1e293b);
+}
+
+.ec-qb-question-surface__editor-hint {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--ds-text-muted);
+}
+
+.ec-qb-question-surface__cancel-btn {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ec-qb-question-surface__cancel-btn:hover {
+  background: var(--ds-gray-100);
+  color: var(--ds-text);
+}
+
+.dark .ec-qb-question-surface__cancel-btn {
+  border-color: var(--ds-border-strong);
+}
+
+.dark .ec-qb-question-surface__cancel-btn:hover {
+  background: var(--ds-gray-700);
+  color: var(--ds-text);
+}
+
+.ec-qb-question-surface__save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-primary);
+  color: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ec-qb-question-surface__save-btn:hover {
+  background: var(--ds-primary-hover, #1d4ed8);
+}
+
+/* Option card: input + preview bên dưới */
+.ec-qb-option-card__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
 .ec-qb-item__options {

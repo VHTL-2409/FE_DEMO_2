@@ -241,6 +241,7 @@ class Template06EnglishExamParser(BaseParser):
             confidence=confidence,
             render_mode=RenderMode.TEXT,
             issues=issues,
+            display_text=stem,
         )
 
         # Apply section awareness fields

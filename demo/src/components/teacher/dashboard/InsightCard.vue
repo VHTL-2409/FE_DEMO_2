@@ -142,6 +142,9 @@ const upcomingExams = computed(() => {
   flex-direction: column;
   gap: 1.25rem;
   animation: fadeUpSm 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.5s both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* Header */
@@ -388,8 +391,6 @@ const upcomingExams = computed(() => {
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .td-insight { animation: none; }
+  .td-insight__upcoming-item:hover { transform: none; box-shadow: none; }
 }

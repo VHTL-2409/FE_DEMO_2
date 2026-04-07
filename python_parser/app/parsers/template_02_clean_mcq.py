@@ -259,6 +259,7 @@ class Template02CleanMcqParser(BaseParser):
             confidence=confidence,
             render_mode=RenderMode.TEXT,
             bbox=block.bbox,
+            display_text=stem,
         )
 
     def _parse_options(self, text: str) -> dict[str, str]:

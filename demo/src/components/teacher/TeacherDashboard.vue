@@ -254,18 +254,21 @@ onMounted(async () => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   padding: 1.375rem;
-  animation: panelIn 0.35s ease-out both;
+  animation: slideInPanel 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
-@keyframes panelIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes slideInPanel {
+  from { opacity: 0; transform: translateY(8px) scale(0.99) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
 }
 
-.td-panel--1 { animation-delay: 0.05s; }
-.td-panel--2 { animation-delay: 0.1s; }
-.td-panel--3 { animation-delay: 0.15s; }
-.td-panel--4 { animation-delay: 0.2s; }
+.td-panel--1 { animation-delay: 0s; }
+.td-panel--2 { animation-delay: 0.06s; }
+.td-panel--3 { animation-delay: 0.12s; }
+.td-panel--4 { animation-delay: 0.18s; }
 
 @media (prefers-reduced-motion: reduce) {
   .td-panel { animation: none; }

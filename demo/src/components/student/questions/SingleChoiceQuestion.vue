@@ -19,6 +19,7 @@
         <MathDisplay
           :content="option.text"
           :latex-content="getLatexOption(option.id)"
+          source-preference="latex-first"
         />
       </span>
     </label>
@@ -59,12 +60,12 @@ const getLatexOption = (optionId) => {
   if (typeof latexOptions === 'string') {
     try {
       const parsed = JSON.parse(latexOptions)
-      return parsed[optionId] || null
+      return parsed[optionId] || parsed[String(optionId).toUpperCase()] || null
     } catch {
       return null
     }
   }
-  return latexOptions[optionId] || null
+  return latexOptions[optionId] || latexOptions[String(optionId).toUpperCase()] || null
 }
 
 const isSelected = (optionId) => String(props.modelValue ?? '') === String(optionId)

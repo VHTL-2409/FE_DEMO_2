@@ -543,17 +543,18 @@ watch(selectedPeriod, () => {
 
 <style scoped>
 .ds-animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
+  animation: fadeUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-animate-fade-up { animation: none; }
 }
 </style>

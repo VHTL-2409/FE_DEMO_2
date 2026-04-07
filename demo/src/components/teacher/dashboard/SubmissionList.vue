@@ -125,8 +125,8 @@ const displayExams = computed(() => {
 
 <style scoped>
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .td-sub {
@@ -435,11 +435,12 @@ const displayExams = computed(() => {
 .td-sub__status--started .td-sub__status-dot {
   background: var(--ds-success);
   animation: td-sub-pulse 1.5s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
 @keyframes td-sub-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: scale(1) translateZ(0); }
+  50% { opacity: 0.4; transform: scale(0.9) translateZ(0); }
 }
 
 .td-sub__status--ended {
@@ -508,9 +509,4 @@ const displayExams = computed(() => {
   opacity: 0.3;
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
 }

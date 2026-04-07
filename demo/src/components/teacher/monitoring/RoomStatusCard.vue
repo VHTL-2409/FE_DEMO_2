@@ -320,6 +320,7 @@ const timeColor = computed(() => {
   background: var(--ds-danger-soft);
   color: var(--ds-danger);
   animation: rscPulse 2s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
 .rsc__status-dot--offline {
@@ -652,8 +653,5 @@ const timeColor = computed(() => {
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .rsc__status-dot--critical { animation: none; }
 }

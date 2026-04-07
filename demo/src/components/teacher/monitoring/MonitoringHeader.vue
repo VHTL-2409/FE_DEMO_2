@@ -654,7 +654,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 
 /* Spin */
 .mch__spin { animation: mchSpin 1s linear infinite; }
-@keyframes mchSpin { to { transform: rotate(360deg); } }
+@keyframes mchSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {

@@ -30,13 +30,14 @@ from ..schemas import (
     TemplateType,
 )
 from ..profiler import PdfProfile
-from ..utils.pdf_reader import PdfReader
+from ..utils.pdf_reader import PdfReader, Word
 from ..utils.text_normalizer import (
     normalize,
     normalize_math_text,
     formula_analysis,
     split_merged_options,
     fix_question_number_spacing,
+    classify_content_type,
 )
 from ..utils.latex_converter import convert_to_latex
 from ..utils.image_cropper import crop_question
@@ -305,87 +306,133 @@ class Template01MathBrokenParser(BaseParser):
         page_height: float,
     ) -> list[MathBrokenBlock]:
         """
-        Parse PDF using layout-aware block extraction.
+        Parse PDF using word-level layout extraction.
 
-        Groups consecutive blocks (same question) together before parsing.
-        Each block in the result represents ONE question (header + options).
+        Groups words by Y proximity, sorts by X, reconstructs lines with
+        smart spacing (math tokens no space, text words normal space),
+        then detects question boundaries from reconstructed rows.
         """
         all_blocks: list[MathBrokenBlock] = []
 
         for page_num in range(1, self.reader.page_count + 1):
-            blocks = self.reader.get_text_blocks(page_num)
+            # Get raw words with positions — no space-corruption yet
+            words = self.reader.get_page_words(page_num)
 
-            # Group blocks by question number using Y proximity
-            # Strategy: each "Câu N." starts a new question group
+            # Build rows: group words by Y band, sort by X within each band
+            rows = self._group_words_into_rows(words)
+
+            # Reconstruct each row with smart spacing (preserve math tokens)
+            row_texts: list[tuple[float, str]] = []  # (y_center, reconstructed_text)
+            for y_center, tokens in rows:
+                line = _smart_join_line(tokens)
+                if line.strip():
+                    row_texts.append((y_center, line))
+
+            # Group rows by question number
             current_num = 0
-            current_blocks: list[dict] = []
+            current_rows: list[str] = []
+            current_y0 = 0.0
+            current_y1 = 0.0
 
-            for block in blocks:
-                text = block.text.strip()
-                if not text:
-                    continue
-
-                bbox = block.bbox
-                y0, y1 = bbox[1], bbox[3]
-
-                # Extract question number
-                for pat in [r"Câu\s+(\d+)", r"Bài\s+(\d+)"]:
-                    m = re.search(pat, text, re.IGNORECASE)
-                    if m:
-                        try:
-                            new_num = int(m.group(1))
-                        except ValueError:
-                            new_num = 0
-                        break
+            for y_center, row_text in row_texts:
+                # Detect question header
+                num_match = re.search(r"(?i)(?:Câu|Bài)\s+(\d+)", row_text)
+                if num_match:
+                    try:
+                        new_num = int(num_match.group(1))
+                    except ValueError:
+                        new_num = 0
                 else:
                     new_num = 0
 
                 if new_num > 0:
-                    # Save previous group
-                    if current_num > 0 and current_blocks:
-                        combined_text = self._combine_blocks_text(current_blocks)
-                        if combined_text.strip():
+                    # Flush previous question
+                    if current_num > 0 and current_rows:
+                        combined = self._reconstruct_question_lines(current_rows)
+                        if combined.strip():
+                            y0 = current_rows_y0[current_num] if current_num in current_rows_y0 else y_center
+                            y1 = current_rows_y1[current_num] if current_num in current_rows_y1 else y_center
                             all_blocks.append(MathBrokenBlock(
                                 question_num=current_num,
-                                raw_text=combined_text,
+                                raw_text=combined,
                                 page=page_num,
-                                y0=current_blocks[0]["y0"],
-                                y1=current_blocks[-1]["y1"],
-                                bbox=self._blocks_to_bbox(current_blocks),
+                                y0=y0,
+                                y1=y1,
+                                bbox=(0, y0, page_width, y1),
                             ))
                     current_num = new_num
-                    current_blocks = [{"text": text, "y0": y0, "y1": y1, "bbox": bbox}]
+                    current_rows = [row_text]
+                    current_rows_y0 = {new_num: y_center}
+                    current_rows_y1 = {new_num: y_center}
                 else:
-                    current_blocks.append({"text": text, "y0": y0, "y1": y1, "bbox": bbox})
+                    if current_rows:
+                        current_rows.append(row_text)
+                        if current_num in current_rows_y1:
+                            current_rows_y1[current_num] = y_center
 
-            # Don't forget the last group
-            if current_num > 0 and current_blocks:
-                combined_text = self._combine_blocks_text(current_blocks)
-                if combined_text.strip():
+            # Flush last question
+            if current_num > 0 and current_rows:
+                combined = self._reconstruct_question_lines(current_rows)
+                if combined.strip():
+                    y0 = current_rows_y0.get(current_num, 0.0)
+                    y1 = current_rows_y1.get(current_num, 0.0)
                     all_blocks.append(MathBrokenBlock(
                         question_num=current_num,
-                        raw_text=combined_text,
+                        raw_text=combined,
                         page=page_num,
-                        y0=current_blocks[0]["y0"],
-                        y1=current_blocks[-1]["y1"],
-                        bbox=self._blocks_to_bbox(current_blocks),
+                        y0=y0,
+                        y1=y1,
+                        bbox=(0, y0, page_width, y1),
                     ))
 
         return all_blocks
 
-    def _combine_blocks_text(self, blocks: list[dict]) -> str:
-        """Combine multiple text blocks into one text, sorted by Y position."""
-        # Sort by y0 (top to bottom)
-        sorted_blocks = sorted(blocks, key=lambda b: b["y0"])
-        lines = []
-        for b in sorted_blocks:
-            t = b["text"].strip()
-            if t:
-                lines.append(t)
-        raw_text = "\n".join(lines)
-        # Apply secondary option grouping for math PDFs
-        bbox = self._blocks_to_bbox(sorted_blocks) if sorted_blocks else (0, 0, 0, 0)
-        return self._group_options_by_column(lines, bbox)
+    def _group_words_into_rows(
+        self,
+        words: list,
+    ) -> list[tuple[float, list[str]]]:
+        """
+        Group words into rows by Y proximity.
+        Returns list of (y_center, list_of_tokens) sorted top-to-bottom.
+        """
+        Y_THRESHOLD = 5.0  # points
+
+        if not words:
+            return []
+
+        # Sort by Y then X
+        sorted_words = sorted(words, key=lambda w: (round(w.y0 / Y_THRESHOLD) * Y_THRESHOLD, w.x0))
+
+        rows: list[tuple[float, list[str]]] = []
+        current_row: list[str] = []
+        current_y = 0.0
+
+        for word in sorted_words:
+            y_group = round(word.y0 / Y_THRESHOLD) * Y_THRESHOLD
+            if not current_row or abs(y_group - current_y) < Y_THRESHOLD:
+                current_row.append(word.text)
+                current_y = y_group
+            else:
+                if current_row:
+                    rows.append((current_y, current_row))
+                current_row = [word.text]
+                current_y = y_group
+
+        if current_row:
+            rows.append((current_y, current_row))
+
+        return rows
+
+    def _reconstruct_question_lines(self, lines: list[str]) -> str:
+        """
+        Reconstruct a question block from its lines.
+        Uses marker-based option parsing (from template_03) to
+        reassemble option content that may span multiple lines.
+        """
+        combined = "\n".join(line for line in lines if line.strip())
+        # Apply marker-based option grouping
+        combined = _group_options_by_marker(combined)
+        return combined
 
     def _group_options_by_column(
         self,
@@ -518,8 +565,12 @@ class Template01MathBrokenParser(BaseParser):
         formula_noise = self._calculate_formula_noise(text_normalized)
         high_noise = formula_noise > 0.2
 
-        # Parse options from normalized text
-        options = self._parse_options(text_normalized)
+        # CRITICAL FIX: parse options from raw text (BEFORE normalize_math_text).
+        # normalize_math_text converts ²→2, ³→3 globally — that destroys superscripts
+        # in option values. Parsing BEFORE this conversion preserves Unicode ²³ in
+        # the parsed options, so latexOptions receives correct "S = {-3}" not "S = -3".
+        # Formula noise and answer extraction still use the full normalized text.
+        options = self._parse_options(text)
 
         # Determine render mode - prefer LATEX for math content
         if high_noise:
@@ -557,6 +608,15 @@ class Template01MathBrokenParser(BaseParser):
             if answer:
                 answer_location = "inline"
 
+        # Extract stem-only text for FE — parse from RAW text (before normalize_math_text)
+        # so that Unicode superscripts (²³¹) in the stem are PRESERVED in the text field.
+        # The LaTeX output (latexContent) gets ²→^2 via convert_to_latex — correct for KaTeX.
+        first_opt_m = re.search(r"(?m)^[ \t]*([A-D])[ \t]*\.[ \t]", text)
+        if first_opt_m:
+            stem_only = text[:first_opt_m.start()].strip()
+        else:
+            stem_only = text
+
         parsed_block = ParsedBlock(
             raw_text=text_normalized,
             question_num=num,
@@ -576,6 +636,7 @@ class Template01MathBrokenParser(BaseParser):
             render_mode=render_mode,
             bbox=block.bbox if high_noise else None,
             issues=issues,
+            display_text=stem_only,
         )
 
         # Apply section awareness fields
@@ -586,15 +647,27 @@ class Template01MathBrokenParser(BaseParser):
         # Attach formula hints for FE rendering decision
         question.formulaHints = hints
 
-        # Convert to LaTeX for frontend rendering
-        question.latexContent = convert_to_latex(text_normalized, mode="auto")
+        # LaTeX from STEM: preserve Unicode superscripts (²³) in raw → convert_to_latex
+        # converts them to ^2 ^3 for KaTeX. This is correct: FE renders ^2 as ².
+        # latexContent = "Câu 1. Phương trình $x^2 - 9 = 0$ có tập nghiệm là:"
+        # text (fallback) = "Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:"
+        stem_latex = convert_to_latex(stem_only, mode="auto")
+        question.latexContent = stem_latex
+        question.contentType = classify_content_type(stem_only, stem_latex)
 
-        # Convert options to LaTeX
+        # latexOptions from parsed options: valid_options already has Unicode ²³³ preserved
+        # (parsed from raw, not from text_normalized). convert_to_latex → $x^2=0$, $S={-3}$
+        # text field fallback → $S = {-3}$ (plain, readable)
         if valid_options:
             question.latexOptions = {
                 k: convert_to_latex(v, mode="inline")
                 for k, v in valid_options.items()
             }
+
+        if answer is not None:
+            ans = str(answer).strip()
+            if re.match(r"^[A-Da-d]$", ans):
+                question.answer = ans.upper()
 
         return question
 
@@ -609,7 +682,8 @@ class Template01MathBrokenParser(BaseParser):
 
         text = block.raw_text
         # Remove first-line header: "Câu 5 (4đ)." / "Câu 7 (1đ)." (điểm trong ngoặc tiếng Việt)
-        lines = text.split("\n")
+        raw_for_latex = block.raw_text
+        lines = raw_for_latex.split("\n")
         if lines:
             lines[0] = re.sub(
                 r"^\s*(?:Câu|Bài)\s+\d+(?:\s*\([^)]*\))?\s*[\.:]?\s*",
@@ -629,6 +703,10 @@ class Template01MathBrokenParser(BaseParser):
             text,
             maxsplit=1,
         )[0].strip()
+
+        # normalize_math_text converts ²→2 for display text — keep separate
+        # so latexContent gets the Unicode superscript version (→ convert_to_latex → ^2 for KaTeX)
+        raw_stem = text
 
         # Normalize math text (preserve symbols, fix broken expressions)
         text = normalize_math_text(text)
@@ -659,8 +737,10 @@ class Template01MathBrokenParser(BaseParser):
         question.needsGrading = True
         question.formulaHints = hints
 
-        # Convert to LaTeX for frontend rendering
-        question.latexContent = convert_to_latex(text, mode="block")
+        # Convert to LaTeX for frontend rendering (use raw stem to preserve ²³ → ^2^3 for KaTeX)
+        stem_latex = convert_to_latex(raw_stem, mode="block")
+        question.latexContent = stem_latex
+        question.contentType = classify_content_type(raw_stem, stem_latex)
 
         return question
 
@@ -687,9 +767,9 @@ class Template01MathBrokenParser(BaseParser):
                 letter = m.group(1)
                 rest = m.group(2).strip()
                 active = letter
-                if rest:
-                    options[letter] = rest
-                    active = None
+                # Luôn gán key (kể cả rỗng) và giữ active để dòng sau gộp tiếp —
+                # pdf_mau_1: "A. S" rồi dòng "= {-3, 3}" không bị bỏ qua.
+                options[letter] = rest
             elif active:
                 # Continuation for "A." / "A)" with content on following lines
                 if not re.match(r"^\s*([A-D])(?:\.|\)|．|:)", stripped):
@@ -735,3 +815,121 @@ class Template01MathBrokenParser(BaseParser):
         from ..utils.answer_extractor import AnswerExtractor
         extractor = AnswerExtractor(text, tail_lines=30)
         return extractor.get_as_dict()
+
+
+# ─── Module-level helpers (shared with pdf_reader) ────────────────────────────
+
+def _smart_join_line(tokens: list[str]) -> str:
+    """
+    Join tokens on a single line with smart spacing.
+    Math expressions like 'x²-9=0' are rendered as individual spans in the PDF —
+    without spaces. Joining with spaces destroys them.
+    We insert a space only when all tokens look like text words (> 4 chars, alphabetic).
+    """
+    if not tokens:
+        return ""
+    if len(tokens) == 1:
+        return tokens[0]
+    all_text = all(len(t) > 3 or not t.replace(" ", "").isalpha() for t in tokens)
+    sep = "" if all_text else " "
+    out = [tokens[0]]
+    for t in tokens[1:]:
+        out.append(sep)
+        out.append(t)
+    return "".join(out)
+
+
+def _is_math_token(text: str) -> bool:
+    """Heuristic: is this PDF span a math fragment (no space-breaking needed)?"""
+    t = text.strip()
+    if not t:
+        return True
+    if len(t) > 12:
+        return False
+    math_chars = set("²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼×÷·±∓√∫∑∏∂∆∇∈∉⊂⊃∪∩∅∞→←↔⇒⇐⇔≥≤≠≈≡∝⊕⊗⊙⊖°′″")
+    has_math = any(ch in math_chars for ch in t)
+    if has_math:
+        return True
+    if len(t) <= 4 and not t.isalpha():
+        return True
+    return False
+
+
+def _group_options_by_marker(text: str) -> str:
+    """
+    Marker-based option grouping — ported from template_03.
+
+    Parses answer options (A. B. C. D.) across one or many lines using
+    marker positions. Reassembles multi-line option content so that
+    'A. S' + '= {-3}' on the next line become a single 'A. S = {-3}'.
+
+    Fixes the root cause: PDF extraction splits math across spans, and
+    without marker-based reassembly, option values like 'S = {-3}' get
+    corrupted to 'S3 = -' or 'S = -3'.
+    """
+    options: dict[str, str] = {}
+    m0 = _first_option_match(text)
+    if not m0:
+        return text
+
+    rest = text[m0.start():]
+    matches = _collect_option_markers(rest)
+    if len(matches) < 2:
+        return text
+
+    for i, m in enumerate(matches):
+        letter = m.group(1)
+        a = m.end()
+        b = matches[i + 1].start() if i + 1 < len(matches) else len(rest)
+        chunk = rest[a:b].strip()
+        chunk = re.sub(r"\s+", " ", chunk)
+        if chunk:
+            options[letter] = chunk
+
+    if sum(1 for v in options.values() if v.strip()) < 2:
+        return text
+
+    # Rebuild text: stem + ordered options
+    stem_end = m0.start()
+    stem = text[:stem_end].strip()
+    result_lines = [stem] if stem else []
+
+    for letter in "ABCD":
+        if letter in options:
+            result_lines.append(f"{letter}. {options[letter]}")
+
+    return "\n".join(result_lines)
+
+
+def _collect_option_markers(text: str) -> list[re.Match]:
+    """
+    Collect all A./B./C./D. marker positions in text.
+    Matches markers at line start or after whitespace (but not after letters).
+    """
+    found: list[re.Match] = []
+    for m in re.finditer(r"(?:^|\n)\s*([A-D])\s*[\.)．:]\s+\S", text):
+        found.append(m)
+    for m in re.finditer(r"(?:^|\n)\s*([A-D])\s*[\.)．:]\s*$", text):
+        found.append(m)
+    for m in re.finditer(r"(?:^|\n)\s*([A-D])\s*[\.)．:]\s+", text):
+        found.append(m)
+    for m in re.finditer(r"(?<=\s)([A-D])\s*[\.)．:]\s+(?=\S)", text):
+        if m.start() > 0 and text[m.start() - 1].isalpha():
+            continue
+        found.append(m)
+    found.sort(key=lambda x: x.start())
+    out: list[re.Match] = []
+    for m in found:
+        if not out or m.start() != out[-1].start():
+            out.append(m)
+    return out
+
+
+def _first_option_match(text: str) -> Optional[re.Match]:
+    """First option marker that has actual content (not just 'A. B.')."""
+    for m in _collect_option_markers(text):
+        tail = text[m.end():m.end() + 14].lstrip()
+        if re.match(r"^[A-D]\s*[\.)．:]", tail):
+            continue
+        return m
+    return None

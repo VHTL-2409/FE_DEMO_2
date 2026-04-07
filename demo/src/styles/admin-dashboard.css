@@ -6,22 +6,22 @@
  * Supports .dark class.
  */
 
-/* ─── Keyframes ─────────────────────────────────────────────────── */
+/* ─── Keyframes — GPU optimized ────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 @keyframes fadeInRight {
-  from { opacity: 0; transform: translateX(-12px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(-12px) translateZ(0); }
+  to   { opacity: 1; transform: translateX(0) translateZ(0); }
 }
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  100% { background-position:  200% 0; }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -35,23 +35,16 @@
   100% { transform: scale(2.2); opacity: 0; }
 }
 @keyframes slideInPanel {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px) scale(0.99) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
 }
 
 /* ─── Reduced motion (admin-only scope — does NOT reset global *) ── */
 @media (prefers-reduced-motion: reduce) {
   .tui-skeleton,
-  .tui-skeleton-row {
-    /* GPU shimmer: transform+opacity instead of background-position (paint) */
-    animation: none;
-  }
-
+  .tui-skeleton-row,
   .tui-dot--running,
-  .tui-dot--deploying {
-    animation: none;
-  }
-
+  .tui-dot--deploying,
   .tui-pulse-dot::after {
     animation: none;
   }
@@ -189,11 +182,14 @@
 }
 .tui-panel--anim {
   animation: slideInPanel 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 .tui-panel:hover {
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
   border-color: var(--ds-gray-300);
-  transform: translateY(-1px);
+  transform: translateY(-1px) translateZ(0);
 }
 
 .tui-panel-header {
@@ -340,6 +336,9 @@
   transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 .tui-kpi-card::before {
   content: '';
@@ -372,7 +371,7 @@
   flex-shrink: 0;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.tui-kpi-card:hover .tui-kpi-icon-wrap { transform: scale(1.08) rotate(-3deg); }
+.tui-kpi-card:hover .tui-kpi-icon-wrap { transform: scale(1.08) rotate(-3deg) translateZ(0); }
 .tui-kpi-card--primary .tui-kpi-icon-wrap  { background: rgba(79, 70, 229, 0.1); color: var(--ds-primary); }
 .tui-kpi-card--warning .tui-kpi-icon-wrap  { background: rgba(245, 158, 11, 0.1); color: var(--ds-warning); }
 .tui-kpi-card--success .tui-kpi-icon-wrap { background: rgba(16, 185, 129, 0.1); color: var(--ds-success); }
@@ -479,6 +478,7 @@
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--ds-gray-100);
   transition: background 0.12s ease;
+  transform: translateZ(0);
 }
 .tui-app-item:last-child { border-bottom: none; }
 .tui-app-item:hover { background: var(--ds-gray-50); }
@@ -494,8 +494,9 @@
   font-size: 0.75rem;
   font-weight: 800;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
 }
-.tui-app-item:hover .tui-app-icon { transform: scale(1.08) rotate(-3deg); }
+.tui-app-item:hover .tui-app-icon { transform: scale(1.08) rotate(-3deg) translateZ(0); }
 
 .tui-app-icon--up     { background: rgba(22,163,74,0.1);  color: var(--ds-success); }
 .tui-app-icon--warning { background: rgba(217,119,6,0.1);  color: var(--ds-warning); }
@@ -624,11 +625,14 @@
   border-bottom: 1px solid var(--ds-gray-100);
   transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeInRight 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 .tui-activity-item:last-child { border-bottom: none; }
 .tui-activity-item:hover {
   background: var(--ds-gray-50);
-  transform: translateX(3px);
+  transform: translateX(3px) translateZ(0);
 }
 
 /* Icon container: functional rounded-square with icon */
@@ -925,6 +929,8 @@
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md, 10px);
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
 .tui-skeleton-row {
@@ -932,8 +938,10 @@
   margin: 0.25rem 1.25rem;
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-50) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.2s infinite, fadeInUp 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+  animation: shimmer 1.2s ease-in-out infinite, fadeInUp 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
   border-radius: var(--ds-radius-md, 10px);
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
 /* ─── Alert ─────────────────────────────────────────────────────── */
@@ -1064,6 +1072,7 @@
 .tui-spin {
   animation: spin 1s linear infinite;
   display: inline-block;
+  transform: translateZ(0);
 }
 
 /* ─── Divider ───────────────────────────────────────────────────── */
@@ -1287,4 +1296,7 @@
 /* ─── Table row stagger animation ───────────────────────────── */
 .tui-table-row--anim {
   animation: fadeInRight 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }

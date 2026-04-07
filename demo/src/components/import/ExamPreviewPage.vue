@@ -158,7 +158,7 @@
                   <LucideIcon name="warning" size="10" />
                 </span>
               </div>
-              <p class="epp__qcard-stem">{{ truncate(q.content, 120) }}</p>
+              <p class="epp__qcard-stem">{{ truncate(q.text ?? q.content, 200) }}</p>
               <div class="epp__qcard-footer">
                 <span class="epp__qcard-conf" :class="confClass(q.parseConfidence)">
                   {{ (q.parseConfidence || 0).toFixed(2) }}
@@ -181,7 +181,7 @@
               @click="selectedQuestion = q"
             >
               <span class="epp__qrow-num">{{ q.index }}</span>
-              <span class="epp__qrow-stem">{{ truncate(q.content, 80) }}</span>
+              <span class="epp__qrow-stem">{{ truncate(q.text ?? q.content, 80) }}</span>
               <span class="epp__qrow-type">{{ typeLabel(q.type) }}</span>
               <span v-if="q.renderMode === 'IMAGE'" class="epp__qrow-badge"><LucideIcon name="image" size="11" /></span>
               <span v-if="q.issues?.length" class="epp__qrow-badge epp__qrow-badge--warn">

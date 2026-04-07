@@ -767,9 +767,3 @@ watch(() => props.modelValue, (val) => {
 .qemodal-enter-from, .qemodal-leave-to { opacity: 0; }
 .qemodal-enter-from .qemodal, .qemodal-leave-to .qemodal { transform: scale(0.95) translateY(8px); }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

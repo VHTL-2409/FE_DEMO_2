@@ -251,6 +251,8 @@
                 <MathDisplay
                   :content="currentQuestion.content"
                   :latex-content="currentQuestion.latexContent"
+                  :content-type="currentQuestion.contentType ?? currentQuestion.content_type ?? null"
+                  source-preference="latex-first"
                 />
               </h2>
             </div>
@@ -1412,7 +1414,7 @@ onUnmounted(() => {
 .ei-save-icon--err { color: var(--ds-danger); }
 .ei-save-label { white-space: nowrap; }
 
-@keyframes eiSpin { to { transform: rotate(360deg); } }
+@keyframes eiSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Buttons */
 .ei-btn {

@@ -4,7 +4,6 @@ pdf_reader.py — PyMuPDF wrapper for reading PDF text blocks, images, and rende
 
 from __future__ import annotations
 
-import io
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -16,6 +15,22 @@ class TextSpan:
     """A single text span with position."""
     text: str
     bbox: tuple[float, float, float, float]  # (x0, y0, x1, y1)
+    font_name: str = ""
+    font_size: float = 0.0
+
+
+@dataclass
+class Word:
+    """
+    A single word/token with precise position — returned by get_page_words().
+    Use this for layout-aware math reconstruction: each word is separated by
+    known horizontal gap, not blindly spaced.
+    """
+    text: str
+    x0: float
+    y0: float
+    x1: float
+    y1: float
     font_name: str = ""
     font_size: float = 0.0
 
@@ -72,10 +87,7 @@ class PdfReader:
         return self._open()[page_num - 1]
 
     def get_text_blocks(self, page_num: int) -> list[TextBlock]:
-        """
-        Get all text blocks from a page with position info.
-        Returns list of TextBlock with spans.
-        """
+        """Get all text blocks from a page with position info."""
         page = self.get_page(page_num)
         blocks = []
         page_dict = page.get_text("dict")
@@ -160,10 +172,11 @@ class PdfReader:
     def get_all_text_layout_aware(self) -> str:
         """
         Extract text with proper line grouping for 2-column layouts.
-        Groups spans by Y coordinate (within 5pt threshold), sorts by X, joins with space.
-        This fixes issues where options from different columns get merged.
+        Groups spans by Y coordinate (within 5pt threshold), sorts by X,
+        and inserts spaces only between text words — preserving math
+        expressions like 'x²-9=0' from becoming 'x 2 - 9 = 0'.
         """
-        Y_THRESHOLD = 5  # points - spans within this Y range are on same line
+        Y_THRESHOLD = 5  # points — spans within this Y range are on same line
 
         all_page_texts = []
 
@@ -204,17 +217,50 @@ class PdfReader:
             if current_line:
                 lines.append(current_line)
 
-            # Format each line: sort by X, join with space
+            # Format each line: sort by X, join with smart spacing
             formatted_lines = []
             for line in lines:
                 line.sort(key=lambda l: l[0])
-                line_text = " ".join(t for _, t in line)
-                formatted_lines.append(line_text)
+                formatted_lines.append(_smart_join_line([t for _, t in line]))
 
             all_page_texts.append("\n".join(formatted_lines))
             all_page_texts.append(f"\n[--- Trang {page_num} ---]\n")
 
         return "".join(all_page_texts)
+
+    def get_page_words(self, page_num: int) -> list[Word]:
+        """
+        Low-level span/word extraction with precise coordinates.
+        Each returned Word has its bbox — callers can reconstruct lines
+        and math expressions without relying on blindly-spaced text.
+
+        Returns words sorted by (y0, x0) — top-to-bottom, left-to-right.
+        """
+        page = self._open()[page_num - 1]
+        page_dict = page.get_text("dict")
+        words: list[Word] = []
+
+        for block in page_dict.get("blocks", []):
+            if block["type"] != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    t = span["text"]
+                    if not t.strip():
+                        continue
+                    bbox = tuple(span["bbox"])
+                    words.append(Word(
+                        text=t,
+                        x0=bbox[0],
+                        y0=bbox[1],
+                        x1=bbox[2],
+                        y1=bbox[3],
+                        font_name=span.get("font", ""),
+                        font_size=span.get("size", 0.0),
+                    ))
+
+        words.sort(key=lambda w: (round(w.y0 / 5.0) * 5.0, w.x0))
+        return words
 
     def render_page_as_image(
         self,
@@ -274,6 +320,106 @@ class PdfReader:
                     return block
         return None
 
+
+def _smart_join_line(tokens: list[str]) -> str:
+    """
+    Join tokens on a single line with smart spacing.
+
+    PDF extraction splits math expressions across separate spans without spaces,
+    e.g. 'x' and '²' are separate spans. Joining with spaces destroys the
+    expression: 'x 2 - 9 = 0'.
+
+    Rule: only insert a space when BOTH current and next token are plain text
+    words (multi-letter alphabetic sequences). Everything else (math symbols,
+    digits, single-letter variables like 'x', superscripts) joins without space.
+    """
+    if not tokens:
+        return ""
+    if len(tokens) == 1:
+        return tokens[0]
+
+    out = [tokens[0]]
+    for i in range(1, len(tokens)):
+        curr, next_tok = tokens[i - 1], tokens[i]
+        if _is_text_word(curr) and _is_text_word(next_tok):
+            out.append(" ")
+        out.append(next_tok)
+    return "".join(out)
+
+
+def _is_text_word(text: str) -> bool:
+    """
+    Is this a natural-language text word (no spacing)?
+
+    Returns True only for multi-letter alphabetic sequences that are clearly
+    Vietnamese or English words — not math variables, digits, or symbols.
+
+    Used by _smart_join_line to determine where spaces go in mixed math/text rows.
+    """
+    t = text.strip()
+    if not t:
+        return False
+    # Multi-letter pure alphabetic = text word
+    if len(t) > 1 and t.isalpha():
+        return True
+    return False
+
+
+def _is_math_token(text: str) -> bool:
+    """
+    Heuristic: should this PDF span be treated as a math fragment
+    (joined without spaces to adjacent math tokens)?
+
+    Returns True for:
+      - Tokens with math symbols (²³¹, +, -, =, ≤≥, ∫∑, etc.)
+      - Single-letter variables like 'x', 'y', 'm' (math variables, not words)
+      - Mixed alphanumerics like '3x', 'x2', 'm1' (formulas)
+      - Superscript/subscript digits
+      - Greek letters commonly used in math
+
+    Returns False for:
+      - Multi-letter Vietnamese/English words ("Phương", "equation")
+      - Standard punctuation alone
+    """
+    t = text.strip()
+    if not t:
+        return True
+    if len(t) > 12:
+        return False
+
+    # Contains math/tech symbols → math fragment
+    MATH_SYMBOLS = set(
+        "²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼×÷·±∓√∫∑∏∂∆∇∈∉⊂⊃∪∩∅∞→←↔⇒⇐⇔≥≤≠≈≡∝⊕⊗⊙⊖°′″"
+        "=+−±∓×÷·<>≤≥≈≡≠"
+    )
+    if any(ch in MATH_SYMBOLS for ch in t):
+        return True
+
+    # Contains digits mixed with letters → formula fragment
+    has_digits = any(c.isdigit() for c in t)
+    has_alpha = any(c.isalpha() for c in t)
+    if has_digits and has_alpha:
+        return True  # e.g. "3x", "x2", "m1"
+
+    # Single alphabetic character → likely math variable (x, y, m, a, b)
+    if len(t) == 1 and t.isalpha():
+        return True
+
+    # Contains superscript digits → math
+    if any(ch in "²³¹⁰⁴⁵⁶⁷⁸⁹" for ch in t):
+        return True
+
+    # Greek letter → math
+    GREEK = (
+        "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
+    )
+    if any(ch in GREEK for ch in t):
+        return True
+
+    return False
+
+
+# ─── Convenience functions ────────────────────────────────────────────────────
 
 def get_text_blocks(pdf_path: str, page_num: int) -> list[TextBlock]:
     """Convenience function."""

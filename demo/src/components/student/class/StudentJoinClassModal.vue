@@ -421,7 +421,7 @@ const handleJoin = async () => {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Modal Transitions */
 .modal-enter-active,

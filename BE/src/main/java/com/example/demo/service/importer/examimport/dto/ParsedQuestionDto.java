@@ -27,6 +27,9 @@ public class ParsedQuestionDto {
     /** LaTeX formatted options: {"A": "$\\frac{1}{2}$", "B": "$\\frac{1}{3}$"} */
     private Map<String, String> latexOptions;
 
+    /** plain | math | mixed — gợi ý FE ưu tiên latex khi có latexContent */
+    private String contentType;
+
     private Map<String, String> options;
     private List<ParsedQuestionDto> subQuestions;
     private String answer;

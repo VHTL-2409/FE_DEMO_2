@@ -632,7 +632,7 @@ onMounted(async () => {
   border-width: 3px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Stats */
 .cdp__stats {
@@ -1420,9 +1420,3 @@ onMounted(async () => {
   }
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

@@ -1,5 +1,5 @@
 """
-tests/test_template_01.py — Unit tests for Template01MathBrokenParser.
+tests/test_template_01.py — Unit tests for Template01MathRebuiltParser.
 
 Tests cover:
   - Answer key extraction (multiple formats)
@@ -24,7 +24,7 @@ import pytest
 # Add parent dir to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.parsers.template_01_math_broken import Template01MathBrokenParser
+from app.parsers.template_01_math_rebuilt import Template01MathRebuiltParser as Template01MathBrokenParser
 from app.parsers.base import ParsedBlock
 from app.profiler import PdfProfile, _score_template_01
 from app.utils.answer_extractor import AnswerExtractor, extract_answer_key, extract_inline_answer
@@ -136,6 +136,14 @@ class TestOptionParsing:
         assert "x² + 2x + 1" in options["A"]
         assert "(x + 1)²" in options["B"]
 
+    def test_multiline_option_after_partial_first_line(self):
+        """pdf_mau_1: 'A. S' rồi dòng '= {-3, 3}' — gộp vào A."""
+        text = "Câu 1. Đề\nA. S\n= {-3, 3}\nB. S = {3}"
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        options = parser._parse_options(text)
+        assert "-3" in options.get("A", "")
+        assert options["A"].strip().startswith("S")
+
     def test_merged_inline_options(self):
         """Options merged on the same line."""
         text = "A. x² B. y² C. z² D. t²"
@@ -156,6 +164,184 @@ class TestOptionParsing:
         parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
         options = parser._parse_options(text)
         assert len(options) <= 4  # Can have fewer options
+
+
+# ─── MCQ Block Regression Tests ───────────────────────────────────────────────
+# These reproduce the exact pdf_mau_1.pdf failures:
+#   "x2 - 9 = 0" instead of "x² - 9 = 0"
+#   "S = -3"   instead of "S = {-3}"
+# Root cause: normalize_math_text converts ²→2 globally before option parsing.
+# Fix: _parse_options now parses from raw text (before normalize_math_text).
+
+
+class TestMcqBlockRegression:
+    """Regression tests for pdf_mau_1-style MCQ parsing."""
+
+    def test_question_1_stem_preserves_superscript(self):
+        """
+        Q1: 'Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:'
+        Unicode ² must be preserved in text (stem) field after fix.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:\n"
+            "A. S = {-3}\n"
+            "B. S = {3}\n"
+            "C. S = ∅\n"
+            "D. S = {3; -3}"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 1), {}
+        )
+        assert block is not None
+        assert "x²" in block.text, f"Expected 'x²' in stem, got: {block.text}"
+        assert "có tập nghiệm là:" in block.text
+
+    def test_question_1_options_preserve_superscript_and_braces(self):
+        """
+        Q1 options must preserve Unicode ² in '{-3}' — not become '{-3}' with
+        broken format.
+        After fix: _parse_options reads from raw text before normalize_math_text,
+        so Unicode superscripts in options are kept. convert_to_latex then produces
+        the correct $x^2$ for KaTeX.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:\n"
+            "A. S = {-3}\n"
+            "B. S = {3}\n"
+            "C. S = ∅\n"
+            "D. S = {3; -3}"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 1), {}
+        )
+        assert block is not None
+        # latexOptions: convert_to_latex of Unicode superscript content → $S={-3}$
+        assert block.latexOptions is not None
+        a_val = block.latexOptions.get("A", "")
+        assert "{-3}" in a_val or "-3" in a_val, (
+            f"Expected A option to have -3, got: {a_val}"
+        )
+        d_val = block.latexOptions.get("D", "")
+        assert "3" in d_val and "-3" in d_val, (
+            f"Expected D option to have 3 and -3, got: {d_val}"
+        )
+
+    def test_question_2_no_superscript_stem(self):
+        """
+        Q2: 'Câu 2. Phương trình 3x + 1 = x + 5 có nghiệm là:'
+        No superscripts in stem — options should be 'x = 3', 'x = 2', etc.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 2. Phương trình 3x + 1 = x + 5 có nghiệm là:\n"
+            "A. x = 3\n"
+            "B. x = 2\n"
+            "C. x = 1\n"
+            "D. x = 0"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 2), {}
+        )
+        assert block is not None
+        assert "3x" in block.text
+        assert "x + 5" in block.text
+
+    def test_question_2_latex_options_correct(self):
+        """
+        Q2 options: 'x = 3', 'x = 2', etc. → should NOT be 'x2' or broken.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 2. Phương trình 3x + 1 = x + 5 có nghiệm là:\n"
+            "A. x = 3\n"
+            "B. x = 2\n"
+            "C. x = 1\n"
+            "D. x = 0"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 2), {}
+        )
+        assert block is not None
+        assert block.latexOptions is not None
+        for letter, expected_val in [("A", "3"), ("B", "2"), ("C", "1"), ("D", "0")]:
+            val = block.latexOptions.get(letter, "")
+            assert expected_val in val, (
+                f"Expected letter {letter} to contain '{expected_val}', got: {val}"
+            )
+
+    def test_question_3_superscript_m_in_options(self):
+        """
+        Q3 options: 'm = -4', 'm = 4', 'm = -3', 'm = 3'
+        Options must not be corrupted (no missing numbers, no broken separators).
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 3. Giá trị của m để phương trình (m - 1)x - 3m + 1 = 0 có nghiệm x = 4 là:\n"
+            "A. m = -4\n"
+            "B. m = 4\n"
+            "C. m = -3\n"
+            "D. m = 3"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 3), {}
+        )
+        assert block is not None
+        assert block.latexOptions is not None
+        for letter, expected_val in [("A", "-4"), ("B", "4"), ("C", "-3"), ("D", "3")]:
+            val = block.latexOptions.get(letter, "")
+            assert expected_val in val, (
+                f"Expected letter {letter} to contain '{expected_val}', got: {val}"
+            )
+
+    def test_set_solution_format_not_broken(self):
+        """
+        'S = {-3}' must NOT become 'S3 = -' or 'S = -3'.
+        The raw text '{-3}' must be preserved through parsing.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:\n"
+            "A. S = {-3}\n"
+            "B. S = {3}\n"
+            "C. S = ∅\n"
+            "D. S = {3; -3}"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 1), {}
+        )
+        assert block is not None
+        # The text field (fallback) should preserve { }
+        # latexOptions should have correct LaTeX representation
+        if block.latexOptions:
+            a_latex = block.latexOptions.get("A", "")
+            # Must NOT be 'S3' or 'S = -' (broken)
+            assert "S3" not in a_latex, f"A option corrupted: {a_latex}"
+            # Should contain -3 or {-3}
+            assert "-3" in a_latex or "{3}" in a_latex, f"A option wrong: {a_latex}"
+
+
+# Helper method added to parser instance for testing
+def _make_test_block(self, raw_text: str, question_num: int):
+    """Create a minimal MathRebuiltBlock for testing without a real PDF."""
+    from app.parsers.template_01_math_rebuilt import MathRebuiltBlock
+    # Initialise the minimal state the parser needs to not crash on __new__
+    self._answer_key = {}
+    self._essay_section_open = False
+    return MathRebuiltBlock(
+        question_num=question_num,
+        raw_text=raw_text,
+        raw_lines=raw_text.split("\n"),
+        page=1,
+        y0=100.0,
+        y1=200.0,
+        is_essay=False,
+    )
+
+
+# Monkey-patch the helper onto the parser class (for testing without a PDF file)
+Template01MathBrokenParser._make_test_block = _make_test_block
 
 
 # ─── Formula Noise Calculation ────────────────────────────────────────────────

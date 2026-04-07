@@ -251,9 +251,3 @@ const trendIcon = computed(() => {
 .rscard__skeleton--value { width: 60px; height: 28px; }
 .rscard__skeleton--sub { width: 100px; height: 10px; }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

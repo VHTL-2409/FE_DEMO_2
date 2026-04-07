@@ -660,9 +660,3 @@ const closePicker = (event) => {
 .se__preview--error .se__preview-main { color: var(--ds-danger); }
 .se__preview-sub { font-size: 0.75rem; color: var(--ds-text-secondary); margin: 0.25rem 0 0; }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

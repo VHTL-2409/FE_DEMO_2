@@ -63,12 +63,15 @@ defineProps({
   background: var(--ds-surface);
   border-bottom: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg, 14px);
-  animation: fadeUp 0.3s ease-out;
+  animation: fadeUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .dark .tph {

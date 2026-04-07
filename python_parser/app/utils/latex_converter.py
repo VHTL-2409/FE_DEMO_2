@@ -14,6 +14,11 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+# Giống text_normalizer — tránh bọc cả dòng tiếng Việt trong $...$ (KaTeX nuốt khoảng trắng).
+_VIETNAMESE_CHARS_RE = re.compile(
+    r"[àáảãạăằẳẵặâầẩẫậèéẻẽẹêềểễệìíỉĩịòóỏõọôồổốộơờởỡợùúủũụưừửữựỳýỷỹỵđĐ]"
+)
+
 
 # ─── Unicode to LaTeX Symbol Map ───────────────────────────────────────────────
 
@@ -259,6 +264,11 @@ def wrap_inline_math(text: str) -> str:
             processed_lines.append(line)
             continue
 
+        # Câu hỏi kiểu pdf_mau_1: tiếng Việt + công thức trên cùng một dòng — không bọc cả dòng.
+        if _VIETNAMESE_CHARS_RE.search(stripped):
+            processed_lines.append(line)
+            continue
+
         # Check if line looks like math (contains operators and variable-like content)
         math_indicators = [
             r'[=≤≥≠±∓]',  # Comparison operators
@@ -292,6 +302,80 @@ def wrap_inline_math(text: str) -> str:
     return '\n'.join(processed_lines)
 
 
+def collapse_wrapped_plain_duplicate_lines(text: str) -> str:
+    """
+    Hai dòng liên tiếp: một dạng $...$ và một plain (nội dung tương đương) → chỉ giữ một.
+    Tránh preview hiển thị hai lần (KaTeX + dòng raw).
+    """
+    if not text or "\n" not in text:
+        return text
+
+    def strip_inline_delims(s: str) -> str:
+        t = s.strip()
+        if len(t) >= 2 and t.startswith("$") and t.endswith("$") and t.count("$") == 2:
+            return t[1:-1].strip()
+        return t
+
+    def norm_compact(s: str) -> str:
+        return re.sub(r"\s+", "", strip_inline_delims(s))
+
+    raw_lines = text.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(raw_lines):
+        cur = raw_lines[i].strip()
+        nxt = raw_lines[i + 1].strip() if i + 1 < len(raw_lines) else ""
+        if cur and nxt and norm_compact(cur) == norm_compact(nxt):
+            prefer = cur if cur.startswith("$") else nxt
+            out.append(prefer)
+            i += 2
+            continue
+        out.append(raw_lines[i])
+        i += 1
+    return "\n".join(out)
+
+
+def collapse_duplicate_math_lines(text: str) -> str:
+    """PDF/parse đôi khi nhân đôi cùng một dòng $...$ — chỉ giữ một."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) >= 2 and len(set(lines)) == 1:
+        return lines[0]
+    return text
+
+
+def repair_garbled_set_option_text(text: str) -> str:
+    """
+    PDF Toán: tập nghiệm dạng S = {-3} bị tách thành 'S3 = -' / 'S 3 = -' / 'S3=-'.
+    Chỉ áp cho chuỗi ngắn (đáp án TN), không đụng nếu đã có {...}.
+    """
+    t = (text or "").strip()
+    if not t or len(t) > 100 or "{" in t:
+        return text
+    had_wrap = t.startswith("$") and t.endswith("$") and t.count("$") == 2
+    inner = t[1:-1].strip() if had_wrap else t
+    if "{" in inner:
+        return text
+    compact = re.sub(r"\s+", "", inner)
+    compact = compact.replace("\u2212", "-").replace("−", "-")
+
+    def wrap_out(body: str) -> str:
+        return f"${body}$" if had_wrap else body
+
+    m = re.match(r"^S(\d+)=-$", compact, re.I)
+    if m:
+        return wrap_out(f"S = {{-{m.group(1)}}}")
+    m = re.match(r"^S(\d+)=$", compact, re.I)
+    if m:
+        return wrap_out(f"S = {{{m.group(1)}}}")
+    m = re.match(r"^S=-(\d+)$", compact, re.I)
+    if m:
+        return wrap_out(f"S = {{-{m.group(1)}}}")
+    m = re.match(r"^S=(\d+)$", compact, re.I)
+    if m:
+        return wrap_out(f"S = {{{m.group(1)}}}")
+    return text
+
+
 def convert_to_latex(text: str, mode: str = "auto") -> str:
     """
     Main entry point: convert text to LaTeX format.
@@ -306,6 +390,9 @@ def convert_to_latex(text: str, mode: str = "auto") -> str:
     if not text:
         return text
 
+    text = collapse_duplicate_math_lines(text)
+    text = repair_garbled_set_option_text(text)
+
     # Step 1: Convert Unicode to LaTeX symbols
     result = convert_unicode_to_latex(text)
 
@@ -318,11 +405,15 @@ def convert_to_latex(text: str, mode: str = "auto") -> str:
         for i, line in enumerate(lines):
             stripped = line.strip()
             if stripped and not stripped.startswith('$$') and not stripped.startswith('$'):
+                if _VIETNAMESE_CHARS_RE.search(stripped):
+                    continue
                 if re.search(r'[=≤≥≠∫∑∏√]', stripped):
                     lines[i] = f'$${stripped}$$'
         result = '\n'.join(lines)
     else:  # auto
         result = wrap_inline_math(result)
+
+    result = collapse_wrapped_plain_duplicate_lines(result)
 
     return result
 

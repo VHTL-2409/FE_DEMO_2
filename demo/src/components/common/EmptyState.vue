@@ -139,7 +139,7 @@ const rootClass = computed(() => {
   animation: dsSpin 1s linear infinite;
 }
 
-@keyframes dsSpin { to { transform: rotate(360deg); } }
+@keyframes dsSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 .ds-empty__title {
   font-family: var(--ds-font-display);

@@ -144,26 +144,51 @@ def split_merged_options(text: str) -> str:
     Split merged option lines like:
     "A. x² B. y² C. z² D. t²"
     into separate lines.
+
+    pdf_mau_1: đề và 4 đáp án thường nằm một dòng hoặc cách nhau bởi | (cột).
     """
-    # Pattern: option letter followed by content, repeating on same line
-    # Matches "A. content" or "A content" where next letter starts
-    merged_re = re.compile(
-        r"(?<!\n)([A-D])\.\s*([^\nA-D]{1,60}?)(?=\s+[A-D]\.|\s*$)",
-        re.MULTILINE
+    # Cột song song trong PDF: "... A. xxx | B. xxx"
+    text = re.sub(
+        r"[ \t]*\|[ \t]*(?=[A-D](?:[\.．]|[\)\:])\s)",
+        "\n",
+        text,
+        flags=re.IGNORECASE,
     )
 
-    def replace_one(m: re.Match) -> str:
-        letter = m.group(1)
-        content = m.group(2).strip()
-        return f"{letter}. {content}"
+    # Đề bài kết thúc bằng : hoặc ; rồi tới A./B. trên cùng dòng → xuống dòng trước đáp án
+    text = re.sub(
+        r"([:;])([ \t]+)([A-D])([\.．])(\s+)",
+        r"\1\n\3\4\5",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # Pattern: option letter followed by content, repeating on same line
+    merged_re = re.compile(
+        r"(?<!\n)([A-Da-d])([\.．])\s*([^\nA-D]{1,120}?)(?=\s+[A-Da-d](?:[\.．]|[\)\:])\s|\s*$)",
+        re.MULTILINE,
+    )
+
+    def replace_one(m: re.Match[str]) -> str:
+        letter = m.group(1).upper()
+        dot = m.group(2)
+        content = m.group(3).strip()
+        return f"{letter}{dot} {content}"
 
     result = merged_re.sub(replace_one, text)
 
-    # If nothing changed, try simpler pattern
-    if result == text:
-        # "A. x² B. y² C." — split on "B. " "C. " "D. "
-        result = re.sub(r"\s+([B-D])\. ", r"\n\1. ", text)
-        result = re.sub(r"^([A-D])\.\s*", r"\1. ", result, flags=re.MULTILINE)
+    # "A. x² B. y² C." — split on "B. " "C. " "D. "
+    result = re.sub(
+        r"\s+([B-Db-d])([\.．])\s+",
+        lambda m: "\n" + m.group(1).upper() + m.group(2) + " ",
+        result,
+    )
+    result = re.sub(
+        r"^([A-Da-d])([\.．])\s*",
+        lambda m: m.group(1).upper() + m.group(2) + " ",
+        result,
+        flags=re.MULTILINE,
+    )
 
     return result
 
@@ -317,6 +342,196 @@ def normalize_full(text: str, blocks: Optional[list[TextBlock]] = None) -> str:
     return text
 
 
+def fix_pdf_ambiguous_exponents_to_unicode(text: str) -> str:
+    """
+    PDF (đặc biệt pdf_mau_3 / Word→PDF) thường mất chỉ số trên: x² thành x2.
+
+    Heuristic bảo thủ: chỉ chữ biến thường gặp (x,y,z,t,n) + một chữ số 2–9,
+    khi sau đó là toán tử / dấu câu / kết dòng — tránh khớp mã câu kiểu \"Câu 2\".
+    """
+    if not text:
+        return text
+    sup_map = {
+        "2": "²",
+        "3": "³",
+        "4": "⁴",
+        "5": "⁵",
+        "6": "⁶",
+        "7": "⁷",
+        "8": "⁸",
+        "9": "⁹",
+    }
+
+    def repl(m: re.Match[str]) -> str:
+        d = m.group(2)
+        sup = sup_map.get(d)
+        if not sup:
+            return m.group(0)
+        return m.group(1) + sup
+
+    return re.sub(
+        r"(?<![A-Za-z0-9À-ỹà-ỹ])([xyztn])([2-9])(?=\s*[-+×÷*,=)\]\s]|$)",
+        repl,
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
+_VIETNAMESE_LETTER_RE = re.compile(
+    r"[àáảãạăằẳẵặâầẩẫậèéẻẽẹêềểễệìíỉĩịòóỏõọôồổốộơờởỡợùúủũụưừửữựỳýỷỹỵđĐ]"
+)
+_OPTION_LETTER_LINE_RE = re.compile(r"^[A-Da-d]\s*[\.)．:]")
+_MATHISH_CHAR_RE = re.compile(r"[\d+\-−×÷*/=().,;:^√∫_{}\\]")
+
+
+def collapse_vertical_math_fragments(text: str) -> str:
+    """
+    PDF kiểu Word / pdf_mau_3: một phân số hoặc biểu thức bị tách thành nhiều dòng,
+    mỗi dòng vài ký tự → hiển thị dọc trong textarea.
+
+    Gom các dòng \"mảnh\" liên tiếp (ngắn, không tiếng Việt, không marker A./B.)
+    thành một dòng, cách nhau bằng khoảng trắng.
+    """
+    if not text or "\n" not in text:
+        return text
+
+    lines = text.split("\n")
+    out: list[str] = []
+    buf: list[str] = []
+
+    def flush_buf() -> None:
+        if not buf:
+            return
+        if len(buf) >= 2:
+            out.append(" ".join(buf))
+        else:
+            out.extend(buf)
+        buf.clear()
+
+    for raw in lines:
+        line = raw.rstrip("\r")
+        s = line.strip()
+        if not s:
+            flush_buf()
+            out.append("")
+            continue
+
+        is_frag = (
+            len(s) <= 16
+            and not _VIETNAMESE_LETTER_RE.search(s)
+            and not s.lower().startswith("câu")
+            and not _OPTION_LETTER_LINE_RE.match(s)
+            and (len(s) <= 3 or bool(_MATHISH_CHAR_RE.search(s)))
+        )
+        if is_frag:
+            buf.append(s)
+        else:
+            flush_buf()
+            out.append(s)
+
+    flush_buf()
+    return "\n".join(out).strip()
+
+
+_LONG_LATIN_RUN_RE = re.compile(r"[a-zA-Z]{5,}")
+
+
+def _is_math_bridge_line(s: str) -> bool:
+    """
+    Dòng chỉ chứa mảnh công thức (không tiếng Việt), nằm giữa hai câu tiếng Việt
+    trong đề pdf_mau_1 — ví dụ '1 x 5 + =' giữa 'Phương trình 3x' và 'có nghiệm'.
+    """
+    s = s.strip()
+    if not s:
+        return False
+    if _VIETNAMESE_LETTER_RE.search(s):
+        return False
+    if _OPTION_LETTER_LINE_RE.match(s):
+        return False
+    low = s.lower()
+    if low.startswith("câu") or low.startswith("bài "):
+        return False
+    if len(s) > 88:
+        return False
+    if len(s) <= 16:
+        return len(s) <= 3 or bool(_MATHISH_CHAR_RE.search(s))
+    if not _MATHISH_CHAR_RE.search(s):
+        return False
+    return _LONG_LATIN_RUN_RE.search(s) is None
+
+
+def merge_math_bridge_between_vietnamese_lines(text: str) -> str:
+    """
+    Gom các dòng toán (bridge) liên tiếp vào cuối dòng tiếng Việt ngay phía trên,
+    khi dòng tiếp theo (sau bridge) lại là tiếng Việt (vd. 'có nghiệm').
+    Không gộp khi gặp dòng bắt đầu bằng A./B./C./D.
+    """
+    if "\n" not in text:
+        return text
+
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+
+    while i < n:
+        raw_cur = lines[i]
+        cur = raw_cur.strip()
+        if (
+            cur
+            and _VIETNAMESE_LETTER_RE.search(cur)
+            and not _OPTION_LETTER_LINE_RE.match(cur)
+        ):
+            j = i + 1
+            math_parts: list[str] = []
+            while j < n:
+                raw_n = lines[j]
+                nxt = raw_n.strip()
+                if not nxt:
+                    j += 1
+                    continue
+                if _VIETNAMESE_LETTER_RE.search(nxt):
+                    break
+                if _OPTION_LETTER_LINE_RE.match(nxt):
+                    break
+                low_n = nxt.lower()
+                if low_n.startswith("câu") or low_n.startswith("bài "):
+                    break
+                if not _is_math_bridge_line(nxt):
+                    break
+                math_parts.append(nxt)
+                j += 1
+            if math_parts and j < n and _VIETNAMESE_LETTER_RE.search(lines[j].strip()):
+                out.append(raw_cur.rstrip() + " " + " ".join(math_parts))
+                i = j
+                continue
+        out.append(lines[i])
+        i += 1
+
+    return "\n".join(out)
+
+
+def classify_content_type(text: str, latex: Optional[str]) -> str:
+    """
+    Gợi ý FE: plain | math | mixed.
+    - plain: không có latexContent khả dụng, hoặc latex là cả câu tiếng Việt (không bọc $)
+    - mixed: text/latex đã có delimiter toán ($, \\(, \\[)
+    - math: chỉ công thức / không có chữ tiếng Việt trong latex thuần
+    """
+    l = (latex or "").strip()
+    if not l:
+        return "plain"
+    t = (text or "").strip()
+    if re.search(r"\$|\\\(|\\\[", t):
+        return "mixed"
+    if re.search(r"\$|\\\(|\\\[", l):
+        return "mixed"
+    # Sau khi không bọc $ cho dòng có tiếng Việt: latex ≈ text — FE render plain để giữ khoảng trắng.
+    if _VIETNAMESE_LETTER_RE.search(l):
+        return "plain"
+    return "math"
+
+
 def normalize_math_text(text: str, *, preserve_private_use: bool = False) -> str:
     """
     Normalize math exam text while PRESERVING math symbols.
@@ -367,6 +582,19 @@ def normalize_math_text(text: str, *, preserve_private_use: bool = False) -> str
 
     # Fix multiple spaces in math expressions
     text = re.sub(r"[ \t]{2,}", " ", text)
+
+    # pdf_mau_1: Câu1 → Câu 1.; tách đáp án dính cùng dòng / cột |
+    text = fix_question_number_spacing(text)
+    text = split_merged_options(text)
+
+    # Khôi phục lũy thừa dạng chữ+số sau khi đã flatten Unicode (pdf_mau_3…)
+    text = fix_pdf_ambiguous_exponents_to_unicode(text)
+
+    # Gom dòng mảnh công thức bị PDF tách dọc
+    text = collapse_vertical_math_fragments(text)
+
+    # pdf_mau_1: khối toán giữa hai câu tiếng Việt → nối vào dòng đề
+    text = merge_math_bridge_between_vietnamese_lines(text)
 
     return text.strip()
 

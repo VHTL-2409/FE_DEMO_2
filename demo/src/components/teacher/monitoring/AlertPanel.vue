@@ -824,8 +824,9 @@ const groupedAlerts = computed(() => {
 .ap__skeleton {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: apShimmer 1.5s infinite;
+  animation: apShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
+  transform: translateZ(0);
 }
 
 .dark .ap__skeleton {
@@ -922,8 +923,5 @@ const groupedAlerts = computed(() => {
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .ap__skeleton { animation: none; }
 }

@@ -438,7 +438,7 @@ const scoreBadgeClass = (score) => {
   display: inline-block;
 }
 
-@keyframes ehlSpin { to { transform: rotate(360deg); } }
+@keyframes ehlSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Responsive */
 @media (max-width: 480px) {

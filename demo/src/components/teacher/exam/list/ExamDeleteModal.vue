@@ -162,7 +162,7 @@ const titleId = 'edm-title'
 .edm__btn--danger:hover:not(:disabled) { background: #dc2626; }
 
 .edm-spin { animation: edmSpin 1s linear infinite; }
-@keyframes edmSpin { to { transform: rotate(360deg); } }
+@keyframes edmSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Transition */
 .edm-fade-enter-active, .edm-fade-leave-active { transition: opacity 0.2s ease; }

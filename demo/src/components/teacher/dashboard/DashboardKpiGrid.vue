@@ -157,18 +157,16 @@ const alertTrendLabel = computed(() => {
   background: var(--ds-surface);
   border: none;
   border-right: 1px solid var(--ds-gray-200);
-  animation: fadeUp 0.3s ease-out both;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .td-kpi-card--1 { animation-delay: 0s; }
 .td-kpi-card--2 { animation-delay: 0.06s; }
 .td-kpi-card--3 { animation-delay: 0.12s; }
 .td-kpi-card--4 { animation-delay: 0.18s; }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 .td-kpi-card:last-child { border-right: none; }
 .td-kpi-card:hover { background: var(--ds-gray-50); }
@@ -207,11 +205,13 @@ const alertTrendLabel = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .td-kpi-card:hover .td-kpi-card__icon-wrap {
-  transform: scale(1.05);
+  transform: scale(1.08) translateZ(0);
 }
 
 .td-kpi-card__icon-wrap { background: var(--ds-primary-soft); color: var(--ds-primary); }
@@ -235,11 +235,7 @@ const alertTrendLabel = computed(() => {
   border-radius: 50%;
   background: white;
   animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  transform: translateZ(0);
 }
 
 .td-kpi-card--live {
@@ -341,7 +337,7 @@ const alertTrendLabel = computed(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .td-kpi-card,
+  .td-kpi-card { animation: none; }
   .td-kpi-card__live-ring { animation: none; }
   .td-kpi-card:hover .td-kpi-card__icon-wrap { transform: none; }
 }

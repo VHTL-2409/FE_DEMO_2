@@ -23,6 +23,9 @@ public class ImportPreviewQuestionDto {
     /** LaTeX formatted options: {"A": "$\\frac{1}{2}$", "B": "$\\frac{1}{3}$"} */
     private java.util.Map<String, String> latexOptions;
 
+    /** plain | math | mixed */
+    private String contentType;
+
     private String type;
     private List<OptionDto> options;
     private String correctAnswer;

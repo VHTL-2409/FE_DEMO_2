@@ -355,7 +355,7 @@ const handlePreview = () => emit('preview')
 .ed-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
 .ed-spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Save status */
 .ed-header__save-status {

@@ -508,8 +508,8 @@ defineExpose({ closePasswordForm, resetSavingState })
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-8px) translateZ(0); }
+  to { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 /* Form */
@@ -735,7 +735,7 @@ defineExpose({ closePasswordForm, resetSavingState })
 
 @keyframes spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to { transform: rotate(360deg) translateZ(0); }
 }
 
 /* Tips */
@@ -856,9 +856,3 @@ defineExpose({ closePasswordForm, resetSavingState })
   color: var(--ds-success);
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

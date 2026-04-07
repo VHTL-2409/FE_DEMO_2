@@ -19,16 +19,12 @@ import jakarta.annotation.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -60,14 +56,12 @@ public class ExamImportService {
         this.importExecutor = importExecutor;
     }
 
-    @Value("${exam-import.storage-dir:storage/exam-imports}")
-    private String storageDir;
-
     // ─── Public API ───────────────────────────────────────────────────────────
 
     /**
      * Upload PDF hoặc DOCX và gửi sang Python FastAPI để parse.
      * Chạy async — trả về session ngay lập tức.
+     * File gốc KHÔNG được lưu vào storage, chỉ giữ bytes trong memory.
      */
     @Transactional
     public ExamImportResponse uploadAndParse(
@@ -97,7 +91,6 @@ public class ExamImportService {
         }
         String extNorm = ext.equalsIgnoreCase("docx") ? "docx" : "pdf";
 
-        String storedPath = storeExamImportBytes(fileBytes, file.getOriginalFilename(), extNorm);
         String sessionKey = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
@@ -109,7 +102,7 @@ public class ExamImportService {
                 .exam(exam)
                 .originalFileName(originalName.isBlank() ? defaultName : originalName)
                 .fileType(extNorm)
-                .storagePath(storedPath)
+                .storagePath(null)  // File gốc không được lưu
                 .status(ExamImportSession.SessionStatus.UPLOADED)
                 .pythonServiceUrl(pythonParserClient.isHealthy()
                         ? "http://localhost:8000" : null)
@@ -118,11 +111,13 @@ public class ExamImportService {
                 .build();
 
         session = sessionRepository.save(session);
-        log.info("[ExamImport] Session {} created for file {}", sessionKey, file.getOriginalFilename());
+        log.info("[ExamImport] Session {} created for file {} (no file storage)", sessionKey, file.getOriginalFilename());
 
-        // Run parsing asynchronously
+        // Run parsing asynchronously - pass bytes directly
         final String sk = sessionKey;
-        importExecutor.execute(() -> processSession(sk, forceTemplate));
+        final byte[] bytes = fileBytes;
+        final String fileName = originalName.isBlank() ? defaultName : originalName;
+        importExecutor.execute(() -> processSession(sk, bytes, fileName, extNorm, forceTemplate));
 
         return ExamImportResponse.builder()
                 .sessionId(session.getId())
@@ -259,7 +254,7 @@ public class ExamImportService {
 
     // ─── Internal ─────────────────────────────────────────────────────────────
 
-    private void processSession(String sessionKey, @Nullable String forceTemplate) {
+    private void processSession(String sessionKey, byte[] fileBytes, String fileName, String fileType, @Nullable String forceTemplate) {
         ExamImportSession session = sessionRepository.findBySessionId(sessionKey)
                 .orElseThrow(() -> new IllegalStateException("Session not found: " + sessionKey));
 
@@ -288,12 +283,15 @@ public class ExamImportService {
                 return;
             }
 
-            java.nio.file.Path filePath = java.nio.file.Path.of(session.getStoragePath());
-            org.springframework.web.multipart.MultipartFile fakeFile =
-                    createMultipartFromPath(filePath, session.getOriginalFileName());
+            // Tạo MultipartFile trực tiếp từ bytes - không cần đọc từ file
+            MultipartFile fileToParse = new ByteArrayMultipartFile(
+                    "file",
+                    fileName,
+                    fileBytes
+            );
 
             Map<String, Object> pythonResponse = pythonParserClient.parseExam(
-                    fakeFile, sessionKey, forceTemplate);
+                    fileToParse, sessionKey, forceTemplate);
 
             // Update session with results
             String template = (String) pythonResponse.getOrDefault("selectedTemplate", "unknown");
@@ -316,6 +314,7 @@ public class ExamImportService {
 
             session.setStatus(ExamImportSession.SessionStatus.DONE);
             session.setUpdatedAt(LocalDateTime.now());
+            // storagePath vẫn null - file gốc không được lưu
             sessionRepository.save(session);
 
             log.info("[ExamImport] Session {} parsed successfully: {} questions, template={}",
@@ -429,6 +428,7 @@ public class ExamImportService {
                 .content(dto.getText())
                 .latexContent(dto.getLatexContent())  // LaTeX content for math rendering
                 .latexOptions(dto.getLatexOptions())  // LaTeX options for math rendering
+                .contentType(dto.getContentType())
                 .type(type)
                 .options(opts)
                 .correctAnswer(dto.getAnswer())
@@ -507,35 +507,9 @@ public class ExamImportService {
         };
     }
 
-    private String storeExamImportBytes(byte[] data, String originalFilename, String extNorm) {
-        try {
-            Path storageRoot = Path.of(storageDir);
-            Files.createDirectories(storageRoot);
-            String safeName = sanitizeFileName(originalFilename, extNorm);
-            Path target = storageRoot.resolve(System.currentTimeMillis() + "-" + safeName);
-            Files.write(
-                    target,
-                    data,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.WRITE);
-            return target.toAbsolutePath().toString();
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu tệp import");
-        }
-    }
-
-    private MultipartFile createMultipartFromPath(Path filePath, String originalFilename) {
-        try {
-            byte[] bytes = Files.readAllBytes(filePath);
-            return new ByteArrayMultipartFile(
-                    "file",
-                    originalFilename != null ? originalFilename : "exam.pdf",
-                    bytes
-            );
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Cannot read stored file");
-        }
+    private String extensionOf(String fileName) {
+        if (fileName == null || !fileName.contains(".")) return "";
+        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
     }
 
     private ExamImportSession requireSession(Long sessionId, User actor) {
@@ -546,11 +520,6 @@ public class ExamImportService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập session này");
         }
         return session;
-    }
-
-    private String extensionOf(String fileName) {
-        if (fileName == null || !fileName.contains(".")) return "";
-        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
     }
 
     /** Nhận diện PDF / DOCX khi tên file thiếu đuôi (DOCX là ZIP — bắt đầu bằng PK). */
@@ -565,13 +534,6 @@ public class ExamImportService {
             return "docx";
         }
         return "";
-    }
-
-    private String sanitizeFileName(String rawName, String extensionLowercase) {
-        String fallback = "docx".equalsIgnoreCase(extensionLowercase) ? "upload.docx" : "upload.pdf";
-        String safe = rawName == null ? fallback
-                : rawName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        return safe.isBlank() ? fallback : safe;
     }
 
     private String writeJson(Object value) {
@@ -620,7 +582,7 @@ public class ExamImportService {
 
         @Override public String getName() { return name; }
         @Override public String getOriginalFilename() { return originalFilename; }
-        @Override public String getContentType() { return "application/pdf"; }
+        @Override public String getContentType() { return "application/octet-stream"; }
         @Override public boolean isEmpty() { return bytes.length == 0; }
         @Override public long getSize() { return bytes.length; }
         @Override public byte[] getBytes() { return bytes; }

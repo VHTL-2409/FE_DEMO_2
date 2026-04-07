@@ -507,7 +507,7 @@ const close = () => {
   border-width: 2px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 .cdd-students-list {
   display: flex;
@@ -647,9 +647,3 @@ const close = () => {
   transform: translateX(100%);
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

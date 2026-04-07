@@ -1421,13 +1421,7 @@ const handleImport = async () => {
 .ec-modal-enter-from .ec-modal, .ec-modal-leave-to .ec-modal { transform: scale(0.95) translateY(10px); }
 
 .ec-spin { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg) translateZ(0); } }
 
 .hidden { display: none; }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

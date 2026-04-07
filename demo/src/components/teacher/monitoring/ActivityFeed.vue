@@ -994,8 +994,9 @@ watch(() => props.events.length, () => {
 .af__skeleton {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: afShimmer 1.5s infinite;
+  animation: afShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md);
+  transform: translateZ(0);
 }
 
 .dark .af__skeleton {
@@ -1074,8 +1075,5 @@ watch(() => props.events.length, () => {
 .af-item-leave-to { opacity: 0; }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .af__skeleton { animation: none; }
 }

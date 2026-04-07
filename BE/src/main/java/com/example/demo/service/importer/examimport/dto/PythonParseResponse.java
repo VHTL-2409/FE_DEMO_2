@@ -67,6 +67,7 @@ public class PythonParseResponse {
         // LaTeX fields for math rendering
         dto.setLatexContent((String) raw.get("latexContent"));
         dto.setLatexOptions((Map<String, String>) raw.get("latexOptions"));
+        dto.setContentType((String) raw.get("contentType"));
 
         dto.setOptions((Map<String, String>) raw.get("options"));
         dto.setSubQuestions((List<ParsedQuestionDto>) raw.get("subQuestions"));

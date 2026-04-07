@@ -602,6 +602,15 @@ watch(isQuestionsValid, (v) => {
   flex-direction: column;
   min-height: 100vh;
   background: var(--ds-bg);
+  animation: fadeUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 /* ===== Page Header — breadcrumb strip inside content, not a separate bar ===== */
@@ -674,7 +683,7 @@ watch(isQuestionsValid, (v) => {
 
 @keyframes spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to { transform: rotate(360deg) translateZ(0); }
 }
 
 .ec-page-header__save-status--saved {
@@ -1072,10 +1081,11 @@ watch(isQuestionsValid, (v) => {
 }
 
 
-/* Transitions */
+/* Transitions — Admin baseline */
 .ec-modal-enter-active,
 .ec-modal-leave-active {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
 }
 
 .ec-modal-enter-from,
@@ -1085,18 +1095,19 @@ watch(isQuestionsValid, (v) => {
 
 .ec-modal-enter-from .ec-modal,
 .ec-modal-leave-to .ec-modal {
-  transform: scale(0.95) translateY(10px);
+  transform: scale(0.96) translateY(8px) translateZ(0);
 }
 
 .ec-toast-enter-active,
 .ec-toast-leave-active {
-  transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
 }
 
 .ec-toast-enter-from,
 .ec-toast-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.95);
+  transform: translateY(10px) scale(0.96) translateZ(0);
 }
 
 /* ===== Responsive ===== */
@@ -1125,8 +1136,9 @@ watch(isQuestionsValid, (v) => {
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .ec-page { animation: none; }
+  .ec-modal-enter-active, .ec-modal-leave-active,
+  .ec-toast-enter-active, .ec-toast-leave-active { transition: none; }
+  .ec-modal-enter-from, .ec-modal-leave-to,
+  .ec-toast-enter-from, .ec-toast-leave-to { opacity: 1; transform: none; }
 }

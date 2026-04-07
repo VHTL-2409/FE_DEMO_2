@@ -26,6 +26,7 @@ from ..utils.text_normalizer import (
     normalize,
     split_merged_options,
     fix_question_number_spacing,
+    normalize_math_text,
 )
 
 
@@ -259,6 +260,13 @@ class BaseParser(ABC):
         render_mode: RenderMode = RenderMode.TEXT,
         bbox: Optional[tuple[float, float, float, float]] = None,
         issues: Optional[list[str]] = None,
+        # Optional stem-only text for display in the FE question field.
+        # When provided, this becomes ParsedQuestion.text (stem only, no A./B./C./D.).
+        # block.raw_text is still used for inline answer extraction when answer is None.
+        # NOTE: display_text is already cleaned by the caller (parser).
+        # We do NOT call normalize() / unsuperscript() on it because those would
+        # destroy Unicode superscripts (²³) that the FE needs.
+        display_text: Optional[str] = None,
     ) -> ParsedQuestion:
         """Build a ParsedQuestion from parsed components."""
         # Determine answer from inline pattern if not provided
@@ -271,6 +279,16 @@ class BaseParser(ABC):
         text = normalize(block.raw_text)
         text = fix_question_number_spacing(text)
         text = split_merged_options(text)
+
+        # Use display_text (stem only) if explicitly provided by the caller.
+        # This prevents A./B./C./D. options from appearing in the question field.
+        # display_text comes from the parser already cleaned — do NOT apply
+        # normalize() here because it calls unsuperscript() which converts ²→2,
+        # destroying the Unicode superscripts that the FE needs for LaTeX rendering.
+        if display_text is not None:
+            # Only apply targeted safe fixes, not full normalize()
+            text = fix_question_number_spacing(display_text)
+            text = split_merged_options(text)
 
         return ParsedQuestion(
             number=block.question_num,

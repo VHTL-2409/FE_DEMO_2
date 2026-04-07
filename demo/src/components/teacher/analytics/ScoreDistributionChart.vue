@@ -512,8 +512,8 @@ watch([hasData, chartType], async ([data, type]) => {
 }
 
 @keyframes sdcShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: -200% 0; transform: translateZ(0); }
+  100% { background-position: 200% 0; transform: translateZ(0); }
 }
 
 /* Empty */
@@ -609,9 +609,3 @@ watch([hasData, chartType], async ([data, type]) => {
 .sdc__legend-item--fail { color: var(--ds-danger); }
 .sdc__legend-item--pass { color: var(--ds-success); }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

@@ -239,9 +239,3 @@ const handleConfirm = () => {
   transform: none !important;
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

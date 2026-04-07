@@ -327,6 +327,7 @@ watch(() => props.events.length, () => {
   border-radius: 50%;
   background: var(--ds-info);
   animation: lefPulse 1.5s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
 .lef__live-badge--off .lef__live-dot {
@@ -539,8 +540,9 @@ watch(() => props.events.length, () => {
 .lef__skeleton {
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: lefShimmer 1.5s infinite;
+  animation: lefShimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-sm);
+  transform: translateZ(0);
 }
 
 .dark .lef__skeleton {
@@ -618,15 +620,24 @@ watch(() => props.events.length, () => {
 .lef__footer-clear:hover { color: var(--ds-danger); background: var(--ds-danger-soft); }
 .dark .lef__footer-clear:hover { background: rgba(220, 38, 38, 0.1); }
 
-/* Transition */
-.lef-event-enter-active { transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; }
-.lef-event-enter-from { opacity: 0; transform: translateY(-8px); background: rgba(79, 70, 229, 0.05); }
-.lef-event-leave-active { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; position: absolute; }
-.lef-event-leave-to { opacity: 0; }
-</style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+/* Transition — GPU optimized */
+.lef-event-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
 }
+.lef-event-enter-from { opacity: 0; transform: translateY(-8px) translateZ(0); }
+.lef-event-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+  position: absolute;
+}
+.lef-event-leave-to { opacity: 0; transform: translateY(-4px) translateZ(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lef__live-dot { animation: none; }
+  .lef__skeleton { animation: none; }
+  .lef-event-enter-active, .lef-event-leave-active { transition: none; }
+  .lef-event-enter-from { opacity: 1; transform: none; }
+  .lef-event-leave-to { opacity: 0; transform: none; }
+}
+</style>

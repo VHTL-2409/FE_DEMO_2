@@ -166,28 +166,28 @@ const formatDateTime = (value) => {
 
 
 <style scoped>
-/* GPU-accelerated animations */
-@keyframes fadeUpSm {
-  from { opacity: 0; transform: translateY(10px) translateZ(0); }
-  to   { opacity: 1; transform: translateY(0) translateZ(0); }
-}
-
-.uec {
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}.uec {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  /* GPU optimization - animate once */
-  animation: fadeUpSm 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  /* Optimize paint */
+  /* Optimize paint layers */
+  content-visibility: auto;
   contain: layout style;
+  will-change: auto;
+  transform: translateZ(0);
 }
 
 .dark .uec {
   border-color: var(--ds-border-strong);
 }
+
+/* Entrance: handled by parent sdl__main — no duplicate animation layer */
 
 /* Header */
 .uec__header {
@@ -285,20 +285,20 @@ const formatDateTime = (value) => {
 }
 
 .uec__skel {
-  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
-  background-size: 200% 100%;
-  animation: uecShimmer 1.2s ease-in-out infinite;
+  background: var(--ds-gray-200);
   border-radius: var(--ds-radius-md);
+  will-change: opacity;
+  animation: uecShimmer 1.4s ease-in-out infinite;
 }
 
 .dark .uec__skel {
-  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
-  background-size: 200% 100%;
+  background: var(--ds-gray-700);
 }
 
 @keyframes uecShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0%   { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1)   translateZ(0); }
+  100% { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
 }
 
 .uec__skel--icon { width: 40px; height: 40px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }

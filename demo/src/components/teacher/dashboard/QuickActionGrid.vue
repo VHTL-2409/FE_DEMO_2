@@ -123,35 +123,39 @@ const actions = [
   background: var(--ds-surface);
   cursor: pointer;
   transition:
-    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.22s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
   text-align: left;
   width: 100%;
-  animation: fadeLeft 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) backwards;
+  animation: fadeInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
-.td-qa__item:nth-child(1) { animation-delay: 0.05s; }
-.td-qa__item:nth-child(2) { animation-delay: 0.1s; }
-.td-qa__item:nth-child(3) { animation-delay: 0.15s; }
-.td-qa__item:nth-child(4) { animation-delay: 0.2s; }
-.td-qa__item:nth-child(5) { animation-delay: 0.25s; }
-.td-qa__item:nth-child(6) { animation-delay: 0.3s; }
+.td-qa__item:nth-child(1) { animation-delay: 0s; }
+.td-qa__item:nth-child(2) { animation-delay: 0.06s; }
+.td-qa__item:nth-child(3) { animation-delay: 0.12s; }
+.td-qa__item:nth-child(4) { animation-delay: 0.18s; }
+.td-qa__item:nth-child(5) { animation-delay: 0.24s; }
+.td-qa__item:nth-child(6) { animation-delay: 0.30s; }
 
-@keyframes fadeLeft {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(-10px) translateZ(0); }
+  to   { opacity: 1; transform: translateX(0) translateZ(0); }
 }
 
 .td-qa__item:hover {
   border-color: var(--ds-primary-border);
   background: var(--ds-primary-soft);
-  transform: translateX(4px);
+  transform: translateX(4px) translateZ(0);
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.18);
 }
 
 .td-qa__item:active {
-  transform: translateX(2px) scale(0.98);
+  transform: translateX(2px) scale(0.98) translateZ(0);
 }
 
 .dark .td-qa__item:hover {
@@ -170,11 +174,15 @@ const actions = [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, color 0.2s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.18s ease,
+    color 0.18s ease;
+  transform: translateZ(0);
 }
 
 .td-qa__item:hover .td-qa__item-icon {
-  transform: scale(1.15) rotate(-5deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-icon--primary {
@@ -185,7 +193,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--primary {
   background: var(--ds-primary);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-icon--info {
@@ -196,7 +204,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--info {
   background: var(--ds-info);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-icon--success {
@@ -207,7 +215,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--success {
   background: var(--ds-success);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-icon--accent {
@@ -218,7 +226,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--accent {
   background: var(--ds-accent);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-icon--muted {
@@ -233,13 +241,13 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-300);
   color: var(--ds-text);
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .dark .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-600);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg) translateZ(0);
 }
 
 .td-qa__item-body {
@@ -287,8 +295,8 @@ const actions = [
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .td-qa__item { animation: none; }
+  .td-qa__item:hover { transform: none; box-shadow: none; }
+  .td-qa__item:hover .td-qa__item-icon { transform: none; }
+  .td-qa__item:hover .td-qa__item-arrow { transform: none; }
 }

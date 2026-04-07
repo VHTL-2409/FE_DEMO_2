@@ -76,12 +76,19 @@ const formattedValue = computed(() => {
   transform: translateZ(0);
   /* Optimize paint */
   contain: layout style;
+  content-visibility: auto;
 }
 
-.sdl__kpis .ssc:nth-child(1) { animation-delay: 0.2s; }
-.sdl__kpis .ssc:nth-child(2) { animation-delay: 0.27s; }
-.sdl__kpis .ssc:nth-child(3) { animation-delay: 0.34s; }
-.sdl__kpis .ssc:nth-child(4) { animation-delay: 0.41s; }
+/* Staggered entrance — tighter delays for faster perceived load (total spread: 0.21s) */
+.sdl__kpis .ssc:nth-child(1) { animation-delay: 0.12s; }
+.sdl__kpis .ssc:nth-child(2) { animation-delay: 0.16s; }
+.sdl__kpis .ssc:nth-child(3) { animation-delay: 0.20s; }
+.sdl__kpis .ssc:nth-child(4) { animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ssc { animation-duration: 0.01ms !important; }
+  .ssc__icon-wrap { transition-duration: 0.01ms !important; }
+}
 
 .dark .ssc {
   border-color: var(--ds-border-strong);

@@ -244,22 +244,21 @@ const timeAgo = (value) => {
 }
 
 .nl__skel {
-  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
-  background-size: 200% 100%;
-  animation: nlShimmer 1.2s ease-in-out infinite;
+  background: var(--ds-gray-200);
   border-radius: var(--ds-radius-md);
-  /* GPU optimization */
-  will-change: transform, opacity;
+  will-change: opacity;
+  animation: nlShimmer 1.4s ease-in-out infinite;
 }
 
 .dark .nl__skel {
-  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
-  background-size: 200% 100%;
+  background: var(--ds-gray-700);
 }
 
+/* GPU shimmer: transform-based — reduces paint/composite thrashing */
 @keyframes nlShimmer {
-  0% { background-position: 200% 0; transform: translateZ(0); }
-  100% { background-position: -200% 0; transform: translateZ(0); }
+  0%   { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1)   translateZ(0); }
+  100% { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
 }
 
 .nl__skel--dot { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }

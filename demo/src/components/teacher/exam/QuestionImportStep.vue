@@ -600,6 +600,10 @@ const handleImport = async () => {
       questions = (preview.questions || []).map((q) => {
         const latexContent = q.latexContent ?? q.latex_content ?? null
         const rawLatexOpts = q.latexOptions ?? q.latex_options ?? null
+        const rawAnswer = q.correctAnswer ?? q.answer ?? q.correct ?? ''
+        const normalizedAnswer = /^[A-Da-d]$/.test(String(rawAnswer).trim())
+          ? String(rawAnswer).trim().toUpperCase()
+          : String(rawAnswer ?? '').trim()
         let optionRows = []
         if (Array.isArray(q.options)) {
           optionRows = q.options.map((o) => ({
@@ -616,12 +620,15 @@ const handleImport = async () => {
         return {
           _localId: localIdCounter++,
           content: q.content || q.text || q.question || '',
-          correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+          correctAnswer: normalizedAnswer,
           score: parseFloat(q.scoreWeight || q.scoreWeight || q.score || q.points || 1),
           options: optionRows,
           type: (q.type || 'SINGLE_CHOICE').toUpperCase().includes('ESSAY') ? 'ESSAY' : 'SINGLE_CHOICE',
           parseConfidence: q.parseConfidence || q.confidence || null,
           render: q.render || null,
+          ...(q.contentType != null && String(q.contentType).trim() !== ''
+            ? { contentType: String(q.contentType).trim() }
+            : {}),
           ...(latexContent != null && String(latexContent).trim() !== ''
             ? { latexContent: String(latexContent).trim() }
             : {}),
@@ -1087,8 +1094,8 @@ const handleImport = async () => {
 
 .ec-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-.ec-spin { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.ec-spin { animation: spin 1s linear infinite; display: inline-block; transform: translateZ(0); }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg) translateZ(0); } }
 
 .hidden { display: none; }
 

@@ -662,7 +662,7 @@ onMounted(loadClasses)
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Empty */
 .scl__empty {
@@ -972,7 +972,7 @@ onMounted(loadClasses)
   display: inline-block;
 }
 
-@keyframes sclSpin { to { transform: rotate(360deg); } }
+@keyframes sclSpin { to { transform: rotate(360deg) translateZ(0); } }
 
 @media (max-width: 640px) {
   .scl__pagination {

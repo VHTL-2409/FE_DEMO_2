@@ -45,7 +45,14 @@
       <!-- Question stem -->
       <div v-if="question.text" class="qr__stem">
         <span class="qr__stem-label">Câu hỏi</span>
-        <div class="qr__stem-content" v-html="renderedStem" />
+        <div class="qr__stem-content">
+          <MathDisplay
+            :content="stemPlainText"
+            :latex-content="question.latexContent ?? question.latex_content ?? null"
+            :content-type="question.contentType ?? question.content_type ?? null"
+            source-preference="latex-first"
+          />
+        </div>
       </div>
 
       <!-- Options (for choice types) -->
@@ -62,7 +69,13 @@
           <span class="qr__opt-badge" :class="isCorrectOption(opt.id) && showAnswer ? 'qr__opt-badge--correct' : ''">
             {{ opt.id }}
           </span>
-          <span class="qr__opt-text" v-html="opt.text" />
+          <span class="qr__opt-text">
+            <MathDisplay
+              :content="opt.text"
+              :latex-content="latexOptionFor(opt.id)"
+              source-preference="latex-first"
+            />
+          </span>
           <span v-if="showAnswer && isCorrectOption(opt.id)" class="qr__opt-check">
             <LucideIcon name="check_circle" size="15" />
           </span>
@@ -117,6 +130,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { getExamQuestionImageUrl } from '../../../services/importService'
+import MathDisplay from '@/components/shared/MathDisplay.vue'
 
 const props = defineProps({
   question: {
@@ -139,6 +153,13 @@ const props = defineProps({
 
 const showExplanation = ref(false)
 const loadingImage = ref(false)
+
+/** API exam-import dùng `text` (ParsedQuestionDto); bước review dùng `content`. */
+const stemPlainText = computed(() => {
+  const q = props.question
+  const t = q?.text ?? q?.content
+  return t != null ? String(t) : ''
+})
 
 const effectiveRenderMode = computed(() => {
   return props.question.render?.mode || 'text'
@@ -181,18 +202,27 @@ const sortedOptions = computed(() => {
     }))
 })
 
+function latexOptionFor(optionId) {
+  const lo = props.question.latexOptions ?? props.question.latex_options
+  if (!lo) return null
+  if (typeof lo === 'string') {
+    try {
+      const p = JSON.parse(lo)
+      const v = p[optionId] ?? p[String(optionId).toUpperCase()]
+      return v != null && String(v).trim() !== '' ? String(v) : null
+    } catch {
+      return null
+    }
+  }
+  const v = lo[optionId] ?? lo[String(optionId).toUpperCase()]
+  return v != null && String(v).trim() !== '' ? String(v) : null
+}
+
 const isCorrectOption = (optId) => {
   const ans = props.question.answer
   if (!ans) return false
   return ans.toUpperCase() === optId.toUpperCase()
 }
-
-const renderedStem = computed(() => {
-  if (!props.question.text) return ''
-  return props.question.text
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-})
 
 const confidenceClass = computed(() => {
   const c = props.question.confidence || 0

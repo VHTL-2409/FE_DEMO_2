@@ -32,7 +32,11 @@ from ..schemas import (
 from ..profiler import PdfProfile
 from ..utils.answer_extractor import AnswerExtractor
 from ..utils.section_detector import detect_sections, SectionKind
-from ..utils.text_normalizer import normalize_math_text, sanitize_word_equation_pua
+from ..utils.text_normalizer import (
+    normalize_math_text,
+    sanitize_word_equation_pua,
+    classify_content_type,
+)
 from ..utils.latex_converter import convert_to_latex
 
 
@@ -420,10 +424,12 @@ class Template03MathAnswerGridParser(BaseParser):
             render_mode=render_mode,
             bbox=block.bbox if high_noise else None,
             issues=issues,
+            display_text=stem,
         )
         if not high_noise:
             try:
                 q.latexContent = convert_to_latex(q.text, mode="auto")
+                q.contentType = classify_content_type(q.text, q.latexContent)
                 if valid_options:
                     q.latexOptions = {
                         k: convert_to_latex(v, mode="inline")
@@ -431,6 +437,12 @@ class Template03MathAnswerGridParser(BaseParser):
                     }
             except Exception:
                 pass
+        else:
+            q.contentType = "plain"
+        if q.answer is not None:
+            ans = str(q.answer).strip()
+            if re.match(r"^[A-Da-d]$", ans):
+                q.answer = ans.upper()
         return q
 
     def _collect_option_markers(self, text: str) -> list[re.Match]:

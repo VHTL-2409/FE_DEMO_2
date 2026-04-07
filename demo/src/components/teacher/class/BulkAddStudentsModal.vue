@@ -1158,7 +1158,7 @@ const handleSubmitByCsv = async () => {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 /* Transition */
 .basm-modal-enter-active,
@@ -1176,9 +1176,3 @@ const handleSubmitByCsv = async () => {
   transform: scale(0.95) translateY(10px);
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

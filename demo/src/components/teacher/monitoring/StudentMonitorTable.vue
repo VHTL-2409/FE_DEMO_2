@@ -523,6 +523,7 @@ const formatTime = (ts) => {
   border-radius: var(--ds-radius-xl);
   backdrop-filter: blur(8px);
   animation: smtSlideDown 0.2s ease;
+  transform: translateZ(0);
 }
 
 .dark .smt__batch-bar {
@@ -531,8 +532,8 @@ const formatTime = (ts) => {
 }
 
 @keyframes smtSlideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-8px) translateZ(0); }
+  to { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .smt__batch-bar-inner {
@@ -956,11 +957,12 @@ const formatTime = (ts) => {
   flex-direction: column;
   gap: 0.75rem;
   animation: smtExpand 0.2s ease;
+  transform: translateZ(0);
 }
 
 @keyframes smtExpand {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-4px) translateZ(0); }
+  to { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 .smt__expand-title {
@@ -1049,8 +1051,5 @@ const formatTime = (ts) => {
 }
 </style>
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .smt__batch-bar { animation: none; }
 }

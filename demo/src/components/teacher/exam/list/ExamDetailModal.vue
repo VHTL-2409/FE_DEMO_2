@@ -237,9 +237,3 @@ const formatDateTime = (d) => {
 .edm-fade-enter-from, .edm-fade-leave-to { opacity: 0; }
 .edm-fade-enter-from .edm, .edm-fade-leave-to .edm { transform: scale(0.95); }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

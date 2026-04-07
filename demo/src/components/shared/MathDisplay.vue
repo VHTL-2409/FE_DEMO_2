@@ -21,34 +21,79 @@ import {
   normalizeMathematicalUnicodeForEditor,
   applyTexSymbolCommandsToUnicode,
 } from '../../utils/mathTextNormalize'
+import {
+  containsVietnameseLatin,
+  collapseAdjacentDuplicateMathPlainLines,
+} from '../../utils/mixedMathDisplay'
 
 interface Props {
   /** Raw content text (may contain $...$ or $$...$$ delimiters) */
   content: string
   /** LaTeX từ backend — chỉ dùng khi content rỗng (tránh lệch với ô đang sửa) */
   latexContent?: string | null
+  /** plain | math | mixed — từ parser; plain = ưu tiên văn bản, không KaTeX full-line */
+  contentType?: string | null
   /** Display mode: 'auto' | 'inline' | 'block' */
   displayMode?: 'auto' | 'inline' | 'block'
   /** Throw error on invalid LaTeX instead of falling back */
   throwOnError?: boolean
+  /**
+   * 'content' (default) — dùng content, latexContent chỉ fallback khi content rỗng.
+   * 'smart' — nếu latexContent non-empty VÀ content không có delimiter ($ \\\[ \\\])
+   *           thì dùng latexContent làm nguồn render.
+   * 'latex-first' — nếu có latexContent thì chỉ render latex (một nguồn), không trùng plain.
+   */
+  sourcePreference?: 'content' | 'smart' | 'latex-first'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   content: '',
   latexContent: null,
+  contentType: null,
   displayMode: 'auto',
   throwOnError: false,
+  sourcePreference: 'content',
 })
 
 const containerRef = ref<HTMLElement | null>(null)
 
-/** Ưu tiên content để preview khớp textarea; latex chỉ fallback. */
+function shouldPreferPlainOverLatex(c: string, lc: string): boolean {
+  const ct = props.contentType != null ? String(props.contentType).toLowerCase() : ''
+  if (ct === 'plain') {
+    return true
+  }
+  if (lc === '') {
+    return false
+  }
+  if (containsVietnameseLatin(lc) && !hasExplicitMathDelimiters(lc)) {
+    return true
+  }
+  return false
+}
+
+/** Nguồn render duy nhất — tránh hiển thị trùng plain + latex. */
 const sourceText = computed(() => {
   const c = props.content != null ? String(props.content) : ''
-  const lc =
+  const lcRaw =
     props.latexContent != null && props.latexContent !== undefined
-      ? String(props.latexContent).trim()
+      ? String(props.latexContent)
       : ''
+  const lc = lcRaw.trim()
+
+  if (props.sourcePreference === 'latex-first' && lc !== '') {
+    if (shouldPreferPlainOverLatex(c, lc) && c.trim() !== '') {
+      return c
+    }
+    return lc
+  }
+
+  if (props.sourcePreference === 'smart' && lc !== '' && !hasExplicitMathDelimiters(c)) {
+    if (shouldPreferPlainOverLatex(c, lc) && c.trim() !== '') {
+      return c
+    }
+    return lc
+  }
+
   if (c.trim() !== '') {
     return c
   }
@@ -58,8 +103,22 @@ const sourceText = computed(() => {
   return c
 })
 
+function dedupeIdenticalLines(s: string): string {
+  const lines = s.split(/\n/).map((l) => l.trim()).filter((l) => l.length > 0)
+  if (lines.length < 2) {
+    return s
+  }
+  const first = lines[0]
+  if (first != null && lines.every((l) => l === first)) {
+    return first
+  }
+  return s
+}
+
 const normalizedSource = computed(() => {
-  const t = sourceText.value
+  let t = sourceText.value
+  t = dedupeIdenticalLines(t)
+  t = collapseAdjacentDuplicateMathPlainLines(t)
   const unicodeFixed = normalizeMathematicalUnicodeForEditor(t)
   return applyTexSymbolCommandsToUnicode(unicodeFixed)
 })
@@ -141,6 +200,9 @@ function tryRenderBareLatexBlock(text: string): string | null {
   if (!t || hasExplicitMathDelimiters(t)) {
     return null
   }
+  if (containsVietnameseLatin(t)) {
+    return null
+  }
   if (!/\\[a-zA-Z]+/.test(t)) {
     return null
   }
@@ -187,7 +249,7 @@ const renderBundle = computed((): RenderBundle => {
 })
 
 watch(
-  () => [props.content, props.latexContent],
+  () => [props.content, props.latexContent, props.contentType],
   async () => {
     await nextTick()
   },

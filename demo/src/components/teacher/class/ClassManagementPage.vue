@@ -1261,21 +1261,3 @@ onMounted(loadClasses)
   margin: 0;
 }
 </style>
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  .cmp__card,
-  .cmp__btn,
-  .cmp__stat-card,
-  .cmp__modal,
-  .card-enter-active,
-  .card-leave-active {
-    animation: none !important;
-    transition-duration: 0.01ms !important;
-  }
-  .cmp__card:hover,
-  .cmp__btn:hover,
-  .cmp__card:hover .cmp__stat-icon {
-    transform: none !important;
-  }
-}

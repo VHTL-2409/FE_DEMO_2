@@ -253,6 +253,21 @@ def _thpt_math_grid_exam_heuristic(head: str) -> bool:
     return False
 
 
+def _thpt_math_grid_exam_heuristic_from_profile(profile: PdfProfile) -> bool:
+    """
+    Variant using profile-level signals (computed from full document scan).
+    Returns True when the combination of four signals is strong enough to
+    identify a THPT-style exam even if the heuristic on head_text_sample alone
+    missed the markers.
+    """
+    if not profile.has_answer_grid or not profile.has_solution_section:
+        return False
+    cau_hits = len(re.findall(r"Câu\s+\d+\s*:", profile.head_text_sample, re.IGNORECASE))
+    if profile.has_cau_pattern and cau_hits >= 2 and profile.total_pages >= 8:
+        return True
+    return False
+
+
 def _score_template_01(profile: PdfProfile) -> float:
     """Score for Template 01: math broken text (pdf_mau_1 style)."""
     score = 0.0
@@ -273,6 +288,9 @@ def _score_template_01(profile: PdfProfile) -> float:
     # pdf_mau_3 / THPT đề dài: layout span-based parser 01 làm vỡ công thức từng ký tự
     if _thpt_math_grid_exam_heuristic(profile.head_text_sample):
         score -= 0.42
+
+    if _thpt_math_grid_exam_heuristic_from_profile(profile):
+        score -= 0.3
 
     return max(0.0, min(score, 1.0))
 
@@ -316,9 +334,24 @@ def _score_template_03(profile: PdfProfile) -> float:
     if profile.has_answer_grid and profile.has_solution_section:
         score += 0.1
 
+    # Compound signal: long exam + answer grid + solution + Vietnamese Câu pattern
+    # These four signals together are strong evidence of a THPT-style exam (pdf_mau_3).
+    compound = (
+        profile.has_answer_grid
+        and profile.has_solution_section
+        and profile.has_cau_pattern
+        and profile.total_pages >= 8
+    )
+    if compound:
+        score += 0.25
+
     # Đề kiểu pdf_mau_3: phần đáp án có thể nằm cuối file (head sample không bắt được grid)
     if _thpt_math_grid_exam_heuristic(profile.head_text_sample):
         score += 0.55
+
+    # Profile-based fallback: long exam + all four signals detected from full scan
+    if _thpt_math_grid_exam_heuristic_from_profile(profile):
+        score += 0.4
 
     return min(score, 1.0)
 

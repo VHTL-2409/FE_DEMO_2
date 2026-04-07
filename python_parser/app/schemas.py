@@ -62,6 +62,10 @@ class ParsedQuestion(BaseModel):
         default=None,
         description="LaTeX formatted options. Example: {'A': '$\\frac{1}{2}$', 'B': '$\\frac{1}{3}$'}"
     )
+    contentType: Optional[str] = Field(
+        default=None,
+        description="Stem hint for FE: plain | math | mixed (ưu tiên latex khi math/mixed và có latexContent)",
+    )
     subQuestions: list[ParsedQuestion] = Field(default_factory=list)
     answer: Optional[str] = None  # "A", "B", "C", "D", or full text for essay
     explanation: Optional[str] = None

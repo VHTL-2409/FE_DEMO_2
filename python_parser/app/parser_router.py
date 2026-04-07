@@ -11,7 +11,7 @@ from typing import Optional
 
 from .profiler import PdfProfile, build_pdf_profile
 from .parsers.base import BaseParser
-from .parsers.template_01_math_broken import Template01MathBrokenParser
+from .parsers.template_01_math_rebuilt import Template01MathRebuiltParser
 from .parsers.template_02_clean_mcq import Template02CleanMcqParser
 from .parsers.template_03_math_answer_grid import Template03MathAnswerGridParser
 from .parsers.template_04_docx_viet import Template04DocxVietParser
@@ -31,7 +31,7 @@ from .utils.validator import validate_parsed
 # ─── Registry ─────────────────────────────────────────────────────────────────
 
 _PARSERS: list[type[BaseParser]] = [
-    Template01MathBrokenParser,
+    Template01MathRebuiltParser,
     Template02CleanMcqParser,
     Template03MathAnswerGridParser,
     Template04DocxVietParser,

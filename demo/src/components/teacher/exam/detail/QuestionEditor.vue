@@ -694,7 +694,7 @@ const processImportFile = async (file) => {
 }
 
 .qe__spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 
 .qe__import-close {
   position: absolute;
@@ -1032,9 +1032,3 @@ const processImportFile = async (file) => {
 .qe-confirm-enter-from, .qe-confirm-leave-to { opacity: 0; }
 .qe-confirm-enter-from .qe-confirm, .qe-confirm-leave-to .qe-confirm { transform: scale(0.9); }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

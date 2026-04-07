@@ -1,17 +1,18 @@
 <template>
-  <div ref="containerRef" class="sdl">
+  <!-- sdl--visible must live on ancestor: CSS uses .sdl--visible .sdl__hero (descendant), not same element -->
+  <div ref="containerRef" class="sdl" :class="{ 'sdl--visible': isVisible }">
     <!-- Hero section -->
-    <div class="sdl__hero" :class="{ 'sdl--visible': isVisible }">
+    <div class="sdl__hero">
       <slot name="hero" />
     </div>
 
     <!-- KPI strip -->
-    <div v-if="$slots.kpis" class="sdl__kpis" :class="{ 'sdl--visible': isVisible }">
+    <div v-if="$slots.kpis" class="sdl__kpis">
       <slot name="kpis" />
     </div>
 
     <!-- Main content: 2-column on large screens -->
-    <div class="sdl__main" :class="{ 'sdl--visible': isVisible }">
+    <div class="sdl__main">
       <!-- Left column (main content) -->
       <div class="sdl__main-col">
         <slot name="main" />
@@ -51,9 +52,9 @@ const { containerRef, isVisible } = useIntersectionObserver({
   padding: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
-  /* Optimize paint layers */
-  content-visibility: auto;
   contain: layout style;
+  /* Note: NOT using content-visibility: auto here — it breaks
+     IntersectionObserver sizing, causing the dashboard to stay invisible */
 }
 
 /* Entrance animations - GPU accelerated, triggered by visibility class */
@@ -64,7 +65,7 @@ const { containerRef, isVisible } = useIntersectionObserver({
 }
 
 .sdl--visible .sdl__hero {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
 .sdl__kpis {
@@ -77,7 +78,7 @@ const { containerRef, isVisible } = useIntersectionObserver({
 }
 
 .sdl--visible .sdl__kpis {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 .sdl__main {
@@ -90,8 +91,9 @@ const { containerRef, isVisible } = useIntersectionObserver({
   transform: translateZ(0);
 }
 
+/* Main section enters sooner (0.22s) so cards are visible faster */
 .sdl--visible .sdl__main {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
 
 .sdl__main-col {
@@ -115,7 +117,10 @@ const { containerRef, isVisible } = useIntersectionObserver({
   .sdl__hero,
   .sdl__kpis,
   .sdl__main {
-    animation: none;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    will-change: auto;
   }
 }
 

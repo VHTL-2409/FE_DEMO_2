@@ -5,61 +5,163 @@
    Import this file in main.js so these classes are NEVER purged.
    ================================================================ */
 
-/* --- GPU-accelerated base for all animations --- */
+/* ═══════════════════════════════════════════════════════════════
+   UNIFIED ANIMATION DESIGN TOKENS
+   Baseline: Admin UI standard — all components must follow these.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* Duration */
+  --anim-duration-fast:   0.12s;
+  --anim-duration-base:   0.18s;
+  --anim-duration-slow:  0.25s;
+  --anim-duration-panel: 0.35s;
+  --anim-duration-page:  0.45s;
+
+  /* Easing curves */
+  --anim-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --anim-easing-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+  --anim-easing-smooth:   cubic-bezier(0.16, 1, 0.3, 1);
+  --anim-easing-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Stagger base delay */
+  --anim-stagger: 0.06s;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UNIFIED KEYFRAMES — Admin baseline
+   Use these across ALL components (admin, teacher, student, portal).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Fade Up: panel/card entrance, 10px translate ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+/* ── Fade In Up (14px): KPI cards with spring easing ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+/* ── Slide In Panel: panel entrance with scale ── */
+@keyframes slideInPanel {
+  from { opacity: 0; transform: translateY(8px) scale(0.99) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
+}
+
+/* ── Slide In Right: table rows, activity items ── */
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(-10px) translateZ(0); }
+  to   { opacity: 1; transform: translateX(0) translateZ(0); }
+}
+
+/* ── Pulse: status dots ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.92); }
+}
+
+/* ── Pulse Ring: live indicator ── */
+@keyframes pulseRing {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ── Fade In: overlay / modal backdrop ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Spin: loading spinners ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Shimmer: skeleton loaders ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── GPU shimmer: transform-based, no paint (reduced-motion friendly) ── */
+@keyframes gpu-shimmer {
+  0%   { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1)   translateZ(0); }
+  100% { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
+}
+
+/* ── Dot Pulse: status indicator with ring ── */
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Lef Pulse: live event feed badge ── */
+@keyframes lefPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(2, 132, 199, 0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED ANIMATION UTILITY CLASSES
+   Apply these classes to any element needing standard animations.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── GPU-accelerated base (force GPU compositing) ── */
 .animate-fade-up,
 .animate-fade-up-delay,
 .animate-fade-up-slow,
-.animate-fade-up-xslow {
+.animate-fade-up-xslow,
+.fadeUp,
+.fadeInUp,
+.slideInPanel,
+.fadeInRight {
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Force GPU compositing */
   transform: translateZ(0);
 }
 
-/* --- Tailwind v4 core animation keyframes --- */
-@keyframes animate-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
-}
-@keyframes animate-spin {
-  to { transform: rotate(360deg); }
+/* ── Standard Fade Up classes (12px, teacher standard) ── */
+.animate-fade-up          { animation: teacherFadeUp 0.4s var(--anim-easing-smooth) both; transform: translateZ(0); }
+.animate-fade-up-delay    { animation: teacherFadeUp 0.5s var(--anim-easing-smooth) 0.05s both; transform: translateZ(0); }
+.animate-fade-up-slow     { animation: teacherFadeUp 0.6s var(--anim-easing-smooth) 0.15s both; transform: translateZ(0); }
+.animate-fade-up-xslow    { animation: teacherFadeUp 0.7s var(--anim-easing-smooth) 0.25s both; transform: translateZ(0); }
+
+/* ── Fade Up — Admin standard (10px, spring easing) ── */
+.fadeUp              { animation: fadeUp        0.35s var(--anim-easing-standard) both; }
+.fadeInUp            { animation: fadeInUp      0.5s  var(--anim-easing-spring)  both; }
+
+/* ── Slide In Panel — Admin panel entrance ── */
+.slideInPanel        { animation: slideInPanel  0.45s var(--anim-easing-spring)  both; }
+
+/* ── Slide In Right — table rows, activity items ── */
+.fadeInRight         { animation: fadeInRight   0.35s var(--anim-easing-spring)  both; }
+
+/* ── Float animations ── */
+.animate-float-slow       { animation: teacherFloatSlow  8s ease-in-out infinite; transform: translateZ(0); }
+.animate-float-delay      { animation: teacherFloatDelay 9s ease-in-out infinite; transform: translateZ(0); }
+.animate-float-fast       { animation: teacherFloatSlow  5s ease-in-out infinite; transform: translateZ(0); }
+
+/* ── Pulse ring ── */
+.animate-pulse-ring       { animation: pulseRing 2s ease-in-out infinite; transform: translateZ(0); }
+
+/* ── Modal ── */
+.animate-modal-overlay    { animation: fadeIn      0.15s ease-out; }
+.animate-modal-content    { animation: modalContentIn 0.3s var(--anim-easing-smooth); transform: translateZ(0); }
+
+/* ── Shimmer / skeleton — unified 1.2s (was 1.5s in teacher) ── */
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
-/* --- Custom keyframes --- */
-@keyframes teacherFadeUp {
-  from { opacity: 0; transform: translateY(12px) translateZ(0); }
-  to   { opacity: 1; transform: translateY(0) translateZ(0); }
-}
-@keyframes teacherFloatSlow {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%       { transform: translate3d(0, -10px, 0); }
-}
-@keyframes teacherFloatDelay {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%       { transform: translate3d(0, 8px, 0); }
-}
-@keyframes pulseRing {
-  0%   { transform: scale(0.95) translateZ(0); opacity: 1; }
-  50%  { transform: scale(1.05) translateZ(0); opacity: 0.7; }
-  100% { transform: scale(0.95) translateZ(0); opacity: 1; }
-}
-@keyframes modalOverlayIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes modalContentIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px) translateZ(0); }
-  to   { opacity: 1; transform: scale(1) translateY(0) translateZ(0); }
-}
-/* ── GPU shimmer variant — uses transform+opacity instead of background-position.
-    No paint, fully GPU. Best for reduced-motion / low-end devices. ── */
-@keyframes gpu-shimmer {
-  0%   { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
-  50%  { opacity: 1;   transform: scaleX(1) translateZ(0); }
-  100% { opacity: 0.5; transform: scaleX(0.3) translateZ(0); }
-}
+/* ── GPU shimmer ── */
 .animate-gpu-shimmer {
   animation: gpu-shimmer 1.6s ease-in-out infinite;
   transform-origin: left;
@@ -67,63 +169,25 @@
   transform: translateZ(0);
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-@keyframes fadeScale {
-  from { opacity: 0; transform: translateY(8px) scale(0.98) translateZ(0); }
-  to   { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
-}
-@keyframes checkPop {
-  0%   { transform: scale(0) translateZ(0); opacity: 0; }
-  70%  { transform: scale(1.2) translateZ(0); opacity: 1; }
-  100% { transform: scale(1) translateZ(0); opacity: 1; }
-}
+/* ── Spin ── */
+.animate-spin-slow { animation: spin 3s linear infinite; transform: translateZ(0); }
+.tui-spin          { animation: spin 1s linear infinite; display: inline-block; }
 
-/* ─── Fade Up variants ─── */
-/* 10px — for card-level entrance (InsightCard, RecentResultCard, UpcomingExamCard) */
-@keyframes fadeUpSm {
-  from { opacity: 0; transform: translateY(10px) translateZ(0); }
-  to   { opacity: 1; transform: translateY(0) translateZ(0); }
-}
+/* ── Stagger helpers for nth-child ── */
+.stagger-children > *:nth-child(1) { animation-delay: 0s; }
+.stagger-children > *:nth-child(2) { animation-delay: calc(var(--anim-stagger) * 1); }
+.stagger-children > *:nth-child(3) { animation-delay: calc(var(--anim-stagger) * 2); }
+.stagger-children > *:nth-child(4) { animation-delay: calc(var(--anim-stagger) * 3); }
+.stagger-children > *:nth-child(5) { animation-delay: calc(var(--anim-stagger) * 4); }
+.stagger-children > *:nth-child(6) { animation-delay: calc(var(--anim-stagger) * 5); }
+.stagger-children > *:nth-child(7) { animation-delay: calc(var(--anim-stagger) * 6); }
+.stagger-children > *:nth-child(8) { animation-delay: calc(var(--anim-stagger) * 7); }
 
-/* 12px — standard global fade-up */
-@keyframes fadeLeft {
-  from { opacity: 0; transform: translateX(-10px) translateZ(0); }
-  to   { opacity: 1; transform: translateX(0) translateZ(0); }
-}
+/* ═══════════════════════════════════════════════════════════════
+   SHARED VISUAL UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════ */
 
-/* --- Fade Up classes (12px teacherFadeUp) --- */
-.animate-fade-up          { animation: teacherFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; transform: translateZ(0); }
-.animate-fade-up-delay    { animation: teacherFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; transform: translateZ(0); }
-.animate-fade-up-slow     { animation: teacherFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; transform: translateZ(0); }
-.animate-fade-up-xslow    { animation: teacherFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; transform: translateZ(0); }
-
-/* --- Float --- */
-.animate-float-slow       { animation: teacherFloatSlow 8s ease-in-out infinite; transform: translateZ(0); }
-.animate-float-delay      { animation: teacherFloatDelay 9s ease-in-out infinite; transform: translateZ(0); }
-.animate-float-fast       { animation: teacherFloatSlow 5s ease-in-out infinite; transform: translateZ(0); }
-
-/* --- Pulse ring --- */
-.animate-pulse-ring       { animation: pulseRing 2s ease-in-out infinite; transform: translateZ(0); }
-
-/* --- Modal --- */
-.animate-modal-overlay    { animation: modalOverlayIn 0.2s ease-out; }
-.animate-modal-content    { animation: modalContentIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); transform: translateZ(0); }
-
-/* --- Shimmer / skeleton --- */
-.animate-shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  transform: translateZ(0);
-}
-
-/* --- Spin --- */
-.animate-spin-slow { animation: animate-spin 3s linear infinite; transform: translateZ(0); }
-
-/* --- Glass card --- */
+/* Glass card */
 .glass-card {
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(6px);
@@ -136,7 +200,7 @@
   border-color: rgba(148, 163, 184, 0.12);
 }
 
-/* --- Gradient cards --- */
+/* Gradient cards */
 .gradient-card-primary {
   background: linear-gradient(135deg, rgb(79 70 229 / 0.12) 0%, rgb(238 242 255) 100%);
 }
@@ -144,16 +208,21 @@
   background: linear-gradient(135deg, rgb(254 242 242) 0%, rgb(255 247 237) 100%);
 }
 
-/* --- Card interactive --- */
+/* Card interactive hover */
 .card-interactive {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: transform var(--anim-duration-base) var(--anim-easing-standard),
+              box-shadow var(--anim-duration-base) var(--anim-easing-standard),
+              border-color var(--anim-duration-base) var(--anim-easing-standard);
 }
 .card-interactive:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 34px -24px rgb(79 70 229 / 0.18);
 }
 
-/* --- SiteIntroduction Landing Page Keyframes --- */
+/* ═══════════════════════════════════════════════════════════════
+   LANDING PAGE KEYFRAMES — SiteIntroduction
+   Landing page uses 28px translate (larger hero animation).
+   ═══════════════════════════════════════════════════════════════ */
 @keyframes eduFadeUp {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -165,75 +234,33 @@
 
 /* --- SiteIntroduction Landing Page Animations --- */
 .edu-hero-section {
-  animation: eduFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+  animation: eduFadeUp 0.8s var(--anim-easing-smooth) 0.1s both;
 }
 .edu-hero-visual {
-  animation: eduFadeLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  animation: eduFadeLeft 0.9s var(--anim-easing-smooth) 0.25s both;
 }
-.edu-animate-fade-up      { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.edu-animate-fade-up-d1   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both; }
-.edu-animate-fade-up-d2   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both; }
-.edu-animate-fade-up-d3   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both; }
-.edu-animate-fade-up-d4   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both; }
-.edu-animate-fade-up-d5   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both; }
-.edu-animate-fade-up-d6   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both; }
-.edu-animate-fade-up-d7   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both; }
-.edu-animate-fade-up-d8   { animation: eduFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both; }
-
-/* Reduced motion for landing page */
-@media (prefers-reduced-motion: reduce) {
-  .edu-animate-fade-up,
-  .edu-animate-fade-up-d1,
-  .edu-animate-fade-up-d2,
-  .edu-animate-fade-up-d3,
-  .edu-animate-fade-up-d4,
-  .edu-animate-fade-up-d5,
-  .edu-animate-fade-up-d6,
-  .edu-animate-fade-up-d7,
-  .edu-animate-fade-up-d8,
-  .edu-hero-section,
-  .edu-hero-visual {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* --- Reduced motion: disable all animations --- */
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-up,
-  .animate-fade-up-delay,
-  .animate-fade-up-slow,
-  .animate-fade-up-xslow,
-  .animate-float-slow,
-  .animate-float-delay,
-  .animate-float-fast,
-  .animate-pulse-ring,
-  .animate-modal-overlay,
-  .animate-modal-content,
-  .animate-shimmer,
-  .animate-gpu-shimmer,
-  .animate-spin-slow {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-}
+.edu-animate-fade-up      { animation: eduFadeUp 0.65s var(--anim-easing-smooth) both; }
+.edu-animate-fade-up-d1  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.08s both; }
+.edu-animate-fade-up-d2  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.16s both; }
+.edu-animate-fade-up-d3  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.24s both; }
+.edu-animate-fade-up-d4  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.32s both; }
+.edu-animate-fade-up-d5  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.40s both; }
+.edu-animate-fade-up-d6  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.48s both; }
+.edu-animate-fade-up-d7  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.56s both; }
+.edu-animate-fade-up-d8  { animation: eduFadeUp 0.65s var(--anim-easing-smooth) 0.64s both; }
 
 /* ─── Unified page transition — shared across AdminLayout, AppShell, Portal, StudentExam layouts ─── */
-/* Enter: fade + subtle right-slide with scale. Leave: fade + subtle left-slide. */
 .page-enter-active {
   transition:
-    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  /* GPU optimization */
+    opacity 0.28s var(--anim-easing-standard),
+    transform 0.35s var(--anim-easing-out-expo);
   will-change: transform, opacity;
   transform: translateZ(0);
 }
 .page-leave-active {
   transition:
-    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
-    transform 0.22s cubic-bezier(0.4, 0, 1, 1);
+    opacity 0.18s var(--anim-easing-standard),
+    transform 0.22s var(--anim-easing-standard);
   will-change: transform, opacity;
 }
 .page-enter-from {
@@ -251,19 +278,6 @@
   opacity: 1;
   transform: translateX(0) scale(1) translateZ(0);
   filter: blur(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-enter-active,
-  .page-leave-active {
-    transition: none;
-  }
-  .page-enter-from,
-  .page-leave-to {
-    opacity: 0;
-    transform: none;
-    filter: none;
-  }
 }
 
 /* ─── Unified skeleton shimmer — shared across PortalLayout / StudentPortalLayout ─── */

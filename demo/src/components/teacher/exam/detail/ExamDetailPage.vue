@@ -805,8 +805,8 @@ onMounted(loadExam)
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: -200% 0; transform: translateZ(0); }
+  100% { background-position: 200% 0; transform: translateZ(0); }
 }
 
 .edp__skeleton--title { height: 2rem; width: 60%; }
@@ -924,8 +924,8 @@ onMounted(loadExam)
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(4px) translateZ(0); }
+  to { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 /* Empty state */
@@ -1345,11 +1345,5 @@ onMounted(loadExam)
 .edp-modal-enter-from .edp-modal, .edp-modal-leave-to .edp-modal { transform: scale(0.95); }
 
 .ed-spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg) translateZ(0); } }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
