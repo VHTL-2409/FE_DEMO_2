@@ -373,7 +373,7 @@ class Template03MathAnswerGridParser(BaseParser):
 
         # Calculate formula noise
         formula_noise = self._calculate_formula_noise(stem)
-        high_noise = formula_noise > 0.22
+        high_noise = formula_noise > 0.18
 
         # Prefer LaTeX for readable math on FE (giống template_01)
         render_mode = RenderMode.IMAGE if high_noise else RenderMode.LATEX
@@ -759,7 +759,7 @@ class Template03MathAnswerGridParser(BaseParser):
         if not text:
             return 0.0
         noise = len(re.findall(
-            r"[\d²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ∫∑∏√∂∆∈∉⊂⊃∪∩ℝℤℕ→←↔≥≤≡≈±×÷·]",
+            r"[\d²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ∫∑∏√∂∆∈∉⊂⊃∪∩ℝℤℕ→←↔≥≤≡≈±×÷·∅{}]",
             text
         ))
         return noise / max(len(text), 1)

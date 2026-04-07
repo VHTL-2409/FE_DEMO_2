@@ -42,6 +42,7 @@ from ..utils.answer_extractor import AnswerExtractor, extract_inline_answer
 from ..utils.latex_converter import convert_to_latex
 from ..utils.text_normalizer import (
     normalize_math_text,
+    normalize_mcq_stem_display,
     classify_content_type,
     formula_analysis,
 )
@@ -263,6 +264,7 @@ class Template01MathRebuiltParser(BaseParser):
         # Extract stem (everything before first option marker)
         stem_raw = self._extract_stem(raw_text)
         stem_clean = self._trim_preamble_before_question(stem_raw, block.question_num)
+        stem_clean = normalize_mcq_stem_display(stem_clean)
 
         # Check formula noise to decide render mode
         formula_noise = self._calculate_formula_noise(stem_clean)
@@ -352,7 +354,7 @@ class Template01MathRebuiltParser(BaseParser):
         lines = raw_text.split("\n")
         if lines:
             lines[0] = re.sub(
-                r"^\s*(?:Câu|Bài)\s+\d+(?:\s*\([^)]*\))?\s*[\.:]?\s*",
+                r"^\s*(?:Câu|Bài)\s*\d+(?:\s*\([^)]*\))?\s*[\.:]?\s*",
                 "",
                 lines[0],
                 flags=re.IGNORECASE,
@@ -405,25 +407,24 @@ class Template01MathRebuiltParser(BaseParser):
         raw_tokens_by_line: Optional[list] = None,
     ) -> dict[str, str]:
         """
-        Parse MCQ options from raw text using real X-positions from PyMuPDF.
+        Parse MCQ options from raw text.
 
-        Key insight: pdf_mau_1 splits option values across rows:
-          - "C. S" appears on the options row (y=243)
-          - "= ∅" appears on a separate row ABOVE (y=240)
-        The MathPdfTextEngine provides raw Word tokens with x0 positions.
-        We use these to determine which option column each orphan fragment belongs to.
+        Pipeline:
+          1. Split merged inline options (A. B. C. on one line)
+          2. Find all option markers and compute column X-ranges
+          3. Remove orphan math fragments from question stem region (y < first_marker_y)
+             and attach them to the correct option column by X-position
+          4. Extract content after each marker
         """
         # Step 0: Pre-process merged inline options
-        # "A. x² B. y² C. z² D. t²" → split so each option is on own logical line
         text = self._split_inline_merged_options(text)
 
         lines = text.split("\n")
         tokens_by_line: list = raw_tokens_by_line or [None] * len(lines)
 
-        # Pattern: option marker at start of line: "A. " or "A) "
-        OPT_MARKER_RE = re.compile(r"^\s*([A-D])\s*[\.)．:]\s*")
+        OPT_MARKER_RE = re.compile(r"^\s*([A-D])\s*[\.)）．]\s*")
 
-        # Step 1: find option markers using real X-positions from token data
+        # Step 1: find all option markers + their X-positions
         marker_info: dict[int, tuple[str, str, float]] = {}
         # line_idx -> (letter, content_after_marker, x0_of_marker)
 
@@ -431,35 +432,36 @@ class Template01MathRebuiltParser(BaseParser):
             stripped = line.strip()
             if not stripped:
                 continue
-
             tokens = tokens_by_line[i] if i < len(tokens_by_line) else None
             m = OPT_MARKER_RE.match(stripped)
             if not m:
                 continue
-
             letter = m.group(1)
             if letter in {mi[0] for mi in marker_info.values()}:
-                continue  # already found this letter
-
-            marker_x0 = float(m.start()) + 20.0  # fallback
+                continue
+            marker_x0 = float(m.start()) + 20.0
             if tokens:
                 marker_x0 = self._find_marker_x0(tokens, letter)
-
             marker_info[i] = (letter, stripped[m.end():].strip(), marker_x0)
 
         if not marker_info:
             return {}
 
-        # Step 2: build column ranges from real marker X-positions
-        sorted_line_indices = sorted(marker_info.keys())
+        sorted_indices = sorted(marker_info.keys())
         col_ranges: list[tuple[str, float, float]] = []
-        for idx_pos, line_idx in enumerate(sorted_line_indices):
+        for idx_pos, line_idx in enumerate(sorted_indices):
             letter, _, x0 = marker_info[line_idx]
-            next_x1 = marker_info[sorted_line_indices[idx_pos + 1]][2] \
-                if idx_pos + 1 < len(sorted_line_indices) else x0 + 200.0
+            next_x1 = marker_info[sorted_indices[idx_pos + 1]][2] \
+                if idx_pos + 1 < len(sorted_indices) else x0 + 200.0
             col_ranges.append((letter, x0, next_x1))
 
-        # Step 3: collect orphan math fragments and map them to columns by X-position
+        first_marker_line = sorted_indices[0]
+        first_marker_y = float('inf')
+        if first_marker_line < len(tokens_by_line) and tokens_by_line[first_marker_line]:
+            first_marker_y = tokens_by_line[first_marker_line][0].y0
+
+        # Step 2: find orphan math fragments ABOVE the options row (y < first_marker_y)
+        # and map them to option columns by X-position
         orphan_by_col: dict[str, list[str]] = {ltr: [] for ltr, _, _ in col_ranges}
         marker_line_set = set(marker_info.keys())
 
@@ -467,30 +469,44 @@ class Template01MathRebuiltParser(BaseParser):
             stripped = line.strip()
             if not stripped or i in marker_line_set:
                 continue
+
+            # Only consider lines ABOVE the first marker (stem orphan area)
+            tokens_i = tokens_by_line[i] if i < len(tokens_by_line) else None
+            if tokens_i is not None and first_marker_y != float("inf"):
+                orphan_y = tokens_i[0].y0
+                # PDF y tăng xuống dưới. Chỉ bỏ qua orphan khi dòng nằm rõ *dưới* hàng A./B./C./D.
+                # (>= first_marker_y - 5 đã skip nhầm mảnh "= ∅" / "{}" cùng cụm đáp án).
+                if orphan_y > first_marker_y + 8.0:
+                    continue
+            elif i < sorted_indices[0]:
+                # No token data but clearly before markers
+                pass
+            else:
+                continue
+
             if self._contains_vietnamese(stripped):
                 continue
             if not self._is_orphan_math_fragment(stripped):
                 continue
 
-            tokens = tokens_by_line[i] if i < len(tokens_by_line) else None
             orphan_x0 = float('inf')
-            if tokens:
-                orphan_x0 = tokens[0].x0
+            if tokens_i:
+                orphan_x0 = tokens_i[0].x0
 
             target = self._resolve_orphan_to_column(orphan_x0, stripped, col_ranges)
             if target:
                 orphan_by_col[target].append(stripped)
 
-        # Step 4: build final options dict
+        # Step 3: build final options dict
         result: dict[str, str] = {}
         for letter, x0, x1 in col_ranges:
             line_idx = next(lid for lid, (ltr, _, _) in marker_info.items() if ltr == letter)
             _, first_content, _ = marker_info[line_idx]
 
-            # Collect continuation lines until next option
-            pos_in_sorted = sorted_line_indices.index(line_idx)
-            next_line = sorted_line_indices[pos_in_sorted + 1] \
-                if pos_in_sorted + 1 < len(sorted_line_indices) else len(lines)
+            # Collect continuation lines after the marker (for multi-row options)
+            pos_in_sorted = sorted_indices.index(line_idx)
+            next_line = sorted_indices[pos_in_sorted + 1] \
+                if pos_in_sorted + 1 < len(sorted_indices) else len(lines)
             content_parts: list[str] = []
             if first_content:
                 content_parts.append(first_content)
@@ -505,7 +521,7 @@ class Template01MathRebuiltParser(BaseParser):
                     break
                 content_parts.append(line_j)
 
-            # Attach orphan fragments (they appear ABOVE the option value in PDF)
+            # Attach orphans mapped to this column
             orphans = orphan_by_col.get(letter, [])
             cleaned_orphans = []
             for o in orphans:
@@ -518,22 +534,21 @@ class Template01MathRebuiltParser(BaseParser):
                     o = o.replace(old, new)
                 cleaned_orphans.append(o)
 
-            # Step 5: Inline merge — "A. x² B. y²" on one line (no newlines)
-            # If result is still empty AND the merged inline pattern exists on
-            # the original text, handle it separately.
             full_parts = content_parts + cleaned_orphans
             joined = " ".join(p for p in full_parts if p).strip()
             joined = re.sub(r" {2,}", " ", joined).strip()
             if joined:
                 result[letter] = joined
 
-        if sum(1 for v in result.values() if v.strip()) < 2:
-            # Fallback: orphan letter pattern
-            for m in re.finditer(r"^\s*([A-D])\s+(\S+.*)$", text, re.MULTILINE):
-                ltr = m.group(1)
-                word = m.group(2).strip()
-                if ltr not in result and word:
-                    result[ltr] = word
+        # Fallback: extract directly from split lines for any missing letter
+        for letter in [ltr for ltr in "ABCD" if ltr not in result or not result.get(ltr, "").strip()]:
+            for i, line in enumerate(lines):
+                m = OPT_MARKER_RE.match(line.strip())
+                if m and m.group(1) == letter:
+                    content = line.strip()[m.end():].strip()
+                    if content:
+                        result[letter] = content
+                        break
 
         return result
 
@@ -562,13 +577,19 @@ class Template01MathRebuiltParser(BaseParser):
              (uses previous marker position heuristic).
           3. No X data + other → None (let orphan be dropped).
         """
-        # Rule 1: real X position — intersect with column ranges
+        # Step 1: real X position — intersect with column ranges
         if orphan_x0 != float('inf'):
             for letter, x0, x1 in col_ranges:
                 if x0 <= orphan_x0 < x1:
                     return letter
-            # Falls outside all ranges — return None (DROPPED, not mis-assigned)
-            return None
+            # Falls outside all known ranges.
+            # In pdf_mau_1 orphan "=" at x=363 falls ON the boundary of B col (x1=335).
+            # x1 > orphan_x0 matches C (x1=464 > 363) ✓
+            # Use >= for the rightmost col to ensure orphan always gets a target.
+            for letter, x0, x1 in col_ranges:
+                if x1 >= orphan_x0:
+                    return letter
+            return col_ranges[-1][0]
 
         # Rule 2: no X data + short "= X" suffix fragment
         stripped = orphan_text.strip()
@@ -594,10 +615,10 @@ class Template01MathRebuiltParser(BaseParser):
             return False
         if self._contains_vietnamese(s):
             return False
-        MATH_OPS = set("=+−×÷·±∓√∅∈∉⊂⊃∪∩→←↔≥≤≠≈")
+        MATH_OPS = set("={}+−×÷·±∓√∅∈∉⊂⊃⊪∩→←↔≥≤≠≈{}(\uff5b\uff5d")
         if not any(ch in MATH_OPS for ch in s):
             return False
-        if re.match(r"^\s*[A-D]\s*[\.)．:]", s):
+        if re.match(r"^\s*[A-D]\.\s*", s):
             return False
         return True
 
@@ -631,7 +652,14 @@ class Template01MathRebuiltParser(BaseParser):
 
         result = merged_re.sub(replace_merged, text)
 
-        # Also handle cases like "A.x B.y C.z" without spaces after dots
+        # Second pass: catch any remaining "X. text Y. text" patterns (e.g. "B. S=3 C. S")
+        result = re.sub(
+            r"([A-D])\s*\.\s*([^\n]+?)\s+([A-D])\s*\.\s*",
+            lambda m: f"{m.group(1)}. {m.group(2).strip()}\n{m.group(3)}. ",
+            result,
+        )
+
+        # Third pass: "A.x B.y C.z" → one option per line (compact, no spaces after dots)
         result = re.sub(
             r"([A-D])\.\s*([^\sA-D]+?)\s+(?=[A-D]\.)",
             lambda m: f"{m.group(1)}. {m.group(2)}\n",
@@ -642,7 +670,9 @@ class Template01MathRebuiltParser(BaseParser):
 
     # ─── Stem extraction ─────────────────────────────────────────────────────
 
-    OPT_MARKER_RE = re.compile(r"^\s*([A-D])\s*[\.)．:]\s*")
+    # Note: "Câu" starts with C — must require . or ) as separator to avoid
+    # matching "C" in Vietnamese words like "Câu1". Colon is optional (some PDFs).
+    OPT_MARKER_RE = re.compile(r"^\s*([A-D])\s*[\.)）．:]\s*")
 
     def _extract_stem(self, text: str) -> str:
         """Extract question stem (everything before the first option marker)."""
@@ -652,16 +682,17 @@ class Template01MathRebuiltParser(BaseParser):
             letter = m.group(1)
             if letter != "A":
                 after_a = text[m.start():m.start() + 10]
-                if re.match(r"[A-D]\s*[\.)．:]", after_a):
-                    stem = re.sub(r"A\s*[\.)．:]\s*$", "", stem.rstrip())
+                if re.match(r"[A-D]\s*[\.)）．:]", after_a):
+                    stem = re.sub(r"A\s*[\.)）．:]\s*$", "", stem.rstrip())
             return stem.strip()
         return text.strip()
 
     def _first_option_marker(self, text: str) -> Optional[re.Match]:
         """First option marker that has actual content."""
-        for m in re.finditer(r"(?:^|\n)\s*([A-D])\s*[\.)．:]\s*\S", text):
+        # Require dot/paren as separator — avoids matching "C" in "Câu1."
+        for m in re.finditer(r"(?:^|\n)\s*([A-D])\s*[\.)）．]\s*\S", text):
             tail = text[m.end():m.end() + 14].lstrip()
-            if re.match(r"^[A-D]\s*[\.)．:]", tail):
+            if re.match(r"^[A-D]\s*[\.)）．]", tail):
                 continue
             return m
         return None
@@ -671,7 +702,7 @@ class Template01MathRebuiltParser(BaseParser):
         if not text or question_num <= 0:
             return text
         for label in ("Câu", "Bài"):
-            m = re.search(rf"(?i){label}\s+{question_num}(?!\d)", text)
+            m = re.search(rf"(?i){label}\s*{question_num}(?!\d)", text)
             if m:
                 return text[m.start():].strip()
         return text.strip()
@@ -681,7 +712,7 @@ class Template01MathRebuiltParser(BaseParser):
         if not text:
             return 0.0
         noise_chars = len(re.findall(
-            r"[\d²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ∫∑∏√∂∆∈∉⊂⊃∪∩ℝℤℕ→←↔≥≤≡≈±×÷·]",
+            r"[\d²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼ⁿ∫∑∏√∂∆∈∉⊂⊃∪∩ℝℤℕ→←↔≥≤≡≈±×÷·∅{}]",
             text,
         ))
         return noise_chars / max(len(text), 1)

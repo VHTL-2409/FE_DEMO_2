@@ -1,0 +1,621 @@
+Total paragraphs: 628
+0: Phần 1. (3.0 điểm) Trắc nghiệm - Lựa chọn câu đúng nhất và đánh dấu “X” vào bảng trả lời
+1: 1. (0.200 Point)
+2: Nêu các đặc điểm của thương mại điện tử là:
+3: A. Về kinh tế
+4: B. Về xã hội
+5: C. Về kỹ thuật, công nghệ
+6: D. Tất cả các trường hợp trên.
+7: 2. (0.200 Point)
+8: Đặc điểm nào không thuộc đặc điểm về kinh tế, xã hội của TMĐT là:
+9: A. Có nhiều đối tượng trao đổi
+10: B. Có nhiều bên tham gia
+11: C. Có thể đa dạng hóa mô hình kinh doanh
+12: D. Có phạm vi giới hạn
+13: 3. (0.200 Point)
+14: Trong TMĐT, có nhiều đối tượng trao đổi gồm:
+15: A. 2 bên (mua và bán)
+16: B. 3 bên (mua, bán và ngân hàng)
+17: C. 3 bên (mua, bán, vận chuyển)
+18: D. nhiều hơn 3 bên.
+19: 4. (0.200 Point)
+20: Các bên giao dịch trong TMĐT phải có các điều kiện:
+21: A. Có máy tính
+22: B. Có máy tính và nối mạng
+23: C. Có máy tính, nối mạng và giao dịch trên môi trường mạng.
+24: D. Giao dịch được trên môi trường internet.
+25: 5. (0.200 Point)
+26: Các đặc điểm về kỹ thuật, công nghệ
+27: A. Sử dụng các phương tiện điện tử để giao dịch
+28: B. Phát triển trên nền tảng kỹ thuật điện tử
+29: C. Sử dụng công nghệ thông tin, truyền thôn
+30: D. Sử dụng các phương tiện điện tử để giao dịch và phát triển trên nền tảng kỹ thuật điện tử và công nghệ thông tin, truyền thông.
+31: 6. (0.200 Point)
+32: Để thương mại điện tử phát triển phải cần
+33: A. Phương tiện điện tử
+34: B. Công nghệ thông tin và truyền thông
+35: C. Máy tính
+36: D. Cả a và b
+37: 7. (0.200 Point)
+38: Phương tiện điện tử bao gồm
+39: A. Máy tính (cá nhân và laptop)
+40: B. Điện thoại di động (Smart Phone)
+41: C. Video
+42: D. cả a và b.
+43: 8. (0.200 Point)
+44: Thương mại điện tử giữa doanh nghiệp và người tiêu dùng là:
+45: A. Doanh nghiệp là chủ thể chủ động chào bán hàng hóa, dịch vụ cho người tiêu dùng.
+46: B. Doanh nghiệp là chủ thể chủ động chào bán hàng hóa, dịch vụ cho nhà bán lẻ.
+47: C. Người tiêu dùng là chủ thể chủ động chào bán hàng hóa, dịch vụ cho người tiêu dùng.
+48: D. Doanh nghiệp là chủ thể chủ động chào bán hàng hóa, dịch vụ cho nhà bán buôn.
+49: 9. (0.200 Point)
+50: TMĐT giữa doanh nghiệp và doanh nghiệp còn gọi là
+51: A. B2C
+52: B. C2B
+53: C. B2B
+54: D. cả a và b
+55: 10. (0.200 Point)
+56: Trong thương mại điện tử, giao dịch giữa Tiki và người tiêu dùng là hình thức
+57: A. Thương mại điện tử giữa doanh nghiệp và người tiêu dùng (B2C, C2B)
+58: B. TMĐT giữa doanh nghiệp và doanh nghiệp (B2B)
+59: C. Thương mại điện tử giữa người tiêu dùng và người tiêu dùng (C2C)
+60: D. Thương mại điện tử giữa doanh nghiệp và chính phủ (B2G, G2B)
+61: 11. (0.200 Point)
+62: Trong thương mại điện tử, giao dịch giữa Coopmart và Doanh nghiệp bán lẻ là hình thức
+63: A. Thương mại điện tử giữa doanh nghiệp và người tiêu dùng (B2C, C2B)
+64: B. TMĐT giữa doanh nghiệp và doanh nghiệp (B2B)
+65: C. Thương mại điện tử giữa người tiêu dùng và người tiêu dùng (C2C)
+66: D. Thương mại điện tử giữa doanh nghiệp và chính phủ (B2G, G2B)
+67: 12. (0.200 Point)
+68: Trong thương mại điện tử, giao dịch giữa Công ty mẹ (Tập đoàn) và Công ty con (công ty thành
+69: viên của Công ty mẹ) là hình thức
+70: A. Thương mại điện tử giữa doanh nghiệp và người tiêu dùng (B2C, C2B)
+71: B. TMĐT giữa doanh nghiệp và doanh nghiệp (B2B)
+72: C. Thương mại điện tử giữa người tiêu dùng và người tiêu dùng (C2C)
+73: D. Thương mại điện tử giữa doanh nghiệp và chính phủ (B2G, G2B)
+74: 13. (0.200 Point)
+75: Trong thương mại điện tử, giao dịch giữa cơ quan Nhà nước và Công ty là hình thức
+76: A. Thương mại điện tử giữa doanh nghiệp và người tiêu dùng (B2C, C2B)
+77: B. TMĐT giữa doanh nghiệp và doanh nghiệp (B2B)
+78: C. Thương mại điện tử giữa người tiêu dùng và người tiêu dùng (C2C)
+79: D. Thương mại điện tử giữa doanh nghiệp và chính phủ (B2G, G2B)
+80: 14. (0.200 Point)
+81: Hình thức giao dịch nào dưới đây không phải là hình thức giao dịch trong TMĐT.
+82: A. Mua và bán qua Internet.
+83: B. Thanh toán điện tử
+84: C. Chào hàng
+85: D. Truyền thông về chính sách dân số
+86: 15. (0.200 Point)
+87: Mô hình kinh doanh thương mại điện tử là
+88: A. Mô hình quảng cáo
+89: B. Mô hình phí giao dịch
+90: C. Mô hình phí đăng ký
+91: D. Cả a, b và c.
+92: 16. (0.200 Point)
+93: Một số website cẩn thận, sau khi hoàn thành thủ tục đặt hàng và chấp nhận thanh toán
+94: A. Người mua có thể được xem lại lần cuối trước khi đơn hàng có hiệu lực.
+95: B. Người mua coi như đã chấp nhận các thông tin đặt hàng và thanh toán
+96: C. Người mua không được phép sửa đổi thông tin
+97: D. cả a và b.
+98: 17. (0.200 Point)
+99: Tối ưu trải nghiệm khách hàng theo mô hình “Bánh đà FlyWheel lấy khách hàng làm trung
+100: tâm” gồm
+101: A. Thu hút
+102: B. Gắn kết
+103: C. Làm hài lòng khách hàng
+104: D. cả a, b và c.
+105: 18. (0.200 Point)
+106: Chức năng cơ bản của một website bán hàng trực tuyến là’
+107: A. Quản lý đơn hàng.
+108: B. Quản lý nhà cung cấp
+109: C. Quản lý đối thủ cạnh tranh
+110: D. Cả a và c
+111: 19. (0.200 Point)
+112: Mục tiêu cuối cùng của tối ưu hóa công cụ tìm kiếm (SEO) là
+113: A. Đưa trang web của doanh nghiệp (người bán) lên trang 1 của công cụ tìm kiếm
+114: B. Tăng lưu lượng truy cập vào website.
+115: C. Bán được hàng và tăng tỷ lệ chuyển đổi
+116: D. Cả a, b và c.
+117: 20. (0.200 Point)
+118: Về nội dung, website bán hàng trực tuyến cần có là
+119: A. Thông tin về hàng hóa
+120: B. Thông tin về chúng tôi
+121: C. Thông tin về đối thủ cạnh tranh
+122: D. Cả a và b
+123: 21. (0.200 Point)
+124: Đến thời điểm hiện nay, các website TMĐT nào được coi là có uy tín ở VN?
+125: A. Lazada
+126: B. Shoppe
+127: C. Tiki
+128: D. cả a, b và c
+129: 22. (0.200 Point)
+130: Nếu bán hàng trên các sàn giao dịch, doanh nghiệp hay người bán phải
+131: A. Có giấy phép đăng ký kinh doanh
+132: B. Đăng ký tài khoản (thành viên), mở cửa hàng (shop)
+133: C. Thiết lập các chức năng của shop, đăng sản phẩm và thông tin để chuẩn bị chào hàng và bán.
+134: D. Cả b và c
+135: 23. (0.200 Point)
+136: Công cụ tìm kiếm Google tìm kiếm doanh thu từ
+137: A. Phí đăng ký sử dụng dịch vụ
+138: B. Tiền bán hàng hoá
+139: C. Phí giao dịch
+140: D. Phí dịch vụ quảng cáo
+141: 24. (0.200 Point)
+142: Công cụ nào dưới đây được sử dụng để khách hàng tiềm năng?
+143: A. KOLs
+144: B. Email marketing
+145: C. Đăng ký nhận quà tặng Opt-in
+146: D. Cả a, b và c
+147: 25. (0.200 Point)
+148: Cty bạn đăng ký bán hàng trên Sàn thương mại điện tử, đối với Sàn TMĐT, đây là mô hình kinh
+149: doanh nào?
+150: A. Mô hình quảng cáo
+151: B. Mô hình phí giao dịch
+152: C. Mô hình phí đăng ký
+153: D. Mô hình bán hàng
+154: 26. (0.200 Point)
+155: Công ty dịch vụ truyền thông Viettel cung cấp dịch vụ Internet, truyền hình, đây là mô hình
+156: kinh doanh nào trong TMĐT.
+157: A. Mô hình quảng cáo
+158: B. Mô hình phí giao dịch
+159: C. Mô hình phí đăng ký
+160: D. Mô hình bán hàng
+161: 27. (0.200 Point)
+162: Trong thương mại điện tử, mô hình quảng cáo là:
+163: A. Doanh thu từ phí giao dịch
+164: B. Doanh thu từ phí đăng ký sử dụng dịch vụ
+165: C. Doanh thu của doanh nghiệp là tiền bán hàng hoá
+166: D. Doanh thu của doanh nghiệp là phí dịch vụ quảng cáo
+167: 28. (0.200 Point)
+168: Cty Minh Khai bán sách, đây là mô hình kinh doanh nào trong TMĐT.
+169: A. Mô hình quảng cáo
+170: B. Mô hình phí giao dịch
+171: C. Mô hình phí đăng ký
+172: D. Mô hình bán hàng
+173: 29. (0.200 Point)
+174: Phần lớn các giao dịch bán hàng qua website TMĐT, việc xác nhận bán hàng được thực hiện
+175: A. Tự động bằng phần mềm.
+176: B. Gọi điện thoại xác nhận
+177: C. Chuyển thông tin xác nhận qua email của người bán
+178: D. Cả b và c.
+179: 30. (0.200 Point)
+180: Quy trình mua bán hàng hóa trong TMĐT B2C, một cách chuyên nghiệp
+181: A. Người mua tìm kiếm người bán thông qua quảng cáo
+182: B. Người mua tìm kiếm trên công cụ tìm kiếm Google
+183: C. Người mua làm thủ tục đăng ký tài khoản, đăng nhập vào website để giao dịch.
+184: D. Cả a, b và c
+185: 1. (0.250 Point)Trong nguyên tắc trong luật mẫu về thương mại điện tử của UNCITRAL, pháp luật về bảo vệ người tiêu dùng phải hình thành trước luật mẫu được gọi là nguyên tắc gì?
+186: - Pháp luật về bảo vệ người tiêu dùng phải đi trước 
+187: 2. (0.250 Point)Quyền sở hữu sáng tạo các công trình, phát minh, tác phẩm văn học nghệ thuật, âm nhạc, thương hiệu, hình ảnh dùng trong kinh doanh thương mại được gọi là gì?
+188: - IP
+189: 3. (0.250 Point)Theo OECD đưa ra các hướng dẫn cơ bản cho việc xây dựng các qui tắc về sử dụng, xử lý các thông tin trực tuyến thì người kiểm soát dữ liệu có trách nhiệm tạo sự phù hợp với những biện pháp dựa trên các nguyên tắc được nêu được gọi là nguyên tắc gì?
+190: Nguyên tắc trách nhiệm giải trình
+191: 4. (0.250 Point)Sự khác biệt cơ bản của nó với Marketing truyền thống đó là sử dụng công cụ, khả năng thâm nhập thị trường, có tính tương tác, có khả năng cá biệt hoá được gọi là gì?
+192: - Củng cố quan hệ KH 
+193: 5. (0.250 Point)Một mạng lưới quảng cáo trực tuyến, do một đơn vị trung gian làm cầu nối giữa giữa khách hàng và doanh nghiệp trên internet được gọi là gì?
+194: Advertising network 
+195: 6. (0.250 Point)Trong Marketing trực tuyến, những khoản nào tiết kiệm tối thiểu chi phí và đem lại hiệu quả lớn hơn nhiều so với phương pháp gửi quảng cáo bằng thư truyền thống?
+196: - MKT trực tuyến sẽ đem lại hiệu quả hơn so với phương pháp gửi quảng cáo bằng thư truyền thống vì: không tem, không phong bì, không giấy và các chi phí khác.
+197: 7. (0.250 Point)Trong Marketing trực tuyến, khả năng mà xử lý mà một nhà marketing kiểm soát được khách hàng của họ qua màn hình máy tính là 30 giây được gọi là gì?
+198: - Khả năng xử lý thông tin nhanh 
+199: 8. (0.250 Point)Hình thức áp dụng các công cụ của công nghệ thông tin thay cho các công cụ thông thường để tiến hành các quá trình marketing được gọi là gì?
+200: MTT 
+201: 9. (0.250 Point)Trong Marketing trực tuyến, nhà marketing trực tuyến cần phải hiểu biết về các kỹ năng nào để ứng dụng trong công việc quản lý các phần cứng và phần mềm?
+202: - Khả năng xử lý thông tin nhanh 
+203: - Hiểu biết nhiều về CN
+204: - Khả năng quản lý thông tin tốt .
+205: 10. (0.250 Point)Thương mại điện tử không thể thực hiện được giữa người mua và người bán, nếu không có người thứ ba là 
+206: - Nhà cung cấp dịch vụ mạng.
+207: 11. (0.250 Point)Theo Philip Kotler, quá trình lập kế hoạch về sản phẩm, giá, phân phối và xúc tiến đối với sản phẩm, dịch vụ và ý tưởng để đáp ứng nhu cầu của tổ chức và cá nhân dựa trên phương tiện điện tử và Internet được gọi là gì?
+208: MTT
+209: 12. (0.250 Point)Trong thương mại điện tử, các chủ thể mua và bán không cần những điều kiện gì?
+210: - thời gia, không gian, khoảng cách địa lý.
+211: 13. (0.250 Point)Trong thương mại truyền thống, các bên mua và bán cần phải làm gì?
+212: - gặp nhua trực tiếp để giao dịch.
+213: 14. (0.250 Point)Trong hạn chế của thanh toán điện tử, rủi ro của chủ thẻ đối với thẻ tín dụng về vấn đề chỉ dựa vào mã PIN là như thế nào?
+214: - Bị ăn cắp thẻ cắp mã Pin và làm giả thẻ 
+215: 15. (0.250 Point)Nếu một trong những lợi ích của thanh toán điện tử đối với khách hàng?
+216: - Tiết kiệm thời gian, chi phí 
+217: - Thông tin liên lạc với NH nhanh hơn và hiệu quả hơn 
+218: 16. (0.250 Point)Nếu một trong những lợi ích của thanh toán điện tử đối với ngân hàng ?
+219: - Đa dạng hóa sản phẩm và dịch vụ 
+220: - Nâng cao lợi thế cạnh tranh 
+221: - Thực hiện chiến lược toàn cầu hóa.
+222: 17. (0.250 Point)Loại hình nào được coi như một cửa hàng trực tuyến hay cửa hàng ảo?
+223: - Trang web 
+224: 18. (0.250 Point)Trang đầu tiên khi nạp một URL, nó chứa các liên kết đến vùng riêng trong website được gọi là gì?
+225: - Trang chủ 
+226: 19. (0.250 Point)Địa chỉ trang web mà mọi người nhập vào thanh URL của trình duyệt để truy cập vào một website được gọi là gì?
+227: - Tên Miền
+228: 20. (0.250 Point)Sự kết nối của ít nhất hai máy tính nhằm mục đích dùng chung (chia sẻ) các nguồn tài nguyên được gọi là gì?
+229: - Mạng máy tính 
+230: 21. (0.250 Point)Tim Berners-Lee của CERN (the European Laboratory for Particle Physics – Phòng nghiên cứu Vật lý Hạt nhân Châu Âu) phát minh ra WWW, nó được viết tắt bởi từ gì ?
+231: World wide web
+232: 22. (0.250 Point)Một địa chỉ đơn nhất mà những thiết bị điện tử hiện nay đang sử dụng để nhận diện và liên lạc với nhau trên mạng máy tính bằng cách sử dụng giao thức Internet được gọi là gì ?
+233: - Địa chỉ IP
+234: 23. (0.250 Point)Đặc điểm nào của thương mại điện tử mà khách hàng sẽ có thể mua hàng linh hoạt, vượt qua giới hạn về địa điểm và thời gian ?
+235: - Đáp ứng tức thời Đáp ứng mọi lúc mọi nơi 
+236: 24. (0.250 Point)Đặc điểm nào của thương mại điện tử mà giá hàng hoá trên các site thương mại điện tử sẽ rất năng động, mỗi một khách hàng sẽ trả một giá khác nhau căn cứ trên nhiều nhân tố khác nhau ?
+237: - Giá cả linh hoạt 
+238: 25. (0.250 Point)Trong nguyên tắc trong luật mẫu về thương mại điện tử của UNCITRAL, truyền thông điện tử được coi là có những thuộc tính tương đương trao đổi tài liệu ở dạng văn bản, khi có những tiêu chuẩn xác định, tài liệu điện tử có thể coi là có giá trị pháp lý tương đương như tài liệu dạng văn bản được gọi là nguyên tắc gì?
+239: =>Nguyên tắc tương đương thuộc tính
+240: 26. (0.250 Point)Trong nguyên tắc trong luật mẫu về thương mại điện tử của UNCITRAL, luật phải được áp dụng đối với hình thức hợp đồng mà không đề cập đến nội dung trên cơ sở phải thỏa mãn những đòi hỏi pháp lý nhất định được gọi là nguyên tắc gì?
+241: =>Áp dụng về mặt hình thức hơn là quan tâm tới nội dung
+242: 27. (0.250 Point)Trong nguyên tắc trong luật mẫu về thương mại điện tử của UNCITRAL, các bên trong một hợp đồng có thể tự do thỏa thuận hình thức hợp đồng ở dạng thông điệp dữ liệu, tuy nhiên điều này không dẫn đến việc thay đổi những điều khoản cơ bản của hợp đồng được gọi là nguyên tắc gì?
+243: =>Nguyên tắc tự do thỏa thuận hợp đồng
+244: 28. (0.250 Point)Tổ chức WIPO với 179 nước thành viên chịu trách nhiệm hình thành khuôn khổ pháp luật và chính sách ở tầm quốc tế để tăng cường việc tạo ra và bảo vệ sở hữu trí tuệ được gọi là gì?
+245: - Tổ chức sở hữu và bảo vệ trí tuệ 
+246: 29. (0.250 Point)Tất cả các hình thức giao dịch được thực hiện thông qua mạng máy tính có liên quan đến chuyển quyền sở hữu về sản phẩm hay dịch vụ gọi là gì?
+247: - Thương mại điện tử 
+248: 30. (0.250 Point)Hình thức giao dịch thương mại điện tử gồm thành phần tham gia hoạt động thương mại là các doanh nghiệp, tức người mua và người bán đều là doanh nghiệp được gọi là hình thức gì?
+249: B2B
+250: 31. (0.250 Point)Hình thức giao dịch giữa doanh nghiệp với cơ quan chính quyền trong thương mại điện tử được gọi là gì?
+251: B2G
+253: 32. (0.250 Point)Hình thức giao dịch thương mại điện tử gồm có thành phần tham gia hoạt động thương mại gồm người bán là doanh nghiệp và người mua là người tiêu dùng được gọi là gì?
+254: B2C
+255: 33. (0.250 Point)Đặc điểm nào của thương mại điện tử mà các khách hàng thương mại điện tử có thể sẽ nhận được sản phẩm mà họ đặt mua ngay trong ngày?
+256: Đáp ứng tức thời.
+257: 34. (0.250 Point)Phần quan trọng rất cần thiết cho kế hoạch kinh doanh thương mại điện tử, chỉ nên viết sau khi đã hoàn thành bản thân kế hoạch là phần nào?
+258: Tóm tắt kế hoạch
+259: 35. (0.250 Point)Mạng đường trục bao phủ một khu vực đô thị và thường được quản lý theo quy định của chính quyền địa phương hay chính phủ được gọi là gì?
+260: Mạng khu vực đô thị 
+261: 36. (0.250 Point)Một nhóm các máy tính trong một phòng, một công ty hay một tòa nhà được nối với nhau thành một mạng được gọi là gì?
+262: Mạng cục bộ Lan 
+263: TỰ LUẬN
+264: 37. (0.250 Point)Thương mại điện tử là gì? Phân tích các cấp độ website thương mại điện tử theo kỹ thuật loại sáu cấp độ ? Cho ví dụ để làm rõ?
+265: Thương mại điện tử là khả năng phân phối sản phẩm, dịch vụ, thông tin hoặc thanh toán thông qua một mạng ví dụ Internet hay World Wide Web.
+266: Cách phân chia thứ nhất: 6 cấp độ phát triển TMĐT:
+267: Cấp độ 1 - hiện diện trên mạng: doanh nghiệp có website trên mạng. Ở mức độ này,
+268: website rất đơn giản, chỉ là cung cấp một thông tin về doanh nghiệp và sản phẩm
+269: mà không có các chức năng phức tạp khác.
+270: Cấp độ 2 – có website chuyên nghiệp: website của doanh nghiệp có cấu trúc phức
+271: tạp hơn, có nhiều chức năng tương tác với người xem, hỗ trợ người xem, người xem
+272: có thể liên lạc với doanh nghiệp một cách thuận tiện.
+273: Cấp độ 3 - chuẩn bị TMĐT: doanh nghiệp bắt đầu triển khai bán hàng hay dịch vụ
+274: qua mạng. Tuy nhiên, doanh nghiệp chưa có hệ thống cơ sở dữ liệu nội bộ để phục
+275: vụ các giao dịch trên mạng. Các giao dịch còn chậm và không an toàn.
+276: Cấp độ 4 – áp dụng TMĐT: website của DN liên kết trực tiếp với dữ liệu trong
+277: mạng nội bộ của DN, mọi hoạt động truyền dữ liệu được tự động hóa, hạn chế sự
+278: can thiệp của con người và vì thế làm giảm đáng kể chi phí hoạt động và tăng hiệu
+279: quả.
+280: Cấp độ 5 - TMĐT không dây: doanh nghiệp áp dụng TMĐT trên các thiết bị không
+281: dây như điện thoại di động, Palm (máy tính bỏ túi)v.v... sử dụng giao thức truyền
+282: không dây WAP (Wireless Application Protocol).
+283: Cấp độ 6 - cả thế giới trong một máy tính: chỉ với một thiết bị điện tử, người ta có
+284: thể truy cập vào một nguồn thông tin khổng lồ, mọi lúc, mọi nơi và mọi loại thông
+285: tin (hình ảnh, âm thanh, phim, v.v...) và thực hiện các loại giao dịch.
+286: 38. (0.250 Point) Nêu các đặc điểm của thương mại điện tử? Phân tích tính cá nhân hóa, sự đáp ứng tức thời, giá cả linh hoạt, đáp ứng mọi lúc, mọi nơi và trợ lý thông minh trong thương mại điện tử? Cho ví dụ để làm rõ các trường hợp?
+287: a.Tính cá nhân hoá
+288: Trong tương lai, tất cả các trang web thương mại điện tử thành công sẽ phân biệt được khách hàng, không phải phân biệt bằng tên mà bằng những thói quen mua hàng của khách. Những trang web thương mại điện tử thu hút khách hàng sẽ là những trang có thể cung cấp cho khách hàng tính tương tác và tính cá nhân hoá cao. Chúng sẽ sử dụng dữ liệu về thói quen kích chuột của khách hàng để tạo ra những danh mục động trên “đường kích chuột” của họ. Về cơ bản, mỗi khách hàng sẽ xem và tìm ra sự khác nhau giữa các site. 
+289: Ví dụ, nếu bạn thường mua sách về nấu ăn, trang web có thể đề xuất các sách mới nhất trong lĩnh vực đó, tùy chỉnh theo sở thích cá nhân của bạn.
+290: b.Đáp ứng tức thời
+291: Các khách hàng thương mại điện tử có thể sẽ nhận được sản phẩm mà họ đặt mua ngay trong ngày. Một nhược điểm chính của thương mại điện tử doanh nghiệp người tiêu dung (B2C) là khách hàng trên mạng phải mất một số ngày mới nhận được hàng đặt mua. Các khách hàng đã quen mua hàng ở thế giới vật lý, nghĩa là họ đi mua hàng và có thể mang luôn hàng về cùng họ. Họ xem xét, họ mua và họ mang chúng về nhà. Hầu hết những hàng hoá bán qua thương mại điện tử (không kể những sản phẩm kỹ thuật số như phần mềm) đều không thể cung cấp trực tiếp.
+292: Trong tương lai, các công ty thương mại điện tử sẽ giải quyết được vấn đề này thông qua các chi nhánh ở các địa phương. Sau khi khách hàng chọn sản phẩm, các site thương mại điện tử sẽ gửi yêu cầu của người mua tới những cửa hàng gần nhất với nhà hoặc cơ quan của họ. Các site thương mại điện tử khác sẽ giao hàng từ một chi nhánh địa phương ngay trong ngày hôm đó. Giải pháp này giải quyết được 2 vấn đề đặt ra đối với khách hàng, đó là: Giá vận chuyển cao và thời gian vận chuyển lâu. 
+293: Ví dụ, bạn có thể hỏi về thông số kỹ thuật của một sản phẩm hoặc yêu cầu hướng dẫn vận
+294: chuyển nhanh.
+295: c.Giá cả linh hoạt
+296: Trong tương lai, giá hàng hoá trên các site thương mại điện tử sẽ rất năng động. Mỗi một
+297: khách hàng sẽ trả một giá khác nhau căn cứ trên nhiều nhân tố: Khách hàng đã mua bao
+298: nhiêu sản phẩm của công ty trước đây? Khách hàng đã xem bao nhiêu quảng cáo đặt trên
+299: trang web của công ty? Khách hàng đặt hàng từ đâu? Khách hàng có thể giới thiệu trang
+300: web của công ty với bao nhiêu người bạn của mình? Mức độ sẵn sàng tiết lộ thông tin cá
+301: nhân của khách hàng với công ty? Những điều này không khác lắm với một chuyến bay
+302: công tác: Trên chuyến bay này, mọi hành khách đều bay trên cùng một chuyến bay từ
+303: New York đến San Francisco nhưng trả các mức giá vé khác nhau. Chính sách giá của
+304: các công ty như Priceline.com và eBay.com hiện đang đi theo xu hướng này.
+305: Ví dụ, một trang web bán hàng trực tuyến có thể có chương trình khách hàng thân thiết,
+306: trong đó khách hàng sẽ nhận được mã giảm giá hoặc ưu đãi đặc biệt dựa trên mức độ mua
+307: sắm của họ.
+308: d.Đáp ứng mọi nơi, mọi lúc
+309: Trong tương lai, khách hàng sẽ có thể mua hàng ở mọi nơi, mọi lúc. Bỏ qua khả năng dự
+310: đoán về những mô hình mua. Bỏ qua yếu tố về địa điểm và thời gian. Xu hướng này sẽ
+311: được thực hiện thông qua các thiết bị truy nhập Internet di động. Các thiết bị thương mại
+312: điện tử di động như những chiếc điện thoại di động đời mới nhất có khả năng truy nhập
+313: được mạng Internet được sử dụng hết sức rộng rãi.
+314: Ví dụ như điện thoại di động hoặc máy tính bảng. Bạn có thể mua sắm và thực hiện giao
+315: dịch bất kỳ lúc nào và ở bất kỳ địa điểm nào có kết nối internet.
+316: e. Trợ lý thông minh
+317: Những phần mềm thông minh sẽ giúp khách hàng tìm ra những sản phẩm tốt nhất và giá
+318: cả hợp lý nhất. Những “trợ lý thông minh” hoạt động độc lập này được cá nhân hoá và
+319: chạy 24 giờ/ngày. Khách hàng sẽ sử dụng những “trợ lý thông minh” này để tìm ra giá cả
+320: hợp lý nhất cho một chiếc máy tính hoặc một chiếc máy in. Các công ty sử dụng các “trợ
+321: lý” này thay cho các hoạt động mua sắm của con người. Ví dụ, một công ty có thể sử
+322: dụng một “trợ lý thông minh” để giám sát khối lượng
+323: và mức độ sử dụng hàng trong kho và tự động đặt hàng khi lượng hàng trong kho đã giảm
+324: xuống ở mức tới hạn. “Trợ lý thông minh” sẽ tự động tập hợp các thông tin về các sản
+325: phẩm và đại lý phù hợp với nhu cầu của công ty, quyết định tìm nhà cung cấp nào và sản
+326: phẩm, chuyển những điều khoản giao dịch tới những người cung cấp này, và cuối cùng là
+327: gửi đơn đặt hàng và đưa ra những phương pháp thanh toán tự động.
+328: Ví dụ, khi bạn đặt câu hỏi về một sản phẩm cụ thể, trợ lý thông minh có thể cung cấp
+329: thông tin chi tiết về sản phẩm, như mô tả, đánh giá của khách hàng và giá cả. Bạn có thể
+330: tương tác với trợ lý thông minh qua trò chuyện trực tuyến hoặc qua ứng dụng di động.
+331: 39. (0.250 Point)Phân tích các thành phần cơ bản của một kế hoạch kinh doanh thương mại điện tử? Cho ví dụ để làm rõ?
+332: =>a.Soạn thảo kế hoạch kinh doanh thương mại điện tử
+333: Soạn kế hoạch kinh doanh ĐT đòi hỏi doanh nghiệp phải thận trọng và đầu tư công sức
+334: thích hợp cho việc này. Trước hết, phải xác định chiến lược TMĐT tức là nhằm vào mục
+335: tiêu đầu tư kinh doanh lâu dài; hơn là đầu tư ngắn. Kế hoạch kinh doanh là khâu quan
+336: trọng không thể bỏ qua đối với một doanh nghiệp. Kế hoạch kinh doanh TMĐT không
+337: đòi hỏi phải có hình thức khác với kế hoạch kinh doanh thông thường. Tuy vậy, kế hoạch
+338: này cũng cần nêu các nét riêng về:
+339: Đặc trưng của môi trường kinh doanh trực tuyến khác môi trường khác về cạnh tranh,
+340: thiết kế sản phẩm, dịch vụ, quảng cáo, mua bán và vai trò giá trị gia tăng của thông tin
+341: đối với mọi quá trình và khâu kinh doanh trên mạng.
+342: Năng lực kỹ thuật và thương mại cho việc triển khai kinh doanh TMĐT tại môi trường
+343: kinh doanh, nhấn mạnh kiến thức về loại môi trường này.
+344: Sẵn sàng về sản phẩm và dịch vụ thích hợp cho kinh doanh TMĐT. Trước khi soạn thảo
+345: chi tiết và hoàn thành kế hoạch kinh doanh chúng ta nên xem xét cẩn thận các vấn đề sau:
+346: Quản lý: Nên phân tích kỹ lưỡng tất cả các nhân tố và thực tiễn của doanh nghiệp để đảm
+347: chắc rằng quyết định về việc chuyển sang kinh doanh TMĐT sẽ được sự ủng hộ tích cực
+348: của mọi cấp quản lý trong doanh nghiệp. Soạn chi tiết một kế hoạch hành động trong đó
+349: có sự phân công cụ thể ai làm việc gì.
+350: Nhân lực và đào tạo: Việc đầu tiên là phải gắn kết Internet vào hoạt động doanh nghiệp.
+351: Giao trách nhiệm cụ thể cho các nhóm cộng tác xây dựng cơ sở kỹ thuật cho kinh doanh
+352: TMĐT (thiết kế hệ thống, nội dung, viết chương trình, tạo Web, bổ sung nội dung và
+353: hình
+354: thức, bảo trì kỹ thuật, xúc tiến, quan hệ khách hàng, trả lời yêu cầu khách hàng, hợp đồng
+355: và giao hàng, dịch vụ...).
+356: Một kế hoạch kinh doanh tốt phải xác định hợp lý tiềm năng của việc bán sản phẩm, dịch
+357: vụ trên thị trường điện tử, xác định được độ lớn đầu tư cần cho việc tạo dựng, duy trì và
+358: đạt tăng trưởng trong khu vực kinh doanh. Kế hoạch kinh doanh cũng cần đưa ra các chỉ
+359: tiêu đánh giá cụ thể, các dự kiến thu nhập, hoàn vốn và chỉ tiêu tài chính khác.
+360: b.Các phần cơ bản của một kế hoạch kinh doanh TMĐT:
+361: Tóm tắt kế hoạch. Đây là phần quan trọng rất cần thiết cho kế hoạch kinh doanh, chỉ nên
+362: viết sau khi đã hoàn thành bản thân kế hoạch. Các nhà đầu tư và ngân hàng phần nhiều
+363: chỉ đọc phần này, do đó nó phải được viết thật rõ ràng, ngắn gọn, chính xác, cuốn hút,
+364: nêu bật các vấn đề cần thiết của kế hoạch. Hãy nêu bật những điểm mạnh và thành công
+365: của mình, ví dụ mình hơn các đối thủ cạnh tranh như thế nào khi mình lên mạng, mình có
+366: những nguồn lực gì đặc biệt...
+367: Mục tiêu. Xác định các mục tiêu dài hạn, trình bày rõ vì sao kinh doanh TMĐT lại được
+368: sử dụng để đạt tới các mục tiêu đó.
+369: Định hướng kinh doanh trên mạng. Nêu những loại sản phẩm, dịch vụ, giải pháp mà
+370: doanh nghiệp sẽ kinh doanh thành công trên mạng, giải thích tai sao doanh nghiệp sẽ
+371: thành công trên mạng...
+372: Các tiêu chuẩn đánh giá. Gồm số khách tham quan trang Web của mình trong một tháng,
+373: số trang được khách xem, tỷ lệ số khách quay lại trong tháng, số lượng giao tiếp, loại
+374: giao tiếp, kết quả giao tiếp, số giao dịch, số lượng các đơn đặt hàng, lượng bán qua mạng
+375: hoặc liên quan tới mạng...
+376: Xúc tiến thương mại. Làm gì và làm thế nào để xúc tiến, khuyến khích Website của mình
+377: Phân tích thị trường. Cơ hội thị trường cho kinh doanh TMĐT của doanh nghiệp là gì,
+378: làm sao có thể mau chóng tạo chỗ đứng và lợi thế trong đó
+379: Tình hình cạnh tranh. Phân tích cụ thể và càng rộng càng tốt về tình hình cạnh tranh hiện
+380: nay về kinh doanh TMĐT . Cần xác định ngay trình độ và khả năng cạnh tranh của bản
+381: thân doanh nghiệp mình. Nêu danh sách những Website mạnh và yếu nhất đang cạnh tranh với doanh nghiệp mình, nêu dự đoán về thị phần cho từng đối thủ cạnh tranh, các mặt mạnh, yếu, cơ hội, nguy cơ của họ. Xu thế phát triển của thị trường là gì?...
+382: Khách hàng mục tiêu. Bức tranh rõ nét về dân cư và xã hội học của các nhóm khách hàng
+383: mà doanh nghiệp định nhằm tới? Tại sao doanh nghiệp lại tin tưởng rằng sẽ có khách
+384: mua hàng hóa, dịch vụ.. của mình qua mạng?
+385: Nghiên cứu nhóm mẫu. Trình bày kết quả nghiên cứu nhóm mẫu trong thị trường định
+386: hướng của mình, nêu các phản hồi cụ thể và phân tích hành vi tổng thể và chi tiết của
+387: nhóm này để có hình dung tốt hơn về khách hàng và thị trường.
+388: Đánh giá rủi ro. Dự liệu cụ thể về khu vực thị trường và kết quả của doanh nghiệp trong
+389: ba hoặc năm năm tới, cả trên mạng và bên ngoài mạng .
+390: Chiến lược Marketing.
+391: Nội dung. Xác định những phần nội dung nào được đưa lên trang Web phục vụ trực tiếp
+392: và gián tiếp các hoạt động kinh doanh TMĐT
+393: Quảng cáo. Cần chú ý mọi yếu tố đã trở thành tiêu chuẩn quốc tế và nhãn hiệu, thương
+394: hiệu, đóng gói, tiếng nước ngoài, quan hệ khách hàng, các quảng cáo liên quan tới các
+395: vấn đề văn hóa riêng và các rào cản ngôn ngữ Quan hệ công cộng. Cần có chương trình
+396: phù hợp, lôgíc, được bổ xung theo định kỳ. Nên tạo các mảng tin điện tử, viết bài cho các
+397: báo và các phương tiện truyền thông, họp báo, hội nghị khách hàng, tổ chức thảo luận
+398: trên mạng...
+399: Chiến lược bán hàng.
+400: Giá lợi nhuận. Thiết kế chi tiết chiến lược giá cho toàn bộ hoạt động bán hàng, phân phối
+401: và mua bán trên mạng.
+402: Xử lý phiếu đặt hàng. Đặt hàng được tiến hành thế nào (qua điện thoại, fax, thư tín,
+403: Internet)...? Thanh toán xảy ra thế nào (qua điện thoại, fax, thư tín, Internet)...?
+404: Phương pháp phân phối. Định ra tất cả các cách phân phối ra ngoài thế nào, khi nào nhận
+405: và gửi các loại phiếu đặt hàng và các chứng từ khác như thế nào?
+406: Chiến thuật bán hàng. Xác định xem việc bán hàng sẽ xảy ra riêng trên mạng hay sẽ kết
+407: hợp với các cách bán hàng thông thường khác?
+408: Quan hệ kinh doanh. Nêu kế hoạch về các loại quan hệ đối tác, đại lý, quốc tế... bao gồm
+409: các nhân tố đa văn hóa.
+410: Kế hoạch sản xuất. Nêu sản lượng ban đầu ( kể cả việc viết phần mềm), các yêu cầu mở
+411: rộng, phát triển, các nguồn lực, nơi sản xuất... là hệ quả của việc áp dụng kinh doanh
+412: TMĐT
+413: Kế hoạch tài chính. Nên cụ thể, thực tiễn và khiêm tốn
+414: Kinh phí cho 12 tháng đầu. Thiết kế chi tiết kinh phí cho năm đầu tiên khi bắt đầu bước
+415: sang kinh doanh TMĐT, kể cả kinh phí dự phòng.
+416: Tính toán về dòng tiền mặt. Tính toán so sánh dòng tiền mặt và thu - chi Kế hoạch năm
+417: năm. Nêu bảng tính toán lỗ - lãi ( Profit and Loss Statement)
+418: Bảng cân đối. Trình bày khả năng tài chính, khả năng chi trả đúng hạn và vị thế tiền mặt
+419: của doanh nghiệp.
+420: Phân tích điểm hòa vốn. Nêu số lượng các sản phẩm, dịch vụ... cần bán để đạt điểm hòa
+421: vốn
+422: Nguồn vốn và việc sử dụng vốn. Nêu nguồn vốn và cách sử dụng vốn để phát triển kinh
+423: doanh, xuất khẩu.
+424: Sử dụng tài sản. Lợi nhuận và khoản vay sẽ được sử dụng thế nào?
+425: Kết luận. Nêu một lần nữa các mục tiêu kinh doanh TMĐT , tổng số vốn cần dùng, lợi
+426: nhuận dự báo, lịch trình thực hiện và các ghi chú chung.
+427: Phụ lục. Bao gồm tất cả lý lịch của tất cả những người tham gia chủ chốt vào việc thực
+428: hiện kế hoạch này. Cũng cần có hồ sơ về các khách hàng chính và tiềm năng, các hợp
+429: đồng quan trọng, các số liệu điều tra thị trường, các bản vẽ, các văn bản pháp lý, các loại
+430: hợp đồng, thỏa thuận, các tính toán tài chính cho kế hoạch này.
+431: 40. (0.250 Point)
+432: Phân tích các nguyên tắc của OECD ( Organization for Economic Cooperation and
+433: Development ) đưa ra các hướng dẫn cơ bản cho việc xây dựng các qui tắc về sử dụng, xử lý các thông tin trực tuyến. Cho ví dụ để làm rõ? Viết không quá hai trang giấy A4.
+434: - Nguyên tắc bảo vệ bí mật thông tin: Thông tin cá nhân có thể dành được,
+435: bị tiết lộ và sử dụng chỉ theo những cách tôn trọng bí mật cá nhân. 
+436: - Nguyên tắc toàn vẹn thông tin: Thông tin cá nhân không bị thay đổi hoặc
+437: hủy đi một cách trái phép. 
+438: Ví dụ:
+439: Website thương mại điện tử cần có thông báo rõ ràng về việc thu thập thông tin cá nhân của khách hàng như tên, địa chỉ, email, số điện thoại,... Mục đích thu thập thông tin cần được nêu rõ (ví dụ: để giao hàng, gửi hóa đơn, hỗ trợ khách hàng...) và khách hàng phải đồng ý trước khi cung cấp thông tin.
+440: Mạng xã hội cần có chính sách bảo mật rõ ràng về cách thức thu thập, sử dụng và lưu trữ thông tin cá nhân của người dùng. Người dùng có quyền kiểm soát thông tin cá nhân của mình và có thể yêu cầu xóa thông tin nếu muốn.
+442: - Nguyên tắc chất lượng thông tin: Thông tin phải chính xác, đúng thời
+443: gian, hoàn thiện và liên quan tới mục đích mà nó được cung cấp hoặc sử
+444: dụng. 
+445: Ví dụ:
+446: Tin tức trên báo mạng cần được kiểm chứng kỹ lưỡng trước khi đăng tải để đảm bảo tính chính xác. Nguồn tin cần được ghi rõ ràng và người đọc có thể truy cập nguồn tin gốc để kiểm tra.
+447: Trang web bán hàng trực tuyến cần cung cấp thông tin đầy đủ và chính xác về sản phẩm, dịch vụ, giá cả, chính sách đổi trả,... để người mua hàng có thể đưa ra quyết định mua hàng sáng suốt.
+449: - Nguyên tắc giới hạn thu thập: Dữ liệu cá nhân phải có được bằng phương
+450: tiện hợp pháp và trong trường hợp thích hợp với kiến thức và sự thống nhất
+451: về đối tượng dữ liệu. 
+452: Ví dụ:
+453: Mạng xã hội không nên yêu cầu người dùng cung cấp quá nhiều thông tin cá nhân không liên quan đến việc sử dụng mạng xã hội.
+454: Website nên cho phép người dùng lựa chọn chỉ cung cấp những thông tin cần thiết để sử dụng dịch vụ.
+456: - Nguyên tắc cụ thể mục đích: Dữ liệu cá nhân phải được bảo vệ một cách
+457: hợp lý chống lại các nguy cơ giống như mất hoặc việc truy cập trái phép,
+458: việc phá hủy, sử dụng, thay đổi hoặc tiết lộ dữ liệu.
+459: Ví dụ:
+460: Thông tin cá nhân của khách hàng thu thập được khi mua hàng trực tuyến không được phép sử dụng để gửi thư quảng cáo mà không có sự đồng ý của khách hàng.
+461: Dữ liệu cá nhân của người dùng thu thập được trên mạng xã hội không được phép bán cho các bên thứ ba mà không có sự đồng ý của người dùng.
+462:  - Nguyên tắc minh bạch: cần có chính sách cởi mở phù hợp với sự phát triển,
+463: thực tiễn đồng thời cần có chính sách đối với dữ liệu cá nhân. - Nguyên tắc trách nhiệm giải trình: Người kiểm soát dữ liệu có trách nhiệm tạo sự phù hợp với những biện pháp dựa trên các nguyên tắc được nêu.
+464: Ví dụ:
+465: Website cần có trang chính sách bảo mật rõ ràng, dễ hiểu, cung cấp đầy đủ thông tin về cách thức thu thập, sử dụng và lưu trữ thông tin cá nhân của người dùng.
+466: Doanh nghiệp cần có quy trình rõ ràng để xử lý các yêu cầu truy cập, chỉnh sửa hoặc xóa thông tin cá nhân của khách hàng.
+469: Câu 1 : Thương mại điện tử là gì? Phân tích các cấp độ website thương mại điện tử theo kỹ thuật loại sáu cấp độ ? Cho ví dụ để làm rõ?
+470: Thương mại điện tử là khả năng phân phối sản phẩm, dịch vụ, thông tin hoặc thanh toán thông qua một mạng ví dụ Internet hay World Wide Web.
+471: 6 cấp độ phát triển TMĐT:
+472: Cấp độ 1 - hiện diện trên mạng: doanh nghiệp có website trên mạng. Ở mức độ này,
+473: website rất đơn giản, chỉ là cung cấp một thông tin về doanh nghiệp và sản phẩm
+474: mà không có các chức năng phức tạp khác.
+475: Cấp độ 2 – có website chuyên nghiệp: website của doanh nghiệp có cấu trúc phức
+476: tạp hơn, có nhiều chức năng tương tác với người xem, hỗ trợ người xem, người xem
+477: có thể liên lạc với doanh nghiệp một cách thuận tiện.
+478: Cấp độ 3 - chuẩn bị TMĐT: doanh nghiệp bắt đầu triển khai bán hàng hay dịch vụ
+479: qua mạng. Tuy nhiên, doanh nghiệp chưa có hệ thống cơ sở dữ liệu nội bộ để phục
+480: vụ các giao dịch trên mạng. Các giao dịch còn chậm và không an toàn.
+481: Cấp độ 4 – áp dụng TMĐT: website của DN liên kết trực tiếp với dữ liệu trong
+482: mạng nội bộ của DN, mọi hoạt động truyền dữ liệu được tự động hóa, hạn chế sự
+483: can thiệp của con người và vì thế làm giảm đáng kể chi phí hoạt động và tăng hiệu
+484: quả.
+485: Cấp độ 5 - TMĐT không dây: doanh nghiệp áp dụng TMĐT trên các thiết bị không
+486: dây như điện thoại di động, Palm (máy tính bỏ túi)v.v... sử dụng giao thức truyền
+487: không dây WAP (Wireless Application Protocol).
+488: Cấp độ 6 - cả thế giới trong một máy tính: chỉ với một thiết bị điện tử, người ta có
+489: thể truy cập vào một nguồn thông tin khổng lồ, mọi lúc, mọi nơi và mọi loại thông
+490: tin (hình ảnh, âm thanh, phim, v.v...) và thực hiện các loại giao dịch.
+491: Câu 2 : Nêu các đặc điểm của thương mại điện tử? Phân tích tính cá nhân hóa, sự đáp ứng tức thời, giá cả linh hoạt, đáp ứng mọi lúc, mọi nơi và trợ lý thông minh trong thương mại điện tử? Cho ví dụ để làm rõ các trường hợp?
+492: Thương mại điện tử (TMĐT) là hình thức mua bán hàng hóa và dịch vụ qua Internet. Các đặc điểm nổi bật bao gồm:
+493: a. Tính cá nhân hóa
+494:  • Các trang web TMĐT ghi nhớ thói quen mua sắm của từng khách hàng.
+495:  • Gợi ý sản phẩm phù hợp với sở thích cá nhân.
+496: Ví dụ: Nếu bạn hay mua sách nấu ăn, trang sẽ giới thiệu các sách mới về nấu ăn.
+497: b. Đáp ứng tức thời
+498:  • Trong tương lai, khách hàng có thể nhận hàng trong ngày.
+499:  • Hệ thống sẽ chọn cửa hàng gần nhất để giao nhanh.
+500: Ví dụ: Bạn mua hàng online buổi sáng và nhận hàng buổi chiều cùng ngày.
+501: c. Giá cả linh hoạt
+502:  • Giá sản phẩm thay đổi theo từng khách hàng.
+503:  • Dựa vào lịch sử mua sắm, vị trí, mức độ trung thành.
+504: Ví dụ: Khách hàng thân thiết nhận mã giảm giá riêng.
+505: d. Đáp ứng mọi nơi, mọi lúc
+506:  • Mua sắm bất kỳ lúc nào, bất kỳ nơi đâu qua điện thoại, máy tính bảng.
+507:  • Không phụ thuộc thời gian và địa điểm.
+508: Ví dụ: Bạn có thể đặt hàng lúc 10h đêm bằng điện thoại
+509: e. Trợ lý thông minh
+510:  • Phần mềm tự động tìm giá tốt nhất, sản phẩm phù hợp nhất.
+511:  • Hoạt động 24/7, giúp tiết kiệm thời gian và chi phí
+512: Ví dụ: Trợ lý so sánh giá máy in trên nhiều website và đề xuất nơi rẻ nhất.
+513: Câu 3 : Phân tích các thành phần cơ bản của một kế hoạch kinh doanh thương mại điện tử? Cho ví dụ để làm rõ?
+514: a.Soạn thảo kế hoạch kinh doanh thương mại điện tử
+515: - Phải xác định chiến lược TMĐT tức là nhằm vào mục tiêu đầu tư kinh doanh lâu dài hơn là đầu tư ngắn. 
+516: - Nêu các nét riêng về:
+517: + Đặc trưng của môi trường kinh doanh trực tuyến 
+518: + Năng lực kỹ thuật và thương mại cho việc triển khai kinh doanh TMĐT
+519: + Sẵn sàng về sản phẩm và dịch vụ thích hợp cho kinh doanh TMĐT. 
+520: b.Các phần cơ bản của một kế hoạch kinh doanh TMĐT:
+521: 1. Tóm tắt kế hoạch
+522:  • Viết sau cùng nhưng đặt ở đầu bản kế hoạch.
+523:  • Trình bày ngắn gọn các điểm nổi bật: mục tiêu, lợi thế cạnh tranh, tiềm năng phát triển.
+524:  Ví dụ: Doanh nghiệp có đội ngũ kỹ thuật mạnh và sản phẩm phù hợp với TMĐT.
+525: 2. Mục tiêu
+526:  • Xác định mục tiêu dài hạn.
+527:  • Trình bày lý do chọn TMĐT để đạt mục tiêu đó.
+528:  Ví dụ: Tăng doanh thu online lên 30% trong 2 năm
+529: 3. Định hướng kinh doanh trên mạng
+530:  • Nêu rõ sản phẩm/dịch vụ sẽ bán online.
+531:  • Giải thích lý do có thể thành công khi kinh doanh qua mạng.
+532: Ví dụ: Bán mỹ phẩm vì dễ vận chuyển và nhu cầu tìm hiểu online cao.
+533: 4. Tiêu chuẩn đánh giá
+534:  • Số liệu để theo dõi hiệu quả: lượng truy cập, đơn hàng, tỷ lệ quay lại, giao dịch thành công…
+535:  Ví dụ: Mục tiêu có 10.000 lượt truy cập/tháng và 5% chuyển đổi đơn hàng
+536: 5. Xúc tiến thương mại
+537:  • Các cách thu hút khách hàng: quảng cáo online, khuyến mãi, SEO, mạng xã hội…
+538: Ví dụ: Chạy quảng cáo Facebook và Google Ads để tăng nhận diện.6. Phân tích thị trường
+539:  • Cơ hội thị trường, tiềm năng phát triển và cách chiếm lĩnh thị phần.
+540: Ví dụ: Ngành hàng thời trang online đang tăng trưởng nhanh ở Việt Nam
+541: 7. Tình hình cạnh tranh
+542:  • Đánh giá đối thủ, thị phần, điểm mạnh – yếu, cơ hội – nguy cơ của họ.
+543: Ví dụ: Đối thủ A có giá rẻ nhưng giao hàng chậm – là cơ hội để cạnh tranh về dịch vụ
+544: 8. Khách hàng mục tiêu
+545:  • Xác định rõ nhóm khách hàng theo độ tuổi, giới tính, thu nhập, sở thích…
+546: Ví dụ: Nữ, 25–35 tuổi, sống ở thành thị, mua sắm thường xuyên qua mạn
+547: 9. Nghiên cứu nhóm mẫu
+548: Phân tích hành vi mua sắm, phản hồi từ khảo sát để hiểu rõ thị trường.
+549: Ví dụ: 80% nhóm khảo sát thích nhận thông tin khuyến mãi qua email. 
+550: 10. Quản lý – Nhân lực – Kỹ thuật
+551:  • Có sự hỗ trợ của lãnh đạo, phân công rõ ràng công việc.
+552:  • Đội ngũ kỹ thuật đảm nhiệm: thiết kế web, bảo trì, hỗ trợ khách hàng…
+553: Ví dụ: 1 nhóm kỹ thuật quản lý website, 1 nhóm xử lý đơn hàng.
+554: Câu 4 : Phân tích các nguyên tắc của OECD ( Organization for Economic Cooperation and Development ) đưa ra các hướng dẫn cơ bản cho việc xây dựng các qui tắc về sử dụng, xử lý các thông tin trực tuyến. Cho ví dụ để làm rõ? Viết không quá hai trang giấy A4.
+555: - Nguyên tắc bảo vệ bí mật thông tin: Thông tin cá nhân có thể dành được,bị tiết lộ và sử dụng chỉ theo những cách tôn trọng bí mật cá nhân.
+556: - Nguyên tắc toàn vẹn thông tin: Thông tin cá nhân không bị thay đổi hoặc hủy đi một cách trái phép.
+557: Ví dụ:
+558: Website thương mại điện tử cần có thông báo rõ ràng về việc thu thập thông tin cá nhân của khách hàng để giao hàng, gửi hóa đơn, hỗ trợ khách hàng... và khách hàng phải đồng ý trước khi cung cấp thông tin.
+559: - Nguyên tắc chất lượng thông tin: Thông tin phải chính xác, đúng thời gian, hoàn thiện và liên quan tới mục đích mà nó được cung cấp hoặc sử dụng.
+560: Ví dụ:
+561: Nguồn tin cần được ghi rõ ràng và người đọc có thể truy cập nguồn tin gốc để kiểm tra.
+562: - Nguyên tắc giới hạn thu thập: Dữ liệu cá nhân phải có được bằng phương tiện hợp pháp và trong trường hợp thích hợp với kiến thức và sự thống nhất về đối tượng dữ liệu.
+563: Ví dụ:
+564: Mạng xã hội không nên yêu cầu người dùng cung cấp quá nhiều thông tin cá nhân không liên quan đến việc sử dụng mạng xã hội.
+565: - Nguyên tắc cụ thể mục đích: Dữ liệu cá nhân phải được bảo vệ một cách hợp lý chống lại các nguy cơ giống như mất hoặc việc truy cập trái phép, việc phá hủy, sử dụng, thay đổi hoặc tiết lộ dữ liệu.
+566: Ví dụ:
+567: Thông tin cá nhân của khách hàng thu thập được khi mua hàng trực tuyến không được phép sử dụng để gửi thư quảng cáo mà không có sự đồng ý của khách hàng.
+568:  - Nguyên tắc minh bạch: cần có chính sách cởi mở phù hợp với sự phát triển, thực tiễn đồng thời cần có chính sách đối với dữ liệu cá nhân. 
+569: - Nguyên tắc trách nhiệm giải trình: Người kiểm soát dữ liệu có trách nhiệm tạo sự phù hợp với những biện pháp dựa trên các nguyên tắc được nêu.
+570: Ví dụ:
+571: Website cần có trang chính sách bảo mật rõ ràng, dễ hiểu, cung cấp đầy đủ thông tin về cách thức thu thập, sử dụng và lưu trữ thông tin cá nhân của người dùng.
+572: Câu 5 : Phân tích các mô hình Website thương mại điện tử: Cửa hàng điện tử, siêu thị điện tử, đấu giá trực tuyến, sàn giao dịch B2B, cổng thông tin (portal), mô hình giá động (dynamic pricing models), và website giới thiệu thông tin của doanh nghiệp? Cho ví dụ để làm rõ?
+573: Cửa hàng điện tử, siêu thị điện tử: nổi tiếng nhất ở dạng này là website www.amazon.com, bán lẻ sách, CD, ứng dụng phần mềm, đồ chơi... qua mạng. Mô hình này hoạt động tương tự một siêu thị hay cửa hàng truyền thống, cho phép người mua chọn lựa hàng hóa, thay đổi số lượng món hàng, tính tiền, thanh toán và nhận hàng sau đó.
+574: Ví dụ: www.amazon.com, www.shopee.vn, www.tiki.vn, www.lazada.vn
+575: Đấu giá trực tuyến: nói đến mô hình đấu giá trực tuyến (online auction) thì www.eBay.com dẫn đầu về sự nổi tiếng. Website đấu giá trực tuyến mô phỏng quy trình bán đấu giá vật dụng, tức người bán đưa ra giá sàn (giá thấp nhất ban đầu), sau đó những người mua lần lượt trả giá cao hơn. Đến thời điểm nhất định, ai trả giá cao nhất sẽ là người có quyền mua món hàng.
+576: Ví dụ: www.eBay.com
+577: Sàn giao dịch B2B: một sàn giao dịch điển hình là www.alibaba.com, là nơi các doanh nghiệp tham gia giới thiệu về mình, đăng tải các yêu cầu mua, bán, tìm đối
+578: tác. Vì là B2B2 nên những sàn giao dịch này không phục vụ việc bán lẻ và thanh toán qua mạng vì không cần thiết.
+579: Ví dụ: www.alibaba.com, www.globalsources.com, www.ec21.com
+580: Cổng thông tin (portal): giống như danh bạ điện thoại liệt kê thông tin liên lạc của các công ty theo ngành nghề, những cổng thông tin này liệt kê những địa chỉ website theo phân loại ngành nghề.
+581: Ví dụ: www.dir.yahoo.com.
+582: Mô hình giá động (dynamic pricing models): với những website mô hình này, người mua có thể trả giá theo ý mình (tùy người bán có đồng ý bán hay không). Đặc điểm của ngành du lịch (hàng không, khách sạn, vận chuyển công cộng...) là nếu tỷ lệ chiếm chỗ (room/seat occupation) là X% < 100% thì (100-X)% chỗ ngồi hay phòng khách sạn sẽ xem như bỏ đi. Do đó, với mô hình này, người mua có thể trả giá vào những giờ phút cuối cùng và người bán có thể đồng ý bán.
+583: Ví dụ: www.alibaba.com, www.uber.com
+584: Website giới thiệu thông tin của doanh nghiệp: cuối cùng là website đơn giản nhất, chỉ để giới thiệu thông tin về doanh nghiệp, dịch vụ, sản phẩm của doanh nghiệp, và cho phép người xem liên lạc với doanh nghiệp qua website này. Doanh nghiệp có thể bán sản phẩm của mình thông qua website giới thiệu thông tin này.
+585: Ví dụ: www.fpt.com.vn , www.thienlong.vn , www.duytan.edu.vn 
+586: Câu 6 : Phân tích rủi ro kỹ thuật trong thương mại điện tử.
+587: Khái niệm:
+588: Rủi ro kỹ thuật là những nguy cơ phát sinh từ các tấn công sử dụng phần mềm hoặc kiến thức công nghệ để khai thác lỗ hổng của hệ thống, gây thiệt hại cho người dùng.
+589: 1. Rủi ro do mã độc (malicious codes)
+590: Mã độc là phần mềm gây hại, làm mất an toàn hệ thống.
+591: Các loại mã độc phổ biến: Virus, Worm, Trojan horse, Spyware, Adware, Backdoor
+592: Ví dụ: Mã độc đánh cắp mật khẩu người dùng từ máy tính cá nhân.
+593: 2. Rủi ro từ tin tặc (hackers)
+594:  - Tin tặc là người xâm nhập trái phép vào hệ thống để phá hoại hoặc lấy cắp dữ liệu.
+595: - Hai kiểu tấn công phổ biến: Tấn công từ chối dịch vụ (DoS), Tấn công từ chối dịch vụ phân tán (DDoS)
+596: Ví dụ: Tin tặc làm tê liệt website bán hàng khiến khách hàng không thể truy cập.
+597:  3. Gian lận, lừa đảo, đánh cắp thông tin
+598:  - Kẻ gian đánh cắp thông tin thẻ tín dụng hoặc thông tin cá nhân trong quá trình giao dịch.
+599:  - Dùng dữ liệu đánh cắp để làm thẻ giả và chi tiêu bất hợp pháp.
+600: Ví dụ: Thông tin thẻ bị lấy cắp qua website không bảo mật và bị dùng để mua hàng trái phép.
+601: 7. Trình bày nội dung phân loại thương mại điện tử theo mô hình doanh thu. Dẫn chứng ví dụ thực tế.
+602:  1. Mô hình quảng cáo (Advertisement Model)
+603:  - Doanh thu đến từ việc cung cấp dịch vụ quảng cáo qua Internet cho cá nhân/doanh nghiệp.
+604: - Thường tính phí theo kích thước, thời gian hoặc nội dung quảng cáo.
+605:  • Ví dụ:
+606: ▪ Google Ads – quảng cáo theo từ khóa.
+607: ▪ YouTube – quảng cáo qua video.
+608: ▪ Facebook – quảng cáo theo đối tượng mục tiêu.
+609: 2. Mô hình phí giao dịch (Transaction Fees Model)
+610:  - Thu phí giao dịch hoặc hoa hồng khi hỗ trợ khách hàng thực hiện giao dịch.
+611:  • Ví dụ:
+612: ▪ Alibaba – thu phí khi người bán sử dụng sàn để giao dịch với khách hàng.
+613: 3. Mô hình phí đăng ký (Subscription Model)
+614:  - Thu phí thuê bao định kỳ (tháng, năm) để khách hàng sử dụng dịch vụ.
+615:  • Ví dụ:
+616: ▪ Dịch vụ truyền hình, internet thu phí theo tháng.
+617: ▪ Website cung cấp thông tin pháp luật thu phí theo năm
+618: 4. Mô hình bán hàng (Sales Model)
+619:  - Doanh thu đến từ việc bán hàng hóa/dịch vụ trực tuyến.
+620:  • Ví dụ:
+621: ▪ Amazon – bán sách, nhạc, đồ gia dụng, v.v.
+622: 5. Mô hình phí liên kết (Affiliate Model)
+623:  - Liên kết với đối tác để đặt đường link quảng bá sản phẩm/dịch vụ của họ trên website, thu phí theo lượng truy cập.
+624:  • Ví dụ:
+625: ▪ Website du lịch liên kết với nhà hàng hoặc xưởng lưu niệm để thu phí quảng bá.

@@ -13,7 +13,7 @@ Pipeline:
   1. get_page_words_raw()  — PyMuPDF "words" extraction với bbox thực
   2. _group_into_rows()    — cluster by Y band, sort by X
   3. _join_tokens_gap_aware() — ghép tokens với khoảng cách thông minh
-  4. _build_question_regions() — phát hiện Câu N. / Bài N boundaries
+  4. _build_question_regions() — phát hiện Câu N / Bài N (kể cả "Câu1." sau khi ghép token)
   5. extract() → ExtractionResult với rows + questions + debug_info
 """
 
@@ -122,12 +122,6 @@ class MathPdfTextEngine:
         Trả về ExtractionResult với debug_info được populate.
         """
         with self:
-            page_height = (
-                self._doc[0].rect.height
-                if self._doc.page_count > 0
-                else 792.0
-            )
-
             all_rows: list[TextRow] = []
             for page_num in range(1, self._doc.page_count + 1):
                 words = self._get_page_words_raw(page_num)
@@ -136,7 +130,7 @@ class MathPdfTextEngine:
                     row.text = self._join_tokens_gap_aware(row.tokens)
                 all_rows.extend(rows)
 
-            questions = self._build_question_regions(all_rows, page_height)
+            questions = self._build_question_regions(all_rows)
 
             # Build debug info
             dbg: dict = {
@@ -323,18 +317,12 @@ class MathPdfTextEngine:
 
     # ─── Question region builder ──────────────────────────────────────────────
 
-    QUESTION_HEADER_RE = re.compile(r"(?i)^\s*(?:Câu|Bài)\s+(\d+)\s*[:\.\-]?\s*")
-
-    def _page_from_y(self, y0: float, page_height: float) -> int:
-        """Estimate page number from y0 position."""
-        if page_height <= 0:
-            return 1
-        return max(1, int(y0 / page_height) + 1)
+    # Gap-aware join often removes spaces → "Câu1." not "Câu 1." — allow \s* after label
+    QUESTION_HEADER_RE = re.compile(r"(?i)^\s*(?:Câu|Bài)\s*(\d+)\s*[:\.\-]?\s*")
 
     def _build_question_regions(
         self,
         rows: list[TextRow],
-        page_height: float,
     ) -> list[QuestionRegion]:
         """
         Phân chia rows thành các QuestionRegion.
@@ -381,7 +369,7 @@ class MathPdfTextEngine:
                 current_tokens_by_line = [list(row.tokens)]
                 current_y0 = row.y_center
                 current_y1 = row.y_center
-                current_page = self._page_from_y(row.y_center, page_height)
+                current_page = row.page_num
             else:
                 if current_num > 0:
                     current_lines.append(line_text)
@@ -410,15 +398,38 @@ def _compute_separator(prev: Word, curr: Word, gap: float) -> str:
     Quyết định có insert separator giữa hai tokens không.
 
     Rules:
-      - gap > 12pt: wide gap → tokens thuộc layout khác → insert space
-        (trừ khi prev kết thúc bằng math opener)
-      - gap <= 12pt: math adjacency → no space
+      - gap > 12pt: wide gap → insert space (trừ khi prev là math opener)
+      - gap <= 12pt: mặc định không space (math adjacency);
+        ngoại lệ: ranh giới từ tiếng Việt / chữ–số (pdf_mau_1 dính "Phươngtrình...")
     """
     if gap > GAP_THRESHOLD:
         if prev.text.strip() in ("(", "[", "{", "⟨"):
             return ""
         return " "
-    # Small gap → math adjacency
+
+    pt = prev.text.strip()
+    ct = curr.text.strip()
+    if not pt or not ct:
+        return ""
+
+    if _is_text_word(prev) and _is_text_word(curr):
+        return " "
+
+    if pt[-1].isdigit() and ct and ct[0].isalpha():
+        if len(ct) >= 2 or _is_text_word(curr):
+            return " "
+
+    if pt[-1].isalpha() and ct and ct[0].isdigit():
+        if len(pt) >= 2:
+            return " "
+        if pt.lower() in "xyz" and ct.isdigit():
+            return ""
+        return " "
+
+    if pt[-1].isalpha() and ct and ct[0].isalpha():
+        if len(pt) >= 2 or len(ct) >= 2:
+            return " "
+
     return ""
 
 

@@ -25,6 +25,7 @@ build/
 
 # Node modules
 */node_modules/
+**/node_modules/
 
 # Build outputs
 demo/dist/
@@ -33,12 +34,9 @@ demo_2/dist/
 # AI service venv
 ai-service/.venv/
 
-# Production env (chứa mật khẩu, secret)
+# Env and secrets
 .env
-/demo_2
-*.pyc
-# AI multi-key secrets (chứa API key — không commit)
+*.env.local
 secrets/
-.typeui-temp
 
 

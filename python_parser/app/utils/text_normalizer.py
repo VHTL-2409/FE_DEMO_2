@@ -377,6 +377,45 @@ def fix_pdf_ambiguous_exponents_to_unicode(text: str) -> str:
     )
 
 
+# Word / PDF → Unicode: map trước khi xóa vùng PUA (tránh mất {}, ∅)
+_PDF_PUA_MATH_GLYPH_MAP: tuple[tuple[str, str], ...] = (
+    ("\uf0c6", "\u2205"),
+    ("\uf0a5", "\u221e"),
+    ("\uf0b5", "\u221e"),
+    ("\uf07b", "{"),
+    ("\uf07d", "}"),
+)
+
+
+def map_pdf_private_use_math_glyphs(text: str) -> str:
+    """Đổi một số glyph Private Use (Word→PDF) sang ký hiệu Unicode tương đương."""
+    if not text:
+        return text
+    for old, new in _PDF_PUA_MATH_GLYPH_MAP:
+        text = text.replace(old, new)
+    return text
+
+
+def normalize_mcq_stem_display(text: str) -> str:
+    """
+    Chuẩn hóa stem MCQ từ word-level PDF (template_01): PUA → Unicode, x2→x²,
+    không flatten superscript Unicode (giữ ² cho FE / convert_to_latex).
+    """
+    if not text:
+        return text
+    text = unicodedata.normalize("NFC", text)
+    for fw, normal in _FW_MAP.items():
+        text = text.replace(fw, normal)
+    text = text.replace("\ufeff", "")
+    text = text.replace("\ufffd", "")
+    text = map_pdf_private_use_math_glyphs(text)
+    text = re.sub(r"[\uf000-\uf0ff]", "", text)
+    text = fix_pdf_ambiguous_exponents_to_unicode(text)
+    text = fix_question_number_spacing(text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
 _VIETNAMESE_LETTER_RE = re.compile(
     r"[àáảãạăằẳẵặâầẩẫậèéẻẽẹêềểễệìíỉĩịòóỏõọôồổốộơờởỡợùúủũụưừửữựỳýỷỹỵđĐ]"
 )
@@ -559,6 +598,8 @@ def normalize_math_text(text: str, *, preserve_private_use: bool = False) -> str
     # Replace UTF-8 BOM / replacement chars
     text = text.replace("\ufeff", "")
     text = text.replace("\ufffd", "")
+
+    text = map_pdf_private_use_math_glyphs(text)
 
     # Remove garbled private-use chars (stem); giữ lại nếu preserve_private_use (đáp án)
     if not preserve_private_use:
