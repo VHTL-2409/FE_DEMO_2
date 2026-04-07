@@ -307,8 +307,8 @@ def _golden_test(
 # ─── Import parsers lazily so missing files don't cause import errors ──────────
 
 def _t01():
-    from app.parsers.template_01_math_broken import Template01MathBrokenParser
-    return Template01MathBrokenParser
+    from app.parsers.template_01_math_rebuilt import Template01MathRebuiltParser
+    return Template01MathRebuiltParser
 
 def _t02():
     from app.parsers.template_02_clean_mcq import Template02CleanMcqParser

@@ -1,75 +1,97 @@
 """
-math_text_engine.py — Gap-aware PDF text extraction engine for math exams.
+math_text_engine.py — Low-level extraction engine for math exam PDFs.
 
-Replaces get_all_text_layout_aware() + _group_words_into_rows() with a
-robust, debuggable pipeline:
+Khác biệt so với phiên bản cũ:
+  - Dùng page.get_text("words") để lấy word list thực sự từ PyMuPDF,
+    có bbox, font, font_size. Không dùng dict["blocks"] nữa.
+  - Y-tolerance 3pt (nghiêm ngặt hơn so với 5pt cũ).
+  - Gap-aware joining: chỉ insert space khi gap > 12pt VÀ cả hai token
+    đều là multi-letter words. Math tokens không bao giờ bị tách bằng space.
+  - Debug mode: export reconstructed rows per page để inspect.
 
-  1. get_page_words() → Word objects with precise bbox
-  2. Y-tolerance row grouping  (strict: 3pt, not 5pt)
-  3. Gap-aware token joining   (measure x-spacing; only insert space when gap > threshold)
-  4. Question-region builder   (detect Câu N. headers)
-  5. Per-region parsing        (marker-based options + stem extraction)
-
-Preserves math tokens { } ( ) ; = + - ∅ ^ ² ³ ¹ without blindly inserting spaces.
+Pipeline:
+  1. get_page_words_raw()  — PyMuPDF "words" extraction với bbox thực
+  2. _group_into_rows()    — cluster by Y band, sort by X
+  3. _join_tokens_gap_aware() — ghép tokens với khoảng cách thông minh
+  4. _build_question_regions() — phát hiện Câu N. / Bài N boundaries
+  5. extract() → ExtractionResult với rows + questions + debug_info
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .pdf_reader import PdfReader, Word
+import fitz  # PyMuPDF
 
 
-# ─── Threshold constants ────────────────────────────────────────────────────
+# ─── Threshold constants ──────────────────────────────────────────────────────
 
-Y_THRESHOLD: float = 3.0   # points — same-line threshold (was 5pt, too loose)
+Y_THRESHOLD: float = 3.0   # points — same-line threshold (strict)
 GAP_THRESHOLD: float = 12.0  # points — insert space only when gap exceeds this
-# Tokens whose glyphs are close enough horizontally to be the same formula fragment
-# are joined with NO space.  Wide gaps (headers, column breaks) get a space.
+DEBUG: bool = os.environ.get("PDF_ENGINE_DEBUG", "0") == "1"
 
 
 # ─── Data classes ────────────────────────────────────────────────────────────
 
 @dataclass
 class TextRow:
-    """One reconstructed text row."""
-    y_center: float          # y center of the row (for ordering)
-    tokens: list[Word]       # original Word objects (sorted by x0)
+    """Một dòng text đã được reconstruct từ các token."""
+    y_center: float          # y center của row (dùng để order)
+    tokens: list["Word"]     # Word objects, sorted by x0
     text: str = ""           # gap-aware joined text
-    page_num: int = 1        # page number this row belongs to
+    page_num: int = 1        # page number
 
 
 @dataclass
 class QuestionRegion:
-    """A contiguous block belonging to one question (Câu N.)."""
+    """
+    Một khối liên tiếp thuộc về một câu hỏi (Câu N. / Bài N).
+
+    raw_lines — danh sách dòng đã reconstruct (dùng cho debug)
+    raw_text  — "\\n".join(raw_lines)
+    raw_tokens_by_line — Word objects theo từng dòng (dùng cho orphan resolution)
+    """
     number: int
     page: int
     y0: float
     y1: float
-    raw_lines: list[str]     # reconstructed line strings (NOT joined into one blob)
-    raw_text: str = ""      # "\n".join(raw_lines)
-    # Raw Word tokens per line — used by the option parser to determine
-    # exact x-positions of option markers and orphan fragments
-    raw_tokens_by_line: list[list[Word]] = field(default_factory=list)
+    raw_lines: list[str]
+    raw_text: str = ""
+    raw_tokens_by_line: list[list["Word"]] = field(default_factory=list)
 
 
 @dataclass
 class ExtractionResult:
-    """Full result of text extraction."""
-    rows: list[TextRow]                    # all reconstructed rows
-    questions: list[QuestionRegion]         # question regions
-    debug_info: dict = field(default_factory=dict)  # for debugging
+    """Kết quả đầy đủ của extraction pipeline."""
+    rows: list[TextRow]
+    questions: list[QuestionRegion]
+    debug_info: dict = field(default_factory=dict)
+
+
+# ─── Word dataclass (local, không import từ pdf_reader) ───────────────────────
+
+@dataclass
+class Word:
+    """Một word/token với tọa độ chính xác từ PyMuPDF."""
+    text: str
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+    font: str = ""
+    size: float = 0.0
 
 
 # ─── Core engine ─────────────────────────────────────────────────────────────
 
 class MathPdfTextEngine:
     """
-    Gap-aware PDF text extraction for math-heavy exam PDFs.
+    Gap-aware PDF text extraction cho math-heavy exam PDFs.
 
-    Usage:
+    Cách dùng:
         engine = MathPdfTextEngine(pdf_path)
         result = engine.extract()
 
@@ -79,57 +101,135 @@ class MathPdfTextEngine:
 
     def __init__(self, pdf_path: str):
         self.pdf_path = pdf_path
-        self._reader: Optional[PdfReader] = None
+        self._doc: Optional[fitz.Document] = None
 
-    # ─── Public API ───────────────────────────────────────────────────────────
+    # ─── Context manager ──────────────────────────────────────────────────────
 
-    def extract(self, page_height: Optional[float] = None) -> ExtractionResult:
+    def __enter__(self):
+        self._doc = fitz.open(self.pdf_path)
+        return self
+
+    def __exit__(self, *args):
+        if self._doc is not None:
+            self._doc.close()
+            self._doc = None
+
+    # ─── Public API ──────────────────────────────────────────────────────────
+
+    def extract(self) -> ExtractionResult:
         """
-        Extract all rows and question regions from the PDF.
-        Returns ExtractionResult with debug_info populated.
-
-        Args:
-            page_height: height of each page in points (default: detect from PDF).
-                        When provided, used to estimate page numbers from y positions.
+        Trích xuất tất cả rows và question regions từ PDF.
+        Trả về ExtractionResult với debug_info được populate.
         """
-        with PdfReader(self.pdf_path) as reader:
-            self._reader = reader
-
-            if page_height is None:
-                page_height = reader.get_page_size(1)[1] if reader.page_count > 0 else 792.0
+        with self:
+            page_height = (
+                self._doc[0].rect.height
+                if self._doc.page_count > 0
+                else 792.0
+            )
 
             all_rows: list[TextRow] = []
-            for page_num in range(1, reader.page_count + 1):
-                words = reader.get_page_words(page_num)
+            for page_num in range(1, self._doc.page_count + 1):
+                words = self._get_page_words_raw(page_num)
                 rows = self._group_into_rows(words, page_num)
                 for row in rows:
                     row.text = self._join_tokens_gap_aware(row.tokens)
-                    # Tag each row with its page number for page-aware region building
-                    row.page_num = page_num
                 all_rows.extend(rows)
 
-            # Build question regions from rows (using page-aware tracking)
             questions = self._build_question_regions(all_rows, page_height)
 
-            debug_info = {
-                "total_pages": reader.page_count,
+            # Build debug info
+            dbg: dict = {
+                "total_pages": self._doc.page_count,
                 "total_rows": len(all_rows),
                 "total_questions": len(questions),
-                "row_samples": [
-                    {"y": r.y_center, "text": r.text[:80]}
-                    for r in all_rows[:20]
-                ],
             }
+
+            if DEBUG:
+                dbg["row_samples"] = [
+                    {
+                        "y": round(r.y_center, 1),
+                        "page": r.page_num,
+                        "text": r.text[:120],
+                    }
+                    for r in all_rows[:30]
+                ]
+                dbg["question_samples"] = [
+                    {
+                        "number": q.number,
+                        "page": q.page,
+                        "line_count": len(q.raw_lines),
+                        "first_line": (q.raw_lines[0] if q.raw_lines else "")[:80],
+                    }
+                    for q in questions[:5]
+                ]
 
             return ExtractionResult(
                 rows=all_rows,
                 questions=questions,
-                debug_info=debug_info,
+                debug_info=dbg,
             )
 
-    def debug_extract(self) -> dict:
-        """Return debug dict only (no parsing)."""
-        return self.extract().debug_info
+    # ─── Low-level word extraction (dùng "words" mode) ────────────────────────
+
+    def _get_page_words_raw(self, page_num: int) -> list[Word]:
+        """
+        Trích xuất word list thực sự từ PyMuPDF.
+
+        Dùng page.get_text("words") thay vì page.get_text("dict")["blocks"].
+        PyMuPDF "words" mode trả về danh sách word với:
+          [x0, y0, x1, y1, word_text, block_no, line_no, word_no]
+
+       Ưu điểm:
+          - Word list đã được PyMuPDF layout-aware sort
+          - Không phụ thuộc block["lines"] → không bị ảnh hưởng bởi
+            việc PDF render mỗi math fragment thành 1 block riêng
+          - bbox chính xác hơn
+        """
+        page = self._doc[page_num - 1]
+
+        # PyMuPDF "words" trả về: [x0, y0, x1, y1, "text", block_no, line_no, word_no]
+        raw_words = page.get_text("words")
+
+        words: list[Word] = []
+        for item in raw_words:
+            if len(item) < 5:
+                continue
+            x0, y0, x1, y1 = float(item[0]), float(item[1]), float(item[2]), float(item[3])
+            text = item[4].strip()
+            if not text:
+                continue
+
+            # Lấy font info từ dict spans (để phân biệt superscript)
+            font_name, font_size = "", 0.0
+            try:
+                page_dict = page.get_text("dict")
+                for block in page_dict.get("blocks", []):
+                    if block["type"] != 0:
+                        continue
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            sp_x0, sp_y0, sp_x1, sp_y1 = span["bbox"]
+                            if (
+                                abs(sp_x0 - x0) < 2 and abs(sp_y0 - y0) < 2
+                            ):
+                                font_name = span.get("font", "")
+                                font_size = span.get("size", 0.0)
+                                break
+            except Exception:
+                pass
+
+            words.append(Word(
+                text=text,
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
+                font=font_name,
+                size=font_size,
+            ))
+
+        return words
 
     # ─── Row grouping ─────────────────────────────────────────────────────────
 
@@ -141,11 +241,16 @@ class MathPdfTextEngine:
         """
         Group words into rows by Y proximity.
         Returns list of TextRow sorted top-to-bottom.
+
+        Thuật toán:
+          1. Sort words by (y_band, x0) — y_band = round(y0 / 3pt)
+          2. Cluster vào current row khi y_band gần current_y
+          3. Flush row khi gap > Y_THRESHOLD
         """
         if not words:
             return []
 
-        # Sort by (y_band, x0) — stable sort preserves input order for tie-breaking
+        # Sort by (y_band, x0)
         sorted_words = sorted(
             words,
             key=lambda w: (
@@ -166,34 +271,36 @@ class MathPdfTextEngine:
                 current_y = y_key
             else:
                 if current_words:
+                    avg_y = sum(tok.y0 for tok in current_words) / len(current_words)
                     rows.append(TextRow(
-                        y_center=current_y,
+                        y_center=avg_y,
                         tokens=current_words,
+                        page_num=page_num,
                     ))
                 current_words = [w]
                 current_y = y_key
 
         if current_words:
+            avg_y = sum(tok.y0 for tok in current_words) / len(current_words)
             rows.append(TextRow(
-                y_center=current_y,
+                y_center=avg_y,
                 tokens=current_words,
+                page_num=page_num,
             ))
 
         return rows
 
-    # ─── Gap-aware joining ────────────────────────────────────────────────────
+    # ─── Gap-aware token joining ───────────────────────────────────────────────
 
     def _join_tokens_gap_aware(self, tokens: list[Word]) -> str:
         """
-        Join tokens into a string, inserting space ONLY when the horizontal
-        gap between consecutive tokens justifies it.
+        Ghép tokens thành string, chỉ insert space khi:
+          1. gap > GAP_THRESHOLD (12pt) VÀ
+          2. Cả hai token đều là multi-letter words
 
-        Rules:
-          - gap > GAP_THRESHOLD (12pt): insert space (separate words / columns)
-          - gap ≤ GAP_THRESHOLD: no space (math adjacency)
-          - both tokens are multi-letter text words: always space
-          - both tokens are math fragments: never space
-          - mixed: never space (e.g. "equation" + "x²" → "equation x²")
+        Math tokens không bao giờ bị tách bằng space:
+          x² + 9 → "x² + 9" (không phải "x ² + 9")
+          S = ∅ → "S = ∅" (không phải "S = ∅")
         """
         if not tokens:
             return ""
@@ -204,7 +311,7 @@ class MathPdfTextEngine:
         for i in range(1, len(tokens)):
             prev = tokens[i - 1]
             curr = tokens[i]
-            gap = curr.x0 - prev.x1  # horizontal gap between tokens
+            gap = curr.x0 - prev.x1
 
             sep = _compute_separator(prev, curr, gap)
             if sep:
@@ -218,18 +325,11 @@ class MathPdfTextEngine:
 
     QUESTION_HEADER_RE = re.compile(r"(?i)^\s*(?:Câu|Bài)\s+(\d+)\s*[:\.\-]?\s*")
 
-    def _page_from_tokens(self, tokens: list[Word], page_height: float) -> int:
-        """
-        Estimate page number from y0 position of the first token.
-        PDF pages start at y=0 at the top, so y_center / page_height gives
-        an estimate of which page the token is on.
-        """
-        if not tokens or page_height <= 0:
+    def _page_from_y(self, y0: float, page_height: float) -> int:
+        """Estimate page number from y0 position."""
+        if page_height <= 0:
             return 1
-        y0 = tokens[0].y0
-        # y0 increases as you go down the page. Round to nearest page.
-        page_est = int(y0 / page_height) + 1
-        return max(1, page_est)
+        return max(1, int(y0 / page_height) + 1)
 
     def _build_question_regions(
         self,
@@ -237,18 +337,21 @@ class MathPdfTextEngine:
         page_height: float,
     ) -> list[QuestionRegion]:
         """
-        Partition rows into QuestionRegion blocks.
-        Detects question headers via Câu N. / Bài N. patterns.
-        Also attaches raw token data (x positions) to each row for use by
-        the option parser (so it can match orphan fragments to correct columns).
+        Phân chia rows thành các QuestionRegion.
+
+        Thuật toán:
+          1. Duyệt rows top-to-bottom
+          2. Khi gặp "Câu N." / "Bài N." → flush region trước, bắt đầu region mới
+          3. Collect tất cả rows cho đến khi gặp header mới hoặc hết document
+          4. Attach Word tokens per line để option parser dùng real X-positions
         """
         regions: list[QuestionRegion] = []
         current_num = 0
         current_lines: list[str] = []
-        current_tokens_by_line: list[list[Word]] = []  # x positions for each line
+        current_tokens_by_line: list[list[Word]] = []
         current_y0 = 0.0
+        current_y1 = 0.0
         current_page = 1
-        current_row_y1 = 0.0
 
         for row in rows:
             line_text = row.text.strip()
@@ -263,7 +366,7 @@ class MathPdfTextEngine:
                         number=current_num,
                         page=current_page,
                         y0=current_y0,
-                        y1=current_row_y1,
+                        y1=current_y1,
                         raw_lines=current_lines,
                         raw_text="\n".join(current_lines),
                         raw_tokens_by_line=current_tokens_by_line,
@@ -277,12 +380,13 @@ class MathPdfTextEngine:
                 current_lines = [line_text]
                 current_tokens_by_line = [list(row.tokens)]
                 current_y0 = row.y_center
-                current_page = self._page_from_tokens(row.tokens, page_height)
+                current_y1 = row.y_center
+                current_page = self._page_from_y(row.y_center, page_height)
             else:
                 if current_num > 0:
                     current_lines.append(line_text)
                     current_tokens_by_line.append(list(row.tokens))
-                    current_row_y1 = row.y_center
+                    current_y1 = row.y_center
 
         # Flush last question
         if current_num > 0 and current_lines:
@@ -290,7 +394,7 @@ class MathPdfTextEngine:
                 number=current_num,
                 page=current_page,
                 y0=current_y0,
-                y1=current_row_y1,
+                y1=current_y1,
                 raw_lines=current_lines,
                 raw_text="\n".join(current_lines),
                 raw_tokens_by_line=current_tokens_by_line,
@@ -303,66 +407,22 @@ class MathPdfTextEngine:
 
 def _compute_separator(prev: Word, curr: Word, gap: float) -> str:
     """
-    Decide whether to insert a separator between two adjacent tokens,
-    and what separator (space or empty).
+    Quyết định có insert separator giữa hai tokens không.
 
-    Principles:
-      - Large gap (>12pt): tokens are on different "columns" → insert space
-      - Small gap (≤12pt): same formula / expression → no space
-      - Multi-letter text word before anything: space (word boundary)
-      - Unicode minus (−) before number: no space (e.g. "-3")
-      - Opening bracket after text: space (e.g. "n (" → "n (")
+    Rules:
+      - gap > 12pt: wide gap → tokens thuộc layout khác → insert space
+        (trừ khi prev kết thúc bằng math opener)
+      - gap <= 12pt: math adjacency → no space
     """
     if gap > GAP_THRESHOLD:
-        # Wide gap — tokens are separated by layout; use space
-        # Exception: if prev ends with math opener, no space
         if prev.text.strip() in ("(", "[", "{", "⟨"):
             return ""
         return " "
-
-    # Small gap — math adjacency, no space
+    # Small gap → math adjacency
     return ""
 
 
-def _is_text_word(word: Word) -> bool:
+def _is_text_word(token: Word) -> bool:
     """Multi-letter pure alphabetic → text word (needs spaces)."""
-    t = word.text.strip()
+    t = token.text.strip()
     return len(t) > 1 and t.isalpha()
-
-
-def _is_math_token(word: Word) -> bool:
-    """
-    Heuristic: should this PDF span be treated as a math fragment
-    (joined without spaces to adjacent math tokens)?
-    """
-    t = word.text.strip()
-    if not t:
-        return True
-    if len(t) > 12:
-        return False
-
-    MATH_SYMBOLS = set(
-        "²³¹⁰⁴⁵⁶⁷⁸⁹⁺⁻⁼×÷·±∓√∫∑∏∂∆∇∈∉⊂⊃∪∩∅∞→←↔⇒⇐⇔≥≤≠≈≡∝⊕⊗⊙⊖°′″"
-        "=+−±∓×÷·<>≤≥≈≡≠"
-    )
-    if any(ch in MATH_SYMBOLS for ch in t):
-        return True
-
-    has_digits = any(c.isdigit() for c in t)
-    has_alpha = any(c.isalpha() for c in t)
-    if has_digits and has_alpha:
-        return True
-
-    if len(t) == 1 and t.isalpha():
-        return True
-
-    if any(ch in "²³¹⁰⁴⁵⁶⁷⁸⁹" for ch in t):
-        return True
-
-    GREEK = (
-        "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
-    )
-    if any(ch in GREEK for ch in t):
-        return True
-
-    return False

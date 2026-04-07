@@ -286,9 +286,7 @@ class BaseParser(ABC):
         # normalize() here because it calls unsuperscript() which converts ²→2,
         # destroying the Unicode superscripts that the FE needs for LaTeX rendering.
         if display_text is not None:
-            # Only apply targeted safe fixes, not full normalize()
             text = fix_question_number_spacing(display_text)
-            text = split_merged_options(text)
 
         return ParsedQuestion(
             number=block.question_num,

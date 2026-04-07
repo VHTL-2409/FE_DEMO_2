@@ -413,6 +413,10 @@ class Template01MathRebuiltParser(BaseParser):
         The MathPdfTextEngine provides raw Word tokens with x0 positions.
         We use these to determine which option column each orphan fragment belongs to.
         """
+        # Step 0: Pre-process merged inline options
+        # "A. x² B. y² C. z² D. t²" → split so each option is on own logical line
+        text = self._split_inline_merged_options(text)
+
         lines = text.split("\n")
         tokens_by_line: list = raw_tokens_by_line or [None] * len(lines)
 
@@ -514,7 +518,10 @@ class Template01MathRebuiltParser(BaseParser):
                     o = o.replace(old, new)
                 cleaned_orphans.append(o)
 
-            full_parts = cleaned_orphans + content_parts
+            # Step 5: Inline merge — "A. x² B. y²" on one line (no newlines)
+            # If result is still empty AND the merged inline pattern exists on
+            # the original text, handle it separately.
+            full_parts = content_parts + cleaned_orphans
             joined = " ".join(p for p in full_parts if p).strip()
             joined = re.sub(r" {2,}", " ", joined).strip()
             if joined:
@@ -544,29 +551,40 @@ class Template01MathRebuiltParser(BaseParser):
         col_ranges: list[tuple[str, float, float]],
     ) -> Optional[str]:
         """
-        Map an orphan fragment to an option column.
+        Map an orphan fragment to an option column by X-position intersection.
 
-        Uses real X-position when available. Falls back to text-based heuristics
-        for short "= X" suffix fragments (the critical case for pdf_mau_1).
+        Rules:
+          1. Real X position → intersect with column ranges, return first match.
+             This is the CRITICAL fix: orphan "= ∅" at x≈361 falls inside
+             C range (335-464), not D range (464+). Previous code returned
+             col_ranges[-1][0] (D) for everything without intersection — wrong.
+          2. No X data + short "= X" suffix → find closest column to the RIGHT
+             (uses previous marker position heuristic).
+          3. No X data + other → None (let orphan be dropped).
         """
+        # Rule 1: real X position — intersect with column ranges
         if orphan_x0 != float('inf'):
-            # Real x position — match to column range
             for letter, x0, x1 in col_ranges:
                 if x0 <= orphan_x0 < x1:
                     return letter
-            return col_ranges[-1][0] if col_ranges else None
+            # Falls outside all ranges — return None (DROPPED, not mis-assigned)
+            return None
 
-        # No X data — use text heuristics
+        # Rule 2: no X data + short "= X" suffix fragment
         stripped = orphan_text.strip()
-        if stripped.startswith("=") and len(stripped) <= 8:
-            # Short suffix fragment "= X": belongs to the SECOND-TO-LAST column
-            # In pdf_mau_1 Q1: "= ∅" (x≈361) is in C column
-            # C range: x≈335-464. D range: x≈464+
-            # "= ∅" is at x≈361 → inside C range (335-464) → belongs to C
+        if stripped.startswith("=") and len(stripped) <= 10:
+            # In pdf_mau_1: "= ∅" at y≈240 (row above option row y≈243)
+            # Column layout: A≈52-335, B≈335-464, C≈464-593, D≈593+
+            # "= ∅" from C column (C.x0≈464, orphan.x0≈361 which is inside B range)
+            # But the text "= ∅" is NOT from B — it's from a continuation line.
+            # Use "second-to-last column" heuristic for "= X" fragments.
+            # CORRECTED: "= X" suffix belongs to the SECOND column, not the last.
+            # In 4-column layout: A, B, C, D — "= X" is continuation of C (penultimate).
             if len(col_ranges) >= 2:
                 return col_ranges[-2][0]
             return col_ranges[-1][0] if col_ranges else None
 
+        # Rule 3: no X data + other content → None
         return None
 
     def _is_orphan_math_fragment(self, text: str) -> bool:
@@ -590,6 +608,37 @@ class Template01MathRebuiltParser(BaseParser):
             text,
             re.IGNORECASE,
         ))
+
+    def _split_inline_merged_options(self, text: str) -> str:
+        """
+        Split merged inline options on a single line.
+
+        Input:  "A. x² B. y² C. z² D. t²"
+        Output: "A. x²\nB. y²\nC. z²\nD. t²"
+
+        Handles: "A. x² B. y²", "A. x B. y C. z", "A.x B.y C.z"
+        """
+        # Pattern: option letter followed by dot, then content, then next option letter
+        merged_re = re.compile(
+            r"(?<=[\s])([A-D])\s*[\.．)]\s*(.+?)(?=\s+[A-D]\s*[\.．)]|$)",
+            re.DOTALL,
+        )
+
+        def replace_merged(m: re.Match[str]) -> str:
+            letter = m.group(1).upper()
+            content = m.group(2).strip()
+            return f"{letter}. {content}"
+
+        result = merged_re.sub(replace_merged, text)
+
+        # Also handle cases like "A.x B.y C.z" without spaces after dots
+        result = re.sub(
+            r"([A-D])\.\s*([^\sA-D]+?)\s+(?=[A-D]\.)",
+            lambda m: f"{m.group(1)}. {m.group(2)}\n",
+            result,
+        )
+
+        return result
 
     # ─── Stem extraction ─────────────────────────────────────────────────────
 

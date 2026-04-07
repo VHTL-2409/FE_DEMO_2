@@ -28,6 +28,56 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   GLOBAL REDUCED MOTION — performance baseline
+   Disable all infinite/continuous animations site-wide by default.
+   Heavy decorations that cost frames are also suppressed.
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Always-off overrides: infinite loops are expensive on every device */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-float-slow,
+  .animate-float-delay,
+  .animate-float-fast,
+  .animate-pulse-ring,
+  .animate-shimmer,
+  .animate-gpu-shimmer,
+  .animate-spin-slow,
+  .tui-spin,
+  .tui-dot--running,
+  .tui-dot--deploying,
+  .edu-animate-fade-up,
+  .edu-animate-fade-up-d1,
+  .edu-animate-fade-up-d2,
+  .edu-animate-fade-up-d3,
+  .edu-animate-fade-up-d4,
+  .edu-animate-fade-up-d5,
+  .edu-animate-fade-up-d6,
+  .edu-animate-fade-up-d7,
+  .edu-animate-fade-up-d8,
+  .edu-hero-section,
+  .edu-hero-visual,
+  .animate-on-scroll {
+    animation-play-state: paused;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* Scroll-reveal: instant instead of delayed */
+  .animate-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    UNIFIED KEYFRAMES — Admin baseline
    Use these across ALL components (admin, teacher, student, portal).
    ═══════════════════════════════════════════════════════════════ */
@@ -252,32 +302,28 @@
 /* ─── Unified page transition — shared across AdminLayout, AppShell, Portal, StudentExam layouts ─── */
 .page-enter-active {
   transition:
-    opacity 0.28s var(--anim-easing-standard),
-    transform 0.35s var(--anim-easing-out-expo);
-  will-change: transform, opacity;
-  transform: translateZ(0);
-}
-.page-leave-active {
-  transition:
     opacity 0.18s var(--anim-easing-standard),
     transform 0.22s var(--anim-easing-standard);
   will-change: transform, opacity;
 }
+.page-leave-active {
+  transition:
+    opacity 0.14s var(--anim-easing-standard),
+    transform 0.16s var(--anim-easing-standard);
+  will-change: transform, opacity;
+}
 .page-enter-from {
   opacity: 0;
-  transform: translateX(20px) scale(0.985) translateZ(0);
-  filter: blur(1px);
+  transform: translateX(12px) translateZ(0);
 }
 .page-leave-to {
   opacity: 0;
-  transform: translateX(-12px) scale(0.99) translateZ(0);
-  filter: blur(0.5px);
+  transform: translateX(-8px) translateZ(0);
 }
 .page-enter-to,
 .page-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1) translateZ(0);
-  filter: blur(0);
+  transform: translateX(0) translateZ(0);
 }
 
 /* ─── Unified skeleton shimmer — shared across PortalLayout / StudentPortalLayout ─── */

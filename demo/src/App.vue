@@ -53,34 +53,31 @@ const isExamRoute = computed(() => route.path === '/student/exam-interface')
 </script>
 
 <style>
-/* ── Page transition — admin-style: blur + scale + slide ── */
+/* ── Page transition — lightweight: opacity + subtle translate only (no blur) ── */
 .page-enter-active {
   transition:
-    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.28s ease;
+    opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 .page-leave-active {
   transition:
-    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
-    transform 0.22s cubic-bezier(0.4, 0, 1, 1),
-    filter 0.18s ease;
+    opacity 0.14s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.16s cubic-bezier(0.4, 0, 1, 1);
+  will-change: transform, opacity;
 }
 .page-enter-from {
   opacity: 0;
-  transform: translateX(22px) scale(0.985);
-  filter: blur(1px);
+  transform: translateX(12px);
 }
 .page-leave-to {
   opacity: 0;
-  transform: translateX(-14px) scale(0.99);
-  filter: blur(0.5px);
+  transform: translateX(-8px);
 }
 .page-enter-to,
 .page-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1);
-  filter: blur(0);
+  transform: translateX(0);
 }
 
 @media (prefers-reduced-motion: reduce) {

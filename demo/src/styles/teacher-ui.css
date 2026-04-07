@@ -84,6 +84,14 @@
   animation: teacherFloatDelay 9s ease-in-out infinite;
 }
 
+/* Always-off: float animations are expensive on every device (not just reduced-motion) */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-float-slow,
+  .animate-float-delay {
+    animation-play-state: paused;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-fade-up-delay {
@@ -95,6 +103,10 @@
   .animate-float-slow,
   .animate-float-delay {
     animation: none !important;
+  }
+
+  .animate-pulse-ring {
+    animation-play-state: paused;
   }
 }
 

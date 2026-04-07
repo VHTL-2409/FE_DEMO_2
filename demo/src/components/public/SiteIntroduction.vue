@@ -732,88 +732,12 @@ const resetCardTilt = (index) => {
   cardTilts[index] = false
 }
 
-// Particle animation
+// Particle animation — DISABLED for performance. Background is already
+// visually rich via CSS gradient orbs; the RAF loop (80 particles + O(n²)
+// connection draws at 60fps) causes jank on low-end devices.
 const initParticles = () => {
-  const canvas = particleCanvas.value
-  if (!canvas) return
-
-  const ctx = canvas.getContext('2d')
-  let particles = []
-  let width = canvas.width = window.innerWidth
-  let height = canvas.height = window.innerHeight
-
-  const resize = () => {
-    width = canvas.width = window.innerWidth
-    height = canvas.height = window.innerHeight
-  }
-
-  class Particle {
-    constructor() {
-      this.reset()
-    }
-
-    reset() {
-      this.x = Math.random() * width
-      this.y = Math.random() * height
-      this.size = Math.random() * 2 + 0.5
-      this.speedX = (Math.random() - 0.5) * 0.3
-      this.speedY = (Math.random() - 0.5) * 0.3
-      this.opacity = Math.random() * 0.5 + 0.1
-    }
-
-    update() {
-      this.x += this.speedX
-      this.y += this.speedY
-
-      if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
-        this.reset()
-      }
-    }
-
-    draw() {
-      ctx.beginPath()
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(79, 70, 229, ${this.opacity})`
-      ctx.fill()
-    }
-  }
-
-  // Create particles
-  for (let i = 0; i < 80; i++) {
-    particles.push(new Particle())
-  }
-
-  const animate = () => {
-    ctx.clearRect(0, 0, width, height)
-
-    particles.forEach(p => {
-      p.update()
-      p.draw()
-    })
-
-    // Draw connections
-    particles.forEach((p1, i) => {
-      particles.slice(i + 1).forEach(p2 => {
-        const dx = p1.x - p2.x
-        const dy = p1.y - p2.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-
-        if (dist < 120) {
-          ctx.beginPath()
-          ctx.moveTo(p1.x, p1.y)
-          ctx.lineTo(p2.x, p2.y)
-          ctx.strokeStyle = `rgba(79, 70, 229, ${0.1 * (1 - dist / 120)})`
-          ctx.lineWidth = 0.5
-          ctx.stroke()
-        }
-      })
-    })
-
-    particleAnimationId = requestAnimationFrame(animate)
-  }
-
-  animate()
-  window.addEventListener('resize', resize)
+  // Disabled: particle canvas caused jank on lower-end devices.
+  // Background retains CSS gradient orbs which are GPU-composited.
 }
 
 // Ripple effect for buttons
@@ -920,16 +844,10 @@ onUnmounted(() => {
 }
 
 /* ============================================
-   PARTICLE CANVAS
+   PARTICLE CANVAS — hidden (RAF loop disabled)
    ============================================ */
 .lp__particles {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 /* ============================================
@@ -1234,12 +1152,13 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+/* Landing page orbs: keep static (filter: blur creates GPU layer automatically) */
 .lp__orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
   opacity: 0.6;
-  animation: orbFloat 25s ease-in-out infinite;
+  animation: none !important;
 }
 
 .lp__orb--1 {

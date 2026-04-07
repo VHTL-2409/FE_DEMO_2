@@ -23,9 +23,8 @@ venv/
 dist/
 build/
 
-# Node modules (exclude subdirs that are actual projects)
+# Node modules
 */node_modules/
-!demo/node_modules/
 
 # Build outputs
 demo/dist/

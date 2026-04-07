@@ -146,7 +146,7 @@ class TestOptionParsing:
 
     def test_merged_inline_options(self):
         """Options merged on the same line."""
-        text = "A. x² B. y² C. z² D. t²"
+        text = "A. x\u00b2 B. y\u00b2 C. z\u00b2 D. t\u00b2"
         parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
         options = parser._parse_options(text)
         assert len(options) >= 2  # Should pick up at least 2 options
@@ -405,21 +405,24 @@ class TestMcqEssaySplit:
     def test_split_detects_essay_section(self):
         blocks = []
         # Simulate blocks with essay section
-        from app.parsers.template_01_math_broken import MathBrokenBlock
+        from app.parsers.template_01_math_rebuilt import MathRebuiltBlock
 
-        mcq_block = MathBrokenBlock(
+        mcq_block = MathRebuiltBlock(
             question_num=1,
             raw_text="Câu 1. Tính x + y",
+            raw_lines=["Câu 1. Tính x + y"],
             page=1,
-            y0=100.0, y1=200.0,
-            bbox=(50, 100, 500, 200),
+            y0=100.0,
+            y1=200.0,
+            is_essay=False,
         )
-        essay_block = MathBrokenBlock(
+        essay_block = MathRebuiltBlock(
             question_num=2,
             raw_text="Phần II: Tự luận\nCâu 2. Chứng minh rằng...",
+            raw_lines=["Phần II: Tự luận", "Câu 2. Chứng minh rằng..."],
             page=1,
-            y0=300.0, y1=400.0,
-            bbox=(50, 300, 500, 400),
+            y0=300.0,
+            y1=400.0,
             is_essay=False,
         )
         blocks = [mcq_block, essay_block]
