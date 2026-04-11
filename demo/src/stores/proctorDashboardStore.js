@@ -40,13 +40,22 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     reviewOnly: false
   })
 
+  const cardsWithMeta = computed(() => cards.value.map((card) => {
+    const riskBand = resolveRiskBand(card.riskScore)
+    const statusToken = resolveStatusToken(card)
+    return {
+      ...card,
+      _riskBand: riskBand,
+      _statusToken: statusToken
+    }
+  }))
+
   const visibleCards = computed(() => {
     const search = normalizeText(filters.value.search)
-    return cards.value.filter((card) => {
+    return cardsWithMeta.value.filter((card) => {
       const nameMatches = !search || normalizeText(card.student || card.name).includes(search)
-      const statusMatches = filters.value.status === 'ALL' || resolveStatusToken(card) === filters.value.status
-      const riskBand = resolveRiskBand(card.riskScore)
-      const riskMatches = filters.value.riskBand === 'ALL' || riskBand === filters.value.riskBand
+      const statusMatches = filters.value.status === 'ALL' || card._statusToken === filters.value.status
+      const riskMatches = filters.value.riskBand === 'ALL' || card._riskBand === filters.value.riskBand
       const reviewMatches = !filters.value.reviewOnly || card.reviewRequired
       const timeMatches = matchesTimeRange(card, filters.value.timeRange)
       return nameMatches && statusMatches && riskMatches && reviewMatches && timeMatches
@@ -166,20 +175,17 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
 
   const alertsBySeverity = computed(() => {
     return {
-      CRITICAL: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'CRITICAL'),
-      HIGH_RISK: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'HIGH_RISK'),
-      SUSPICIOUS: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'SUSPICIOUS'),
-      CLEAN: cards.value.filter(c => resolveRiskBand(c.riskScore) === 'CLEAN')
+      CRITICAL: cardsWithMeta.value.filter(c => c._riskBand === 'CRITICAL'),
+      HIGH_RISK: cardsWithMeta.value.filter(c => c._riskBand === 'HIGH_RISK'),
+      SUSPICIOUS: cardsWithMeta.value.filter(c => c._riskBand === 'SUSPICIOUS'),
+      CLEAN: cardsWithMeta.value.filter(c => c._riskBand === 'CLEAN')
     }
   })
 
   const connectionHealth = computed(() => {
-    const total = cards.value.length
+    const total = cardsWithMeta.value.length
     if (total === 0) return { online: 0, offline: 0, percent: 100, level: 'unknown' }
-    const online = cards.value.filter(c => {
-      const s = String(c.status || '').toUpperCase()
-      return s === 'ACTIVE' || s === 'IN_PROGRESS'
-    }).length
+    const online = cardsWithMeta.value.filter(c => c._statusToken === 'ONLINE').length
     const offline = total - online
     const percent = Math.round((online / total) * 100)
     let level = 'healthy'
@@ -189,8 +195,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   })
 
   const flagStats = computed(() => {
-    const flagged = cards.value.filter(c => Number(c.riskScore || 0) > 0 || c.suspicious).length
-    const critical = cards.value.filter(c => Number(c.riskScore || 0) >= 81).length
+    const flagged = cardsWithMeta.value.filter(c => Number(c.riskScore || 0) > 0 || c.suspicious).length
+    const critical = cardsWithMeta.value.filter(c => c._riskBand === 'CRITICAL').length
     return { flagged, critical }
   })
 
@@ -202,6 +208,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     connectionMode,
     lastUpdatedAt,
     filters,
+    cardsWithMeta,
     visibleCards,
     roomsGroupedByExam,
     alertsBySeverity,

@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Cài đặt giám sát</h3>
-        <p class="ec-section__desc">Bật/tắt các tính năng chống gian lận</p>
       </div>
     </div>
 

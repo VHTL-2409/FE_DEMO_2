@@ -1,5 +1,16 @@
 <template>
   <div class="ets">
+    <div class="ets__workspace-link">
+      <RouterLink to="/teacher/exams/list" class="ets__back-link">
+        <LucideIcon name="arrow_back" />
+        <span>Quay lại danh sách đề</span>
+      </RouterLink>
+      <div class="ets__workspace-badge">
+        <LucideIcon name="edit_square" />
+        <span>Workspace tạo đề</span>
+      </div>
+    </div>
+
     <!-- Hero -->
     <div class="ets__hero">
       <div class="ets__hero-badge">
@@ -8,15 +19,20 @@
       </div>
       <h1 class="ets__hero-title">Chọn hình thức bài thi</h1>
       <p class="ets__hero-sub">
-        Bạn muốn tạo bài thi tự do để thí sinh tham gia bằng mã,<br />
-        hay bài thi riêng tư dành cho lớp học cụ thể?
+        Bắt đầu từ một workspace thống nhất: chọn loại bài thi trước, sau đó tiếp tục sang các bước nhập câu hỏi, cài đặt lịch và xuất bản.
       </p>
     </div>
 
     <!-- Choice cards -->
     <div class="ets__cards">
       <!-- Free exam -->
-      <div class="ets__card" :class="{ 'ets__card--selected': selected === 'free' }" @click="selected = 'free'">
+      <button
+        type="button"
+        class="ets__card"
+        :class="{ 'ets__card--selected': selected === 'free' }"
+        :aria-pressed="selected === 'free'"
+        @click="selected = 'free'"
+      >
         <div class="ets__card-glow ets__card-glow--blue" />
         <div class="ets__card-header">
           <div class="ets__card-icon ets__card-icon--blue">
@@ -49,10 +65,16 @@
           <LucideIcon name="bolt" />
           Nhanh — thiết lập trong 2 phút
         </div>
-      </div>
+      </button>
 
       <!-- Private exam -->
-      <div class="ets__card" :class="{ 'ets__card--selected': selected === 'private' }" @click="selected = 'private'">
+      <button
+        type="button"
+        class="ets__card"
+        :class="{ 'ets__card--selected': selected === 'private' }"
+        :aria-pressed="selected === 'private'"
+        @click="selected = 'private'"
+      >
         <div class="ets__card-glow ets__card-glow--purple" />
         <div class="ets__card-header">
           <div class="ets__card-icon ets__card-icon--purple">
@@ -85,7 +107,7 @@
           <LucideIcon name="school" />
           Dành cho lớp bạn đảm nhiệm
         </div>
-      </div>
+      </button>
     </div>
 
     <!-- Next button -->
@@ -109,7 +131,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 const router = useRouter()
 const selected = ref('')
@@ -130,6 +152,41 @@ const proceed = () => {
   min-height: 100vh;
   background: var(--ds-bg);
   padding: 2rem 1.5rem 2rem;
+}
+
+.ets__workspace-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ets__back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ds-text-secondary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.ets__back-link:hover {
+  color: var(--ds-primary);
+}
+
+.ets__workspace-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  border: 1px solid var(--ds-primary-border);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 /* Hero */
@@ -170,6 +227,8 @@ const proceed = () => {
   color: var(--ds-text-secondary);
   margin: 0;
   line-height: 1.7;
+  max-width: 720px;
+  margin-inline: auto;
 }
 
 .dark .ets__hero-sub { color: var(--ds-text-muted); }
@@ -200,12 +259,18 @@ const proceed = () => {
   flex-direction: column;
   gap: 0.75rem;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  text-align: left;
 }
 
 .ets__card:hover {
   border-color: rgba(99, 102, 241, 0.35);
   box-shadow: 0 12px 36px rgba(79, 70, 229, 0.12);
   transform: translateY(-2px);
+}
+
+.ets__card:focus-visible {
+  outline: 3px solid var(--ds-primary-ring);
+  outline-offset: 2px;
 }
 
 .ets__card--selected {

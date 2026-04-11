@@ -12,7 +12,7 @@
         </div>
       </div>
       <button type="button" class="rrc__see-all" @click="$emit('see-all')">
-        Xem tất cả
+        Tất cả
         <LucideIcon name="chevron_right" />
       </button>
     </div>

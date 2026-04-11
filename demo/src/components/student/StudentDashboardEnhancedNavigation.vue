@@ -11,9 +11,7 @@
         <div class="portal-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <PageHeader
           class="animate-fade-up text-primary dark:[&_.teacher-page-title]:text-slate-100"
-          eyebrow="Student Workspace"
           title="Khu vực học sinh"
-          subtitle="Đi nhanh tới kỳ thi, luyện tập và lịch sử học tập trong một màn hình gọn gàng hơn."
         />
 
         <!-- Cards grid with staggered animation -->
@@ -80,7 +78,6 @@
                     </div>
                     <p class="text-base font-bold">Bài thi</p>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400">Xem lại kết quả các bài thi đã làm</p>
                 </button>
 
                 <button
@@ -94,7 +91,6 @@
                     </div>
                     <p class="text-base font-bold">Luyện tập</p>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400">Các bài luyện tập cá nhân</p>
                 </button>
               </div>
             </div>
@@ -125,7 +121,6 @@
                   v-else-if="!historyItems.length"
                   icon="edit_note"
                   title="Chưa có hoạt động gần đây"
-                  description="Chưa có lượt thi hoặc luyện tập."
                   action-label="Tìm bài thi"
                   class="py-6"
                   @action="goToExamJoin"
@@ -171,6 +166,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
+import { buildResultQuery } from '../../services/studentExamContextStorage'
 import StudentTopHeader from './StudentTopHeader.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import EmptyState from '../shared/EmptyState.vue'
@@ -226,10 +222,10 @@ const goToStudyHistoryTab = (tab) => {
 const goToExamResult = (item) => {
   router.push({
     path: '/student/exam-result',
-    query: {
+    query: buildResultQuery({
       attemptId: item.attemptId,
       examTitle: item.title
-    }
+    })
   })
 }
 

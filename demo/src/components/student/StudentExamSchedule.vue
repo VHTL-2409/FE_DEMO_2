@@ -1,19 +1,26 @@
 <template>
-  <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+  <div class="bg-[var(--ds-bg)]" :class="embedded ? 'min-h-0' : 'min-h-full'">
+    <div
+      :class="
+        embedded
+          ? 'px-0 pb-2 pt-0'
+          : 'mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 lg:px-8'
+      "
+    >
 
       <!-- Header -->
-      <div class="mb-4">
+      <div :class="embedded ? 'mb-3' : 'mb-4'">
         <ExamScheduleHeader
           :total-count="filteredExams.length"
           :live-count="statusCounts.live"
           :upcoming-count="statusCounts.upcoming + statusCounts.opening"
           :completed-count="statusCounts.completed"
+          :compact="embedded"
         />
       </div>
 
       <!-- Filters -->
-      <div class="mb-4">
+      <div :class="embedded ? 'mb-3' : 'mb-4'">
         <ExamScheduleFilters
           :active-tab="activeTab"
           :tab-counts="tabCounts"
@@ -32,7 +39,7 @@
         :empty-type="emptyType"
         :has-more="false"
         :remaining-count="0"
-        :show-cta="true"
+        :show-cta="!embedded"
         @exam-click="onExamClick"
         @exam-enter="onExamEnter"
         @exam-details="onExamDetails"
@@ -47,12 +54,18 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listMyAttempts } from '../../services/attemptService'
+import { getMyClasses, getStudentClassExams } from '../../services/classService'
 import { useToast } from '../../composables/useToast'
+import { buildResultQuery, buildWaitingRoomQuery } from '../../services/studentExamContextStorage'
 
 // Schedule components
 import ExamScheduleHeader from './schedule/ExamScheduleHeader.vue'
 import ExamScheduleFilters from './schedule/ExamScheduleFilters.vue'
 import UpcomingExamList from './schedule/UpcomingExamList.vue'
+
+defineProps({
+  embedded: { type: Boolean, default: false }
+})
 
 const router = useRouter()
 const toast = useToast()
@@ -179,15 +192,7 @@ const onExamClick = (exam) => { onExamDetails(exam) }
 const onExamEnter = (exam) => {
   router.push({
     path: '/student/exam-waiting-room',
-    query: {
-      examId: exam.id,
-      exam: exam.title || exam.examTitle || 'Kỳ thi',
-      duration: exam.duration || exam.durationMinutes || 60,
-      questions: exam.questionCount || 0,
-      startAt: exam.startTime || exam.startDate || '',
-      endAt: exam.endTime || exam.endDate || '',
-      requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true'
-    }
+    query: buildWaitingRoomQuery({ ...exam, title: exam.title || exam.examTitle || 'Kỳ thi' })
   })
 }
 
@@ -196,24 +201,17 @@ const onExamDetails = (exam) => {
   if (status === 'completed') {
     router.push({
       path: '/student/exam-result',
-      query: {
+      query: buildResultQuery({
         attemptId: exam.attemptId || exam.id,
         examTitle: exam.title || exam.examTitle
-      }
+      })
     })
   } else if (status === 'live') {
     onExamEnter(exam)
   } else {
     router.push({
       path: '/student/exam-waiting-room',
-      query: {
-        examId: exam.id,
-        exam: exam.title || exam.examTitle || 'Kỳ thi',
-        duration: exam.duration || exam.durationMinutes || 60,
-        questions: exam.questionCount || 0,
-        startAt: exam.startTime || exam.startDate || '',
-        endAt: exam.endTime || exam.endDate || ''
-      }
+      query: buildWaitingRoomQuery({ ...exam, title: exam.title || exam.examTitle || 'Kỳ thi' })
     })
   }
 }
@@ -225,8 +223,32 @@ const loadData = async () => {
   isLoading.value = true
   try {
     const attempts = await listMyAttempts()
-    // Build exam list from attempts
-    allExams.value = attempts.map(a => ({
+    const classes = await getMyClasses()
+    const classExamGroups = await Promise.all(
+      (classes || []).map(async (cls) => {
+        try {
+          const exams = await getStudentClassExams(cls.id)
+          return (exams || []).map((exam) => ({
+            ...exam,
+            id: exam.id,
+            examId: exam.id,
+            examTitle: exam.title || exam.examTitle || 'Kỳ thi',
+            title: exam.title || exam.examTitle || 'Kỳ thi',
+            attemptId: null,
+            duration: exam.durationMinutes || exam.duration,
+            questionCount: exam.questionCount,
+            className: exam.className || cls.name || cls.className || '',
+            subject: exam.subject || cls.subject || '',
+            room: exam.room || '',
+            source: 'class'
+          }))
+        } catch {
+          return []
+        }
+      })
+    )
+
+    const attemptExamMap = new Map(attempts.map((a) => [String(a.examId), {
       id: a.examId,
       examId: a.examId,
       attemptId: a.id,
@@ -242,8 +264,17 @@ const loadData = async () => {
       score: a.score,
       subject: a.subject,
       className: a.className,
-      room: a.room
-    }))
+      room: a.room,
+      source: 'attempt'
+    }]))
+
+    const merged = [...attemptExamMap.values()]
+    for (const exam of classExamGroups.flat()) {
+      if (!attemptExamMap.has(String(exam.examId))) {
+        merged.push(exam)
+      }
+    }
+    allExams.value = merged
   } catch (error) {
     allExams.value = []
     toast.error('Không thể tải danh sách kỳ thi.')

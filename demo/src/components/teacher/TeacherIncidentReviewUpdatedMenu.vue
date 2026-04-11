@@ -120,13 +120,34 @@
         </div>
       </div>
 
-      <div class="overflow-hidden ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)">
+      <div v-if="loadError" class="mb-6 ds-animate-fade-up-delay">
+        <EmptyState
+          icon="warning"
+          title="Không tải được dữ liệu sự cố"
+          :description="loadError"
+          action-label="Mở lại tổng quan điểm"
+          fill
+          @action="goToSummaryReview"
+        />
+      </div>
+
+      <div v-else-if="!isLoading && filteredIncidents.length === 0" class="mb-6 ds-animate-fade-up-delay">
+        <EmptyState
+          icon="fact_check"
+          title="Chưa có sự cố cần xử lý"
+          action-label="Mở tổng quan điểm"
+          fill
+          @action="goToSummaryReview"
+        />
+      </div>
+
+      <div v-else class="overflow-hidden ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)">
         <DataTable
           :columns="incidentColumns"
           :data="filteredIncidents"
           :row-key="'attemptId'"
           :loading="isLoading"
-          :empty-text="loadError || 'Không tìm thấy sự cố đáng ngờ nào cho đề thi này.'"
+          :empty-text="'Không tìm thấy sự cố đáng ngờ nào cho đề thi này.'"
           :loading-text="'Đang tải sự cố...'"
         >
           <template #cell-student="{ value }">
@@ -289,22 +310,23 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { ApiError } from '../../services/apiClient'
-import { getAttemptReport, listExamAttempts } from '../../services/attemptService'
+import { listExamAttempts } from '../../services/attemptService'
 import { getAnswerSimilarity } from '../../services/examService'
 import { exportToCsv } from '../../utils/reportExport'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DsStatCard from '../ui/DsStatCard.vue'
 import DataTable from '../ui/DataTable.vue'
 import Modal from '../ui/Modal.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 const route = useRoute()
+const router = useRouter()
 const showIncidentModal = ref(false)
 const activeReportTab = ref('result')
 const selectedIncident = ref(null)
 const isLoading = ref(false)
 const loadError = ref('')
 const attempts = ref([])
-const reportByAttempt = ref({})
 const similarityPairs = ref([])
 const isLoadingSimilarity = ref(false)
 const periodFilter = ref('30d')
@@ -313,8 +335,14 @@ const searchQuery = ref('')
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
-const summaryTabLink = computed(() => ({ path: '/teacher/exams/review/summary', query: route.query }))
+const summaryTabLink = computed(() => ({
+  path: '/teacher/exams/review/summary',
+  query: { ...route.query }
+}))
 const incidentTabLink = computed(() => ({ path: '/teacher/exams/review/incidents', query: route.query }))
+const goToSummaryReview = () => {
+  router.push(summaryTabLink.value)
+}
 
 const incidentColumns = computed(() => [
   { key: 'student', label: 'Học sinh' },
@@ -352,7 +380,6 @@ const withinPeriod = (value) => {
 }
 
 const buildIncident = (attempt) => {
-  const report = reportByAttempt.value[attempt.id]
   const riskScore = Number(attempt.riskScore || 0)
   const suspicious = Boolean(attempt.suspicious)
   const warningCount = Math.max(riskScore, suspicious ? 1 : 0)
@@ -385,7 +412,7 @@ const buildIncident = (attempt) => {
     warningTimeline: [
       { time: formatTime(attempt.startedAt), label: 'Bắt đầu thi', sub: '', icon: 'play_arrow', dotClass: 'bg-[var(--ds-primary)]', timeClass: 'text-[var(--ds-text-muted)]' },
       { time: firstWarningTime, label: 'Kích hoạt cờ rủi ro', sub: `Điểm rủi ro: ${riskScore}`, icon: 'warning', dotClass: 'bg-[var(--ds-accent)]', timeClass: 'text-[var(--ds-accent)]' },
-      { time: latestWarningTime, label: 'Đã nộp bài', sub: report?.status || attempt.status, icon: 'fact_check', dotClass: 'bg-[var(--ds-danger)]', timeClass: 'text-[var(--ds-danger)]' }
+      { time: latestWarningTime, label: 'Đã nộp bài', sub: attempt.status, icon: 'fact_check', dotClass: 'bg-[var(--ds-danger)]', timeClass: 'text-[var(--ds-danger)]' }
     ]
   }
 }
@@ -393,6 +420,29 @@ const buildIncident = (attempt) => {
 const incidents = computed(() => attempts.value
   .filter((attempt) => Number(attempt.riskScore || 0) > 0 || Boolean(attempt.suspicious))
   .map(buildIncident))
+
+const incidentSummary = computed(() => {
+  const counts = new Map()
+  let high = 0
+  let resolved = 0
+
+  for (const incident of filteredIncidents.value) {
+    if (incident.severity === 'CAO') high += 1
+    if (incident.result !== 'Đang xem xét') resolved += 1
+    counts.set(incident.violation, (counts.get(incident.violation) || 0) + 1)
+  }
+
+  const commonViolation = filteredIncidents.value.length
+    ? [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '-'
+    : '-'
+
+  return {
+    total: filteredIncidents.value.length,
+    high,
+    resolved,
+    commonViolation
+  }
+})
 
 const filteredIncidents = computed(() => {
   let list = incidents.value
@@ -421,17 +471,7 @@ const filteredIncidents = computed(() => {
 })
 
 const summaryCards = computed(() => {
-  const total = filteredIncidents.value.length
-  const high = filteredIncidents.value.filter((incident) => incident.severity === 'CAO').length
-  const resolved = filteredIncidents.value.filter((incident) => incident.result !== 'Đang xem xét').length
-  const commonViolation = (() => {
-    if (!filteredIncidents.value.length) return '-'
-    const counts = filteredIncidents.value.reduce((map, incident) => {
-      map.set(incident.violation, (map.get(incident.violation) || 0) + 1)
-      return map
-    }, new Map())
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '-'
-  })()
+  const { total, high, resolved, commonViolation } = incidentSummary.value
   const incidentRate = attempts.value.length ? (total / attempts.value.length) * 100 : 0
 
   return [
@@ -505,16 +545,6 @@ const loadIncidentData = async () => {
   try {
     const attemptsPayload = await listExamAttempts(examId.value)
     attempts.value = attemptsPayload
-
-    const reports = await Promise.all(attemptsPayload.map(async (attempt) => {
-      try {
-        const report = await getAttemptReport(attempt.id)
-        return [attempt.id, report]
-      } catch {
-        return [attempt.id, null]
-      }
-    }))
-    reportByAttempt.value = Object.fromEntries(reports)
   } catch (error) {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu sự cố.'
   } finally {

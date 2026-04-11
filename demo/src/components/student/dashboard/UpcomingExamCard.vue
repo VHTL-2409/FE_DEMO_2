@@ -12,7 +12,7 @@
         </div>
       </div>
       <button type="button" class="uec__see-all" @click="$emit('see-all')">
-        Xem lịch thi
+        Tất cả
         <LucideIcon name="chevron_right" />
       </button>
     </div>
@@ -80,16 +80,6 @@
         </div>
       </div>
 
-      <!-- View more -->
-      <button
-        v-if="upcomingExams.length > displayLimit"
-        type="button"
-        class="uec__show-more"
-        @click="$emit('see-all')"
-      >
-        <LucideIcon name="expand_more" />
-        Xem thêm {{ upcomingExams.length - displayLimit }} kỳ thi
-      </button>
     </div>
   </div>
 </template>

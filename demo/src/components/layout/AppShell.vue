@@ -6,7 +6,7 @@
       :items="currentSidebarItems"
       :active-section="activeSection"
       :collapsed="sidebarCollapsed"
-      :role="layout === 'admin' ? 'admin' : (layout === 'monitoring' ? 'teacher' : role)"
+      :role="layout === 'admin' ? 'admin' : role"
       :user="user"
       :mobile-open="mobileOpen"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
@@ -19,11 +19,7 @@
       class="db-app-shell__main"
       :class="showSidebar ? (sidebarCollapsed ? 'db-app-shell__main--collapsed' : 'db-app-shell__main--expanded') : ''"
     >
-      <router-view v-slot="{ Component }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" />
-        </Transition>
-      </router-view>
+      <slot />
     </main>
   </div>
 </template>
@@ -37,11 +33,10 @@ const props = defineProps({
   layout: {
     type: String,
     default: 'portal',
-    validator: (v) => ['portal', 'exam', 'monitoring', 'admin', 'none'].includes(v)
+    validator: (v) => ['portal', 'exam', 'admin', 'none'].includes(v)
   },
   activeSection: { type: String, default: '' },
   sidebarItems: { type: Array, default: () => [] },
-  monitoringSidebarItems: { type: Array, default: () => [] },
   user: { type: Object, default: null },
   role: { type: String, default: 'teacher' },
   brand: { type: Object, default: null }
@@ -58,14 +53,11 @@ const mainScrollEl = ref(null)
 const route = useRoute()
 
 const showSidebar = computed(() =>
-  (props.layout === 'portal' || props.layout === 'monitoring' || props.layout === 'admin')
-  && (props.sidebarItems?.length > 0 || props.monitoringSidebarItems?.length > 0)
+  (props.layout === 'portal' || props.layout === 'admin')
+  && (props.sidebarItems?.length > 0)
 )
 
-const currentSidebarItems = computed(() => {
-  if (props.layout === 'monitoring') return props.monitoringSidebarItems
-  return props.sidebarItems
-})
+const currentSidebarItems = computed(() => props.sidebarItems)
 
 const resetRouteScroll = () => {
   if (mainScrollEl.value) {
@@ -100,14 +92,14 @@ watch(
 .db-app-shell {
   height: 100dvh;
   overflow: hidden;
-  background: var(--db-surface-2);
-  font-family: var(--db-font);
+  background: var(--portal-shell-bg);
+  font-family: var(--portal-shell-font);
 }
 
 .db-app-shell__main {
   height: 100dvh;
   overflow-y: auto;
-  background: var(--db-surface-2);
+  background: var(--portal-shell-bg);
   /* Keep the sidebar transition without forcing GPU text compositing. */
   transition: padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout;
@@ -132,11 +124,11 @@ watch(
 }
 
 .db-app-shell__main--expanded {
-  padding-left: var(--db-sidebar-w);
+  padding-left: var(--portal-sidebar-width);
 }
 
 .db-app-shell__main--collapsed {
-  padding-left: var(--db-sidebar-collapsed);
+  padding-left: var(--portal-sidebar-collapsed);
 }
 
 /* GPU: sidebar padding transitions smoothly; reduced-motion disables it */

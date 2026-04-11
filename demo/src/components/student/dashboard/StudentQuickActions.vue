@@ -24,7 +24,7 @@
           <LucideIcon :name="action.icon" />
         </div>
         <span class="sq__action-label">{{ action.label }}</span>
-        <span class="sq__action-desc">{{ action.description }}</span>
+        <span v-if="action.description" class="sq__action-desc">{{ action.description }}</span>
       </button>
     </div>
   </div>
@@ -34,12 +34,12 @@
 defineEmits(['action'])
 
 const actions = [
-  { id: 'join-exam', label: 'Vào thi', description: 'Nhập mã đề thi', icon: 'login', accent: 'primary' },
-  { id: 'practice', label: 'Luyện tập', description: 'Tạo bài luyện tự chọn', icon: 'model_training', accent: 'info' },
-  { id: 'results', label: 'Kết quả', description: 'Xem điểm thi gần đây', icon: 'grade', accent: 'success' },
-  { id: 'history', label: 'Lịch sử', description: 'Xem lại bài thi đã làm', icon: 'history', accent: 'neutral' },
-  { id: 'schedule', label: 'Lịch thi', description: 'Xem lịch thi sắp tới', icon: 'calendar_month', accent: 'warning' },
-  { id: 'profile', label: 'Hồ sơ', description: 'Cập nhật thông tin', icon: 'person', accent: 'neutral' }
+  { id: 'schedule', label: 'Lịch thi', description: '', icon: 'calendar_month', accent: 'primary' },
+  { id: 'join-exam', label: 'Vào thi', description: '', icon: 'login', accent: 'info' },
+  { id: 'practice', label: 'Luyện tập', description: '', icon: 'model_training', accent: 'warning' },
+  { id: 'history', label: 'Lịch sử', description: '', icon: 'history', accent: 'success' },
+  { id: 'classes', label: 'Lớp học', description: '', icon: 'school', accent: 'neutral' },
+  { id: 'profile', label: 'Hồ sơ', description: '', icon: 'person', accent: 'neutral' }
 ]
 </script>
 

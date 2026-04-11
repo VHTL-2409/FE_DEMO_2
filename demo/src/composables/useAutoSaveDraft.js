@@ -23,10 +23,11 @@ export function useAutoSaveDraft({ getAnswers, getAttemptId, saveToServer, debou
     const key = storageKey()
     if (!key) return
     try {
+      const answers = getAnswers()
       localStorage.setItem(
         key,
         JSON.stringify({
-          answers: getAnswers(),
+          answers,
           savedAt: Date.now()
         })
       )

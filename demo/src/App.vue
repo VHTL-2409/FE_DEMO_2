@@ -1,7 +1,7 @@
 <template>
   <div class="app-route-host">
-    <!-- Teacher portal routes -->
-    <PortalLayout v-if="isTeacherRoute">
+    <!-- Teacher portal: dashboard, exams, classes, live monitoring — shared sidebar -->
+    <PortalLayout v-if="currentLayout === 'portal'">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -10,7 +10,7 @@
     </PortalLayout>
 
     <!-- Student portal routes -->
-    <StudentPortalLayout v-else-if="isStudentPortalRoute">
+    <StudentPortalLayout v-else-if="currentLayout === 'studentPortal'">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -19,7 +19,7 @@
     </StudentPortalLayout>
 
     <!-- Student exam layout -->
-    <StudentExamLayout v-else-if="isExamRoute">
+    <StudentExamLayout v-else-if="currentLayout === 'exam'">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -43,12 +43,7 @@ const StudentPortalLayout = defineAsyncComponent(() => import('./layouts/Student
 const StudentExamLayout = defineAsyncComponent(() => import('./layouts/StudentExamLayout.vue'))
 
 const route = useRoute()
-
-const isTeacherRoute = computed(() => (route.path || '').startsWith('/teacher/'))
-const isStudentPortalRoute = computed(() =>
-  (route.path || '').startsWith('/student/') && route.path !== '/student/exam-interface'
-)
-const isExamRoute = computed(() => route.path === '/student/exam-interface')
+const currentLayout = computed(() => route.meta?.layout || 'default')
 
 </script>
 

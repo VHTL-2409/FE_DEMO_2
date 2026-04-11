@@ -70,20 +70,30 @@
         <!-- Action Buttons -->
         <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4 ds-animate-fade-up" style="animation-delay: 0.12s">
           <button
+            v-if="attemptId"
             type="button"
             class="inline-flex items-center justify-center gap-2 rounded-[var(--ds-radius-xl)] px-6 py-3.5 text-sm font-bold text-white shadow-[var(--ds-shadow-md)] transition-all hover:-translate-y-1 hover:shadow-[var(--ds-shadow-lg)]"
             style="background-color: var(--ds-primary);"
-            @click="goToDashboard"
+            @click="goToResult"
           >
-            <LucideIcon name="dashboard" size="18" />
-            Về trang chủ
+            <LucideIcon name="grade" size="18" />
+            Xem kết quả
           </button>
           <button
             type="button"
             class="inline-flex items-center justify-center gap-2 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] px-6 py-3.5 text-sm font-semibold text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] transition-all hover:-translate-y-1 hover:bg-[var(--ds-gray-50)] hover:shadow-[var(--ds-shadow-md)]"
+            @click="goToHistory"
           >
-            <LucideIcon name="download" size="18" />
-            Lưu bài làm
+            <LucideIcon name="history" size="18" />
+            Về lịch sử
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] px-6 py-3.5 text-sm font-semibold text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] transition-all hover:-translate-y-1 hover:bg-[var(--ds-gray-50)] hover:shadow-[var(--ds-shadow-md)]"
+            @click="goToDashboard"
+          >
+            <LucideIcon name="dashboard" size="18" />
+            Về trang chủ
           </button>
         </div>
 
@@ -101,6 +111,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getAttemptDetail, getAttemptReport } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
+import { buildResultQuery } from '../../services/studentExamContextStorage'
 
 const route = useRoute()
 const router = useRouter()
@@ -109,6 +120,7 @@ const report = ref(null)
 const toast = useToast()
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
+const examTitle = computed(() => detail.value?.examTitle || route.query.exam || 'Bài thi')
 
 const submittedAtDisplay = computed(() => {
   const submittedAt = detail.value?.submittedAt || route.query.submittedAt
@@ -147,6 +159,20 @@ const answeredSummary = computed(() => {
 })
 
 const goToDashboard = () => router.push('/student/dashboard')
+const goToHistory = () => router.push('/student/study-history')
+const goToResult = () => {
+  if (!attemptId.value) {
+    goToHistory()
+    return
+  }
+  router.push({
+    path: '/student/exam-result',
+    query: buildResultQuery({
+      attemptId: attemptId.value,
+      examTitle: examTitle.value
+    })
+  })
+}
 
 onMounted(async () => {
   if (!attemptId.value) return

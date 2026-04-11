@@ -13,13 +13,6 @@
       </div>
 
       <p class="sh__headline">{{ headlineText }}</p>
-
-      <!-- Quick todo hint -->
-      <div v-if="nextAction" class="sh__next-action" @click="$emit('action-click', nextAction.action)">
-        <LucideIcon :name="nextAction.icon" />
-        <span>{{ nextAction.label }}</span>
-        <LucideIcon name="chevron-right" class="sh__next-arrow" />
-      </div>
     </div>
 
     <!-- Right: stats summary -->
@@ -79,8 +72,6 @@ const props = defineProps({
   avgScore: { type: [Number, String], default: null }
 })
 
-defineEmits(['action-click'])
-
 const timeOfDayLabel = computed(() => {
   const h = new Date().getHours()
   if (h < 12) return 'Buổi sáng'
@@ -105,18 +96,6 @@ const headlineText = computed(() => {
   return 'Không có kỳ thi nào sắp tới. Hãy luyện tập thêm!'
 })
 
-const nextAction = computed(() => {
-  if (props.examCount > 0) {
-    return { action: 'exam', label: 'Xem lịch thi', icon: 'calendar_month' }
-  }
-  if (props.pendingCount > 0) {
-    return { action: 'pending', label: 'Hoàn thành bài thi', icon: 'quiz' }
-  }
-  if (props.newScoreCount > 0) {
-    return { action: 'results', label: 'Xem kết quả mới', icon: 'grade' }
-  }
-  return { action: 'practice', label: 'Luyện tập ngay', icon: 'model_training' }
-})
 </script>
 
 

@@ -716,7 +716,10 @@ const confirmDelete = async () => {
 
 const goToResults = () => {
   if (!exam.value) return
-  router.push({ path: '/teacher/exams/review/summary', query: { examId: exam.value.id, title: exam.value.title } })
+  router.push({
+    path: '/teacher/exams/review/summary',
+    query: { examId: String(exam.value.id), title: exam.value.title || '' }
+  })
 }
 
 const navigateToTab = (tabId) => {

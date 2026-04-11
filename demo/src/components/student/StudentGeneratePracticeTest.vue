@@ -2,33 +2,15 @@
   <div class="portal-viewport flex h-full min-h-0 flex-col bg-background-light font-display text-slate-900">
     <div class="relative flex h-full min-h-0 flex-1 w-full flex-col overflow-x-hidden">
       <div class="layout-container flex h-full min-h-0 flex-1 grow flex-col">
-        <StudentTopHeader class="shrink-0" />
-
         <main class="teacher-page-shell relative flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5">
           <div class="staff-page-wrap min-h-0 flex-1 overflow-x-hidden">
-          <PageHeader
-            class="shrink-0 animate-fade-up [&_.teacher-page-title]:text-[clamp(1.05rem,2.2vw,1.5rem)]"
-            eyebrow="Luyện tập"
-            title="Tạo bài luyện tập (Nhập tệp)"
-            subtitle="Tải tệp, chọn số câu và thời lượng để luyện trong một luồng gọn."
-          />
+            <PageHeader
+              class="shrink-0 animate-fade-up [&_.teacher-page-title]:text-[clamp(1.05rem,2.2vw,1.5rem)]"
+              title="Tạo bài luyện tập"
+            />
 
-          <div class="mb-2 shrink-0 animate-fade-up">
-            <div class="flex flex-wrap items-center justify-start gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:gap-3 sm:text-xs md:gap-5">
-              <div class="flex items-center gap-2.5">
-                <span class="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white shadow-sm">1</span>
-                <span class="text-slate-900">Tệp &amp; số câu</span>
-              </div>
-              <span class="hidden h-px w-8 shrink-0 bg-slate-200 sm:block" aria-hidden="true"></span>
-              <div class="flex items-center gap-2.5">
-                <span class="flex size-8 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-500">2</span>
-                <span class="text-slate-600">Thời lượng &amp; bắt đầu</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="relative flex min-h-0 flex-1 flex-col gap-2 animate-fade-up-delay sm:gap-3">
-            <div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-2 overflow-x-hidden sm:gap-3">
+            <div class="relative flex min-h-0 flex-1 flex-col gap-2 animate-fade-up-delay sm:gap-3">
+              <div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-2 overflow-x-hidden sm:gap-3">
               <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4 lg:min-h-0">
                 <section class="staff-surface relative flex min-h-[12rem] flex-col overflow-hidden rounded-2xl p-3 sm:p-4 lg:min-h-[min(32dvh,13rem)] lg:self-stretch">
                   <div class="mb-2 flex shrink-0 items-center gap-2 border-b border-slate-100 pb-2">
@@ -43,7 +25,6 @@
                         <LucideIcon name="cloud_upload" size="24" class="text-primary" />
                       </div>
                       <h4 class="mb-0.5 text-center text-xs font-semibold sm:text-sm">Chọn hoặc kéo thả tệp</h4>
-                      <p class="line-clamp-2 px-1 text-center text-[10px] leading-snug text-slate-500 sm:text-[11px]">{{ FILE_FORMAT_DESC }}</p>
                       <div class="mt-1.5 flex flex-wrap justify-center gap-2 text-[10px] sm:mt-2 sm:text-[11px]">
                         <a :href="getTemplateDownloadUrl('csv')" download class="flex items-center gap-0.5 font-semibold text-primary hover:underline">
                           <LucideIcon name="download" size="14" />
@@ -78,7 +59,6 @@
                       >
                         <LucideIcon name="summarize" size="24" />
                         <p class="text-[11px] font-medium leading-snug text-slate-500 sm:text-xs">Chưa có tệp</p>
-                        <p class="max-w-[14rem] text-[10px] leading-snug text-slate-400 sm:text-[11px]">Tải tệp bên trái để xem số câu hợp lệ.</p>
                       </div>
 
                       <div v-else-if="previewLoading" class="flex h-full min-h-[6rem] flex-col items-center justify-center gap-2">
@@ -182,10 +162,10 @@
 import { computed, ref } from 'vue'
 import { startAttempt } from '../../services/attemptService'
 import { createPracticeFromFile } from '../../services/examService'
-import { FILE_FORMAT_DESC, getTemplateDownloadUrl, previewImportFile } from '../../services/questionService'
+import { getTemplateDownloadUrl, previewImportFile } from '../../services/questionService'
 import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
-import StudentTopHeader from './StudentTopHeader.vue'
+import { buildAttemptQuery } from '../../services/studentExamContextStorage'
 import PageHeader from '../ui/PageHeader.vue'
 
 const durationOptions = [
@@ -292,15 +272,15 @@ const startPractice = async () => {
 
     router.push({
       path: '/student/exam-interface',
-      query: {
-        exam: practiceExam.title || 'Bài luyện tập',
+      query: buildAttemptQuery({
+        examTitle: practiceExam.title || 'Bài luyện tập',
         examId: practiceExam.id,
         attemptId: attempt.attemptId,
         deadlineAt: attempt.deadlineAt || '',
         remainingSeconds: attempt.remainingSeconds || 0,
         startedAt: attempt.startedAt || '',
-        isPractice: 'true'
-      }
+        isPractice: true
+      })
     })
   } catch (error) {
     toast.error(error?.message || 'Không thể tạo bài luyện tập lúc này.')

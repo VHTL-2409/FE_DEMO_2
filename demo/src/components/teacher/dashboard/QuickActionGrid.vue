@@ -54,8 +54,8 @@ const actions = [
   {
     id: 'analytics',
     icon: 'bar_chart',
-    title: 'Phân tích & Báo cáo',
-    subtitle: 'Xem thống kê chi tiết',
+    title: 'Phân tích kết quả',
+    subtitle: 'Theo dõi điểm và tỷ lệ hoàn thành',
     color: 'accent'
   },
   {
@@ -69,7 +69,7 @@ const actions = [
     id: 'help',
     icon: 'help',
     title: 'Trung tâm trợ giúp',
-    subtitle: 'Hướng dẫn sử dụng',
+    subtitle: 'Xem hướng dẫn và câu hỏi thường gặp',
     color: 'muted'
   }
 ]

@@ -114,6 +114,7 @@ import { getExamDetail } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import { parseBackendDate } from '../../utils/dateUtils'
+import { buildAttemptQuery } from '../../services/studentExamContextStorage'
 
 import ExamLobbyHeader from './lobby/ExamLobbyHeader.vue'
 import StartExamPanel from './lobby/StartExamPanel.vue'
@@ -256,13 +257,13 @@ const goToExamInterface = async () => {
     const started = await startAttempt(examId.value)
     router.push({
       path: '/student/exam-interface',
-      query: {
-        exam: examTitle.value,
+      query: buildAttemptQuery({
+        examTitle: examTitle.value,
         examId: examId.value,
         attemptId: started.attemptId,
         deadlineAt: started.deadlineAt,
         remainingSeconds: started.remainingSeconds
-      }
+      })
     })
   } catch {
     toast.error('Không thể bắt đầu bài thi lúc này.')

@@ -1,6 +1,17 @@
 <template>
   <div class="bg-[var(--ds-bg)] min-h-full ds-animate-fade-up">
-    <AnalyticsLayout>
+    <div v-if="loadError" class="mx-auto max-w-7xl px-4 pb-4 pt-4 sm:px-6 lg:px-8">
+      <EmptyState
+        icon="warning"
+        title="Không tải được tổng quan kết quả"
+        :description="loadError"
+        action-label="Quay lại danh sách đề"
+        fill
+        @action="router.push('/teacher/exams/list')"
+      />
+    </div>
+
+    <AnalyticsLayout v-else>
       <!-- Header -->
       <template #header>
         <AnalyticsHeader
@@ -10,7 +21,7 @@
           :show-date-range="false"
           :show-pdf-export="true"
           :export-loading="isLoading"
-          @back="router.push('/teacher/exams')"
+          @back="router.push('/teacher/exams/list')"
           @export-csv="downloadReport"
           @export-pdf="downloadReport"
         />
@@ -126,12 +137,14 @@ import ScoreDistributionChart from './analytics/ScoreDistributionChart.vue'
 import DifficultyInsightCard from './analytics/DifficultyInsightCard.vue'
 import AnalyticsFilters from './analytics/AnalyticsFilters.vue'
 import StudentResultsTable from './analytics/StudentResultsTable.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 // ── State ──────────────────────────────────────────────────────────────────
 const isLoading = ref(false)
+const loadError = ref('')
 const attempts = ref([])
 const questionWrongStats = ref([])
 
@@ -313,8 +326,12 @@ const downloadReport = () => {
 
 // ── Load data ──────────────────────────────────────────────────────────────
 const loadAttempts = async () => {
-  if (!examId.value) return
+  if (!examId.value) {
+    loadError.value = 'Thiếu mã đề thi. Vui lòng mở lại báo cáo từ danh sách đề.'
+    return
+  }
   isLoading.value = true
+  loadError.value = ''
   try {
     const [attemptsData, wrongStats] = await Promise.all([
       listExamAttempts(examId.value),
@@ -330,7 +347,7 @@ const loadAttempts = async () => {
       wrongRate: (q.wrongRatePercent ?? q.wrongRate ?? q.errorRate ?? 0) / 100
     }))
   } catch (error) {
-    // Error handling done via toast in UI
+    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu tổng quan kết quả.'
   } finally {
     isLoading.value = false
   }

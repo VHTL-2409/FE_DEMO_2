@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Phân tích đề thi</h3>
-        <p class="ec-section__desc">Nhập câu hỏi từ file và cấu hình cách hiển thị</p>
       </div>
     </div>
 

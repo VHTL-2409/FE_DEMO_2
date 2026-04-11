@@ -42,15 +42,16 @@
                 </div>
                 <div class="sth__notif-list">
                   <div v-if="!notifications.length" class="sth__notif-empty">Chưa có thông báo.</div>
-                  <div
+                  <button
                     v-for="n in notifications"
                     :key="n.id"
+                    type="button"
                     :class="['sth__notif-item', { 'sth__notif-item--unread': !n.read }]"
                     @click="markAsRead(n.id)"
                   >
                     <p class="sth__notif-item-title">{{ n.title }}</p>
                     <p class="sth__notif-item-msg">{{ n.message }}</p>
-                  </div>
+                  </button>
                 </div>
               </div>
             </Transition>
@@ -150,9 +151,9 @@ const { user: authUser } = storeToRefs(useAuthStore())
 
 const studentMenu = [
   { key: 'dashboard', label: 'Trang chủ', path: '/student/dashboard', icon: 'home' },
-  { key: 'examJoin',   label: 'Vào thi',   path: '/student/exam-join',    icon: 'quiz' },
+  { key: 'activity', label: 'Lịch & kết quả', path: '/student/study-history', icon: 'calendar_month' },
+  { key: 'examJoin', label: 'Vào thi',   path: '/student/exam-join', icon: 'quiz' },
   { key: 'practice',   label: 'Luyện tập', path: '/student/generate-practice-test', icon: 'edit' },
-  { key: 'history',    label: 'Kết quả',   path: '/student/study-history', icon: 'history' },
   { key: 'profile',    label: 'Hồ sơ',     path: '/student/profile',      icon: 'account_circle' }
 ]
 
@@ -167,13 +168,17 @@ const isMenuActive = (key) => {
     return path === '/student/dashboard'
   }
   if (key === 'examJoin') {
-    return path === '/student/exam-join' || path === '/student/exam-waiting-room' || path === '/student/exam-interface' || path === '/student/submission-confirmation'
+    return path === '/student/exam-join'
+  }
+  if (key === 'activity') {
+    return path === '/student/study-history'
+      || path === '/student/exam-result'
+      || path === '/student/submission-confirmation'
+      || path === '/student/exam-waiting-room'
+      || path === '/student/exam-interface'
   }
   if (key === 'practice') {
     return path === '/student/generate-practice-test'
-  }
-  if (key === 'history') {
-    return path === '/student/study-history' || path === '/student/exam-result'
   }
   if (key === 'profile') {
     return path === '/student/profile'
@@ -484,10 +489,14 @@ const handleGoToProfile = () => {
 }
 
 .sth__notif-item {
+  width: 100%;
   padding: 0.75rem 1rem;
+  border: none;
   border-bottom: 1px solid var(--color-border);
+  background: transparent;
   cursor: pointer;
   transition: background 0.15s ease;
+  text-align: left;
 }
 
 .sth__notif-item:last-child { border-bottom: none; }

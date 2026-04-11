@@ -12,9 +12,7 @@
       <!-- Page Header -->
       <div class="mb-6 ds-animate-fade-up max-w-6xl">
         <PageHeader
-          eyebrow="Học sinh"
           title="Vào thi"
-          subtitle="Chọn đề thi từ lớp học hoặc nhập mã đề để tham gia thi."
           size="default"
         />
       </div>
@@ -31,7 +29,6 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-[var(--ds-text)]">Thi qua mã đề</h2>
-              <p class="mt-0.5 text-xs text-[var(--ds-text-muted)]">Nhập mã hoặc tiêu đề để vào phòng chờ</p>
             </div>
           </div>
 
@@ -43,7 +40,7 @@
               v-model.trim="examCode"
               type="text"
               autocomplete="off"
-              placeholder="Nhập mã đề hoặc tiêu đề bài thi..."
+              placeholder="Mã hoặc tiêu đề"
               class="ds-input w-full pl-12 pr-4 py-4 rounded-[var(--ds-radius-xl)] text-sm transition-all duration-200"
               :class="{ 'ring-2 ring-primary/20': isInputFocused }"
               @focus="isInputFocused = true"
@@ -51,11 +48,6 @@
               @keyup.enter="goToWaitingRoom"
             />
           </div>
-
-          <p class="mt-2 text-xs text-[var(--ds-text-muted)] flex items-center gap-1.5">
-            <LucideIcon name="info" size="14" />
-            Mã đề thi thường là chuỗi ký tự do giảng viên cung cấp.
-          </p>
 
           <div v-if="errorMsg" class="mt-4 flex items-center gap-2 rounded-[var(--ds-radius-xl)] border border-[rgba(220,38,38,0.2)] bg-[var(--ds-danger-bg)] px-4 py-3 animate-fade-up">
             <LucideIcon name="error" size="18" />
@@ -89,7 +81,6 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-[var(--ds-text)]">Đề thi từ lớp học</h2>
-              <p class="mt-0.5 text-xs text-[var(--ds-text-muted)]">Chọn đề thi được giao từ lớp học của bạn</p>
             </div>
           </div>
 
@@ -127,7 +118,7 @@
               <LucideIcon name="school" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
             <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Chưa tham gia lớp học nào</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Bạn chưa được thêm vào lớp học nào. Hãy tham gia lớp bằng mã lớp hoặc liên hệ giáo viên để được thêm.</p>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Tham gia lớp hoặc liên hệ giáo viên.</p>
             <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
               <button
                 type="button"
@@ -160,9 +151,7 @@
               <LucideIcon name="quiz" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
             <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Không có đề thi đang diễn ra</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">
-              {{ selectedClassExams.length === 0 ? 'Lớp này chưa có đề thi nào.' : 'Lớp này hiện không có đề thi nào đang diễn ra.' }}
-            </p>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Không có đề thi phù hợp.</p>
           </div>
 
           <!-- Class exam list -->
@@ -222,6 +211,7 @@ import { useRouter } from 'vue-router'
 import { joinExamByCode } from '../../services/examService'
 import { getMyClasses, getStudentClassExams } from '../../services/classService'
 import { useToast } from '../../composables/useToast'
+import { buildWaitingRoomQuery } from '../../services/studentExamContextStorage'
 import PageHeader from '../ui/PageHeader.vue'
 
 const router = useRouter()
@@ -296,17 +286,7 @@ const goToWaitingRoom = async () => {
     }
     router.push({
       path: '/student/exam-waiting-room',
-      query: {
-        examId: matchedExam.id,
-        examCode: matchedExam.code || '',
-        exam: matchedExam.title || 'Bài thi',
-        duration: matchedExam.durationMinutes || 60,
-        questions: matchedExam.questionCount || 0,
-        startAt: matchedExam.startTime || '',
-        endAt: matchedExam.endTime || '',
-        className: matchedExam.className || '',
-        requireCameraMic: matchedExam.requireCameraMic === false ? 'false' : 'true'
-      }
+      query: buildWaitingRoomQuery(matchedExam)
     })
   } catch (error) {
     errorMsg.value = 'Không thể tìm bài thi lúc này. Vui lòng thử lại.'
@@ -318,17 +298,7 @@ const goToWaitingRoom = async () => {
 const enterClassExam = (exam) => {
   router.push({
     path: '/student/exam-waiting-room',
-    query: {
-      examId: exam.id,
-      examCode: exam.code || '',
-      exam: exam.title || exam.name || 'Bài thi',
-      duration: exam.durationMinutes || exam.duration || 60,
-      questions: exam.questionCount || 0,
-      startAt: exam.startTime || '',
-      endAt: exam.endTime || '',
-        className: exam.className || '',
-      requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true'
-    }
+    query: buildWaitingRoomQuery({ ...exam, title: exam.title || exam.name || 'Bài thi' })
   })
 }
 

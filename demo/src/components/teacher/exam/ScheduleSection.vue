@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Lịch thi</h3>
-        <p class="ec-section__desc">Thiết lập thời gian làm bài và cửa sổ thi</p>
       </div>
     </div>
 

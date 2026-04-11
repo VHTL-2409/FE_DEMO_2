@@ -18,9 +18,9 @@
             <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="12" />
             <span>Mic</span>
           </div>
-          <div class="ei-device-badge ei-device-badge--ok">
-            <LucideIcon name="wifi" size="12" />
-            <span>Kết nối</span>
+          <div class="ei-device-badge" :class="isOnline ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="isOnline ? 'wifi' : 'wifi_off'" size="12" />
+            <span>{{ isOnline ? 'Kết nối' : 'Mất mạng' }}</span>
           </div>
         </div>
       </div>
@@ -461,6 +461,7 @@ import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
+import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
 import BaseModal from '../shared/BaseModal.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
@@ -475,9 +476,11 @@ const showSubmitModal = ref(false)
 const showLeaveConfirm = ref(false)
 const pendingLeaveCallback = ref(null)
 const isSubmitting = ref(false)
+const allowConfirmedLeave = ref(false)
 const questions = ref([])
 const examSurfaceReady = ref(false)
 const examLoadFailed = ref(false)
+const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine !== false)
 
 const examTitle = computed(() => route.query.exam || 'Bài thi')
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
@@ -542,6 +545,13 @@ const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
 const showFullscreenPrompt = ref(false)
 const isFullscreenActive = ref(false)
+const questionById = computed(() => {
+  const map = new Map()
+  for (const question of questions.value) {
+    map.set(Number(question.id), question)
+  }
+  return map
+})
 
 const normalizeQuestionType = (q) => String(q?.type || 'SINGLE_CHOICE').toUpperCase()
 
@@ -600,14 +610,37 @@ const normalizeAnswerIdsForQuestion = (question, value) => {
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
 const devicesReady = computed(() => cameraReady.value && micReady.value)
-const answeredCount = computed(() => Object.values(answers.value).filter(hasAnswerValue).length)
-const unansweredCount = computed(() => Math.max(questions.value.length - answeredCount.value, 0))
-const markedCount = computed(() => Object.values(markedQuestions.value).filter(Boolean).length)
-const skippedCount = computed(() => questions.value.filter((q) => {
-  const key = String(q.id)
-  return Boolean(visitedQuestions.value[key]) && !hasAnswerValue(answers.value[key]) && !Boolean(markedQuestions.value[key])
-}).length)
-const notVisitedCount = computed(() => questions.value.filter((q) => !visitedQuestions.value[String(q.id)]).length)
+const examProgressStats = computed(() => {
+  let answered = 0
+  let marked = 0
+  let skipped = 0
+  let notVisited = 0
+
+  for (const question of questions.value) {
+    const key = String(question.id)
+    const visited = Boolean(visitedQuestions.value[key])
+    const hasAnswer = hasAnswerValue(answers.value[key])
+    const isMarked = Boolean(markedQuestions.value[key])
+
+    if (hasAnswer) answered += 1
+    if (isMarked) marked += 1
+    if (!visited) notVisited += 1
+    else if (!hasAnswer && !isMarked) skipped += 1
+  }
+
+  return {
+    answered,
+    unanswered: Math.max(questions.value.length - answered, 0),
+    marked,
+    skipped,
+    notVisited
+  }
+})
+const answeredCount = computed(() => examProgressStats.value.answered)
+const unansweredCount = computed(() => examProgressStats.value.unanswered)
+const markedCount = computed(() => examProgressStats.value.marked)
+const skippedCount = computed(() => examProgressStats.value.skipped)
+const notVisitedCount = computed(() => examProgressStats.value.notVisited)
 const progressPercent = computed(() => {
   if (!questions.value.length) return 0
   return Math.round((answeredCount.value / questions.value.length) * 100)
@@ -658,6 +691,13 @@ const qRingOffset = computed(() => {
   const ratio = (currentIndex.value) / questions.value.length
   return qRingCircumference * (1 - ratio)
 })
+
+const markVisited = (questionId) => {
+  const key = String(questionId)
+  if (!visitedQuestions.value[key]) {
+    visitedQuestions.value[key] = true
+  }
+}
 
 const currentQuestionAnswer = computed({
   get: () => {
@@ -907,7 +947,10 @@ const selectQuestion = (index) => {
   if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
   currentIndex.value = index
   const q = questions.value[index]
-  if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
+  if (q?.id != null) {
+    markVisited(q.id)
+    examSessionStore.setCurrentQuestion(q.id)
+  }
 }
 
 const goPrevious = () => {
@@ -916,7 +959,10 @@ const goPrevious = () => {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value -= 1
     const q = questions.value[currentIndex.value]
-    if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
+    if (q?.id != null) {
+      markVisited(q.id)
+      examSessionStore.setCurrentQuestion(q.id)
+    }
   }
 }
 
@@ -926,7 +972,10 @@ const goNext = () => {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value += 1
     const q = questions.value[currentIndex.value]
-    if (q?.id != null) { visitedQuestions.value = { ...visitedQuestions.value, [String(q.id)]: true }; examSessionStore.setCurrentQuestion(q.id) }
+    if (q?.id != null) {
+      markVisited(q.id)
+      examSessionStore.setCurrentQuestion(q.id)
+    }
   }
 }
 
@@ -943,7 +992,7 @@ const checkMultiMonitor = () => {
 const persistDraftToServer = async () => {
   if (!attemptId.value || isSuspended.value) return
   const payload = Object.entries(answers.value).filter(([, v]) => hasAnswerValue(v)).map(([questionId, selectedAnswer]) => {
-    const q = questions.value.find(item => Number(item.id) === Number(questionId))
+    const q = questionById.value.get(Number(questionId))
     return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
   })
   if (!payload.length) return
@@ -964,14 +1013,14 @@ const saveStatusLabel = computed(() => {
 
 const onSelectAnswer = (questionId, selectedAnswer) => {
   if (isSuspended.value) return
-  const q = questions.value.find(item => String(item.id) === String(questionId))
+  const q = questionById.value.get(Number(questionId))
   const type = q ? normalizeQuestionType(q) : 'SINGLE_CHOICE'
   const stored =
     type === 'SINGLE_CHOICE'
       ? (selectedAnswer != null && selectedAnswer !== '' ? String(selectedAnswer) : '')
       : selectedAnswer
-  answers.value = { ...answers.value, [questionId]: stored }
-  visitedQuestions.value = { ...visitedQuestions.value, [String(questionId)]: true }
+  answers.value[questionId] = stored
+  markVisited(questionId)
   examSessionStore.setAnswer(questionId, stored)
   schedule()
 }
@@ -980,7 +1029,7 @@ const toggleMarkCurrentQuestion = () => {
   const q = currentQuestion.value
   if (!q) return
   const key = String(q.id)
-  markedQuestions.value = { ...markedQuestions.value, [key]: !markedQuestions.value[key] }
+  markedQuestions.value[key] = !markedQuestions.value[key]
   examSessionStore.toggleMarked(q.id)
 }
 
@@ -989,7 +1038,7 @@ const manualSaveDraft = async () => {
 }
 
 const buildSubmitPayload = () => Object.entries(answers.value).filter(([, v]) => hasAnswerValue(v)).map(([questionId, selectedAnswer]) => {
-  const q = questions.value.find(item => Number(item.id) === Number(questionId))
+  const q = questionById.value.get(Number(questionId))
   return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
 })
 
@@ -1004,7 +1053,15 @@ const autoSubmitOnTimeUp = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({ path: '/student/submission-confirmation', query: { exam: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' } })
+    router.push({
+      path: '/student/submission-confirmation',
+      query: buildSubmissionQuery({
+        examTitle: examTitle.value,
+        attemptId: attemptId.value,
+        score: Math.round(Number(result?.score || 0)),
+        submittedAt: result?.submittedAt || ''
+      })
+    })
   } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp tự động được. Vui lòng thử nộp lại.' } finally { isSubmitting.value = false }
 }
 
@@ -1015,7 +1072,15 @@ const submitExamAction = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({ path: '/student/submission-confirmation', query: { exam: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' } })
+    router.push({
+      path: '/student/submission-confirmation',
+      query: buildSubmissionQuery({
+        examTitle: examTitle.value,
+        attemptId: attemptId.value,
+        score: Math.round(Number(result?.score || 0)),
+        submittedAt: result?.submittedAt || ''
+      })
+    })
   } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp được. Vui lòng thử lại.' } finally { isSubmitting.value = false }
 }
 
@@ -1035,6 +1100,7 @@ const questionButtonClass = (index) => {
 }
 
 const handleBeforeUnload = (e) => { if (isSubmitting.value || !attemptId.value || Object.keys(answers.value).length === 0) return; e.preventDefault(); e.returnValue = '' }
+const handleConnectivityChange = () => { isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine !== false }
 
 const handleExamKeydown = (e) => {
   if (isSuspended.value) return
@@ -1044,10 +1110,17 @@ const handleExamKeydown = (e) => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
 }
 
-onBeforeRouteLeave(() => {
+onBeforeRouteLeave((to) => {
+  if (allowConfirmedLeave.value) {
+    allowConfirmedLeave.value = false
+    return true
+  }
   if (isSubmitting.value) return true
   if (isPracticeExam.value) return true
-  pendingLeaveCallback.value = null
+  pendingLeaveCallback.value = () => {
+    allowConfirmedLeave.value = true
+    router.push(to.fullPath)
+  }
   showLeaveConfirm.value = true
   return false
 })
@@ -1065,6 +1138,8 @@ const onCancelLeave = () => {
 }
 
 onMounted(async () => {
+  window.addEventListener('online', handleConnectivityChange)
+  window.addEventListener('offline', handleConnectivityChange)
   try {
     if (!examId.value || !attemptId.value) { showErrorPopup.value = true; errorPopupMessage.value = 'Thiếu thông tin bài thi. Vui lòng quay lại và thử lại.'; examLoadFailed.value = true; examSurfaceReady.value = true; return }
 
@@ -1104,18 +1179,21 @@ onMounted(async () => {
     examSurfaceReady.value = true
 
     const serverAnswers = (draftData?.answers || []).reduce((acc, answer) => {
-      const q = questions.value.find(item => Number(item.id) === Number(answer.questionId))
+      const q = questionById.value.get(Number(answer.questionId))
       acc[answer.questionId] = normalizeAnswerIdsForQuestion(q, answer.selectedAnswer)
       return acc
     }, {})
     answers.value = Object.entries(mergeLocalIntoAnswers(serverAnswers)).reduce((acc, [questionId, value]) => {
-      const q = questions.value.find(item => Number(item.id) === Number(questionId))
+      const q = questionById.value.get(Number(questionId))
       acc[questionId] = normalizeAnswerIdsForQuestion(q, value)
       return acc
     }, {})
     const answeredQuestionKeys = Object.keys(answers.value).reduce((acc, key) => { acc[String(key)] = true; return acc }, {})
     examSessionStore.hydrateSession({ attempt: { id: attemptId.value, status: draftData?.status || 'IN_PROGRESS' }, exam: { id: examId.value, title: examTitle.value }, questions: questions.value, answers: answers.value })
-    if (questions.value[0]?.id != null) { visitedQuestions.value = { [String(questions.value[0].id)]: true, ...answeredQuestionKeys }; examSessionStore.setCurrentQuestion(questions.value[0].id) }
+    if (questions.value[0]?.id != null) {
+      visitedQuestions.value = { [String(questions.value[0].id)]: true, ...answeredQuestionKeys }
+      examSessionStore.setCurrentQuestion(questions.value[0].id)
+    }
 
     applyAttemptStatus(draftData?.status || 'IN_PROGRESS')
 
@@ -1182,6 +1260,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('online', handleConnectivityChange)
+  window.removeEventListener('offline', handleConnectivityChange)
   window.removeEventListener('beforeunload', handleBeforeUnload)
   window.removeEventListener('keydown', handleExamKeydown)
   teardownBlockBackButton()

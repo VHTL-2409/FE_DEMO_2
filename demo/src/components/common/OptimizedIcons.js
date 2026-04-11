@@ -3,8 +3,6 @@
  * Only imports icons that are actually used in the project
  * Achieves ~80% size reduction by tree-shaking unused icons
  */
-import { computed, h, defineComponent } from 'vue'
-
 // Import ONLY icons that are used in the project
 // This enables tree-shaking and significantly reduces bundle size
 import {
@@ -18,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Circle,
   FileText,
   List,
@@ -95,7 +94,6 @@ import {
   ThumbsDown,
   Share2,
   GraduationCap,
-  Book,
   Library,
   Flame,
   Trophy,
@@ -108,7 +106,6 @@ import {
   Car,
   Bus,
   Train,
-  MapPinOff,
   Wifi,
   WifiOff,
   Network,
@@ -126,9 +123,7 @@ import {
   Type,
   Brain,
   Bookmark,
-  BookmarkCheck,
   Settings,
-  Tag,
   DollarSign,
   CreditCard,
   Landmark,
@@ -151,14 +146,7 @@ import {
   Sun,
   Moon,
   Sparkles,
-  Loader2,
-  CornerDownLeft,
-  CheckCheck,
-  ListPlus,
   ListOrdered,
-  ListChecks,
-  ListMinus,
-  CalendarRange,
   FileCheck2,
   ServerOff,
   Server,
@@ -168,16 +156,8 @@ import {
   SkipForward,
   SkipBack,
   Tv,
-  SdCard,
-  BatteryFull,
-  BatteryWarning,
-  BatteryLow,
-  BatteryMedium,
-  HardDrive,
-  SortAlphaAsc,
   ArrowUpDown,
   ArrowLeftRight,
-  Languages,
   FileWarning,
   Square,
   PlayCircle,
@@ -192,10 +172,29 @@ import {
   CalendarClock,
   Plus,
   XCircle,
-  Inbox,
   FilePen,
-  MinusCircle,
-  PlusCircle,
+  Loader2,
+  Send,
+  Inbox,
+  Tag,
+  StickyNote,
+  ImageOff,
+  FilterX,
+  KeyRound,
+  CalendarRange,
+  MailPlus,
+  CheckCheck,
+  TextCursorInput,
+  Fingerprint,
+  MousePointer2,
+  Layers,
+  GitBranch,
+  CirclePlus,
+  PanelsLeftRight,
+  Palette,
+  BookmarkPlus,
+  BookmarkCheck,
+  MonitorSmartphone,
 } from 'lucide-vue-next'
 
 // Icon name to component mapping - only includes icons that are used
@@ -466,11 +465,13 @@ const ICON_MAP = {
   task_alt: CheckCircle2,
   class: GraduationCap,
   edit_note: Edit3,
+  edit_square: FilePen,
   photo_camera: Sparkles,
   tune: Settings,
   graduation_cap: GraduationCap,
   'graduation-cap': GraduationCap,
   groups: Users,
+  people: Users,
   users: Users,
   'chevron-right': ChevronRight,
   'chevron-left': ChevronLeft,
@@ -495,6 +496,7 @@ const ICON_MAP = {
   'login': LogIn,
   'logout': LogOut,
   'alert-triangle': AlertTriangle,
+  alert_circle: AlertCircle,
   'check-circle': CheckCircle,
   'layout_dashboard': LayoutDashboard,
   'clipboard_list': Clipboard,
@@ -526,10 +528,13 @@ const ICON_MAP = {
   event_note: Calendar,
   verified_user: ShieldCheck,
   inventory_2: Archive,
+  cast: Tv,
+  do_not_disturb_on: Ban,
+  delete_forever: Trash2,
   hourglass_empty: Timer,
   hourglass_full: Timer,
   hourglass_top: Timer,
-  done_all: CheckCircle,
+  done_all: CheckCheck,
   fullscreen: Maximize,
   info: Info,
   done: Check,
@@ -539,8 +544,13 @@ const ICON_MAP = {
 
   // Additional icons
   expand_more: ChevronDown,
-  expand_less: ChevronDown,
+  expand_less: ChevronUp,
   history: CalendarClock,
+  monitoring: Activity,
+  publish: Upload,
+  unpublished: EyeOff,
+  unarchive: RotateCcw,
+  call_split: GitBranch,
   history_edu: BookOpen,
   leaderboard: Trophy,
   trending: TrendingUp,
@@ -550,6 +560,49 @@ const ICON_MAP = {
   check_box_outline_blank: Square,
   radio_button_unchecked: Circle,
   notifications_off: BellOff,
+
+  // Extra keys used in templates / configs
+  today: Calendar,
+  arrow_drop_down: ChevronDown,
+  open_in_new: ExternalLink,
+  rotate_ccw: RotateCcw,
+  image_off: ImageOff,
+  text_cursor_input: TextCursorInput,
+  signal_wifi_connected_no_internet_4: WifiOff,
+  table: Table,
+  date_range: CalendarRange,
+  notes: StickyNote,
+  key_round: KeyRound,
+  outgoing_mail: MailPlus,
+  person_add: UserPlus,
+  filter_alt_off: FilterX,
+  tag: Tag,
+  progress_activity: Loader2,
+  loader_2: Loader2,
+  send: Send,
+  satellite_alt: Radar,
+  vertical_distribute: PanelsLeftRight,
+  palette: Palette,
+  bookmark_add: BookmarkPlus,
+  bookmark_added: BookmarkCheck,
+  key: Key,
+  file: FileText,
+  devices: MonitorSmartphone,
+
+  // Proctoring violation icon names (getViolationIcon)
+  mouse_right_button: MousePointer2,
+  flip_to_front: Layers,
+  sync_problem: AlertTriangle,
+  person_off: UserX,
+  record_voice_over: Mic,
+  hub: Network,
+  group_work: Users,
+  fingerprint: Fingerprint,
+
+  add_circle: CirclePlus,
+  fiber_new: Sparkles,
+  history_toggle_off: CalendarClock,
+  password: Lock,
 }
 
 // Cache for resolved icons
@@ -559,29 +612,33 @@ const iconCache = new Map()
 const DEFAULT_ICON = Circle
 
 export const resolveIcon = (name) => {
-  if (!name) return DEFAULT_ICON
+  if (name == null || name === '') return DEFAULT_ICON
 
-  // Check cache first
-  if (iconCache.has(name)) {
-    return iconCache.get(name)
+  const raw = String(name).trim()
+  if (!raw) return DEFAULT_ICON
+
+  if (iconCache.has(raw)) {
+    return iconCache.get(raw)
   }
 
-  // Resolve icon - try exact match first, then without underscores
-  let icon = ICON_MAP[name]
-  if (!icon) {
-    icon = ICON_MAP[name.replace(/_/g, '')]
+  const underscored = raw.replace(/-/g, '_')
+  const candidates = [
+    raw,
+    underscored,
+    underscored.toLowerCase(),
+    raw.replace(/_/g, ''),
+    raw.replace(/_/g, '').toLowerCase()
+  ]
+
+  let icon
+  for (const key of candidates) {
+    if (!key) continue
+    icon = ICON_MAP[key]
+    if (icon) break
   }
-  if (!icon) {
-    icon = ICON_MAP[name.replace(/-/g, '_')]
-  }
-  
+
   const resolved = icon || DEFAULT_ICON
-
-  // Cache result
-  iconCache.set(name, resolved)
-
+  iconCache.set(raw, resolved)
   return resolved
 }
 
-// Export resolveIcon for external use
-export { resolveIcon }

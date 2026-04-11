@@ -6,7 +6,6 @@
       icon="assignment"
       icon-color="primary"
       title="Quản lý đề thi"
-      subtitle="Tạo, chỉnh sửa và theo dõi các kỳ thi của bạn"
       class="tui-panel--anim elp__header"
     >
       <template #actions>

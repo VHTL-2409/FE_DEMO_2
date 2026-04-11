@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Thông tin đề thi</h3>
-        <p class="ec-section__desc">Tiêu đề và thông tin cơ bản</p>
       </div>
     </div>
 

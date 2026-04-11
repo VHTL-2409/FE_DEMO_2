@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Cấu hình thi</h3>
-        <p class="ec-section__desc">Thời lượng, số câu và các tùy chọn hiển thị</p>
       </div>
     </div>
 

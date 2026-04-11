@@ -60,33 +60,18 @@ export const useExamSessionStore = defineStore('examSession', () => {
 
   const setAnswer = (questionId, value) => {
     const key = toAnswerKey(questionId)
-    answers.value = {
-      ...answers.value,
-      [key]: value
-    }
-    visitedQuestions.value = {
-      ...visitedQuestions.value,
-      [key]: true
-    }
+    answers.value[key] = value
+    visitedQuestions.value[key] = true
   }
 
   const setEssayAnswer = (questionId, content) => {
     const key = toAnswerKey(questionId)
-    answers.value = {
-      ...answers.value,
-      [key]: content
-    }
-    visitedQuestions.value = {
-      ...visitedQuestions.value,
-      [key]: true
-    }
+    answers.value[key] = content
+    visitedQuestions.value[key] = true
   }
 
   const setMarked = (questionId, marked = true) => {
-    markedQuestions.value = {
-      ...markedQuestions.value,
-      [toAnswerKey(questionId)]: marked
-    }
+    markedQuestions.value[toAnswerKey(questionId)] = marked
   }
 
   const toggleMarked = (questionId) => {
@@ -95,10 +80,7 @@ export const useExamSessionStore = defineStore('examSession', () => {
   }
 
   const setVisited = (questionId) => {
-    visitedQuestions.value = {
-      ...visitedQuestions.value,
-      [toAnswerKey(questionId)]: true
-    }
+    visitedQuestions.value[toAnswerKey(questionId)] = true
   }
 
   const setCurrentQuestion = (questionId) => {

@@ -43,6 +43,20 @@
 
   --font-sans:
     'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --portal-sidebar-width: 260px;
+  --portal-sidebar-collapsed: 72px;
+  --portal-shell-font: var(--font-sans);
+  --portal-shell-bg: var(--color-bg);
+  --portal-shell-surface: var(--color-surface);
+  --portal-shell-muted: var(--color-surface-muted);
+  --portal-shell-border: var(--color-border);
+  --portal-shell-border-strong: var(--color-border-strong);
+  --portal-shell-text: var(--color-text);
+  --portal-shell-text-muted: var(--color-text-secondary);
+  --portal-shell-primary: var(--color-primary);
+  --portal-shell-primary-soft: var(--color-primary-soft);
+  --portal-shell-danger: var(--color-danger);
+  --portal-shell-danger-soft: color-mix(in srgb, var(--color-danger) 10%, white);
   /* Giữ cỡ chữ gần 16px để giao diện đỡ "phồng" và đọc tiếng Việt ổn định hơn */
   --text-sm: 0.875rem;
   --text-base: 1rem;

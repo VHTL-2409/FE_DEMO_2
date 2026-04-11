@@ -101,7 +101,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ApiError } from '../../services/apiClient'
-import { listExamAttempts, getAttemptDetail } from '../../services/attemptService'
+import { listExamAttempts } from '../../services/attemptService'
 import { invalidateAttempt, pauseAttempt, sendTeacherWarning } from '../../services/monitoringService'
 import { useToast } from '../../composables/useToast'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
@@ -122,7 +122,7 @@ const toast = useToast()
 const store = useProctorDashboardStore()
 
 // Store refs
-const { cards: attempts, detailsByAttemptId, connectionMode, lastUpdatedAt, filters } = storeToRefs(store)
+const { cards: attempts, connectionMode, lastUpdatedAt, filters } = storeToRefs(store)
 
 // Local table sort preference (not in store)
 const tableSortBy = ref('risk')
@@ -187,6 +187,24 @@ const ACTION_CONFIGS = {
 }
 
 let currentActionType = ''
+
+/** Snapshot nhẹ cho danh sách attempt, tránh JSON.stringify toàn bộ object. */
+const buildAttemptSnapshot = (items = []) =>
+  items
+    .map((a) =>
+      [
+        a.id,
+        a.status,
+        a.riskScore,
+        a.reviewRequired,
+        a.recommendedAction,
+        Array.isArray(a.reasons) ? a.reasons.join('|') : '',
+        Array.isArray(a.evidenceSummary) ? a.evidenceSummary.join('|') : '',
+        a.cameraOn,
+        a.micOn
+      ].join('::')
+    )
+    .join('||')
 
 // ── Computed: stats ────────────────────────────────────────────────────────────
 const onlineCount = computed(() =>
@@ -301,48 +319,15 @@ const loadAttempts = async (silent = false) => {
   if (!silent) isSyncing.value = true
   try {
     const fetchedAttempts = await listExamAttempts(examId.value)
-    const detailPairs = await Promise.all(
-      fetchedAttempts.map(async (attempt) => {
-        try {
-          const detail = await getAttemptDetail(attempt.id)
-          return [attempt.id, detail]
-        } catch {
-          return [attempt.id, null]
-        }
-      })
-    )
 
-    const newDataStr = JSON.stringify(fetchedAttempts.map(a => ({
-      id: a.id,
-      status: a.status,
-      riskScore: a.riskScore,
-      reviewRequired: a.reviewRequired,
-      recommendedAction: a.recommendedAction,
-      reasons: a.reasons,
-      evidenceSummary: a.evidenceSummary,
-      cameraOn: a.cameraOn,
-      micOn: a.micOn
-    })))
-    const oldDataStr = JSON.stringify(attempts.value.map(a => ({
-      id: a.id,
-      status: a.status,
-      riskScore: a.riskScore,
-      reviewRequired: a.reviewRequired,
-      recommendedAction: a.recommendedAction,
-      reasons: a.reasons,
-      evidenceSummary: a.evidenceSummary,
-      cameraOn: a.cameraOn,
-      micOn: a.micOn
-    })))
+    const newDataStr = buildAttemptSnapshot(fetchedAttempts)
+    const oldDataStr = buildAttemptSnapshot(attempts.value)
 
     if (newDataStr !== oldDataStr) {
       store.setCards(fetchedAttempts.map((attempt) => ({
         ...attempt,
         lastSignalAt: attempt.evidenceSummary?.length ? new Date().toISOString() : (attempt.startedAt || attempt.submittedAt || null)
       })))
-      for (const [id, detail] of detailPairs) {
-        store.setDetail(id, detail)
-      }
 
       if (!silent) {
         addEvent({ type: 'REFRESH', message: 'Dữ liệu được cập nhật', studentName: '' })
@@ -612,7 +597,7 @@ onMounted(async () => {
   }
   // Poll only when WebSocket is disconnected, with 5s interval
   refreshTimer = window.setInterval(() => {
-    if (!isSocketConnected.value) {
+    if (!document.hidden && !isSocketConnected.value) {
       void loadAttempts(true)
     }
   }, 5000)

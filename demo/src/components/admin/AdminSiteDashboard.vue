@@ -238,9 +238,9 @@ const userDistLegend = computed(() => {
 
 const getEcharts = async () => {
   if (!echartsLib) {
-    echartsLib = await import('echarts')
+    echartsLib = (await import('../../utils/echartsCore.js')).default
   }
-  return echartsLib.default || echartsLib
+  return echartsLib
 }
 
 const initChartInstance = (echarts, el, currentChart) => {

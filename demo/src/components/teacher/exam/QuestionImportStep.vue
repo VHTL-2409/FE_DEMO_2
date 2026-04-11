@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Nhập file câu hỏi</h3>
-        <p class="ec-section__desc">Tải file chứa câu hỏi để tạo danh sách cho bước chỉnh sửa tiếp theo</p>
       </div>
     </div>
 

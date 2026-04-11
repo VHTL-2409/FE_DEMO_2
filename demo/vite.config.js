@@ -25,16 +25,31 @@ export default defineConfig({
       output: {
         // Manual chunks for better caching and code splitting
         manualChunks: (id) => {
+          if (!id.includes('node_modules')) {
+            return
+          }
           // Vue core
           if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/pinia')) {
             return 'vue-vendor'
+          }
+          // Math rendering stack
+          if (id.includes('node_modules/katex')) {
+            return 'math-vendor'
           }
           // Icons library
           if (id.includes('lucide-vue-next')) {
             return 'icons'
           }
+          // Charting library
+          if (id.includes('node_modules/echarts')) {
+            return 'charts'
+          }
+          // Spreadsheet parsing is only needed in import flows
+          if (id.includes('node_modules/xlsx')) {
+            return 'xlsx'
+          }
           // WebSocket
-          if (id.includes('@stomp/stompjs')) {
+          if (id.includes('@stomp/stompjs') || id.includes('sockjs-client')) {
             return 'websocket'
           }
         },
@@ -57,6 +72,6 @@ export default defineConfig({
   },
   // Optimize deps
   optimizeDeps: {
-    include: ['vue', 'vue-router', 'pinia', 'lucide-vue-next']
+    include: ['vue', 'vue-router', 'pinia']
   }
 })

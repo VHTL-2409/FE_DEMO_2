@@ -50,7 +50,8 @@ const { containerRef, isVisible } = useIntersectionObserver({
   flex-direction: column;
   gap: 1.5rem;
   padding: 1.5rem;
-  max-width: 1200px;
+  max-width: 1640px;
+  width: 100%;
   margin: 0 auto;
   contain: layout style;
   /* Note: NOT using content-visibility: auto here — it breaks
@@ -79,10 +80,14 @@ const { containerRef, isVisible } = useIntersectionObserver({
 
 .sdl__main {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: start;
   opacity: 0;
+}
+
+.sdl__main:has(.sdl__sidebar) {
+  grid-template-columns: 1fr 320px;
 }
 
 /* Main section enters sooner (0.22s) so cards are visible faster */
@@ -120,23 +125,23 @@ const { containerRef, isVisible } = useIntersectionObserver({
 
 /* Responsive - large screens */
 @media (min-width: 1400px) {
-  .sdl { max-width: 1400px; }
-  .sdl__main { grid-template-columns: 1fr 360px; }
+  .sdl { max-width: 1640px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 360px; }
 }
 
 @media (min-width: 1600px) {
-  .sdl { max-width: 1600px; }
-  .sdl__main { grid-template-columns: 1fr 400px; }
+  .sdl { max-width: 1720px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 400px; }
 }
 
 @media (min-width: 1920px) {
   .sdl { max-width: 1800px; }
-  .sdl__main { grid-template-columns: 1fr 440px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 440px; }
 }
 
 /* Responsive - medium screens */
 @media (max-width: 1200px) {
-  .sdl__main {
+  .sdl__main:has(.sdl__sidebar) {
     grid-template-columns: 1fr 280px;
   }
 }

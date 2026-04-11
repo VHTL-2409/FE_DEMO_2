@@ -6,7 +6,6 @@
       </div>
       <div>
         <h3 class="ec-section__title">Chỉnh sửa câu hỏi</h3>
-        <p class="ec-section__desc">Rà soát và chỉnh sửa các câu hỏi vừa nhập từ file</p>
       </div>
     </div>
 

@@ -8,7 +8,7 @@
           <RouterLink
             class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
             style="color: var(--ds-text-muted)"
-            to="/teacher/exams"
+            to="/teacher/exams/list"
           >
             <LucideIcon name="assignment" size="16" />
             Đề thi
@@ -47,12 +47,15 @@
         </PageHeader>
       </div>
 
-      <div
-        v-if="loadError"
-        class="mb-6 rounded-[var(--ds-radius-xl)] border px-4 py-3 text-sm font-medium"
-        style="border-color: var(--ds-danger-border); background-color: var(--ds-danger-bg); color: var(--ds-danger)"
-      >
-        {{ loadError }}
+      <div v-if="loadError" class="mb-6">
+        <EmptyState
+          icon="warning"
+          title="Không tải được báo cáo học sinh"
+          :description="loadError"
+          action-label="Quay lại tổng quan kết quả"
+          fill
+          @action="goBack"
+        />
       </div>
 
       <!-- Student Info Header -->
@@ -220,6 +223,7 @@ import {
 } from '../../utils/attemptResult'
 import PageHeader from '../ui/PageHeader.vue'
 import DsCard from '../ui/DsCard.vue'
+import EmptyState from '../ui/EmptyState.vue'
 import DsStatCard from '../ui/DsStatCard.vue'
 import DataTable from '../ui/DataTable.vue'
 import StatusChip from '../ui/StatusChip.vue'
@@ -382,7 +386,13 @@ const getStatusIcon = (status) => {
 }
 
 const goBack = () => {
-  router.back()
+  router.push({
+    path: '/teacher/exams/review/summary',
+    query: {
+      examId: examId.value,
+      title: examTitle.value
+    }
+  })
 }
 
 const loadReport = async () => {

@@ -11,7 +11,6 @@
           :new-score-count="newScoresCount"
           :total-attempts="attemptCount"
           :avg-score="avgScoreDisplay"
-          @action-click="handleHeroAction"
         />
       </template>
 
@@ -53,6 +52,17 @@
 
       <!-- Main column -->
       <template #main>
+        <!-- Thông báo ưu tiên -->
+        <NotificationList
+          :notifications="notifications"
+          :loading="false"
+          :display-limit="6"
+          :dismissible="false"
+          @item-click="handleNotificationClick"
+        />
+
+        <StudentDashboardInsightCards :attempts="attemptsList" />
+
         <!-- Upcoming Exams -->
         <UpcomingExamCard
           :upcoming-exams="upcomingExams"
@@ -72,21 +82,6 @@
         />
       </template>
 
-      <!-- Sidebar -->
-      <template #sidebar>
-        <!-- Quick Actions -->
-        <StudentQuickActions @action="handleQuickAction" />
-
-        <!-- Notifications -->
-        <NotificationList
-          :notifications="notifications"
-          :loading="false"
-          :display-limit="4"
-          :dismissible="false"
-          @item-click="handleNotificationClick"
-        />
-      </template>
-
     </StudentDashboardLayout>
   </div>
 </template>
@@ -98,6 +93,7 @@ import { listMyAttempts } from '../../services/attemptService'
 import { getMyClasses, getStudentClassExams } from '../../services/classService'
 import { useToast } from '../../composables/useToast'
 import { formatScoreTen, scorePercentValue } from '../../utils/attemptResult'
+import { buildResultQuery, buildWaitingRoomQuery } from '../../services/studentExamContextStorage'
 
 // Dashboard components - using dynamic imports for better initial load
 const StudentDashboardLayout = defineAsyncComponent(() =>
@@ -115,11 +111,11 @@ const UpcomingExamCard = defineAsyncComponent(() =>
 const RecentResultCard = defineAsyncComponent(() =>
   import('./dashboard/RecentResultCard.vue')
 )
-const StudentQuickActions = defineAsyncComponent(() =>
-  import('./dashboard/StudentQuickActions.vue')
-)
 const NotificationList = defineAsyncComponent(() =>
   import('./dashboard/NotificationList.vue')
+)
+const StudentDashboardInsightCards = defineAsyncComponent(() =>
+  import('./dashboard/StudentDashboardInsightCards.vue')
 )
 
 const router = useRouter()
@@ -127,6 +123,8 @@ const toast = useToast()
 
 // Data - use shallowRef for large arrays to avoid deep reactivity overhead
 const attempts = shallowRef([])
+/** Plain array copy for child chart props */
+const attemptsList = computed(() => [...attempts.value])
 const isLoadingAttempts = ref(false)
 const studentName = ref('Học sinh')
 
@@ -264,54 +262,23 @@ const notifications = computed(() => {
 // Navigation
 const goToExamJoin = () => router.push('/student/exam-join')
 const goToPractice = () => router.push('/student/generate-practice-test')
-const goToSchedule = () => router.push('/student/schedule')
-const goToStudyHistory = () => router.push('/student/study-history')
-const goToProfile = () => router.push('/student/profile')
+const goToSchedule = () => router.push({ path: '/student/study-history', query: { tab: 'upcoming' } })
+const goToStudyHistory = () => router.push({ path: '/student/study-history', query: { tab: 'exam' } })
 const goToResult = (result) => {
   router.push({
     path: '/student/exam-result',
-    query: {
+    query: buildResultQuery({
       attemptId: result.attemptId,
       examTitle: result.title || result.examTitle
-    }
+    })
   })
 }
 
 const goToUpcoming = (exam) => {
   router.push({
     path: '/student/exam-waiting-room',
-    query: {
-      examId: exam.id,
-      examCode: exam.code || '',
-      exam: exam.title || 'Bài thi',
-      duration: exam.durationMinutes || 60,
-      questions: exam.questionCount || 0,
-      startAt: exam.startTime || '',
-      endAt: exam.endTime || '',
-      className: exam.className || '',
-      requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true'
-    }
+    query: buildWaitingRoomQuery(exam)
   })
-}
-
-const handleHeroAction = (action) => {
-  switch (action) {
-    case 'exam': goToSchedule(); break
-    case 'pending': goToExamJoin(); break
-    case 'results': goToStudyHistory(); break
-    case 'practice': goToPractice(); break
-  }
-}
-
-const handleQuickAction = (actionId) => {
-  switch (actionId) {
-    case 'join-exam': goToExamJoin(); break
-    case 'practice': goToPractice(); break
-    case 'results': goToStudyHistory(); break
-    case 'history': goToStudyHistory(); break
-    case 'schedule': goToSchedule(); break
-    case 'profile': goToProfile(); break
-  }
 }
 
 const handleNotificationClick = (item) => {

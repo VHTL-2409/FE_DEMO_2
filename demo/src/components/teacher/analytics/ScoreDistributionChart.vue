@@ -100,10 +100,18 @@ const chartEl = ref(null)
 const chartSurfaceEl = ref(null)
 const chartType = ref('bar')
 let chartInstance = null
+let echartsLibPromise = null
 
 const getChartPixelRatio = () => {
   if (typeof window === 'undefined') return 1
   return Math.min(Math.max(window.devicePixelRatio || 1, 1), 2)
+}
+
+const getEcharts = async () => {
+  if (!echartsLibPromise) {
+    echartsLibPromise = import('../../../utils/echartsCore.js').then((mod) => mod.default)
+  }
+  return echartsLibPromise
 }
 
 const hasData = computed(() => props.distribution && props.distribution.length > 0)
@@ -165,18 +173,22 @@ const barColors = computed(() => {
 })
 
 const initChart = async () => {
-  if (!chartSurfaceEl.value || !hasData.value) return
-
-  if (chartInstance) {
-    chartInstance.dispose()
-    chartInstance = null
+  if (!chartSurfaceEl.value) return
+  if (!hasData.value) {
+    if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+    return
   }
 
-  const ec = await import('echarts')
-  chartInstance = ec.init(chartSurfaceEl.value, null, {
-    renderer: 'canvas',
-    devicePixelRatio: getChartPixelRatio()
-  })
+  const ec = await getEcharts()
+  if (!chartInstance) {
+    chartInstance = ec.init(chartSurfaceEl.value, null, {
+      renderer: 'canvas',
+      devicePixelRatio: getChartPixelRatio()
+    })
+  }
 
   const option = chartType.value === 'bar' ? buildBarOption() : buildLineOption()
   chartInstance.setOption(option, true)

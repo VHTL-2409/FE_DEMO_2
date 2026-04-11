@@ -10,6 +10,16 @@ import { pinia } from './stores'
 import { useAuthStore } from './stores/authStore'
 import { toastService } from './services/toastService'
 import { readMonitoringSessionQuery } from './services/monitoringContextStorage'
+import {
+  readAttemptQuery,
+  readResultQuery,
+  readSubmissionQuery,
+  readWaitingRoomQuery,
+  writeAttemptQuery,
+  writeResultQuery,
+  writeSubmissionQuery,
+  writeWaitingRoomQuery
+} from './services/studentExamContextStorage'
 
 const devRoutes = import.meta.env.DEV
   ? [
@@ -79,16 +89,43 @@ const router = createRouter({
     { path: '/teacher/exams/new-session', component: () => import('./components/teacher/TeacherExamNewSession.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/created-success', component: () => import('./components/teacher/TeacherExamCreatedSuccess.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/waiting-room', component: () => import('./components/teacher/TeacherExamWaitingRoom.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/exams/review', redirect: to => ({ path: '/teacher/exams/review/summary', query: to.query }), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/exams/review/summary', component: () => import('./components/teacher/TeacherExamReviewSummary.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    {
+      path: '/teacher/exams/review/summary',
+      component: () => import('./components/teacher/TeacherExamReviewSummary.vue'),
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
+    },
+    {
+      path: '/teacher/exams/review',
+      redirect: to => {
+        const q = to.query || {}
+        if (q.examId != null && String(q.examId) !== '') {
+          return { path: '/teacher/exams/review/summary', query: q }
+        }
+        return { path: '/teacher/exams/list' }
+      },
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
+    },
     { path: '/teacher/exams/review/incidents', component: () => import('./components/teacher/TeacherIncidentReviewUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/review/student-report', component: () => import('./components/teacher/TeacherStudentReportDetail.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/exams/:id', component: () => import('./components/teacher/exam/detail/ExamDetailPage.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/live-monitoring', component: () => import('./components/teacher/TeacherSelectExamUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'monitoring' } },
-    { path: '/teacher/live-monitoring/session', component: () => import('./components/teacher/TeacherLiveMonitoringUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'monitoring' } },
-    { path: '/teacher/live-monitoring/student-detail', component: () => import('./components/teacher/StudentViolationDetailMonitoring.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'monitoring' } },
+    { path: '/teacher/live_monitoring', redirect: '/teacher/live-monitoring' },
+    {
+      path: '/teacher/live_monitoring/session',
+      redirect: to => ({ path: '/teacher/live-monitoring/session', query: to.query, hash: to.hash })
+    },
+    {
+      path: '/teacher/live_monitoring/student-detail',
+      redirect: to => ({ path: '/teacher/live-monitoring/student-detail', query: to.query, hash: to.hash })
+    },
+    { path: '/teacher/live-monitoring', component: () => import('./components/teacher/TeacherSelectExamUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/live-monitoring/session', component: () => import('./components/teacher/TeacherLiveMonitoringUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/live-monitoring/student-detail', component: () => import('./components/teacher/StudentViolationDetailMonitoring.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/profile', component: () => import('./components/teacher/TeacherProfile.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/analytics', component: () => import('./components/teacher/TeacherAnalyticsDashboard.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    {
+      path: '/teacher/analytics',
+      redirect: () => ({ path: '/teacher/dashboard', query: { tab: 'analytics' } }),
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
+    },
     { path: '/student/dashboard', component: () => import('./components/student/StudentDashboard.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-join', component: () => import('./components/student/StudentExamJoinByCode.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-waiting-room', component: () => import('./components/student/StudentExamWaitingRoom.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
@@ -99,7 +136,11 @@ const router = createRouter({
     { path: '/student/classes', component: () => import('./components/student/class/StudentClassList.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/generate-practice-test', component: () => import('./components/student/StudentGeneratePracticeTest.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/profile', component: () => import('./components/student/StudentProfile.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
-    { path: '/student/schedule', component: () => import('./components/student/StudentExamSchedule.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
+    {
+      path: '/student/schedule',
+      redirect: { path: '/student/study-history', query: { tab: 'upcoming' } },
+      meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' }
+    },
     // 404 handler - phải là route cuối cùng
     { path: '/:pathMatch(.*)*', component: () => import('./components/common/NotFoundPage.vue') },
     ...devRoutes
@@ -109,6 +150,34 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   if (to.path === '/teacher/live-monitoring/session' && !to.query?.examId) {
     const restored = readMonitoringSessionQuery()
+    if (restored) {
+      return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
+    }
+  }
+
+  if (to.path === '/student/exam-waiting-room' && !to.query?.examId) {
+    const restored = readWaitingRoomQuery()
+    if (restored) {
+      return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
+    }
+  }
+
+  if (to.path === '/student/exam-interface' && (!to.query?.examId || !to.query?.attemptId)) {
+    const restored = readAttemptQuery()
+    if (restored) {
+      return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
+    }
+  }
+
+  if (to.path === '/student/submission-confirmation' && !to.query?.attemptId) {
+    const restored = readSubmissionQuery()
+    if (restored) {
+      return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
+    }
+  }
+
+  if (to.path === '/student/exam-result' && !to.query?.attemptId) {
+    const restored = readResultQuery()
     if (restored) {
       return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
     }
@@ -174,3 +243,21 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+
+router.afterEach((to) => {
+  if (to.path === '/student/exam-waiting-room' && to.query?.examId) {
+    writeWaitingRoomQuery(to.query)
+  }
+
+  if (to.path === '/student/exam-interface' && to.query?.attemptId && to.query?.examId) {
+    writeAttemptQuery(to.query)
+  }
+
+  if (to.path === '/student/submission-confirmation' && to.query?.attemptId) {
+    writeSubmissionQuery(to.query)
+  }
+
+  if (to.path === '/student/exam-result' && to.query?.attemptId) {
+    writeResultQuery(to.query)
+  }
+})

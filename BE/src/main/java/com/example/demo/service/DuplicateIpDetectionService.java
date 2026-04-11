@@ -7,7 +7,7 @@ import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.domain.entity.SignalSeverity;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.MonitoringEventRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class DuplicateIpDetectionService {
 
     private static final List<AttemptStatus> ACTIVE_STATUSES = List.of(
@@ -27,9 +26,23 @@ public class DuplicateIpDetectionService {
 
     private final ExamAttemptRepository examAttemptRepository;
     private final MonitoringEventRepository monitoringEventRepository;
-    private final MonitoringService monitoringService;
+    private final ObjectProvider<MonitoringService> monitoringServiceProvider;
     private final AuditLogService auditLogService;
     private final FraudSignalService fraudSignalService;
+
+    public DuplicateIpDetectionService(
+            ExamAttemptRepository examAttemptRepository,
+            MonitoringEventRepository monitoringEventRepository,
+            ObjectProvider<MonitoringService> monitoringServiceProvider,
+            AuditLogService auditLogService,
+            FraudSignalService fraudSignalService
+    ) {
+        this.examAttemptRepository = examAttemptRepository;
+        this.monitoringEventRepository = monitoringEventRepository;
+        this.monitoringServiceProvider = monitoringServiceProvider;
+        this.auditLogService = auditLogService;
+        this.fraudSignalService = fraudSignalService;
+    }
 
     @Value("${demo.monitoring.duplicate-ip-cooldown-seconds:120}")
     private long duplicateIpCooldownSeconds;
@@ -61,12 +74,12 @@ public class DuplicateIpDetectionService {
 
             // Idempotent insert: if constraint violation, another thread already inserted this exact event
             try {
-                monitoringService.addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
+                monitoringService().addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
             } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
                 // Already inserted by concurrent thread — skip
             }
             try {
-                monitoringService.addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
+                monitoringService().addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
             } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
                 // Already inserted by concurrent thread — skip
             }
@@ -76,6 +89,10 @@ public class DuplicateIpDetectionService {
         }
 
         detectFingerprintGraph(attempt);
+    }
+
+    private MonitoringService monitoringService() {
+        return monitoringServiceProvider.getObject();
     }
 
     private boolean isInCooldown(ExamAttempt attempt, String pairSignature) {

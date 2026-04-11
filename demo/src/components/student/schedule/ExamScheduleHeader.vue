@@ -1,7 +1,7 @@
 <template>
-  <div class="esh">
+  <div class="esh" :class="{ 'esh--compact': compact }">
     <div class="esh__header">
-      <div class="esh__title-block">
+      <div v-if="!compact" class="esh__title-block">
         <div class="esh__icon">
           <LucideIcon name="calendar_month" />
         </div>
@@ -14,7 +14,7 @@
       <div class="esh__stats">
         <div class="esh__stat">
           <span class="esh__stat-val">{{ totalCount }}</span>
-          <span class="esh__stat-lbl">Tat ca</span>
+          <span class="esh__stat-lbl">Tất cả</span>
         </div>
         <div class="esh__stat-divider" />
         <div class="esh__stat">
@@ -43,7 +43,8 @@ const props = defineProps({
   totalCount: { type: Number, default: 0 },
   liveCount: { type: Number, default: 0 },
   upcomingCount: { type: Number, default: 0 },
-  completedCount: { type: Number, default: 0 }
+  completedCount: { type: Number, default: 0 },
+  compact: { type: Boolean, default: false }
 })
 
 const subtitle = computed(() => {
@@ -69,6 +70,11 @@ const subtitle = computed(() => {
 .dark .esh {
   background: linear-gradient(135deg, #1e293b 0%, #1e1b4b 60%, #1e1b4b 100%);
   border-color: rgba(79, 70, 229, 0.15);
+}
+
+.esh--compact {
+  gap: 1rem;
+  padding: 1rem 1.25rem;
 }
 
 .esh__header {
