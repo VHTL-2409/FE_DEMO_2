@@ -1,0 +1,6 @@
+username,email,fullName,studentCode,birthDate,phone,address,grade,faculty
+nguyenvana,nguyenvana@school.edu.vn,Nguyễn Văn A,SV001,2005-01-15,0912345678,Hà Nội,10,Khoa Toán
+tranthib,tranthib@school.edu.vn,Trần Thị B,SV002,2005-03-20,0912345679,Hồ Chí Minh,10,Khoa Văn
+levanc,levanc@school.edu.vn,Lê Văn C,SV003,2005-05-10,0912345680,Đà Nẵng,10,Khoa Lý
+phamthid,phamthid@school.edu.vn,Phạm Thị D,SV004,2005-07-25,0912345681,Hải Phòng,11,Khoa Hóa
+hongvane,hongvane@school.edu.vn,Hồng Văn E,SV005,2005-09-30,0912345682,Cần Thơ,11,Khoa Sinh

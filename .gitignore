@@ -1,0 +1,71 @@
+/.claude
+/stitch
+.gitnexus
+docs/
+*.md
+.cursor/
+!TESTSPRITE.md
+./deloy
+./loadtest
+.cursor/*
+!.cursor/mcp.json
+.idea/
+.agents/
+.mux/
+.codex/
+everything-claude-code/
+/stitch_new
+*.ps1
+!scripts/start-testsprite-mcp.ps1
+!scripts/start-fullstack-for-testsprite.ps1
+.typeui-temp
+
+# Python virtual environments
+.venv/
+venv/
+*/__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Node modules
+*/node_modules/
+**/node_modules/
+
+# Build outputs
+demo/dist/
+demo_2/dist/
+BE/target/
+
+# AI service venv
+ai-service/.venv/
+
+# Test caches and runtime logs
+.pytest_cache/
+BE/logs/
+*.log
+*.log.gz
+
+# Local analysis / debug artifacts
+*_analysis.json
+*_content.txt
+*_preview.txt
+test_output.txt
+test_stdout.txt
+test_stderr.txt
+smoke-test-*.js
+test-student-flow.js
+test-login.json
+
+# Env and secrets
+.env
+*.env.local
+secrets/
+
+
+docs_2/
+docs/
+
+skills/
+*.md

@@ -1,0 +1,5 @@
+*.cmd text eol=crlf
+
+.env
+
+*.pyc

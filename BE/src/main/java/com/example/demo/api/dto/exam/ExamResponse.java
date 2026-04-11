@@ -1,0 +1,54 @@
+package com.example.demo.api.dto.exam;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.OffsetDateTime;
+
+@Getter
+@Builder
+@AllArgsConstructor
+public class ExamResponse {
+    private Long id;
+    private String code;
+    private String title;
+    private String description;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+    private OffsetDateTime startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
+    private OffsetDateTime endTime;
+    private Integer durationMinutes;
+    private Boolean isActive;
+    private String createdBy;
+    private Long questionCount;
+    /** Số thí sinh đã có ít nhất một lượt làm bài (distinct theo user) */
+    private Long participantCount;
+    private Boolean monitorTabSwitch;
+    private Boolean monitorBlur;
+    private Boolean monitorExitFullscreen;
+    private Boolean monitorCopyPaste;
+    private Boolean monitorIdleTime;
+    private Boolean monitorDevtools;
+    private Boolean monitorDuplicateIp;
+    private Boolean monitorFastSubmit;
+    private Boolean monitorRightClick;
+    private Boolean monitorPrintScreen;
+    private Boolean monitorRapidQuestionSwitch;
+    private Boolean monitorMultiMonitor;
+    private Boolean requireCameraMic;
+    private Boolean monitorNetworkInstability;
+    private Boolean monitorSessionRecovery;
+    private Boolean monitorQuestionTimingAnomaly;
+    private Boolean monitorAnswerChangeBurst;
+    private Boolean monitorClipboardBurst;
+    private Boolean monitorFullscreenEvasion;
+    private Boolean monitorAnswerSimilarity;
+    private Boolean monitorIpFingerprintGraph;
+    private Boolean enableAiProctoring;
+    private Boolean isArchived;
+    private String className;
+    private Boolean shuffleQuestions;
+    private Boolean shuffleAnswers;
+}

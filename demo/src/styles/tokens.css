@@ -1,0 +1,267 @@
+/**
+ * FE_DEMO Design System Tokens
+ * Unified design tokens replacing fragmented --edu-*, --staff-*, --color-* vars.
+ * All components use --ds-* prefix for consistency.
+ */
+
+/* ===== Color System ===== */
+:root {
+  /* Primary (Indigo) */
+  --ds-primary: #4f46e5;
+  --ds-primary-hover: #4338ca;
+  --ds-primary-active: #3730a3;
+  --ds-primary-soft: rgba(79, 70, 229, 0.08);
+  --ds-primary-ring: rgba(79, 70, 229, 0.14);
+  --ds-primary-border: rgba(79, 70, 229, 0.12);
+
+  /* Neutral scale */
+  --ds-gray-50: #f8fafc;
+  --ds-gray-100: #f1f5f9;
+  --ds-gray-200: #e2e8f0;
+  --ds-gray-300: #cbd5e1;
+  --ds-gray-400: #94a3b8;
+  --ds-gray-500: #64748b;
+  --ds-gray-600: #475569;
+  --ds-gray-700: #334155;
+  --ds-gray-800: #1e293b;
+  --ds-gray-900: #0f172a;
+
+  /* Semantic surfaces */
+  --ds-bg: var(--ds-gray-50);
+  --ds-surface: #ffffff;
+  --ds-surface-muted: var(--ds-gray-50);
+  --ds-border: var(--ds-gray-200);
+  --ds-border-strong: rgba(148, 163, 184, 0.24);
+
+  /* Semantic text */
+  --ds-text: #0f172a;
+  --ds-text-secondary: #64748b;
+  --ds-text-muted: #94a3b8;
+
+  /* Status colors */
+  --ds-success: #16a34a;
+  --ds-success-soft: rgba(22, 163, 74, 0.08);
+  --ds-success-bg: #f0fdf4;
+  --ds-warning: #d97706;
+  --ds-warning-soft: rgba(217, 119, 6, 0.08);
+  --ds-warning-bg: #fffbeb;
+  --ds-danger: #dc2626;
+  --ds-danger-soft: rgba(220, 38, 38, 0.08);
+  --ds-danger-bg: #fef2f2;
+  --ds-info: #0284c7;
+  --ds-info-soft: rgba(2, 132, 199, 0.08);
+  --ds-info-bg: #f0f9ff;
+
+  /* Accent (Amber for live/ongoing) */
+  --ds-accent: #f59e0b;
+  --ds-accent-soft: rgba(245, 158, 11, 0.12);
+  --ds-accent-bg: #fffbeb;
+
+  /* Typography */
+  --ds-font: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ds-font-display: 'Manrope', 'Be Vietnam Pro', system-ui, sans-serif;
+
+  /* Font sizes */
+  --ds-text-xs: 0.75rem;
+  --ds-text-sm: 0.875rem;
+  --ds-text-base: 1rem;
+  --ds-text-lg: 1.125rem;
+  --ds-text-xl: 1.25rem;
+  --ds-text-2xl: 1.5rem;
+  --ds-text-3xl: 1.875rem;
+  --ds-text-4xl: 2.25rem;
+
+  /* Spacing */
+  --ds-space-0: 0;
+  --ds-space-1: 0.25rem;
+  --ds-space-2: 0.5rem;
+  --ds-space-3: 0.75rem;
+  --ds-space-4: 1rem;
+  --ds-space-5: 1.25rem;
+  --ds-space-6: 1.5rem;
+  --ds-space-8: 2rem;
+  --ds-space-10: 2.5rem;
+  --ds-space-12: 3rem;
+  --ds-space-16: 4rem;
+
+  /* Border radius */
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 10px;
+  --ds-radius-lg: 14px;
+  --ds-radius-xl: 18px;
+  --ds-radius-2xl: 24px;
+  --ds-radius-3xl: 28px;
+  --ds-radius-full: 9999px;
+
+  /* Shadows */
+  --ds-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ds-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ds-shadow-md: 0 4px 16px -6px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+  --ds-shadow-lg: 0 12px 36px -12px rgba(15, 23, 42, 0.16), 0 4px 10px -4px rgba(79, 70, 229, 0.12);
+  --ds-shadow-xl: 0 24px 56px -16px rgba(15, 23, 42, 0.18), 0 8px 16px -8px rgba(79, 70, 229, 0.16);
+  --ds-shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.16);
+  --ds-shadow-focus-danger: 0 0 0 3px rgba(220, 38, 38, 0.16);
+
+  /* Transitions */
+  --ds-duration-fast: 100ms;
+  --ds-duration-base: 150ms;
+  --ds-duration-slow: 250ms;
+  --ds-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --ds-sidebar-width: 256px;
+  --ds-sidebar-collapsed: 64px;
+  --ds-topbar-height: 64px;
+  --ds-content-max: 1280px;
+}
+
+.dark {
+  --ds-bg: #0f172a;
+  --ds-surface: #1e293b;
+  --ds-surface-muted: #0f172a;
+  --ds-border: #334155;
+  --ds-border-strong: rgba(148, 163, 184, 0.18);
+  --ds-text: #f1f5f9;
+  --ds-text-secondary: #94a3b8;
+  --ds-text-muted: #64748b;
+  --ds-success-bg: rgba(22, 163, 74, 0.1);
+  --ds-warning-bg: rgba(217, 119, 6, 0.1);
+  --ds-danger-bg: rgba(220, 38, 38, 0.1);
+  --ds-info-bg: rgba(2, 132, 199, 0.1);
+  --ds-accent-bg: rgba(245, 158, 11, 0.1);
+}
+
+/* Selection styling — rounded, soft, brand-colored */
+::selection {
+  background: rgba(79, 70, 229, 0.18);
+  border-radius: 4px;
+  color: var(--ds-text);
+  text-shadow: none;
+  -webkit-text-shadow: none;
+}
+
+::-moz-selection {
+  background: rgba(79, 70, 229, 0.18);
+  border-radius: 4px;
+  color: var(--ds-text);
+}
+
+/* Dark mode selection */
+.dark ::selection {
+  background: rgba(99, 102, 241, 0.28);
+  color: #f1f5f9;
+}
+
+.dark ::-moz-selection {
+  background: rgba(99, 102, 241, 0.28);
+  color: #f1f5f9;
+}
+
+/* Global select refresh - smoother rounded dropdown controls */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-height: 2.75rem;
+  padding: 0.62rem 2.6rem 0.62rem 0.95rem;
+  border: 2px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color var(--ds-duration-slow) var(--ds-easing),
+    box-shadow var(--ds-duration-slow) var(--ds-easing),
+    transform var(--ds-duration-slow) var(--ds-easing),
+    background-color var(--ds-duration-base) var(--ds-easing);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.05rem) calc(50% + 1px),
+    calc(100% - 0.72rem) calc(50% + 1px);
+  background-size: 0.44rem 0.44rem, 0.44rem 0.44rem;
+  background-repeat: no-repeat;
+}
+
+select:not([multiple]):not([size]):hover {
+  border-color: var(--ds-primary-border);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+select:not([multiple]):not([size]):focus,
+select:not([multiple]):not([size]):focus-visible {
+  outline: none;
+  border-color: var(--ds-primary);
+  box-shadow:
+    0 0 0 4px var(--ds-primary-ring),
+    0 10px 24px rgba(79, 70, 229, 0.16);
+  transform: translateY(-1px);
+}
+
+select:not([multiple]):not([size]):disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+}
+
+select:not([multiple]):not([size]) option {
+  color: var(--ds-text);
+  background: var(--ds-surface);
+}
+
+.dark select:not([multiple]):not([size]) {
+  border-color: var(--ds-border);
+  background-color: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 2px 10px rgba(2, 6, 23, 0.35);
+}
+
+.dark select:not([multiple]):not([size]):hover {
+  border-color: rgba(99, 102, 241, 0.42);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+}
+
+.dark select:not([multiple]):not([size]):focus,
+.dark select:not([multiple]):not([size]):focus-visible {
+  border-color: #818cf8;
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.28),
+    0 12px 28px rgba(79, 70, 229, 0.34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  select:not([multiple]):not([size]) {
+    transition: border-color var(--ds-duration-fast) linear, box-shadow var(--ds-duration-fast) linear;
+  }
+
+  select:not([multiple]):not([size]):hover,
+  select:not([multiple]):not([size]):focus,
+  select:not([multiple]):not([size]):focus-visible {
+    transform: none;
+  }
+}
+
+/* Material Symbols Outlined — font-face do Google CSS cung cấp */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  vertical-align: middle;
+}
