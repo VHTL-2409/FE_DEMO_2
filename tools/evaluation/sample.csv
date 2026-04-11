@@ -1,3 +1,0 @@
-attemptId,examId,student,status,score,riskScore,suspicious,startedAt,submittedAt,deadlineAt,remainingSeconds,label
-12,3,"student1",SUBMITTED,7.0,80,true,2026-03-16T10:00:00,2026-03-16T10:45:00,2026-03-16T11:00:00,0,1
-13,3,"student2",SUBMITTED,9.0,10,false,2026-03-16T10:01:00,2026-03-16T10:55:00,2026-03-16T11:01:00,0,0
