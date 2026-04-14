@@ -109,17 +109,6 @@
       </button>
     </div>
 
-    <!-- Footer: Actions -->
-    <div class="td-monitor__footer">
-      <button type="button" class="td-monitor__action-btn td-monitor__action-btn--outline" @click="$emit('go-monitoring')">
-        <LucideIcon name="visibility" />
-        Xem phòng thi
-      </button>
-      <button type="button" class="td-monitor__action-btn td-monitor__action-btn--primary" @click="$emit('go-monitoring')">
-        <LucideIcon name="open_in_new" />
-        Vào giám sát
-      </button>
-    </div>
   </div>
 </template>
 
@@ -211,6 +200,7 @@ const alertTextClass = computed(() =>
 /* Header */
 .td-monitor__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
@@ -267,9 +257,11 @@ const alertTextClass = computed(() =>
 
 .td-monitor__header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .td-monitor__connection {
@@ -312,14 +304,20 @@ const alertTextClass = computed(() =>
 /* Info Grid */
 .td-monitor__info-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   border-bottom: 1px solid var(--ds-border);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .td-monitor__info-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .td-monitor__info-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -327,15 +325,16 @@ const alertTextClass = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 1.25rem;
   border-right: 1px solid var(--ds-border);
+  min-width: 0;
 }
 
 .td-monitor__info-item:last-child {
   border-right: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .td-monitor__info-item:nth-child(2) {
     border-right: none;
   }
@@ -343,6 +342,17 @@ const alertTextClass = computed(() =>
   .td-monitor__info-item:nth-child(1),
   .td-monitor__info-item:nth-child(2) {
     border-bottom: 1px solid var(--ds-border);
+  }
+}
+
+@media (max-width: 520px) {
+  .td-monitor__info-item {
+    border-right: none;
+    border-bottom: 1px solid var(--ds-border);
+  }
+
+  .td-monitor__info-item:last-child {
+    border-bottom: none;
   }
 }
 
@@ -546,54 +556,4 @@ const alertTextClass = computed(() =>
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
-/* Footer */
-.td-monitor__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-}
-
-.td-monitor__action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--ds-radius-lg);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-
-.td-monitor__action-btn--outline {
-  border: 1px solid var(--ds-border);
-  background: transparent;
-  color: var(--ds-text-secondary);
-}
-
-.td-monitor__action-btn--outline:hover {
-  background: var(--ds-gray-50);
-  color: var(--ds-text);
-  border-color: var(--ds-gray-300);
-}
-
-.dark .td-monitor__action-btn--outline:hover {
-  background: var(--ds-gray-700);
-  color: white;
-}
-
-.td-monitor__action-btn--primary {
-  border: none;
-  background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-}
-
-.td-monitor__action-btn--primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
-}
 </style>

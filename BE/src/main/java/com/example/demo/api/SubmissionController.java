@@ -11,6 +11,7 @@ import com.example.demo.api.dto.submission.DraftSaveResponse;
 import com.example.demo.api.dto.submission.StartAttemptResponse;
 import com.example.demo.api.dto.submission.SubmitAttemptRequest;
 import com.example.demo.api.dto.submission.SubmitAttemptResponse;
+import com.example.demo.api.dto.question.QuestionResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
@@ -82,6 +83,13 @@ public class SubmissionController {
         User student = currentUserService.requireCurrentUser();
         currentUserService.requireStudentOrAdmin(student);
         return ApiResponse.success(submissionService.getDraftAnswers(attemptId, student));
+    }
+
+    @GetMapping("/attempts/{attemptId}/questions")
+    public ApiResponse<List<QuestionResponse>> attemptQuestions(@PathVariable Long attemptId) {
+        User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
+        return ApiResponse.success(submissionService.listQuestionsForStudentAttempt(attemptId, student));
     }
 
     @GetMapping("/attempts/{attemptId}")

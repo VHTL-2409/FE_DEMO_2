@@ -34,7 +34,10 @@ from .section_detector import SectionKind, detect_section_header
 
 Y_THRESHOLD: float = 3.0   # points — same-line threshold (strict)
 GAP_THRESHOLD: float = 12.0  # points — insert space only when gap exceeds this
-DEBUG: bool = os.environ.get("PDF_ENGINE_DEBUG", "0") == "1"
+DEBUG: bool = (
+    os.environ.get("PDF_ENGINE_DEBUG", "0") == "1"
+    or os.environ.get("PDF_MATH_INGESTION_DEBUG", "0") == "1"
+)
 
 
 # ─── Data classes ────────────────────────────────────────────────────────────
@@ -488,19 +491,39 @@ def _compute_separator(prev: Word, curr: Word, gap: float) -> str:
     """
     Quyết định có insert separator giữa hai tokens không.
 
-    Rules:
-      - gap > 12pt: wide gap → insert space (trừ khi prev là math opener)
-      - gap <= 12pt: mặc định không space (math adjacency);
-        ngoại lệ: ranh giới từ tiếng Việt / chữ–số (pdf_mau_1 dính "Phươngtrình...")
+    Không chèn khoảng trắng mù giữa các mảnh toán (kể cả khi PDF tách xa do font).
+    Chèn space khi:
+      - hai từ tiếng Việt/Anh nhiều chữ;
+      - ranh giới chữ–số rõ ràng;
+      - quanh '=' cho đọc được (S =, x =) khi token '=' tách bbox.
     """
-    if gap > GAP_THRESHOLD:
-        if prev.text.strip() in ("(", "[", "{", "⟨"):
-            return ""
-        return " "
-
     pt = prev.text.strip()
     ct = curr.text.strip()
     if not pt or not ct:
+        return ""
+
+    # Readable spacing around equals / punctuation (born-digital + scanned)
+    if ct == "=" or ct.startswith("="):
+        if gap > 0.2:
+            return " "
+    if pt.endswith("=") and ct and ct[0] in "{[(":
+        if gap > 0.2:
+            return " "
+
+    if gap > GAP_THRESHOLD:
+        if pt in ("(", "[", "{", "⟨"):
+            return ""
+        # Hai từ văn bản dài → chắc chắn cần space (hai cột / khoảng lớn)
+        if _is_text_word(prev) and _is_text_word(curr):
+            return " "
+        # Hai mảnh đều không phải từ văn dài → coi như toán liền kề, không chèn space
+        if not _is_text_word(prev) and not _is_text_word(curr):
+            return ""
+        # Từ văn + mảnh toán: chỉ space nếu gap rất lớn (đổi cột)
+        if _is_text_word(prev) ^ _is_text_word(curr):
+            if gap > GAP_THRESHOLD * 2.5:
+                return " "
+            return ""
         return ""
 
     if _is_text_word(prev) and _is_text_word(curr):

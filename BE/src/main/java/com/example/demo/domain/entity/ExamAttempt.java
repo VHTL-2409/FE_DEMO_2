@@ -97,4 +97,8 @@ public class ExamAttempt {
     @Column(name = "submit_count")
     @Builder.Default
     private Integer submitCount = 0;
+
+    /** JSON array of question IDs in display order for this attempt (shuffle / per-session order). */
+    @Column(name = "question_order_json", columnDefinition = "TEXT")
+    private String questionOrderJson;
 }

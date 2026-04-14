@@ -200,13 +200,19 @@ export const waitForImportJob = async (
 /**
  * Upload PDF hoặc DOCX để parse bằng Python FastAPI service.
  * @param {File} file
- * @param {{ examId?: number }} options
+ * @param {{ examId?: number, forceTemplate?: string, parserEngine?: 'legacy'|'v2' }} options
+ *   parserEngine: ép legacy|v2. Không truyền và không set VITE_EXAM_PARSER_ENGINE → BE tự chọn theo service đang chạy.
  */
-export const uploadExamPdf = async (file, { examId } = {}) => {
+export const uploadExamPdf = async (file, { examId, forceTemplate, parserEngine } = {}) => {
   validateImportFile(file)
   const formData = new FormData()
   formData.append('file', file)
   if (examId != null) formData.append('examId', String(examId))
+  if (forceTemplate) formData.append('forceTemplate', forceTemplate)
+  const engine = parserEngine ?? import.meta.env.VITE_EXAM_PARSER_ENGINE
+  if (engine != null && String(engine).trim() !== '') {
+    formData.append('parserEngine', String(engine).trim())
+  }
   const payload = await apiRequest('/api/v1/exam-import/upload', {
     method: 'POST',
     body: formData

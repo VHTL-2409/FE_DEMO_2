@@ -63,14 +63,6 @@ export const addStudentsToClass = async (classId, studentIds) => {
   return unwrapApiData(payload) || []
 }
 
-export const forceAddStudentsToClass = async (classId, studentIds) => {
-  const payload = await apiRequest(`/api/teacher/classes/${classId}/students/force`, {
-    method: 'POST',
-    body: JSON.stringify({ studentIds, mandatory: true })
-  })
-  return unwrapApiData(payload) || []
-}
-
 export const removeStudentFromClass = async (classId, studentId) => {
   await apiRequest(`/api/teacher/classes/${classId}/students/${studentId}`, { method: 'DELETE' })
 }

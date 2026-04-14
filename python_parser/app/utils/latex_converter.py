@@ -376,6 +376,28 @@ def repair_garbled_set_option_text(text: str) -> str:
     return text
 
 
+def sanitize_latex_for_katex(text: str) -> str:
+    """
+    Loại các dòng chỉ còn nhóm rỗng \\{\\} / {} — KaTeX có thể hiển thị lỗi kiểu placeholder.
+    Giữ nội dung có chữ (tiếng Việt, biến).
+    """
+    if not text:
+        return text
+    lines_out: list[str] = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            lines_out.append(line)
+            continue
+        inner = stripped
+        if inner.startswith("$") and inner.endswith("$") and inner.count("$") == 2:
+            inner = inner[1:-1].strip()
+        if re.fullmatch(r"[\{\}\\\s]+", inner):
+            continue
+        lines_out.append(line)
+    return "\n".join(lines_out).strip()
+
+
 def convert_to_latex(text: str, mode: str = "auto") -> str:
     """
     Main entry point: convert text to LaTeX format.
@@ -415,7 +437,7 @@ def convert_to_latex(text: str, mode: str = "auto") -> str:
 
     result = collapse_wrapped_plain_duplicate_lines(result)
 
-    return result
+    return sanitize_latex_for_katex(result)
 
 
 def extract_latex_parts(text: str) -> dict:

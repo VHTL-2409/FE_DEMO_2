@@ -73,6 +73,9 @@ export interface Exam {
   questionCount: number
   participantCount: number
   practice: boolean
+  shuffleQuestions?: boolean
+  shuffleAnswers?: boolean
+  showScoreAfterSubmit?: boolean
   monitorTabSwitch: boolean
   monitorBlur: boolean
   monitorExitFullscreen: boolean

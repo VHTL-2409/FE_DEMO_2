@@ -71,6 +71,7 @@
               v-model:duration="form.durationMinutes"
               v-model:showAnswers="form.showAnswersAfterEnd"
               v-model:allowReview="form.allowReview"
+              v-model:showScoreAfterSubmit="form.showScoreAfterSubmit"
               v-model:maxAttempts="form.maxAttempts"
             />
             <ScheduleSection
@@ -259,6 +260,7 @@ const form = reactive({
   durationMinutes: 60,
   showAnswersAfterEnd: false,
   allowReview: true,
+  showScoreAfterSubmit: true,
   maxAttempts: 1,
   // Questions
   questions: [],
@@ -674,7 +676,8 @@ function buildExamPayload() {
     monitorMultiMonitor: form.monitorMultiMonitor,
     requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
     shuffleQuestions: form.shuffleQuestions,
-    shuffleAnswers: form.shuffleAnswers
+    shuffleAnswers: form.shuffleAnswers,
+    showScoreAfterSubmit: form.showScoreAfterSubmit
   }
 }
 

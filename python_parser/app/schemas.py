@@ -95,6 +95,11 @@ class ExamMeta(BaseModel):
     examType: str = ""          # e.g. "Đề kiểm tra", "Đề thi thử"
     totalQuestions: int = 0
     template: TemplateType = TemplateType.TEMPLATE_01_MATH_BROKEN
+    # Populated when PDF_MATH_INGESTION_DEBUG=1 (template_01 rebuilt path)
+    ingestionDebug: Optional[dict] = Field(
+        default=None,
+        description="Rows, question boundaries, timing — for verifying math PDF ingestion",
+    )
 
 
 # ─── Report ───────────────────────────────────────────────────────────────────

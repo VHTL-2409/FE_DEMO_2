@@ -1,5 +1,8 @@
 """
-template_01_math_broken.py — Parser for math exam PDFs with broken formula text.
+template_01_math_broken.py — LEGACY reference parser (not used at runtime).
+
+The FastAPI router uses Template01MathRebuiltParser + MathPdfTextEngine instead.
+This file remains for diff reference only; do not extend with more regex patches.
 
 PDF characteristics:
   - Vietnamese math exam (Đại số, Hình học)

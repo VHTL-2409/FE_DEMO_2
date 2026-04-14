@@ -8,6 +8,8 @@ from abc import abstractmethod
 
 from .base import BaseParser, ParsedBlock
 from ..schemas import ExamMeta, ParsedQuestion, QuestionType, RenderMode, RenderInfo, TemplateType
+from ..utils.latex_converter import convert_to_latex
+from ..utils.text_normalizer import classify_content_type, normalize_mcq_stem_display
 from ..profiler import PdfProfile
 from ..utils.docx_reader import DocxReader
 
@@ -78,7 +80,7 @@ class DocxBaseParser(BaseParser):
         Build a ParsedQuestion with RenderMode.TEXT (DOCX text is always clean).
         Image fallback is not needed for DOCX files.
         """
-        return ParsedQuestion(
+        q = ParsedQuestion(
             number=number,
             type=q_type,
             page=page,
@@ -90,3 +92,38 @@ class DocxBaseParser(BaseParser):
             render=RenderInfo(mode=RenderMode.TEXT),
             issues=issues or [],
         )
+        self._enrich_latex_fields(q)
+        return q
+
+    def _enrich_latex_fields(self, q: ParsedQuestion) -> None:
+        """
+        Attach latexContent / latexOptions / contentType so the demo FE can use
+        MathDisplay consistently with PDF-imported questions.
+        """
+        raw = (q.text or "").strip()
+        if raw:
+            stem_for_latex = (
+                normalize_mcq_stem_display(raw)
+                if q.type == QuestionType.MULTIPLE_CHOICE
+                else raw
+            )
+            try:
+                mode = (
+                    "auto"
+                    if q.type
+                    in (QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE)
+                    else "block"
+                )
+                q.latexContent = convert_to_latex(stem_for_latex, mode=mode)
+                q.contentType = classify_content_type(stem_for_latex, q.latexContent)
+            except Exception:
+                q.contentType = classify_content_type(raw, None)
+        if q.type == QuestionType.MULTIPLE_CHOICE and q.options:
+            try:
+                q.latexOptions = {
+                    k: convert_to_latex(str(v).strip(), mode="inline")
+                    for k, v in q.options.items()
+                    if v and str(v).strip()
+                }
+            except Exception:
+                pass

@@ -56,9 +56,20 @@
         </div>
 
         <div v-else class="ec-qb-items">
-          <article
+          <template
             v-for="(q, i) in localQuestions"
             :key="q._localId"
+          >
+          <div
+            v-if="shouldShowPartHeader(i)"
+            class="ec-qb-part-divider"
+            role="separator"
+          >
+            <span class="ec-qb-part-divider__line" aria-hidden="true" />
+            <span class="ec-qb-part-divider__label">{{ sectionGroupLabel(q) }}</span>
+            <span class="ec-qb-part-divider__line" aria-hidden="true" />
+          </div>
+          <article
             class="ec-qb-item"
             :class="{
               'ec-qb-item--expanded': expandedIds.has(i),
@@ -72,6 +83,13 @@
                 <span class="ec-qb-item__num">{{ i + 1 }}</span>
                 <span class="ec-qb-type-badge" :class="`ec-qb-type-badge--${typeSlug(q.type)}`">
                   {{ typeLabel(q.type) }}
+                </span>
+                <span
+                  v-if="sectionHeaderChip(q)"
+                  class="ec-qb-sec-chip"
+                  :title="q.section || q.sectionKind || ''"
+                >
+                  {{ sectionHeaderChip(q) }}
                 </span>
                 <span v-if="q.parseConfidence != null && q.parseConfidence < 0.7" class="ec-qb-conf-warn">
                   <LucideIcon name="warning" size="11" />
@@ -256,6 +274,7 @@
 
             </div>
           </article>
+          </template>
         </div>
       </div>
 
@@ -340,6 +359,50 @@ const typeSlug = (type) => {
   if (t.includes('ESSAY')) return 'essay'
   if (t.includes('MULTI') || t.includes('MULTIPLE')) return 'multi'
   return 'mc'
+}
+
+/** Phần đề (import PDF/DOCX): nhóm + nhãn hiển thị */
+function sectionGroupKey (q: Record<string, unknown>): string {
+  const s = (q.section != null && String(q.section).trim()) || ''
+  const k = (q.sectionKind != null && String(q.sectionKind).trim()) || ''
+  return `${k}::${s}`
+}
+
+function sectionKindLabel (kind: unknown): string {
+  if (kind == null || String(kind).trim() === '') return ''
+  const k = String(kind).toLowerCase()
+  const map: Record<string, string> = {
+    mcq: 'Trắc nghiệm',
+    essay: 'Tự luận',
+    answer: 'Đáp án',
+    question: 'Điền / Phần câu hỏi',
+    solution: 'Lời giải'
+  }
+  return map[k] || String(kind)
+}
+
+function sectionGroupLabel (q: Record<string, unknown>): string {
+  const s = (q.section != null && String(q.section).trim()) || ''
+  if (s) return s
+  return sectionKindLabel(q.sectionKind) || 'Phần khác'
+}
+
+function sectionHeaderChip (q: Record<string, unknown>): string {
+  const s = (q.section != null && String(q.section).trim()) || ''
+  if (s) {
+    return s.length > 40 ? `${s.slice(0, 37)}…` : s
+  }
+  return sectionKindLabel(q.sectionKind) || ''
+}
+
+function shouldShowPartHeader (index: number): boolean {
+  const qs = localQuestions.value as Record<string, unknown>[]
+  if (!qs.length || index >= qs.length) return false
+  const q = qs[index]
+  const key = sectionGroupKey(q)
+  if (!key || key === '::') return false
+  if (index === 0) return true
+  return sectionGroupKey(qs[index - 1]) !== key
 }
 
 const toggleExpand = (i) => {
@@ -1456,6 +1519,56 @@ const onConfirmDeleteAll = () => {
 .dark .ec-qb-type-badge--multi {
   background: rgba(56, 189, 248, 0.15);
   color: #7dd3fc;
+}
+
+.ec-qb-sec-chip {
+  max-width: 14rem;
+  padding: 0.125rem 0.45rem;
+  border-radius: var(--ds-radius-md);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  background: var(--ds-surface-2, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--ds-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dark .ec-qb-sec-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--ds-border-strong);
+}
+
+.ec-qb-part-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.ec-qb-part-divider:first-child {
+  margin-top: 0;
+}
+
+.ec-qb-part-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--ds-border);
+  opacity: 0.85;
+}
+
+.ec-qb-part-divider__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+  max-width: min(90vw, 28rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ec-qb-conf-warn {

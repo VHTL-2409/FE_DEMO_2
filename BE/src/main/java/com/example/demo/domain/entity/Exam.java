@@ -135,4 +135,9 @@ public class Exam {
      */
     @Column(name = "is_practice")
     private Boolean practice;
+
+    /** When true, students see score on the post-submit confirmation screen. */
+    @Column(name = "show_score_after_submit")
+    @Builder.Default
+    private Boolean showScoreAfterSubmit = true;
 }

@@ -36,6 +36,11 @@ from ..utils.section_detector import (
     SectionKind,
 )
 
+# Hướng dẫn chung (nhóm câu 4–5, 6–7…) dính cuối khối — không phải nội dung câu hỏi
+_T02_TAIL_INSTRUCTION_RE = re.compile(
+    r"(?is)\n?\s*Mark\s+the\s+letter\s+A,?\s+B,?\s+C,?\s+or\s+D.*$",
+)
+
 
 class Template02CleanMcqParser(BaseParser):
     """
@@ -220,6 +225,9 @@ class Template02CleanMcqParser(BaseParser):
 
         # ─── Step 3: Extract stem (everything before first option) ─────────
         stem = self._extract_stem(clean, options)
+        stem = _T02_TAIL_INSTRUCTION_RE.sub("", stem).strip()
+        if not stem.strip() and len({k: v for k, v in options.items() if v.strip()}) >= 2:
+            stem = f"Question {num}"
 
         # ─── Step 4: Determine question type ───────────────────────────────
         valid_options = {k: v for k, v in options.items() if v.strip()}

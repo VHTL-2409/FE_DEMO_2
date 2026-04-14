@@ -64,6 +64,7 @@
                 v-model:duration="form.durationMinutes"
                 v-model:shuffleQuestions="form.shuffleQuestions"
                 v-model:shuffleAnswers="form.shuffleAnswers"
+                v-model:showScoreAfterSubmit="form.showScoreAfterSubmit"
                 v-model:maxAttempts="form.maxAttempts"
               />
             </div>
@@ -399,6 +400,7 @@ const form = reactive({
   durationMinutes: 60,
   shuffleQuestions: false,
   shuffleAnswers: false,
+  showScoreAfterSubmit: true,
   maxAttempts: 1,
   startTime: '',
   endTime: '',
@@ -486,6 +488,7 @@ const populateForm = (data) => {
   form.durationMinutes = data.durationMinutes || 60
   form.shuffleQuestions = data.shuffleQuestions || false
   form.shuffleAnswers = data.shuffleAnswers || false
+  form.showScoreAfterSubmit = data.showScoreAfterSubmit !== false
   form.maxAttempts = data.maxAttempts || 1
   form.startTime = data.startTime || ''
   form.endTime = data.endTime || ''
@@ -518,6 +521,7 @@ const buildPayload = () => ({
   isActive: exam.value?.isActive || false,
   shuffleQuestions: form.shuffleQuestions,
   shuffleAnswers: form.shuffleAnswers,
+  showScoreAfterSubmit: form.showScoreAfterSubmit,
   maxAttempts: Number(form.maxAttempts) || 1,
   monitorTabSwitch: form.monitorTabSwitch,
   monitorBlur: form.monitorBlur,

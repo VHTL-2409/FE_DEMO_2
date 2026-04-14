@@ -45,4 +45,6 @@ public class ExamRequest {
     private String className;
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;
+    /** If null, default true when creating. */
+    private Boolean showScoreAfterSubmit;
 }

@@ -141,7 +141,7 @@ const alertTrendLabel = computed(() => {
 
 .td-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--ds-gray-200);
   border-radius: var(--ds-radius-lg, 14px);
   overflow: hidden;
@@ -153,6 +153,7 @@ const alertTrendLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
+  min-width: 0;
   padding: 1.125rem 1.25rem;
   background: var(--ds-surface);
   border: none;
@@ -189,9 +190,10 @@ const alertTrendLabel = computed(() => {
 
 .td-kpi-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .td-kpi-card__icon-wrap {
@@ -275,7 +277,7 @@ const alertTrendLabel = computed(() => {
 
 .td-kpi-card__value {
   font-family: var(--ds-font-display);
-  font-size: 2.5rem;
+  font-size: clamp(1.65rem, 2.8vw + 0.9rem, 2.5rem);
   font-weight: 800;
   color: var(--ds-text);
   letter-spacing: -0.03em;
@@ -292,6 +294,9 @@ const alertTrendLabel = computed(() => {
   font-weight: 500;
   color: var(--ds-text-muted);
   margin-top: 0.25rem;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .td-kpi-card__footer {
@@ -312,8 +317,8 @@ const alertTrendLabel = computed(() => {
 .td-kpi-card__trend--success { color: var(--ds-success); }
 .td-kpi-card__trend--danger  { color: var(--ds-danger); }
 
-@media (max-width: 1024px) {
-  .td-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 1280px) {
+  .td-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .td-kpi-card:nth-child(2) { border-right: none; }
   .td-kpi-card:nth-child(3) { border-top: 1px solid var(--ds-gray-200); }
   .td-kpi-card:nth-child(4) { border-top: 1px solid var(--ds-gray-200); border-right: none; }

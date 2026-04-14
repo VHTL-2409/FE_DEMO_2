@@ -1,6 +1,10 @@
 # python_parser/requirements.txt
 # Dependencies cho Template-Based PDF/DOCX Exam Parser
 # Python >= 3.10
+#
+# Ubuntu/Debian (PEP 668): KHÔNG pip install vào Python hệ thống.
+#   cd python_parser && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+#   Chạy API: .venv/bin/python -m uvicorn app.main:app --reload --port 8000
 
 # ─── FastAPI & Server ─────────────────────────────────────────────────────────
 fastapi>=0.110.0              # Web framework (FastAPI)

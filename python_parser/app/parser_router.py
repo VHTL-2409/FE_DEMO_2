@@ -248,6 +248,11 @@ class ParserRouter:
 
 
 def route(pdf_path: str, session_id: str | None = None) -> ParseResponse:
-    """Convenience function."""
+    """
+    Shortcut tương đương `ParserRouter().route(...)`.
+
+    Để có API một điểm vào có kiểm tra đuôi file / mô tả rõ ràng, dùng
+    `app.exam_document_parse.parse_exam_document`.
+    """
     router = ParserRouter()
     return router.route(pdf_path, session_id)

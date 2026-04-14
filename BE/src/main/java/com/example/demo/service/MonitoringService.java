@@ -254,20 +254,26 @@ public class MonitoringService {
         }
     }
 
+    /** Align with student UI: monitoring is on unless explicitly false (null counts as on). */
+    private static boolean monitoringFlagEnabled(Boolean value) {
+        return !Boolean.FALSE.equals(value);
+    }
+
     private boolean isEventEnabled(ExamAttempt attempt, MonitoringEventType eventType) {
+        var exam = attempt.getExam();
         return switch (eventType) {
-            case TAB_SWITCH -> Boolean.TRUE.equals(attempt.getExam().getMonitorTabSwitch());
-            case BLUR -> Boolean.TRUE.equals(attempt.getExam().getMonitorBlur());
-            case EXIT_FULLSCREEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorExitFullscreen());
-            case COPY_PASTE -> Boolean.TRUE.equals(attempt.getExam().getMonitorCopyPaste());
-            case IDLE_TIME -> Boolean.TRUE.equals(attempt.getExam().getMonitorIdleTime());
-            case DEVTOOLS_OPEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorDevtools());
-            case DUPLICATE_IP -> Boolean.TRUE.equals(attempt.getExam().getMonitorDuplicateIp());
-            case FAST_SUBMIT -> Boolean.TRUE.equals(attempt.getExam().getMonitorFastSubmit());
-            case RIGHT_CLICK -> Boolean.TRUE.equals(attempt.getExam().getMonitorRightClick());
-            case PRINT_SCREEN -> Boolean.TRUE.equals(attempt.getExam().getMonitorPrintScreen());
-            case RAPID_QUESTION_SWITCH -> Boolean.TRUE.equals(attempt.getExam().getMonitorRapidQuestionSwitch());
-            case MULTI_MONITOR -> Boolean.TRUE.equals(attempt.getExam().getMonitorMultiMonitor());
+            case TAB_SWITCH -> monitoringFlagEnabled(exam.getMonitorTabSwitch());
+            case BLUR -> monitoringFlagEnabled(exam.getMonitorBlur());
+            case EXIT_FULLSCREEN -> monitoringFlagEnabled(exam.getMonitorExitFullscreen());
+            case COPY_PASTE -> monitoringFlagEnabled(exam.getMonitorCopyPaste());
+            case IDLE_TIME -> monitoringFlagEnabled(exam.getMonitorIdleTime());
+            case DEVTOOLS_OPEN -> monitoringFlagEnabled(exam.getMonitorDevtools());
+            case DUPLICATE_IP -> monitoringFlagEnabled(exam.getMonitorDuplicateIp());
+            case FAST_SUBMIT -> monitoringFlagEnabled(exam.getMonitorFastSubmit());
+            case RIGHT_CLICK -> monitoringFlagEnabled(exam.getMonitorRightClick());
+            case PRINT_SCREEN -> monitoringFlagEnabled(exam.getMonitorPrintScreen());
+            case RAPID_QUESTION_SWITCH -> monitoringFlagEnabled(exam.getMonitorRapidQuestionSwitch());
+            case MULTI_MONITOR -> monitoringFlagEnabled(exam.getMonitorMultiMonitor());
             case HEARTBEAT_STALE, DEVICE_FINGERPRINT_CHANGED -> true;
         };
     }

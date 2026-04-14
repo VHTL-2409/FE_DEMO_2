@@ -51,4 +51,5 @@ public class ExamResponse {
     private String className;
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;
+    private Boolean showScoreAfterSubmit;
 }

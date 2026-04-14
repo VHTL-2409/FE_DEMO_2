@@ -113,6 +113,7 @@ public class ExamService {
                 .enableAiProctoring(Boolean.TRUE.equals(request.getEnableAiProctoring()))
                 .shuffleQuestions(Boolean.TRUE.equals(request.getShuffleQuestions()))
                 .shuffleAnswers(Boolean.TRUE.equals(request.getShuffleAnswers()))
+                .showScoreAfterSubmit(request.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(request.getShowScoreAfterSubmit()))
                 .practice(false)
                 .build();
         return toResponse(examRepository.save(exam));
@@ -231,6 +232,7 @@ public class ExamService {
                 .isActive(true)
                 .createdBy(student)
                 .practice(true)
+                .showScoreAfterSubmit(true)
                 .build();
         practiceExam = examRepository.save(practiceExam);
 
@@ -264,6 +266,7 @@ public class ExamService {
                 .isActive(true)
                 .createdBy(student)
                 .practice(true)
+                .showScoreAfterSubmit(true)
                 .build();
         practiceExam = examRepository.save(practiceExam);
 
@@ -510,6 +513,9 @@ public class ExamService {
         if (request.getShuffleAnswers() != null) {
             exam.setShuffleAnswers(request.getShuffleAnswers());
         }
+        if (request.getShowScoreAfterSubmit() != null) {
+            exam.setShowScoreAfterSubmit(request.getShowScoreAfterSubmit());
+        }
         return toResponse(examRepository.save(exam));
     }
 
@@ -641,6 +647,7 @@ public class ExamService {
                 .enableAiProctoring(original.getEnableAiProctoring())
                 .shuffleQuestions(original.getShuffleQuestions())
                 .shuffleAnswers(original.getShuffleAnswers())
+                .showScoreAfterSubmit(original.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(original.getShowScoreAfterSubmit()))
                 .practice(false)
                 .build();
         examRepository.save(copy);
@@ -948,6 +955,7 @@ public class ExamService {
                 .enableAiProctoring(exam.getEnableAiProctoring())
                 .shuffleQuestions(exam.getShuffleQuestions())
                 .shuffleAnswers(exam.getShuffleAnswers())
+                .showScoreAfterSubmit(exam.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(exam.getShowScoreAfterSubmit()))
                 .build();
     }
 }

@@ -179,6 +179,9 @@ CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_created
 -- =====================================================
 ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS shuffle_questions BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS shuffle_answers  BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS show_score_after_submit BOOLEAN DEFAULT TRUE NOT NULL;
+
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS question_order_json TEXT;
 
 -- =====================================================
 -- OAUTH2 USER FIELDS

@@ -188,10 +188,11 @@ class PdfReader:
 
     def get_all_text_layout_aware(self) -> str:
         """
-        Extract text with proper line grouping for 2-column layouts.
-        Groups spans by Y coordinate (within 5pt threshold), sorts by X,
-        and inserts spaces only between text words — preserving math
-        expressions like 'x²-9=0' from becoming 'x 2 - 9 = 0'.
+        Legacy layout pass (span grouping + smart line join).
+
+        For math-heavy exam PDFs, prefer ``MathPdfTextEngine`` in
+        ``app.utils.math_text_engine`` (PyMuPDF ``words`` + gap-aware join),
+        which is the primary ingestion path for template_01.
         """
         Y_THRESHOLD = 5  # points — spans within this Y range are on same line
 

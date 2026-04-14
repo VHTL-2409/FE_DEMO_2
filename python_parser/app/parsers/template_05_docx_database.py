@@ -27,6 +27,7 @@ class Template05DocxDatabaseParser(DocxBaseParser):
     """Parser for Vietnamese Database exam — 30 MCQ with asterisk-before-letter answer format."""
 
     template_type = TemplateType.TEMPLATE_05_DOCX_DATABASE
+    parser_name = "template_05_docx_database"
 
     def can_handle(self, profile: PdfProfile, file_path: str = "") -> float:
         # Primary: distinguish by filename pattern
@@ -100,6 +101,15 @@ class Template05DocxDatabaseParser(DocxBaseParser):
         - All remaining lines → question stem
         Handles orphan single-word options: "C. development" (no extra text after letter).
         """
+        # Một paragraph DOCX có thể chứa A./B./C./D. ngăn bằng \\n (docx_mau_2 Q7)
+        expanded: list[str] = []
+        for line in lines:
+            for sub in line.split("\n"):
+                s = sub.strip()
+                if s:
+                    expanded.append(s)
+        lines = expanded
+
         stem_parts: list[str] = []
         options: dict[str, str] = {}
         answer: str | None = None

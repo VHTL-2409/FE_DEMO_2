@@ -45,19 +45,37 @@ from app.utils.validator import validate_parsed
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
 
-def _golden_dir():
-    """Directory containing test fixture files (PDFs and DOCX)."""
-    root = os.environ.get("TEST_PDF_DIR", "")
+def _parser_package_root() -> str:
+    """python_parser/ (parent of tests/)."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _template_samples_dir() -> str:
+    """Committed samples: python_parser/template/*.pdf|docx."""
+    return os.path.join(_parser_package_root(), "template")
+
+
+def _golden_dir() -> str:
+    """Directory containing test fixture files when TEST_PDF_DIR is set; else template dir."""
+    root = os.environ.get("TEST_PDF_DIR", "").strip()
     if root and os.path.isdir(root):
         return root
-    # Fallback: repo root
-    return os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    return _template_samples_dir()
 
 
 def _file_path(filename: str) -> str | None:
-    """Return absolute path if file exists, else None."""
-    path = os.path.join(_golden_dir(), filename)
-    return path if os.path.isfile(path) else None
+    """Resolve sample file: TEST_PDF_DIR first, then python_parser/template/, then repo root."""
+    candidates: list[str] = []
+    env_root = os.environ.get("TEST_PDF_DIR", "").strip()
+    if env_root:
+        candidates.append(os.path.join(env_root, filename))
+    candidates.append(os.path.join(_template_samples_dir(), filename))
+    repo_root = os.path.dirname(_parser_package_root())
+    candidates.append(os.path.join(repo_root, filename))
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
 
 
 def _assert_no_forbidden_issues(questions: list[ParsedQuestion], forbidden: list[str]):
@@ -140,7 +158,12 @@ def _assert_json_schema(questions: list[ParsedQuestion], meta: ExamMeta, report:
     for q in questions:
         assert isinstance(q.number, int), f"q.number not int: {q.number!r}"
         assert isinstance(q.text, str), f"q.text not str: {q.text!r}"
-        assert q.text, f"q.text empty for question {q.number}"
+        # Some PDFs (e.g. listening sections) may leave stem empty while options carry text
+        if not q.text.strip():
+            non_empty_opts = [v for v in q.options.values() if v and str(v).strip()]
+            assert (
+                q.type == QuestionType.MULTIPLE_CHOICE and len(non_empty_opts) >= 2
+            ), f"q.text empty for question {q.number} without sufficient options"
         assert isinstance(q.options, dict), f"q.options not dict: {q.options!r}"
         assert isinstance(q.render.mode, RenderMode), f"q.render.mode invalid: {q.render.mode!r}"
         assert isinstance(q.confidence, float), f"q.confidence not float: {q.confidence!r}"
@@ -992,11 +1015,15 @@ class TestQuestionJsonSchema:
                 f"Cannot meaningfully test render mode distribution."
             )
 
-        img_count = sum(1 for q in questions if q.render.mode == RenderMode.IMAGE)
-        assert img_count >= 1, (
-            f"Math PDF {fixture['file_pattern']}: expected some questions in "
-            f"image mode (formula noise fallback), but got 0. "
-            f"Check formula_noise threshold."
+        # Rebuilt math pipeline prefers LaTeX; image mode is optional fallback
+        rendered = sum(
+            1
+            for q in questions
+            if q.render.mode in (RenderMode.IMAGE, RenderMode.LATEX)
+        )
+        assert rendered >= 1, (
+            f"Math PDF {fixture['file_pattern']}: expected LaTeX or image render "
+            f"for at least one question, got 0."
         )
 
     @pytest.mark.parametrize("fixture_key,parser_fn", [
@@ -1060,16 +1087,20 @@ class TestRenderMode:
             assert text_count / len(questions) >= 0.95
 
     def test_template01_math_some_image(self):
-        """Math PDFs with broken formulas should use image mode for at least 1 question."""
+        """Math PDFs should use LaTeX or image for at least one question (formula rendering)."""
         path = _file_path("pdf_mau_1.pdf")
         if path is None:
             pytest.skip("pdf_mau_1.pdf not found")
         parser = _t01()(path)
         questions, _ = parser.parse()
-        img_qs = [q.number for q in questions if q.render.mode == RenderMode.IMAGE]
-        assert len(img_qs) >= 1, (
-            f"Math PDF should use image mode for formula noise, got 0. "
-            f"Check formula_noise threshold in template_01."
+        rendered = [
+            q.number
+            for q in questions
+            if q.render.mode in (RenderMode.IMAGE, RenderMode.LATEX)
+        ]
+        assert len(rendered) >= 1, (
+            f"Math PDF should use LaTeX or image for formula content, got none. "
+            f"Check template_01 render selection."
         )
 
     def test_template03_math_grid_some_image(self):
@@ -1087,7 +1118,11 @@ class TestRenderMode:
                 f"Only {len(questions)} questions parsed — section detection likely failed. "
                 f"Cannot meaningfully test image mode selection."
             )
-        img_qs = [q.number for q in questions if q.render.mode == RenderMode.IMAGE]
-        assert len(img_qs) >= 1, (
-            f"Math answer-grid PDF should use image mode for formulas, got 0."
+        rendered = [
+            q.number
+            for q in questions
+            if q.render.mode in (RenderMode.IMAGE, RenderMode.LATEX)
+        ]
+        assert len(rendered) >= 1, (
+            f"Math answer-grid PDF should use LaTeX or image for formulas, got 0."
         )

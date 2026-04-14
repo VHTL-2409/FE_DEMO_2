@@ -689,6 +689,24 @@ class TestOptionParsing:
 class TestMcqBlockRegression:
     """Regression tests for pdf_mau_1-style MCQ parsing."""
 
+    def test_glued_option_row_pdf_mau_1_style(self):
+        """
+        Một dòng PDF dính cột: 'A.S =-3B.S =3C.SD.S =3;-3' phải tách thành ≥2 MCQ,
+        không rơi về ESSAY vì chỉ có một key options.
+        """
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        raw = (
+            "Câu 1.Phương trình x2–9 =0 có tập nghiệm là:\n"
+            "A.S =−3B.S =3C.SD.S =3;−3"
+        )
+        block = parser._parse_mcq_block(
+            parser._make_test_block(raw, 1),
+            {},
+        )
+        assert block is not None
+        assert block.type.value == "multiple_choice"
+        assert len(block.options) >= 2
+
     def test_question_1_stem_preserves_superscript(self):
         """
         Q1: 'Câu 1. Phương trình x² - 9 = 0 có tập nghiệm là:'

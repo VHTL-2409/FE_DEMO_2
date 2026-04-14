@@ -83,6 +83,24 @@
               <span class="ec-toggle__knob" />
             </button>
           </div>
+
+          <div class="ec-toggle-item">
+            <div class="ec-toggle-item__body">
+              <LucideIcon name="grade" />
+              <div>
+                <p class="ec-toggle-item__title">Hiển thị điểm ngay sau nộp</p>
+                <p class="ec-toggle-item__desc">Học sinh thấy điểm trên màn xác nhận nộp bài</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="ec-toggle"
+              :class="localShowScoreAfterSubmit && 'ec-toggle--on'"
+              @click="localShowScoreAfterSubmit = !localShowScoreAfterSubmit"
+            >
+              <span class="ec-toggle__knob" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -124,11 +142,13 @@ const props = defineProps({
   duration: { type: [Number, String], default: 60 },
   showAnswers: { type: Boolean, default: false },
   allowReview: { type: Boolean, default: true },
+  showScoreAfterSubmit: { type: Boolean, default: true },
   maxAttempts: { type: [Number, String], default: 1 }
 })
 
 const emit = defineEmits([
-  'update:duration', 'update:showAnswers', 'update:allowReview', 'update:maxAttempts'
+  'update:duration', 'update:showAnswers', 'update:allowReview', 'update:showScoreAfterSubmit',
+  'update:maxAttempts'
 ])
 
 const durationPresets = [15, 30, 45, 60, 90, 120]
@@ -146,6 +166,11 @@ const localShowAnswers = computed({
 const localAllowReview = computed({
   get: () => props.allowReview,
   set: (v) => emit('update:allowReview', v)
+})
+
+const localShowScoreAfterSubmit = computed({
+  get: () => props.showScoreAfterSubmit,
+  set: (v) => emit('update:showScoreAfterSubmit', v)
 })
 
 const localMaxAttempts = computed({

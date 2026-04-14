@@ -31,6 +31,7 @@ class Template04DocxVietParser(DocxBaseParser):
     """Parser for Vietnamese commerce exam with 3 distinct sections."""
 
     template_type = TemplateType.TEMPLATE_04_DOCX_VIETNAMESE
+    parser_name = "template_04_docx_viet"
 
     def can_handle(self, profile: PdfProfile, file_path: str = "") -> float:
         # Primary: distinguish by filename pattern

@@ -865,7 +865,13 @@ const handleImport = async () => {
             ? { latexOptions: rawLatexOpts }
             : rawLatexOpts != null && String(rawLatexOpts).trim() !== ''
               ? { latexOptions: String(rawLatexOpts) }
-              : {})
+              : {}),
+          ...(q.section != null && String(q.section).trim() !== ''
+            ? { section: String(q.section).trim() }
+            : {}),
+          ...(q.sectionKind != null && String(q.sectionKind).trim() !== ''
+            ? { sectionKind: String(q.sectionKind).trim() }
+            : {})
         }
       })
       parsingProgress.value = 100

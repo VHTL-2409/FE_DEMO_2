@@ -100,8 +100,8 @@ GOLDEN_TEMPLATE_03 = {
 GOLDEN_TEMPLATE_04 = {
     "file_pattern": "docx_mau_1.docx",
     "template_type": "template_04_docx_vietnamese",
-    "min_question_count": 0,        # 0 (parser needs real file to determine count)
-    "min_answer_count": 0,          # 0 (answer extraction depends on real file format)
+    "min_question_count": 30,     # docx_mau_1: MCQ+fill+essay (≥30 parsed)
+    "min_answer_count": 0,        # * marker format may vary; do not gate on answers
     "min_confidence": 0.60,        # DOCX text sạch
     "max_image_ratio": 0.00,       # DOCX KHÔNG BAO GIỜ dùng image mode
     "expected_answers": {},          # depends on actual content

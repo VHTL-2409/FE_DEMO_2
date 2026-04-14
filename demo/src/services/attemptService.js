@@ -12,6 +12,13 @@ export const getDraftAnswers = async (attemptId) => {
   return unwrapApiData(payload)
 }
 
+/** Questions in per-attempt order (respects shuffle). Student must own the attempt. */
+export const listAttemptQuestions = async (attemptId) => {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/questions`, { suppressToast: true })
+  const data = unwrapApiData(payload)
+  return Array.isArray(data) ? data : []
+}
+
 export const saveDraftAnswers = async (attemptId, answers) => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/draft-answers`, {
     method: 'PUT',
