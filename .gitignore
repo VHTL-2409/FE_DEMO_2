@@ -19,6 +19,7 @@ everything-claude-code/
 !scripts/start-testsprite-mcp.ps1
 !scripts/start-fullstack-for-testsprite.ps1
 .typeui-temp
+/scripts/
 
 # Python virtual environments
 .venv/
