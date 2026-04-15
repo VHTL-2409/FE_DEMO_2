@@ -94,9 +94,15 @@ export const apiRequest = async (path, options = {}) => {
   const token = getAuthToken()
   const method = (options.method || 'GET').toUpperCase()
   const suppressToast = options.suppressToast || false
+  const isFormData = options.body instanceof FormData
   const headers = {
-    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers || {})
+  }
+  // FormData: never set Content-Type — browser must add multipart boundary.
+  if (isFormData) {
+    delete headers['Content-Type']
+    delete headers['content-type']
   }
 
   if (token) {

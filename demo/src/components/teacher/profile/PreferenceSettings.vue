@@ -218,7 +218,7 @@ const loadPrefs = () => {
   try {
     const stored = localStorage.getItem(PREF_STORAGE_KEY)
     if (stored) return JSON.parse(stored)
-  } catch {}
+  } catch { /* ignore corrupt storage */ }
   return null
 }
 
@@ -238,7 +238,7 @@ const preferences = reactive({ ...defaults, ...(loadPrefs() || {}) })
 const persist = () => {
   try {
     localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify(preferences))
-  } catch {}
+  } catch { /* ignore quota / private mode */ }
   emit('update', { ...preferences })
 }
 

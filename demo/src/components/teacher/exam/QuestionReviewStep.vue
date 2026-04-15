@@ -362,16 +362,16 @@ const typeSlug = (type) => {
 }
 
 /** Phần đề (import PDF/DOCX): nhóm + nhãn hiển thị */
-function sectionGroupKey (q: Record<string, unknown>): string {
+function sectionGroupKey (q) {
   const s = (q.section != null && String(q.section).trim()) || ''
   const k = (q.sectionKind != null && String(q.sectionKind).trim()) || ''
   return `${k}::${s}`
 }
 
-function sectionKindLabel (kind: unknown): string {
+function sectionKindLabel (kind) {
   if (kind == null || String(kind).trim() === '') return ''
   const k = String(kind).toLowerCase()
-  const map: Record<string, string> = {
+  const map = {
     mcq: 'Trắc nghiệm',
     essay: 'Tự luận',
     answer: 'Đáp án',
@@ -381,13 +381,13 @@ function sectionKindLabel (kind: unknown): string {
   return map[k] || String(kind)
 }
 
-function sectionGroupLabel (q: Record<string, unknown>): string {
+function sectionGroupLabel (q) {
   const s = (q.section != null && String(q.section).trim()) || ''
   if (s) return s
   return sectionKindLabel(q.sectionKind) || 'Phần khác'
 }
 
-function sectionHeaderChip (q: Record<string, unknown>): string {
+function sectionHeaderChip (q) {
   const s = (q.section != null && String(q.section).trim()) || ''
   if (s) {
     return s.length > 40 ? `${s.slice(0, 37)}…` : s
@@ -395,8 +395,8 @@ function sectionHeaderChip (q: Record<string, unknown>): string {
   return sectionKindLabel(q.sectionKind) || ''
 }
 
-function shouldShowPartHeader (index: number): boolean {
-  const qs = localQuestions.value as Record<string, unknown>[]
+function shouldShowPartHeader (index) {
+  const qs = localQuestions.value
   if (!qs.length || index >= qs.length) return false
   const q = qs[index]
   const key = sectionGroupKey(q)
@@ -439,7 +439,7 @@ function trySplitMcqFromContent(raw) {
   if (!text) return null
 
   const lines = text.split(/\r?\n/)
-  const optionLineRe = /^\s*([A-Da-d])[\.)．]\s*(.*)$/
+  const optionLineRe = /^\s*([A-Da-d])[).．]\s*(.*)$/
 
   const stemLines = []
   const buffer = { A: '', B: '', C: '', D: '' }

@@ -1,7 +1,9 @@
 /.claude
+/python_parser_2
 /stitch
 .gitnexus
 docs/
+.venv-seed/
 *.md
 .cursor/
 !TESTSPRITE.md

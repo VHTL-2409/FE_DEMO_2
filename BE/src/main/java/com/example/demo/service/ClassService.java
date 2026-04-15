@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -50,6 +51,7 @@ public class ClassService {
     private final RoleRepository roleRepository;
     private final CurrentUserService currentUserService;
     private final PasswordEncoder passwordEncoder;
+    private final StudentImportFileParser studentImportFileParser;
 
     @Transactional(readOnly = true)
     public List<ClassResponse> getTeacherClasses(User teacher) {
@@ -381,6 +383,19 @@ public class ClassService {
                 .failedCount(failedCount)
                 .results(results)
                 .build();
+    }
+
+    @Transactional
+    public ImportStudentsResponse importStudentsFromFile(Long classId, MultipartFile file, boolean mandatory, User teacher) {
+        List<StudentImportItem> students = studentImportFileParser.parse(file);
+        if (students.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "File không có dòng học sinh hợp lệ (cần cột username, tối thiểu 3 ký tự).");
+        }
+        StudentImportRequest request = new StudentImportRequest();
+        request.setStudents(students);
+        request.setMandatory(mandatory);
+        return importStudentsToClass(classId, request, teacher);
     }
 
     private StudentImportResult processStudentImport(StudentImportItem item, ClassEntity classEntity, boolean mandatory) {

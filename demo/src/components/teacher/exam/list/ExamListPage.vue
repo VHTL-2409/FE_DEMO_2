@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../../../../services/apiClient'
 import {
@@ -463,9 +463,8 @@ const resetFilters = () => {
   currentPage.value = 1
 }
 
-// Reset page when filters change
-const unwatchSearch = computed(() => {
-  if (searchQuery.value || statusFilter.value !== 'all') currentPage.value = 1
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1
 })
 
 onMounted(() => {

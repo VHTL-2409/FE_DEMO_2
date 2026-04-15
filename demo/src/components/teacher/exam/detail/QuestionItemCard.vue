@@ -224,7 +224,7 @@ const onDragOver = (e) => {
   emit('drag-over', e, props.index)
 }
 
-const onDragLeave = () => {
+const onDragLeave = (e) => {
   isDragOver.value = false
   emit('drag-leave', e)
 }

@@ -1,4 +1,4 @@
-const OPTION_LABEL_PATTERN = /^([A-Z0-9]+)[\.\):\-]\s*(.*)$/i
+const OPTION_LABEL_PATTERN = /^([A-Z0-9]+)[.):-]\s*(.*)$/i
 
 export const scorePercentValue = (value) => {
   const numeric = Number(value)

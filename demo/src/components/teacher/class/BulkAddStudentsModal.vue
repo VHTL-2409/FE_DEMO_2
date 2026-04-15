@@ -7,8 +7,8 @@
             <LucideIcon name="users-plus" />
           </div>
           <div>
-            <h3 class="basm-modal__title">Import học sinh vào lớp</h3>
-            <p class="basm-modal__subtitle">{{ className }}</p>
+            <h3 class="basm-modal__title">Import học sinh</h3>
+            <p v-if="className" class="basm-modal__subtitle">{{ className }}</p>
           </div>
           <button type="button" class="basm-modal__close" @click="close">
             <LucideIcon name="x" />
@@ -16,33 +16,29 @@
         </div>
 
         <div class="basm-modal__body">
-          <div class="basm-import-note">
-            <LucideIcon name="info" />
-            <div>
-              <p class="basm-import-note__title">Chỉ hỗ trợ import qua file</p>
-              <p class="basm-import-note__desc">Giáo viên thêm học sinh bằng file Excel. Hệ thống không hỗ trợ thêm lẻ từng học sinh tại màn này.</p>
-            </div>
-          </div>
-
           <div class="basm-form-group">
             <div class="basm-csv-upload-area" :class="{ 'basm-csv-upload-area--dragover': isDragOver }" @dragover.prevent="isDragOver = true" @dragleave="isDragOver = false" @drop.prevent="handleFileDrop">
-              <input ref="fileInput" type="file" accept=".xlsx,.xls" class="basm-file-input" @change="handleFileSelect" />
+              <input ref="fileInput" type="file" accept=".csv,.xlsx,.xls" class="basm-file-input" @change="handleFileSelect" />
               <LucideIcon name="upload-cloud" class="basm-csv-upload-icon" />
-              <p class="basm-csv-upload-text">
-                <strong>Kéo thả file Excel hoặc click để chọn</strong>
-              </p>
-              <p class="basm-csv-upload-hint">Định dạng hỗ trợ: `.xlsx`, `.xls`</p>
+              <p class="basm-csv-upload-text"><strong>Chọn hoặc kéo thả file</strong></p>
+              <p class="basm-csv-upload-hint">.csv, .xlsx, .xls · cột username</p>
             </div>
-            <button type="button" class="basm-download-template-btn" @click="downloadTemplate">
-              <LucideIcon name="download" />
-              Tải mẫu import
-            </button>
+            <div class="basm-template-actions">
+              <button type="button" class="basm-download-template-btn" @click="downloadTemplateCsv">
+                <LucideIcon name="download" />
+                Tải mẫu CSV
+              </button>
+              <button type="button" class="basm-download-template-btn" @click="downloadTemplateExcel">
+                <LucideIcon name="download" />
+                Tải mẫu Excel
+              </button>
+            </div>
           </div>
 
           <div v-if="csvPreview.length > 0" class="basm-csv-preview">
             <div class="basm-preview__header">
               <LucideIcon name="table" />
-              <span>Xem trước: {{ csvPreview.length }} học sinh từ file import</span>
+              <span>Xem trước · {{ csvPreview.length }}</span>
               <button type="button" class="basm-clear-csv-btn" @click="clearCsv">
                 <LucideIcon name="trash-2" />
               </button>
@@ -58,7 +54,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, index) in csvPreview.slice(0, 10)" :key="index">
+                  <tr v-for="(row, index) in csvPreview.slice(0, 20)" :key="index">
                     <td>{{ row.username || '—' }}</td>
                     <td>{{ row.email || '—' }}</td>
                     <td>{{ row.fullName || '—' }}</td>
@@ -67,8 +63,8 @@
                 </tbody>
               </table>
             </div>
-            <p v-if="csvPreview.length > 10" class="basm-csv-more">
-              ... và {{ csvPreview.length - 10 }} học sinh khác
+            <p v-if="csvPreview.length > 20" class="basm-csv-more">
+              +{{ csvPreview.length - 20 }}
             </p>
           </div>
 
@@ -76,7 +72,7 @@
           <div v-if="importResult" class="basm-import-result">
             <div class="basm-import-result__header">
               <LucideIcon name="check-circle" class="basm-import-result__icon" />
-              <span>Kết quả Import</span>
+              <span>Kết quả</span>
             </div>
             <div class="basm-import-result__stats">
               <div class="basm-stat basm-stat--success">
@@ -99,7 +95,7 @@
             <div v-if="failedResults.length > 0" class="basm-failed-list">
               <p class="basm-failed-list__title">
                 <LucideIcon name="alert-triangle" />
-                Danh sách lỗi:
+                Lỗi
               </p>
               <div class="basm-failed-items">
                 <div v-for="(item, index) in failedResults.slice(0, 5)" :key="index" class="basm-failed-item">
@@ -107,7 +103,7 @@
                   <span class="basm-failed-item__message">{{ item.message }}</span>
                 </div>
                 <p v-if="failedResults.length > 5" class="basm-failed-list__more">
-                  ... và {{ failedResults.length - 5 }} lỗi khác
+                  +{{ failedResults.length - 5 }}
                 </p>
               </div>
             </div>
@@ -124,13 +120,13 @@
           <button
             type="button"
             class="basm-btn basm-btn--primary"
-            :disabled="loading || csvPreview.length === 0"
+            :disabled="loading || !selectedFile"
             @click="handleSubmitByCsv"
           >
             <span v-if="loading" class="basm-spinner"></span>
             <template v-else>
               <LucideIcon name="upload" />
-              Import {{ csvPreview.length > 0 ? `${csvPreview.length} học sinh` : 'danh sách' }}
+              Gửi
             </template>
           </button>
         </div>
@@ -142,7 +138,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ApiError } from '../../../services/apiClient'
-import { importStudentsToClass } from '../../../services/classService'
+import { importStudentsFileToClass } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 import LucideIcon from '../../common/LucideIcon.vue'
 
@@ -156,8 +152,9 @@ const emit = defineEmits(['update:modelValue', 'added'])
 
 const toast = useToast()
 
-// CSV state
+// File + preview (preview is client-side; import uses multipart upload)
 const fileInput = ref(null)
+const selectedFile = ref(null)
 const csvPreview = ref([])
 const csvData = ref([])
 const isDragOver = ref(false)
@@ -177,6 +174,7 @@ watch(() => props.modelValue, (val) => {
 })
 
 const resetState = () => {
+  selectedFile.value = null
   csvPreview.value = []
   csvData.value = []
   importResult.value = null
@@ -188,11 +186,16 @@ const close = () => {
   emit('update:modelValue', false)
 }
 
-// File handling
+const isAllowedImportExt = (name) => {
+  const n = (name || '').toLowerCase()
+  return n.endsWith('.csv') || n.endsWith('.xlsx') || n.endsWith('.xls')
+}
+
+// File handling: client preview + keep File for multipart upload
 const handleFileSelect = (event) => {
   const file = event.target.files?.[0]
   if (file) {
-    parseCsvFile(file)
+    parseImportFile(file)
   }
 }
 
@@ -200,95 +203,71 @@ const handleFileDrop = (event) => {
   isDragOver.value = false
   const file = event.dataTransfer.files?.[0]
   if (!file) return
-  const ext = (file.name || '').toLowerCase().replace(/^.*\./, '.')
-  if (['.xlsx', '.xls'].includes(ext)) {
-    parseCsvFile(file)
+  if (isAllowedImportExt(file.name)) {
+    parseImportFile(file)
   } else {
-    toast.error('Vui lòng chọn file Excel hợp lệ')
+    toast.error('Vui lòng chọn file CSV hoặc Excel (.csv, .xlsx, .xls)')
   }
 }
 
-const parseCsvFile = (file) => {
+const parseImportFile = (file) => {
   clearCsv()
   importResult.value = null
   errorMessage.value = ''
+  selectedFile.value = file
   const reader = new FileReader()
+  const lower = (file.name || '').toLowerCase()
+
   reader.onload = (e) => {
     try {
       import('xlsx').then((XLSX) => {
-        const data = new Uint8Array(e.target.result)
-        const workbook = XLSX.read(data, { type: 'array' })
-        const sheetName = workbook.SheetNames[0]
-        const sheet = workbook.Sheets[sheetName]
-        const rows = XLSX.utils.sheet_to_json(sheet, {
-          defval: '',
-          raw: false,
-          dateNF: 'yyyy-mm-dd'
-        })
-        normalizeImportedRows(rows, 'Excel')
+        let rows
+        if (lower.endsWith('.csv')) {
+          const text = String(e.target.result || '').replace(/^\uFEFF/, '')
+          const workbook = XLSX.read(text, { type: 'string', FS: ',', raw: false })
+          const sheetName = workbook.SheetNames[0]
+          const sheet = workbook.Sheets[sheetName]
+          rows = XLSX.utils.sheet_to_json(sheet, {
+            defval: '',
+            raw: false,
+            dateNF: 'yyyy-mm-dd'
+          })
+          normalizeImportedRows(rows, 'CSV')
+        } else {
+          const data = new Uint8Array(e.target.result)
+          const workbook = XLSX.read(data, { type: 'array' })
+          const sheetName = workbook.SheetNames[0]
+          const sheet = workbook.Sheets[sheetName]
+          rows = XLSX.utils.sheet_to_json(sheet, {
+            defval: '',
+            raw: false,
+            dateNF: 'yyyy-mm-dd'
+          })
+          normalizeImportedRows(rows, 'Excel')
+        }
       }).catch(() => {
         clearCsv()
-        toast.error('Không thể đọc file Excel. Vui lòng kiểm tra định dạng.')
+        toast.error('Không thể đọc file. Vui lòng kiểm tra định dạng.')
       })
-    } catch (error) {
+    } catch {
       clearCsv()
       toast.error('Không thể đọc file import. Vui lòng kiểm tra định dạng.')
     }
   }
-  reader.readAsArrayBuffer(file)
+
+  if (lower.endsWith('.csv')) {
+    reader.readAsText(file, 'UTF-8')
+  } else {
+    reader.readAsArrayBuffer(file)
+  }
 }
 
 const clearCsv = () => {
+  selectedFile.value = null
   csvPreview.value = []
   csvData.value = []
   if (fileInput.value) {
     fileInput.value.value = ''
-  }
-}
-
-const downloadTemplate = () => {
-  import('xlsx').then((XLSX) => {
-    const rows = [
-      ['username', 'email', 'fullName', 'studentCode', 'birthDate', 'phone', 'address', 'grade', 'faculty'],
-      ['nguyenvana', 'nguyenvana@school.edu.vn', 'Nguyễn Văn A', 'SV001', '2005-01-15', '0912345678', 'Hà Nội', '10', 'Khoa Toán'],
-      ['tranthib', 'tranthib@school.edu.vn', 'Trần Thị B', 'SV002', '2005-03-20', '0912345679', 'Hồ Chí Minh', '10', 'Khoa Văn'],
-      ['levanc', 'levanc@school.edu.vn', 'Lê Văn C', 'SV003', '2005-05-10', '0912345680', 'Đà Nẵng', '10', 'Khoa Lý']
-    ]
-    const worksheet = XLSX.utils.aoa_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
-    XLSX.writeFile(workbook, 'student-import-template.xlsx')
-    toast.success('Đã tải template Excel')
-  }).catch(() => {
-    toast.error('Không thể tạo file mẫu Excel.')
-  })
-}
-
-const handleSubmitByCsv = async () => {
-  if (csvData.value.length === 0) {
-    errorMessage.value = 'Vui lòng chọn file Excel hợp lệ.'
-    return
-  }
-
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const result = await importStudentsToClass(props.classId, csvData.value)
-    importResult.value = result
-
-    if (result.failedCount > 0 && result.successCount === 0) {
-      toast.error(`Import thất bại: ${result.failedCount} học sinh`)
-    } else if (result.failedCount > 0) {
-      toast.warning(`Import hoàn thành: ${result.successCount} thành công, ${result.failedCount} thất bại`)
-    } else {
-      toast.success(`Import thành công ${result.successCount} học sinh!`)
-    }
-    emit('added')
-  } catch (err) {
-    errorMessage.value = err instanceof ApiError ? err.message : 'Không thể import học sinh.'
-    toast.error(errorMessage.value)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -320,11 +299,86 @@ const normalizeImportedRows = (rows, sourceLabel) => {
   csvData.value = normalizedRows
   csvPreview.value = normalizedRows
   errorMessage.value = ''
-  toast.success(`Đọc thành công ${normalizedRows.length} học sinh từ file ${sourceLabel}`)
+  if (import.meta.env.DEV) {
+    console.log(`[import preview] ${sourceLabel}: ${normalizedRows.length} rows`)
+  }
 }
+
+const downloadTemplateExcel = () => {
+  import('xlsx').then((XLSX) => {
+    const rows = [
+      ['username', 'email', 'fullName', 'studentCode', 'birthDate', 'phone', 'address', 'grade', 'faculty'],
+      ['nguyenvana', 'nguyenvana@school.edu.vn', 'Nguyen Van A', 'SV001', '2005-01-15', '0912345678', 'Ha Noi', '10', 'Khoa Toan'],
+      ['tranthib', 'tranthib@school.edu.vn', 'Tran Thi B', 'SV002', '2005-03-20', '0912345679', 'Ho Chi Minh', '10', 'Khoa Van'],
+      ['levanc', 'levanc@school.edu.vn', 'Le Van C', 'SV003', '2005-05-10', '0912345680', 'Da Nang', '10', 'Khoa Ly']
+    ]
+    const worksheet = XLSX.utils.aoa_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
+    XLSX.writeFile(workbook, 'student-import-template.xlsx')
+    toast.success('Đã tải mẫu Excel')
+  }).catch(() => {
+    toast.error('Không thể tạo file mẫu Excel.')
+  })
+}
+
+const downloadTemplateCsv = () => {
+  const lines = [
+    'username,email,fullName,studentCode,birthDate,phone,address,grade,faculty',
+    'nguyenvana,nguyenvana@school.edu.vn,Nguyen Van A,SV001,2005-01-15,0912345678,Ha Noi,10,Khoa Toan',
+    'tranthib,tranthib@school.edu.vn,Tran Thi B,SV002,2005-03-20,0912345679,Ho Chi Minh,10,Khoa Van',
+    'levanc,levanc@school.edu.vn,Le Van C,SV003,2005-05-10,0912345680,Da Nang,10,Khoa Ly'
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'student-import-template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.success('Đã tải mẫu CSV')
+}
+
+const handleSubmitByCsv = async () => {
+  if (!selectedFile.value) {
+    errorMessage.value = 'Vui lòng chọn file CSV hoặc Excel.'
+    return
+  }
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const result = await importStudentsFileToClass(props.classId, selectedFile.value)
+    importResult.value = result
+    const successCount = result?.successCount ?? 0
+    const failedCount = result?.failedCount ?? 0
+    if (failedCount > 0 && successCount === 0) {
+      toast.error('Import thất bại — xem chi tiết bên dưới.')
+    } else if (failedCount > 0) {
+      toast.warning(`Import một phần: ${successCount} thành công, ${failedCount} lỗi.`)
+    } else {
+      toast.success(`Import thành công: ${successCount} học sinh.`)
+    }
+    emit('added')
+  } catch (err) {
+    const msg = err instanceof ApiError ? err.message : 'Không thể gửi file import. Vui lòng thử lại.'
+    errorMessage.value = msg
+    toast.error(msg)
+  } finally {
+    loading.value = false
+  }
+}
+
 </script>
 
 <style scoped>
+
+.basm-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
 .basm-overlay {
   position: fixed;
   inset: 0;
@@ -340,8 +394,8 @@ const normalizeImportedRows = (rows, sourceLabel) => {
   background: white;
   border-radius: var(--ds-radius-2xl);
   width: 100%;
-  max-width: 640px;
-  max-height: 85vh;
+  max-width: min(960px, 96vw);
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 64px rgba(0,0,0,0.2);
@@ -461,40 +515,6 @@ const normalizeImportedRows = (rows, sourceLabel) => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.basm-import-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem 1.125rem;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-primary-soft);
-  color: var(--ds-text-secondary);
-}
-
-.dark .basm-import-note {
-  background: rgba(79, 70, 229, 0.12);
-  border-color: var(--ds-border-strong);
-  color: var(--ds-text-muted);
-}
-
-.basm-import-note__title,
-.basm-import-note__desc {
-  margin: 0;
-}
-
-.basm-import-note__title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--ds-text);
-}
-
-.basm-import-note__desc {
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  line-height: 1.5;
 }
 
 .basm-form-group {

@@ -9,6 +9,7 @@ import com.example.demo.service.ExamService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -94,6 +95,18 @@ public class ClassController {
             @Valid @RequestBody StudentImportRequest request) {
         var teacher = currentUserService.requireCurrentUser();
         return ApiResponse.success(classService.importStudentsToClass(classId, request, teacher), "Import học sinh thành công");
+    }
+
+    /** Multipart upload; {@code consumes} omitted so clients with varying Content-Type still match. */
+    @PostMapping("/{classId}/students/import-file")
+    public ApiResponse<ImportStudentsResponse> importStudentsFile(
+            @PathVariable Long classId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(value = "mandatory", defaultValue = "true") boolean mandatory) {
+        var teacher = currentUserService.requireCurrentUser();
+        return ApiResponse.success(
+                classService.importStudentsFromFile(classId, file, mandatory, teacher),
+                "Import học sinh từ file thành công");
     }
 
     @DeleteMapping("/{classId}/students/{studentId}")

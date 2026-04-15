@@ -100,7 +100,7 @@ const milestones = computed(() => {
   const archDone = isArchived
 
   // Simple state machine based on exam flags
-  let state = 'draft'
+  let state
   if (isArchived) state = 'archived'
   else if (isActive && isPast(e.endTime)) state = 'ended'
   else if (isActive && isBetween(e.startTime, e.endTime)) state = 'live'

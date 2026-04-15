@@ -198,6 +198,7 @@ import {
 } from 'lucide-vue-next'
 
 // Icon name to component mapping - only includes icons that are used
+/* eslint-disable no-dupe-keys -- repeated keys merge Material-style aliases onto the same Lucide component */
 const ICON_MAP = {
   // Navigation & Layout
   dashboard: LayoutDashboard,
@@ -603,6 +604,12 @@ const ICON_MAP = {
   fiber_new: Sparkles,
   history_toggle_off: CalendarClock,
   password: Lock,
+
+  // Names used in teacher UI (avoid default Circle fallback)
+  preview: Eye,
+  assignment_add: CirclePlus,
+  menu_book: BookOpen,
+  checklist: ListOrdered,
 }
 
 // Cache for resolved icons

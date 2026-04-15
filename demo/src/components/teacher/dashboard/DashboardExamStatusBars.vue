@@ -43,6 +43,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import LucideIcon from '../../common/LucideIcon.vue'
 
 const copy = {
   title: 'Ph\u00e2n b\u1ed1 tr\u1ea1ng th\u00e1i \u0111\u1ec1',

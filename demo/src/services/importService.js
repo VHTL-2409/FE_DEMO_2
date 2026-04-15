@@ -201,7 +201,7 @@ export const waitForImportJob = async (
  * Upload PDF hoặc DOCX để parse bằng Python FastAPI service.
  * @param {File} file
  * @param {{ examId?: number, forceTemplate?: string, parserEngine?: 'legacy'|'v2' }} options
- *   parserEngine: ép legacy|v2. Không truyền và không set VITE_EXAM_PARSER_ENGINE → BE tự chọn theo service đang chạy.
+ *   parserEngine: ép legacy|v2 (chỉ khi BE hỗ trợ; hiện Spring chỉ đọc `file` + `examId`, các field khác gửi kèm không lỗi nhưng có thể bị bỏ qua).
  */
 export const uploadExamPdf = async (file, { examId, forceTemplate, parserEngine } = {}) => {
   validateImportFile(file)

@@ -12,6 +12,7 @@ import com.example.demo.api.dto.submission.DraftSaveResponse;
 import com.example.demo.api.dto.submission.StartAttemptResponse;
 import com.example.demo.api.dto.submission.SubmitAttemptRequest;
 import com.example.demo.api.dto.submission.SubmitAttemptResponse;
+import com.example.demo.api.dto.question.QuestionResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.common.DateTimeUtils;
 import com.example.demo.common.VietNamTime;
@@ -236,6 +237,16 @@ public class SubmissionService {
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))
                 .answers(answers)
                 .build();
+    }
+
+    /**
+     * Danh sách câu hỏi cho lượt làm bài của học sinh (không gồm đáp án đúng; thứ tự/shuffle theo attempt).
+     */
+    @Transactional(readOnly = true)
+    public List<QuestionResponse> listQuestionsForStudentAttempt(Long attemptId, User student) {
+        ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        return questionService.listByExam(attempt.getExam(), false, student, attemptId);
     }
 
     private List<AnswerInput> normalizeAttemptAnswers(ExamAttempt attempt, List<AnswerInput> answers) {

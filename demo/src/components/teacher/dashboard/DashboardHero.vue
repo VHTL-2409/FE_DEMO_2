@@ -12,16 +12,31 @@
 
     <div class="td-hero__stats" role="group" :aria-label="copy.statGroup">
       <div class="td-hero__stat" :class="{ 'td-hero__stat--active': liveExamCount > 0 }">
-        <span class="td-hero__stat-value">{{ liveExamCount }}</span>
-        <span class="td-hero__stat-label">{{ copy.statLive }}</span>
+        <div class="td-hero__stat-icon-wrap" aria-hidden="true">
+          <LucideIcon name="timer" :size="20" />
+        </div>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ liveExamCount }}</span>
+          <span class="td-hero__stat-label">{{ copy.statLive }}</span>
+        </div>
       </div>
       <div class="td-hero__stat">
-        <span class="td-hero__stat-value">{{ activeStudentCount }}</span>
-        <span class="td-hero__stat-label">{{ copy.statStudents }}</span>
+        <div class="td-hero__stat-icon-wrap" aria-hidden="true">
+          <LucideIcon name="group" :size="20" />
+        </div>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ activeStudentCount }}</span>
+          <span class="td-hero__stat-label">{{ copy.statStudents }}</span>
+        </div>
       </div>
       <div class="td-hero__stat" :class="{ 'td-hero__stat--alert': alertCount > 0 }">
-        <span class="td-hero__stat-value">{{ alertCount }}</span>
-        <span class="td-hero__stat-label">{{ copy.statAlerts }}</span>
+        <div class="td-hero__stat-icon-wrap" aria-hidden="true">
+          <LucideIcon name="warning" :size="20" />
+        </div>
+        <div class="td-hero__stat-body">
+          <span class="td-hero__stat-value">{{ alertCount }}</span>
+          <span class="td-hero__stat-label">{{ copy.statAlerts }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -29,6 +44,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import LucideIcon from '../../common/LucideIcon.vue'
 
 const copy = {
   greetingPrefix: 'Ch\u00e0o bu\u1ed5i ',
@@ -154,14 +170,47 @@ const heroSubtitle = computed(() => {
 
 .td-hero__stat {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.125rem;
-  min-width: 4.5rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 5.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: var(--ds-radius-lg);
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
+}
+
+.td-hero__stat-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+  flex-shrink: 0;
+}
+
+.dark .td-hero__stat-icon-wrap {
+  background: var(--ds-gray-700);
+}
+
+.td-hero__stat--active .td-hero__stat-icon-wrap {
+  background: color-mix(in srgb, var(--ds-success) 18%, transparent);
+  color: var(--ds-success);
+}
+
+.td-hero__stat--alert .td-hero__stat-icon-wrap {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.td-hero__stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
 }
 
 .dark .td-hero__stat {
@@ -204,8 +253,12 @@ const heroSubtitle = computed(() => {
   .td-hero__stat {
     flex: 1;
     min-width: 0;
+    flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+  .td-hero__stat-body {
+    align-items: center;
   }
 }
 </style>

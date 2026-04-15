@@ -396,7 +396,7 @@ const canRetryWithTemplate = computed(() => {
 
 const parserHealthLabel = computed(() => {
   if (pythonAvailable.value == null) return 'Đang kiểm tra parser Python...'
-  return Boolean(pythonAvailable.value)
+  return pythonAvailable.value
     ? 'Parser Python đang sẵn sàng cho PDF/DOCX.'
     : 'Parser Python chưa sẵn sàng, file PDF/DOCX có thể không đọc được.'
 })

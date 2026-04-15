@@ -201,7 +201,7 @@ const scheduleSummary = computed(() => {
   if (props.form.endTime) {
     try {
       parts.push('→ ' + new Date(props.form.endTime).toLocaleString('vi-VN', opts))
-    } catch {}
+    } catch { /* ignore invalid date */ }
   }
   return parts.join(' ')
 })

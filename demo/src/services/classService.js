@@ -110,3 +110,20 @@ export const importStudentsToClass = async (classId, students) => {
   })
   return unwrapApiData(payload)
 }
+
+/**
+ * Upload CSV / XLSX / XLS; backend parses file and imports students.
+ * @param {number|string} classId
+ * @param {File} file
+ * @param {boolean} [mandatory=true]
+ */
+export const importStudentsFileToClass = async (classId, file, mandatory = true) => {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('mandatory', String(mandatory))
+  const payload = await apiRequest(`/api/teacher/classes/${classId}/students/import-file`, {
+    method: 'POST',
+    body: form
+  })
+  return unwrapApiData(payload)
+}

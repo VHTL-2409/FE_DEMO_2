@@ -722,7 +722,7 @@ const clearBlurGraceTimer = () => {
 
 const syncDeviceStatusToBackend = async () => {
   if (!attemptId.value || isPracticeExam.value || isSuspended.value) return
-  try { await updateDeviceStatus(attemptId.value, cameraReady.value, micReady.value) } catch {}
+  try { await updateDeviceStatus(attemptId.value, cameraReady.value, micReady.value) } catch { /* ignore */ }
 }
 
 const toggleCamera = () => {
@@ -818,7 +818,7 @@ const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDO
   const lastAt = lastViolationAtByType.value[eventType] || 0
   if (now - lastAt < cooldownMs) return
   lastViolationAtByType.value = { ...lastViolationAtByType.value, [eventType]: now }
-  try { queueEvent(eventType, details, { questionIndex: currentIndex.value + 1 }) } catch {}
+  try { queueEvent(eventType, details, { questionIndex: currentIndex.value + 1 }) } catch { /* ignore */ }
 }
 
 const applyAttemptStatus = (status, message = '') => {
@@ -867,7 +867,7 @@ const syncAttemptStatus = async () => {
       const diff = Math.abs(remainingSeconds.value - detail.remainingSeconds)
       if (diff > 5) remainingSeconds.value = Math.max(0, detail.remainingSeconds)
     }
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 const connectProctorRealtime = async () => {
@@ -1048,7 +1048,7 @@ const closeSubmitModal = () => { showSubmitModal.value = false }
 const autoSubmitOnTimeUp = async () => {
   if (!attemptId.value || isSuspended.value || isSubmitting.value) return
   isSubmitting.value = true
-  try { await forceSave() } catch {}
+  try { await forceSave() } catch { /* ignore */ }
   toast.info('Hết giờ. Đang nộp...')
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
@@ -1068,7 +1068,7 @@ const autoSubmitOnTimeUp = async () => {
 const submitExamAction = async () => {
   if (!attemptId.value || isSuspended.value) return
   isSubmitting.value = true
-  try { await forceSave() } catch {}
+  try { await forceSave() } catch { /* ignore */ }
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false

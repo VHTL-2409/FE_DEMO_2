@@ -79,7 +79,7 @@
     <!-- ── Question list ── -->
     <div v-else class="ipw__list portal-scrollbar">
       <article
-        v-for="(question, qIdx) in questions"
+        v-for="question in questions"
         :key="question.index"
         class="ipw__card"
         :class="{
