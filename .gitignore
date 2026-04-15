@@ -4,6 +4,7 @@
 .gitnexus
 docs/
 .venv-seed/
+
 *.md
 .cursor/
 !TESTSPRITE.md
