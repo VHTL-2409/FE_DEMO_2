@@ -121,7 +121,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     ports:
-      - "${DOCKER_FE_PUBLISH:-8080}:80"
+      - "${DOCKER_FE_PUBLISH:-444}:80"
     depends_on:
       be:
         condition: service_healthy
@@ -134,6 +134,9 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    volumes:
+      - ./demo/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/root/FE_DEMO/ssl:ro
 
 networks:
   app-network:
