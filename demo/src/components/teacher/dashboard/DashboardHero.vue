@@ -17,10 +17,9 @@ import { computed } from 'vue'
 
 const copy = {
   greetingPrefix: 'Chào buổi ',
-  subLive: (n) =>
-    `${n} kỳ thi đang diễn ra. Vào mục Giám sát trên menu hoặc ô phiên live bên dưới.`,
-  subAlerts: (n) => `Có ${n} cảnh báo cần xử lý.`,
-  subIdle: 'Không có kỳ thi đang diễn ra. Dùng mục Đề thi hoặc Tạo và xuất bản trên menu để quản lý đề.'
+  subLive: (n) => `${n} kỳ thi đang diễn ra.`,
+  subAlerts: (n) => `${n} cảnh báo cần xử lý.`,
+  subIdle: 'Sẵn sàng cho ngày làm việc mới.'
 }
 
 const props = defineProps({

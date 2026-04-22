@@ -85,15 +85,15 @@ const todayLabel = computed(() =>
 
 const headlineText = computed(() => {
   if (props.examCount > 0) {
-    return `Bạn có ${props.examCount} kỳ thi sắp tới. Chuẩn bị thật kỹ nhé!`
+    return `Bạn có ${props.examCount} kỳ thi sắp tới.`
   }
   if (props.pendingCount > 0) {
-    return `Bạn có ${props.pendingCount} bài thi chưa hoàn thành.`
+    return `${props.pendingCount} bài thi chưa hoàn thành.`
   }
   if (props.newScoreCount > 0) {
-    return `Có ${props.newScoreCount} kết quả thi mới đang chờ bạn xem.`
+    return `${props.newScoreCount} kết quả thi mới.`
   }
-  return 'Không có kỳ thi nào sắp tới. Hãy luyện tập thêm!'
+  return 'Không có kỳ thi nào sắp tới.'
 })
 
 </script>

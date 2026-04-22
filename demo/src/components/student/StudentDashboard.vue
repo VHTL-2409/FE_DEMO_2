@@ -105,8 +105,6 @@ const toast = useToast()
 
 // Data - use shallowRef for large arrays to avoid deep reactivity overhead
 const attempts = shallowRef([])
-/** Plain array copy for child chart props */
-const attemptsList = computed(() => [...attempts.value])
 const isLoadingAttempts = ref(false)
 const studentName = ref('Học sinh')
 
@@ -170,12 +168,12 @@ const passRateAccent = computed(() => {
   return 'danger'
 })
 
-// New scores (attempts submitted in last 7 days) - memoized date calculation
-const sevenDaysAgo = ref(Date.now() - 7 * 24 * 60 * 60 * 1000)
+// New scores (attempts submitted in last 7 days)
 const newScoresCount = computed(() => {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
   return submittedAttempts.value.filter(a => {
     const submitted = new Date(a.submittedAt || 0).getTime()
-    return submitted >= sevenDaysAgo.value
+    return submitted >= sevenDaysAgo
   }).length
 })
 
@@ -202,48 +200,7 @@ const recentResults = computed(() => {
     }))
 })
 
-// Notifications
-const notifications = computed(() => {
-  const items = []
-
-  for (const exam of upcomingExams.value.slice(0, 3)) {
-    items.push({
-      id: `exam-${exam.id}`,
-      title: exam.title || 'Kỳ thi sắp tới',
-      description: `${exam.className ? `${exam.className} · ` : ''}${formatDateTime(exam.startTime || exam.startDate)}`,
-      type: 'exam',
-      exam,
-      read: false,
-      createdAt: new Date().toISOString()
-    })
-  }
-
-  // Recent new scores
-  for (const attempt of submittedAttempts.value.slice(0, 3)) {
-    const submitted = new Date(attempt.submittedAt || 0).getTime()
-    if (submitted >= sevenDaysAgo.value) {
-      items.push({
-        id: `score-${attempt.id}`,
-        title: 'Kết quả thi mới',
-        description: `${attempt.examTitle || 'Bài thi'}: ${(Number(attempt.score || 0) / 10).toFixed(1)} điểm`,
-        type: 'score',
-        read: false,
-        createdAt: attempt.submittedAt
-      })
-    }
-  }
-
-  // Sort by date desc
-  return items.sort((a, b) => {
-    const aTime = new Date(a.createdAt || 0).getTime()
-    const bTime = new Date(b.createdAt || 0).getTime()
-    return bTime - aTime
-  })
-})
-
 // Navigation
-const goToExamJoin = () => router.push('/student/exam-join')
-const goToPractice = () => router.push('/student/generate-practice-test')
 const goToSchedule = () => router.push({ path: '/student/study-history', query: { tab: 'upcoming' } })
 const goToStudyHistory = () => router.push({ path: '/student/study-history', query: { tab: 'exam' } })
 const goToResult = (result) => {
@@ -260,28 +217,6 @@ const goToUpcoming = (exam) => {
   router.push({
     path: '/student/exam-waiting-room',
     query: buildWaitingRoomQuery(exam)
-  })
-}
-
-const handleNotificationClick = (item) => {
-  if (item.type === 'exam') {
-    if (item.exam) {
-      goToUpcoming(item.exam)
-      return
-    }
-    goToExamJoin()
-  } else if (item.type === 'score') {
-    const result = recentResults.value.find(r => r.id === Number(String(item.id).replace('score-', '')))
-    if (result) goToResult(result)
-  }
-}
-
-const formatDateTime = (value) => {
-  if (!value) return '—'
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
   })
 }
 
