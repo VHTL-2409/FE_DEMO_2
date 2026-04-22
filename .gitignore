@@ -41,6 +41,7 @@ build/
 # Build outputs
 demo/dist/
 demo_2/dist/
+demo/node_modules/.vite/
 BE/target/
 
 # AI service venv
