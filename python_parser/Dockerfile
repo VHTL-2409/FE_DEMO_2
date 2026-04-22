@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-vie \
     tesseract-ocr-eng \
     libpoppler-cpp-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

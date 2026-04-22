@@ -52,18 +52,6 @@
 
       <!-- Main column -->
       <template #main>
-        <!-- Thông báo ưu tiên -->
-        <NotificationList
-          :notifications="notifications"
-          :loading="false"
-          :display-limit="6"
-          :dismissible="false"
-          @item-click="handleNotificationClick"
-        />
-
-        <StudentDashboardInsightCards :attempts="attemptsList" />
-
-        <!-- Upcoming Exams -->
         <UpcomingExamCard
           :upcoming-exams="upcomingExams"
           :loading="isLoadingAttempts"
@@ -110,12 +98,6 @@ const UpcomingExamCard = defineAsyncComponent(() =>
 )
 const RecentResultCard = defineAsyncComponent(() =>
   import('./dashboard/RecentResultCard.vue')
-)
-const NotificationList = defineAsyncComponent(() =>
-  import('./dashboard/NotificationList.vue')
-)
-const StudentDashboardInsightCards = defineAsyncComponent(() =>
-  import('./dashboard/StudentDashboardInsightCards.vue')
 )
 
 const router = useRouter()

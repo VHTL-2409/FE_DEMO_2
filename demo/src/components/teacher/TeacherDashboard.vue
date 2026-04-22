@@ -68,12 +68,6 @@
           />
         </div>
 
-        <div class="mb-6">
-          <div class="td-panel td-panel--1">
-            <DashboardExamStatusBars :counts="statusCounts" />
-          </div>
-        </div>
-
         <div v-if="!rawExams.length" class="mb-6">
           <EmptyState
             icon="assignment"
@@ -109,7 +103,6 @@ import { useToast } from '../../composables/useToast'
 import DashboardHero from './dashboard/DashboardHero.vue'
 import DashboardKpiGrid from './dashboard/DashboardKpiGrid.vue'
 import MonitoringCard from './dashboard/MonitoringCard.vue'
-import DashboardExamStatusBars from './dashboard/DashboardExamStatusBars.vue'
 import SchedulePanel from './dashboard/SchedulePanel.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
