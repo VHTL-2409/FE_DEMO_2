@@ -10,6 +10,7 @@
 fastapi>=0.110.0              # Web framework (FastAPI)
 uvicorn[standard]>=0.30.0     # ASGI server (uvicorn with reload)
 pydantic>=2.0.0               # Data validation & serialization
+python-multipart>=0.0.9      # Form data parsing for FastAPI file uploads
 
 # ─── PDF Processing ─────────────────────────────────────────────────────────────
 PyMuPDF>=1.24.0               # PDF text extraction, rendering, cropping images
