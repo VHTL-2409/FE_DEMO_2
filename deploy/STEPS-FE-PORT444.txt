@@ -1,0 +1,86 @@
+# Deploy FE lên VPS - Chỉ port 444
+
+## 1. Chuẩn bị VPS
+
+```bash
+# SSH vào VPS
+ssh root@180.93.1.164
+
+# Cài đặt nginx
+apt update && apt install -y nginx
+
+# Tạo thư mục
+mkdir -p /root/FE_DEMO
+mkdir -p /root/FE_DEMO/ssl
+```
+
+## 2. Upload SSL certificates
+
+```bash
+# Copy certs lên VPS (chạy trên local)
+scp origin.crt root@180.93.1.164:/root/FE_DEMO/ssl/
+scp origin.key root@180.93.1.164:/root/FE_DEMO/ssl/
+
+# Fix quyền
+chmod 644 /root/FE_DEMO/ssl/origin.crt
+chmod 600 /root/FE_DEMO/ssl/origin.key
+```
+
+## 3. Upload code lên VPS
+
+```bash
+# Trên local
+rsync -avz --exclude 'node_modules' --exclude '.git' --exclude 'target' \
+  ./FE_DEMO/ root@180.93.1.164:/root/FE_DEMO/
+```
+
+## 4. Cấu hình Nginx (chỉ port 444)
+
+```bash
+# Xóa config cũ
+rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-available/test1.nexquoteapp.com-ssl.conf
+
+# Copy config mới
+cp /root/FE_DEMO/demo/nginx.conf /etc/nginx/sites-available/test1.nexquoteapp.com-ssl.conf
+
+# Enable config
+ln -sf /etc/nginx/sites-available/test1.nexquoteapp.com-ssl.conf /etc/nginx/sites-enabled/
+
+# Test config
+nginx -t
+```
+
+## 5. Copy static files (FE đã build sẵn)
+
+```bash
+# Tạo thư mục chứa static files
+mkdir -p /usr/share/nginx/html
+
+# Copy files (nếu có thư mục dist từ build)
+cp -r /root/FE_DEMO/demo/dist/* /usr/share/nginx/html/
+```
+
+## 6. Start Nginx
+
+```bash
+# Kill process cũ nếu có
+pkill -9 nginx || true
+
+# Start nginx
+systemctl start nginx
+systemctl enable nginx
+systemctl status nginx
+```
+
+## 7. Test
+
+```bash
+curl -v https://test1.nexquoteapp.com:444
+```
+
+## Lưu ý
+
+- Backend BE chạy riêng trên port 8082 (Docker hoặc direct)
+- Nginx chỉ proxy /api/ sang 127.0.0.1:8082
+- Không dùng port nào khác ngoài 444

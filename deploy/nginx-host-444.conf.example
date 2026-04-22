@@ -1,3 +1,6 @@
+# Nginx config cho port 444 SSL
+# Copy: /etc/nginx/sites-available/test1.nexquoteapp.com-ssl.conf
+
 server {
     listen 444 ssl;
     server_name test1.nexquoteapp.com;
