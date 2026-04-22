@@ -1,7 +1,14 @@
-import { inject } from 'vue'
-import { toastService } from '../services/toastService'
+import { useToastStore } from '../stores/toastStore'
 
 export const useToast = () => {
-  const injected = inject('toast', null)
-  return injected || toastService
+  const store = useToastStore()
+  return {
+    show: (...args) => store.show(...args),
+    success: (...args) => store.success(...args),
+    error: (...args) => store.error(...args),
+    info: (...args) => store.info(...args),
+    warning: (...args) => store.warning(...args),
+    dismiss: (...args) => store.dismiss(...args),
+    clearAll: () => store.clearAll()
+  }
 }

@@ -6,7 +6,7 @@
         <p class="mt-1" style="color: var(--ds-text-muted)">{{ selectedExamTitle }}</p>
       </div>
 
-      <div class="mb-8 ds-animate-fade-up">
+      <div class="mb-6 ds-animate-fade-up">
         <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">
           <template v-for="(step, index) in steps" :key="step">
             <div class="flex items-center gap-3">

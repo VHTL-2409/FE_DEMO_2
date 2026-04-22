@@ -2,7 +2,7 @@
   <div class="bg-[var(--ds-bg)] min-h-full">
     <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
 
-      <div class="mb-5 ds-animate-fade-up">
+      <div class="mb-6 ds-animate-fade-up">
         <div class="mb-2 flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
           <RouterLink to="/teacher/dashboard" class="flex items-center gap-1 hover:text-[var(--ds-primary)] transition-colors">
             <LucideIcon name="home" size="16" />
@@ -23,7 +23,7 @@
         />
       </div>
 
-      <div class="mb-5 ds-animate-fade-up" style="animation-delay: 0.05s">
+      <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.05s">
         <div class="tsem__search-wrap">
           <LucideIcon name="search" class="tsem__search-icon" />
           <input
@@ -35,7 +35,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5 ds-animate-fade-up" style="animation-delay: 0.08s">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-4 ds-animate-fade-up" style="animation-delay: 0.08s">
         <div v-if="isLoading" class="col-span-full flex flex-col items-center justify-center gap-3 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)] bg-[var(--ds-surface)] py-16 text-center">
           <LucideIcon name="progress_activity" size="24" />
           <p class="text-sm text-[var(--ds-text-muted)]">Đang tải danh sách đề thi…</p>

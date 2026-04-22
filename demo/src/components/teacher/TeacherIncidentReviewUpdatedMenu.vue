@@ -49,7 +49,7 @@
         </div>
       </div>
 
-      <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 ds-animate-fade-up-delay">
+      <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ds-animate-fade-up-delay">
         <DsStatCard
           v-for="card in summaryCards"
           :key="card.title"
@@ -193,7 +193,7 @@
         </div>
       </template>
 
-      <div v-if="selectedIncident" class="space-y-8">
+      <div v-if="selectedIncident" class="space-y-6">
         <div class="flex gap-2">
           <button type="button" @click="activeReportTab = 'result'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" :style="activeReportTab === 'result' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { backgroundColor: 'var(--ds-gray-100)', color: 'var(--ds-text-secondary)' }">
             Kết quả
@@ -203,7 +203,7 @@
           </button>
         </div>
 
-        <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 p-6" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
             <div class="space-y-1">
               <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên học sinh</p>

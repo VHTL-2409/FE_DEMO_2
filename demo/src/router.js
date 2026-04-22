@@ -8,8 +8,14 @@ import {
 } from './services/authService'
 import { pinia } from './stores'
 import { useAuthStore } from './stores/authStore'
-import { toastService } from './services/toastService'
+import { useToastStore } from './stores'
 import { readMonitoringSessionQuery } from './services/monitoringContextStorage'
+
+let _toast = null
+const toast = () => {
+  if (!_toast) _toast = useToastStore()
+  return _toast
+}
 import {
   readAttemptQuery,
   readResultQuery,
@@ -203,7 +209,7 @@ router.beforeEach(async (to, from, next) => {
   // Trang yêu cầu đăng nhập: kiểm tra token
   if (to.meta.requiresAuth) {
     if (!token) {
-      toastService.info('Vui lòng đăng nhập để tiếp tục.')
+      toast().info('Vui lòng đăng nhập để tiếp tục.')
       return next('/login')
     }
 
@@ -227,12 +233,12 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (to.meta.teacherOnly && !userHasTeacherAccess(cachedUser)) {
-      toastService.warning('Bạn không có quyền truy cập khu vực dành cho giáo viên.')
+      toast().warning('Bạn không có quyền truy cập khu vực dành cho giáo viên.')
       return next(authStore.dashboardPath)
     }
 
     if (to.meta.studentOnly && !userCanAccessStudentArea(cachedUser)) {
-      toastService.warning('Bạn không có quyền truy cập khu vực dành cho học sinh.')
+      toast().warning('Bạn không có quyền truy cập khu vực dành cho học sinh.')
       return next(authStore.dashboardPath)
     }
 

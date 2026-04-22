@@ -115,7 +115,7 @@
       </div>
 
       <!-- 5. Quick Actions + Upcoming Exams -->
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr] ds-animate-fade-up" style="animation-delay: 0.2s">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr] ds-animate-fade-up" style="animation-delay: 0.2s">
         <!-- Quick Actions -->
         <DsCard padding="lg">
           <template #header>
@@ -124,7 +124,7 @@
               <h3 class="text-lg font-bold" style="color: var(--ds-text)">Thao tác nhanh</h3>
             </div>
           </template>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ActionCard
               v-for="action in quickActions"
               :key="action.title"

@@ -1,5 +1,11 @@
-import { toastService } from './toastService'
+import { useToastStore } from '../stores/toastStore'
 import { invalidateSession } from './authService'
+
+let _toast = null
+const toast = () => {
+  if (!_toast) _toast = useToastStore()
+  return _toast
+}
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082').replace(/\/$/, '')
 
@@ -117,7 +123,7 @@ export const apiRequest = async (path, options = {}) => {
       headers
     })
   } catch (networkError) {
-    if (!suppressToast) toastService.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
+    if (!suppressToast) toast().error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.')
     throw new ApiError('Network error', 0, null)
   }
 
@@ -145,7 +151,7 @@ export const apiRequest = async (path, options = {}) => {
   }
 
   const errorMessage = resolveErrorMessage(payload, getDefaultErrorMessage(response.status))
-  if (response.status !== 401 && !suppressToast) toastService.error(errorMessage)
+  if (response.status !== 401 && !suppressToast) toast().error(errorMessage)
   throw new ApiError(errorMessage, response.status, payload)
 }
 

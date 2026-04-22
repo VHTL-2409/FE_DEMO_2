@@ -4,7 +4,8 @@
 .gitnexus
 docs/
 .venv-seed/
-
+docx_images/*
+pdf_page/*
 *.md
 .cursor/
 !TESTSPRITE.md

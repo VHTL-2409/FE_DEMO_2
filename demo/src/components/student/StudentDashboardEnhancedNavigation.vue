@@ -15,9 +15,9 @@
         />
 
         <!-- Cards grid with staggered animation -->
-        <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 animate-fade-up-delay lg:min-h-0 lg:items-stretch" style="animation-delay: 0.05s;">
-          <div class="lg:col-span-2 space-y-4 lg:space-y-6 min-h-0">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-4 lg:min-h-0 lg:items-stretch" style="animation-delay: 0.05s;">
+          <div class="lg:col-span-2 space-y-4 min-h-0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="staff-surface portal-card-lift rounded-[1.75rem] p-6 flex flex-col gap-4 relative overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">
                 <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[1.75rem]"></div>
                 <div class="relative flex items-center gap-3">

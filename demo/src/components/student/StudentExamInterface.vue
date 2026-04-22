@@ -3,48 +3,42 @@
     <!-- Fixed Top Bar -->
     <div class="ei-topbar">
       <div class="ei-topbar__left">
-        <!-- Exam title chip -->
         <div class="ei-topbar__exam-chip">
-          <LucideIcon name="quiz" size="15" />
+          <LucideIcon name="quiz" size="14" />
           <span class="ei-topbar__exam-title">{{ examTitle }}</span>
         </div>
-        <!-- Device status badges -->
         <div class="ei-topbar__device-badges">
-          <div class="ei-device-badge" :class="cameraReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
-            <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="12" />
-            <span>Camera</span>
-          </div>
-          <div class="ei-device-badge" :class="micReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
-            <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="12" />
-            <span>Mic</span>
-          </div>
-          <div class="ei-device-badge" :class="isOnline ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
-            <LucideIcon :name="isOnline ? 'wifi' : 'wifi_off'" size="12" />
-            <span>{{ isOnline ? 'Kết nối' : 'Mất mạng' }}</span>
-          </div>
+          <span class="ei-device-badge" :class="cameraReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="11" />
+            Cam
+          </span>
+          <span class="ei-device-badge" :class="micReady ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="11" />
+            Mic
+          </span>
+          <span class="ei-device-badge" :class="isOnline ? 'ei-device-badge--ok' : 'ei-device-badge--fail'">
+            <LucideIcon :name="isOnline ? 'wifi' : 'wifi_off'" size="11" />
+            {{ isOnline ? 'Online' : 'Offline' }}
+          </span>
         </div>
       </div>
 
-      <!-- Timer — Rectangular countdown -->
+      <!-- Timer -->
       <div class="ei-topbar__timer" :class="timerBarAccentClass">
-        <LucideIcon name="timer" size="16" class="ei-topbar__timer-icon" />
+        <LucideIcon name="timer" size="15" class="ei-topbar__timer-icon" />
         <div class="ei-topbar__timer-digits">
           <span class="ei-timer-unit">
             <span class="ei-timer-val">{{ timerHours }}</span>
-            <span class="ei-timer-lbl">Giờ</span>
+            <span class="ei-timer-lbl">:</span>
           </span>
-          <span class="ei-timer-colon">:</span>
           <span class="ei-timer-unit">
             <span class="ei-timer-val">{{ timerMinutes }}</span>
-            <span class="ei-timer-lbl">Phút</span>
+            <span class="ei-timer-lbl">:</span>
           </span>
-          <span class="ei-timer-colon">:</span>
           <span class="ei-timer-unit">
             <span class="ei-timer-val">{{ timerSeconds }}</span>
-            <span class="ei-timer-lbl">Giây</span>
           </span>
         </div>
-        <!-- Progress bar below -->
         <div class="ei-topbar__timer-progress">
           <div class="ei-topbar__timer-progress-fill" :style="{ width: timerProgressWidth }" />
         </div>
@@ -52,44 +46,78 @@
 
       <!-- Right actions -->
       <div class="ei-topbar__right">
-        <!-- Save status -->
-        <div v-if="saveStatusLabel" class="ei-save-status" role="status" aria-live="polite">
-          <LucideIcon name="progress_activity" v-if="saveStatus === 'saving'" size="13" class="ei-save-icon ei-save-icon--spin" />
-          <LucideIcon name="check_circle" v-else-if="saveStatus === 'saved'" size="13" class="ei-save-icon ei-save-icon--ok" />
-          <LucideIcon name="schedule" v-else-if="hasPendingChanges" size="13" class="ei-save-icon ei-save-icon--pending" />
-          <LucideIcon name="cloud_off" v-else-if="saveStatus === 'error'" size="13" class="ei-save-icon ei-save-icon--err" />
+        <div v-if="saveStatusLabel" class="ei-save-status" role="status">
+          <LucideIcon
+            :name="saveStatus === 'saving' ? 'progress_activity' : saveStatus === 'saved' ? 'check_circle' : hasPendingChanges ? 'schedule' : 'cloud_off'"
+            :class="saveStatus === 'saving' ? 'ei-save-icon--spin' : ''"
+            size="12"
+          />
           <span class="ei-save-label">{{ saveStatusLabel }}</span>
         </div>
-
-        <!-- Manual save -->
         <button type="button" class="ei-btn ei-btn--save" :disabled="isSuspended || saveStatus === 'saving'" @click="manualSaveDraft">
-          <LucideIcon name="save" size="14" />
+          <LucideIcon name="save" size="13" />
           <span>Lưu</span>
         </button>
-
-        <!-- Submit — most prominent -->
         <button type="button" class="ei-btn ei-btn--submit" :disabled="isSuspended" @click="openSubmitModal">
-          <LucideIcon name="done_all" size="15" />
+          <LucideIcon name="done_all" size="14" />
           <span>Nộp bài</span>
         </button>
       </div>
     </div>
 
-    <!-- ── Fullscreen Warning ──────────────────────────────── -->
+    <!-- Fullscreen Warning -->
     <Transition name="ei-slide-down">
       <div v-if="showFullscreenPrompt && !isPracticeExam && !isSuspended" class="ei-fs-warn">
-        <LucideIcon name="fullscreen" size="16" />
+        <LucideIcon name="fullscreen" size="15" />
         <span>Yêu cầu chế độ toàn màn hình</span>
         <button type="button" class="ei-fs-warn__btn" @click="requestExamFullscreen">Vào toàn màn hình</button>
       </div>
     </Transition>
 
-    <!-- ── Suspended Overlay ──────────────────────────────── -->
+    <!-- ── Unified Modal (warning / error / success / info) ── -->
+    <Transition name="ei-fade">
+      <div v-if="modal.show" class="ei-modal-overlay" @click.self="closeModal">
+        <div class="ei-modal" :class="`ei-modal--${modal.type}`">
+          <div class="ei-modal__header">
+            <div class="ei-modal__icon" :class="`ei-modal__icon--${modal.type}`">
+              <LucideIcon :name="modalIcon" size="20" />
+            </div>
+            <div>
+              <h2 class="ei-modal__title">{{ modal.title }}</h2>
+              <p v-if="modal.subtitle" class="ei-modal__sub">{{ modal.subtitle }}</p>
+            </div>
+          </div>
+          <div class="ei-modal__body">
+            <p class="ei-modal__msg">{{ modal.message }}</p>
+          </div>
+          <div class="ei-modal__actions">
+            <button
+              v-if="modal.type !== 'success' && modal.type !== 'info'"
+              type="button"
+              class="ei-modal__cancel"
+              @click="closeModal"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              class="ei-modal__confirm"
+              :class="`ei-modal__confirm--${modal.type}`"
+              @click="handleModalConfirm"
+            >
+              {{ modal.confirmLabel || 'Đã hiểu' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Suspended Overlay ─────────────────────────────── -->
     <Transition name="ei-fade">
       <div v-if="isSuspended" class="ei-suspend-overlay">
         <div class="ei-suspend-card">
           <div class="ei-suspend-icon">
-            <LucideIcon name="pause_circle" size="40" />
+            <LucideIcon name="pause_circle" size="36" />
           </div>
           <h2 class="ei-suspend-title">
             {{ attemptStatus === 'PAUSED' ? 'Phiên thi đang tạm dừng' : 'Bài thi đã bị đình chỉ' }}
@@ -99,131 +127,32 @@
       </div>
     </Transition>
 
-    <!-- ── Teacher Warning Modal ──────────────────────────── -->
-    <Transition name="ei-fade">
-      <div v-if="showTeacherWarningModal" class="ei-modal-overlay" @click.self="showTeacherWarningModal = false">
-        <div class="ei-modal ei-modal--warn">
-          <div class="ei-modal__header">
-            <div class="ei-modal__icon ei-modal__icon--warn">
-              <LucideIcon name="warning" size="22" />
-            </div>
-            <div>
-              <h2 class="ei-modal__title">Cảnh báo từ giám thị</h2>
-              <p class="ei-modal__sub">Vui lòng chú ý và tuân thủ quy định phòng thi.</p>
-            </div>
-          </div>
-          <div class="ei-modal__body">
-            <p class="ei-modal__msg">{{ teacherWarningMessage }}</p>
-          </div>
-          <button type="button" class="ei-modal__confirm" @click="showTeacherWarningModal = false">
-            <LucideIcon name="check_circle" size="16" />
-            Tôi đã hiểu
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- ── Error Popup Modal ─────────────────────────────── -->
-    <Transition name="ei-fade">
-      <div v-if="showErrorPopup" class="ei-modal-overlay" @click.self="showErrorPopup = false">
-        <div class="ei-modal ei-modal--error">
-          <div class="ei-modal__header">
-            <div class="ei-modal__icon ei-modal__icon--error">
-              <LucideIcon name="error" size="22" />
-            </div>
-            <div>
-              <h2 class="ei-modal__title">Đã xảy ra lỗi</h2>
-            </div>
-          </div>
-          <div class="ei-modal__body">
-            <p class="ei-modal__msg">{{ errorPopupMessage }}</p>
-          </div>
-          <button type="button" class="ei-modal__confirm ei-modal__confirm--error" @click="showErrorPopup = false">
-            <LucideIcon name="close" size="16" />
-            Đóng
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- ── Success Popup Modal ──────────────────────────── -->
-    <Transition name="ei-fade">
-      <div v-if="showSuccessPopup" class="ei-modal-overlay" @click.self="showSuccessPopup = false">
-        <div class="ei-modal ei-modal--success">
-          <div class="ei-modal__header">
-            <div class="ei-modal__icon ei-modal__icon--success">
-              <LucideIcon name="check_circle" size="22" />
-            </div>
-            <div>
-              <h2 class="ei-modal__title">Thành công</h2>
-            </div>
-          </div>
-          <div class="ei-modal__body">
-            <p class="ei-modal__msg">{{ successPopupMessage }}</p>
-          </div>
-          <button type="button" class="ei-modal__confirm ei-modal__confirm--success" @click="showSuccessPopup = false">
-            <LucideIcon name="check" size="16" />
-            Đóng
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- ── Info Popup Modal ──────────────────────────────── -->
-    <Transition name="ei-fade">
-      <div v-if="showInfoPopup" class="ei-modal-overlay" @click.self="showInfoPopup = false">
-        <div class="ei-modal ei-modal--info">
-          <div class="ei-modal__header">
-            <div class="ei-modal__icon ei-modal__icon--info">
-              <LucideIcon name="info" size="22" />
-            </div>
-            <div>
-              <h2 class="ei-modal__title">{{ infoPopupTitle || 'Thông báo' }}</h2>
-            </div>
-          </div>
-          <div class="ei-modal__body">
-            <p class="ei-modal__msg">{{ infoPopupMessage }}</p>
-          </div>
-          <button type="button" class="ei-modal__confirm ei-modal__confirm--info" @click="showInfoPopup = false">
-            <LucideIcon name="check" size="16" />
-            Đóng
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- ── Main Content ──────────────────────────────────── -->
+    <!-- ── Main Content ──────────────────────────────── -->
     <main class="ei-main">
       <!-- Left: Question Area -->
       <div class="ei-question-col">
-
-        <!-- Loading -->
         <div v-if="!examSurfaceReady" class="ei-empty-state">
-          <LucideIcon name="progress_activity" size="36" class="ei-empty-icon" />
+          <LucideIcon name="progress_activity" size="32" class="ei-empty-icon" />
           <p class="ei-empty-title">Đang tải đề thi…</p>
           <p class="ei-empty-desc">Vui lòng đợi trong giây lát.</p>
         </div>
 
-        <!-- Load failed -->
         <div v-else-if="examLoadFailed" class="ei-empty-state">
-          <LucideIcon name="error" size="36" class="ei-empty-icon" />
+          <LucideIcon name="error" size="32" class="ei-empty-icon" />
           <p class="ei-empty-title">Không tải được đề thi</p>
           <p class="ei-empty-desc">Vui lòng làm mới trang hoặc quay lại sau.</p>
         </div>
 
-        <!-- No questions -->
         <div v-else-if="!questions.length" class="ei-empty-state">
-          <LucideIcon name="quiz" size="36" class="ei-empty-icon" />
+          <LucideIcon name="quiz" size="32" class="ei-empty-icon" />
           <p class="ei-empty-title">Không có câu hỏi</p>
           <p class="ei-empty-desc">Đề thi chưa có nội dung. Hãy thoát và liên hệ giáo viên.</p>
         </div>
 
-        <!-- Question Card — slide transition -->
         <Transition name="ei-q-slide" mode="out-in">
           <div v-if="currentQuestion" :key="currentQuestion.id" class="ei-question-card">
             <!-- Question header -->
             <div class="ei-q-header">
-              <!-- Circular progress ring -->
               <div class="ei-q-progress-ring">
                 <svg class="ei-q-ring-svg" viewBox="0 0 36 36" width="36" height="36">
                   <circle class="ei-q-ring-bg" cx="18" cy="18" r="15" />
@@ -236,12 +165,15 @@
                 </svg>
                 <span class="ei-q-ring-label">{{ currentIndex + 1 }}</span>
               </div>
-              <span class="ei-q-badge">
-                / {{ questions.length }} câu
-              </span>
-              <button type="button" class="ei-mark-btn" :disabled="isSuspended" @click="toggleMarkCurrentQuestion">
-                <LucideIcon :name="markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add'" size="15" />
-                {{ markedQuestions[String(currentQuestion.id)] ? 'Bỏ đánh dấu' : 'Đánh dấu xem lại' }}
+              <span class="ei-q-badge">/ {{ questions.length }} câu</span>
+              <button
+                type="button"
+                class="ei-mark-btn"
+                :disabled="isSuspended"
+                @click="toggleMarkCurrentQuestion"
+              >
+                <LucideIcon :name="markedQuestions[String(currentQuestion.id)] ? 'bookmark_added' : 'bookmark_add'" size="13" />
+                {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
               </button>
             </div>
 
@@ -270,13 +202,8 @@
                 :disabled="currentIndex === 0"
                 @click="goPrevious"
               >
-                <LucideIcon name="arrow_back" size="16" />
+                <LucideIcon name="arrow_back" size="15" />
                 Câu trước
-              </button>
-
-              <button type="button" class="ei-mark-btn ei-mark-btn--sm" :disabled="isSuspended" @click="toggleMarkCurrentQuestion">
-                <LucideIcon name="bookmark" size="14" />
-                {{ markedQuestions[String(currentQuestion.id)] ? 'Đã đánh dấu' : 'Đánh dấu' }}
               </button>
 
               <button
@@ -286,7 +213,7 @@
                 @click="goNext"
               >
                 Câu tiếp
-                <LucideIcon name="arrow_forward" size="16" />
+                <LucideIcon name="arrow_forward" size="15" />
               </button>
             </div>
           </div>
@@ -295,7 +222,6 @@
 
       <!-- Right: Sidebar -->
       <aside class="ei-sidebar">
-
         <!-- Camera preview -->
         <div v-if="shouldCheckDevices && mediaStreamRef" class="ei-cam-card">
           <div class="ei-cam-header">
@@ -309,7 +235,7 @@
                 @click="toggleCamera"
                 :title="cameraReady ? 'Tắt camera' : 'Bật camera'"
               >
-                <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="15" />
+                <LucideIcon :name="cameraReady ? 'videocam' : 'videocam_off'" size="13" />
               </button>
               <button
                 type="button"
@@ -319,14 +245,14 @@
                 @click="toggleMic"
                 :title="micReady ? 'Tắt micro' : 'Bật micro'"
               >
-                <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="15" />
+                <LucideIcon :name="micReady ? 'mic' : 'mic_off'" size="13" />
               </button>
             </div>
           </div>
           <div class="ei-cam-preview">
             <video ref="cameraPreviewRef" autoplay playsinline muted class="ei-cam-video" :class="{ 'ei-cam-video--hidden': !cameraReady }" />
             <div v-if="!cameraReady" class="ei-cam-off">
-              <LucideIcon name="videocam_off" size="28" />
+              <LucideIcon name="videocam_off" size="24" />
             </div>
           </div>
         </div>
@@ -334,30 +260,27 @@
         <!-- Progress card -->
         <div v-if="examSurfaceReady" class="ei-prog-card">
           <div class="ei-prog-header">
-            <LucideIcon name="trending_up" size="15" />
-            <span class="ei-prog-title">Tiến độ làm bài</span>
+            <LucideIcon name="trending_up" size="13" />
+            <span class="ei-prog-title">Tiến độ</span>
             <span class="ei-prog-pct">{{ progressPercent }}%</span>
           </div>
           <div class="ei-prog-bar">
             <div class="ei-prog-bar__fill" :style="{ width: `${progressPercent}%` }" />
           </div>
           <div class="ei-prog-stats">
-            <span class="ei-prog-stat ei-prog-stat--done">
+            <span class="ei-prog-stat">
               <span class="ei-prog-dot ei-prog-dot--done" />
               Đã làm: {{ answeredCount }}
             </span>
-            <span class="ei-prog-stat ei-prog-stat--skip">
+            <span class="ei-prog-stat">
               <span class="ei-prog-dot ei-prog-dot--skip" />
               Chưa: {{ unansweredCount }}
             </span>
           </div>
-          <div class="ei-prog-tags">
+          <div v-if="markedCount > 0" class="ei-prog-tags">
             <span class="ei-prog-tag ei-prog-tag--mark">
-              <LucideIcon name="bookmark" size="11" />
+              <LucideIcon name="bookmark" size="10" />
               Đánh dấu: {{ markedCount }}
-            </span>
-            <span class="ei-prog-tag ei-prog-tag--skip">
-              Bỏ qua: {{ skippedCount }}
             </span>
           </div>
         </div>
@@ -365,8 +288,8 @@
         <!-- Question navigator -->
         <div v-if="examSurfaceReady" class="ei-nav-card">
           <div class="ei-nav-card__header">
-            <LucideIcon name="list" size="15" />
-            <span>Danh sách câu hỏi</span>
+            <LucideIcon name="list" size="13" />
+            <span>Câu hỏi</span>
             <span class="ei-nav-card__count">{{ questions.length }}</span>
           </div>
           <div class="ei-q-grid">
@@ -390,17 +313,13 @@
               <span class="ei-legend-dot ei-legend-dot--mark" />
               Đánh dấu
             </span>
-            <span class="ei-legend-item">
-              <span class="ei-legend-dot ei-legend-dot--skip" />
-              Bỏ qua
-            </span>
           </div>
         </div>
       </aside>
     </main>
 
     <!-- ── Submit Modal ────────────────────────────────── -->
-    <BaseModal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
+    <Modal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
       <div class="ei-submit-info">
         <p class="ei-submit-count">
           Đã trả lời <strong>{{ answeredCount }}</strong> / {{ questions.length }} câu.
@@ -410,18 +329,18 @@
         </p>
         <div class="ei-submit-stats">
           <div class="ei-submit-stat">
-            <p class="ei-submit-stat__label">Đánh dấu xem lại</p>
+            <p class="ei-submit-stat__label">Đánh dấu</p>
             <p class="ei-submit-stat__val ei-submit-stat__val--warn">{{ markedCount }}</p>
           </div>
           <div class="ei-submit-stat">
-            <p class="ei-submit-stat__label">Đã mở nhưng bỏ qua</p>
+            <p class="ei-submit-stat__label">Bỏ qua</p>
             <p class="ei-submit-stat__val">{{ skippedCount }}</p>
           </div>
         </div>
         <p class="ei-submit-note">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
         <div v-if="unansweredCount > 0" class="ei-submit-unanswered">
-          <LucideIcon name="warning" size="15" />
-          <span>Bạn còn {{ unansweredCount }} câu chưa làm và {{ notVisitedCount }} câu chưa mở.</span>
+          <LucideIcon name="warning" size="14" />
+          <span>Còn {{ unansweredCount }} câu chưa làm.</span>
         </div>
       </div>
       <template #footer>
@@ -432,7 +351,7 @@
           </BaseButton>
         </div>
       </template>
-    </BaseModal>
+    </Modal>
 
     <ConfirmDialog
       v-model="showLeaveConfirm"
@@ -462,7 +381,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
 import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
-import BaseModal from '../shared/BaseModal.vue'
+import Modal from '../ui/Modal.vue'
 import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
 import MathDisplay from '../shared/MathDisplay.vue'
@@ -495,7 +414,35 @@ const examConfig = ref({
   monitorMultiMonitor: true, requireCameraMic: true
 })
 
-// Popup states
+// ── Unified modal state (replaces 4 separate popup refs) ──
+const modal = ref({
+  show: false,
+  type: 'info',   // warning | error | success | info
+  title: '',
+  subtitle: '',
+  message: '',
+  confirmLabel: '',
+  onConfirm: null
+})
+
+const modalIconMap = { warning: 'warning', error: 'error', success: 'check_circle', info: 'info' }
+const modalIcon = computed(() => modalIconMap[modal.value.type] || 'info')
+
+const showModal = (cfg) => {
+  modal.value = { show: true, ...cfg }
+}
+
+const closeModal = () => {
+  modal.value.show = false
+}
+
+const handleModalConfirm = () => {
+  if (typeof modal.value.onConfirm === 'function') {
+    modal.value.onConfirm()
+  }
+  modal.value.show = false
+}
+
 const showErrorPopup = ref(false)
 const errorPopupMessage = ref('')
 const showSuccessPopup = ref(false)
@@ -596,7 +543,6 @@ const normalizeAnswerIdsForQuestion = (question, value) => {
     if (!normalized) return ''
     return optionIdMap[normalized] || normalized
   }
-
   if (type === 'MULTIPLE_CHOICE' || type === 'ORDERING') {
     const arr = Array.isArray(value) ? value : deserializeAnswerValue(question, value)
     return arr.map(mapId).filter(Boolean)
@@ -611,30 +557,18 @@ const currentQuestion = computed(() => questions.value[currentIndex.value] || nu
 const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
 const devicesReady = computed(() => cameraReady.value && micReady.value)
 const examProgressStats = computed(() => {
-  let answered = 0
-  let marked = 0
-  let skipped = 0
-  let notVisited = 0
-
+  let answered = 0; let marked = 0; let skipped = 0; let notVisited = 0
   for (const question of questions.value) {
     const key = String(question.id)
     const visited = Boolean(visitedQuestions.value[key])
     const hasAnswer = hasAnswerValue(answers.value[key])
     const isMarked = Boolean(markedQuestions.value[key])
-
     if (hasAnswer) answered += 1
     if (isMarked) marked += 1
     if (!visited) notVisited += 1
     else if (!hasAnswer && !isMarked) skipped += 1
   }
-
-  return {
-    answered,
-    unanswered: Math.max(questions.value.length - answered, 0),
-    marked,
-    skipped,
-    notVisited
-  }
+  return { answered, unanswered: Math.max(questions.value.length - answered, 0), marked, skipped, notVisited }
 })
 const answeredCount = computed(() => examProgressStats.value.answered)
 const unansweredCount = computed(() => examProgressStats.value.unanswered)
@@ -644,18 +578,6 @@ const notVisitedCount = computed(() => examProgressStats.value.notVisited)
 const progressPercent = computed(() => {
   if (!questions.value.length) return 0
   return Math.round((answeredCount.value / questions.value.length) * 100)
-})
-const displayHours = computed(() => {
-  const h = Math.floor(remainingSeconds.value / 3600)
-  if (h === 0) return ''
-  return `${String(h).padStart(2, '0')}h `
-})
-
-const displayMinutes = computed(() => {
-  const totalMin = Math.floor(remainingSeconds.value / 60)
-  const h = Math.floor(totalMin / 60)
-  const m = totalMin % 60
-  return h > 0 ? String(m).padStart(2, '0') : String(totalMin).padStart(2, '0')
 })
 
 const timerHours = computed(() => String(Math.floor(remainingSeconds.value / 3600)).padStart(2, '0'))
@@ -676,16 +598,7 @@ const timerBarAccentClass = computed(() => {
   return ''
 })
 
-// Circular ring
-const timerCircumference = 2 * Math.PI * 30 // r=30
-const timerRingOffset = computed(() => {
-  if (!initialRemainingForProgress.value) return timerCircumference
-  const ratio = Math.max(0, Math.min(1, remainingSeconds.value / initialRemainingForProgress.value))
-  return timerCircumference * (1 - ratio)
-})
-
-// Question progress ring
-const qRingCircumference = 2 * Math.PI * 15 // r=15
+const qRingCircumference = 2 * Math.PI * 15
 const qRingOffset = computed(() => {
   if (!questions.value.length) return qRingCircumference
   const ratio = (currentIndex.value) / questions.value.length
@@ -694,9 +607,7 @@ const qRingOffset = computed(() => {
 
 const markVisited = (questionId) => {
   const key = String(questionId)
-  if (!visitedQuestions.value[key]) {
-    visitedQuestions.value[key] = true
-  }
+  if (!visitedQuestions.value[key]) visitedQuestions.value[key] = true
 }
 
 const currentQuestionAnswer = computed({
@@ -716,9 +627,7 @@ const currentQuestionAnswer = computed({
   }
 })
 
-const clearBlurGraceTimer = () => {
-  if (blurGraceTimer) { window.clearTimeout(blurGraceTimer); blurGraceTimer = null }
-}
+const clearBlurGraceTimer = () => { if (blurGraceTimer) { window.clearTimeout(blurGraceTimer); blurGraceTimer = null } }
 
 const syncDeviceStatusToBackend = async () => {
   if (!attemptId.value || isPracticeExam.value || isSuspended.value) return
@@ -784,9 +693,14 @@ const handleProctorActions = (actions = [], payload = {}) => {
     applyAttemptStatus(payload.status || 'PAUSED', payload.message || 'Phiên thi đang được giám thị kiểm tra.')
   }
   if (normalized.includes('SHOW_WARNING') || normalized.includes('WARNING_SENT')) {
-    teacherWarningMessage.value = payload.message || 'Hệ thống phát hiện rủi ro cao. Vui lòng tiếp tục làm bài đúng quy định.'
-    showTeacherWarningModal.value = true
-    toast.warning(teacherWarningMessage.value)
+    showModal({
+      type: 'warning',
+      title: 'Cảnh báo từ giám thị',
+      subtitle: 'Vui lòng chú ý và tuân thủ quy định phòng thi.',
+      message: payload.message || 'Hệ thống phát hiện rủi ro cao. Vui lòng tiếp tục làm bài đúng quy định.',
+      confirmLabel: 'Tôi đã hiểu'
+    })
+    toast.warning(payload.message || 'Bạn nhận được cảnh báo từ giám thị.')
   }
 }
 
@@ -879,9 +793,14 @@ const connectProctorRealtime = async () => {
       handler: (payload) => {
         const type = String(payload?.type || '').toUpperCase()
         if (type === 'TEACHER_WARNING') {
-          teacherWarningMessage.value = payload.message || 'Bạn đang bị cảnh báo bởi giám thị.'
-          showTeacherWarningModal.value = true
-          toast.warning(teacherWarningMessage.value)
+          showModal({
+            type: 'warning',
+            title: 'Cảnh báo từ giám thị',
+            subtitle: 'Vui lòng chú ý và tuân thủ quy định phòng thi.',
+            message: payload.message || 'Bạn đang bị cảnh báo bởi giám thị.',
+            confirmLabel: 'Tôi đã hiểu'
+          })
+          toast.warning(payload.message || 'Bạn nhận được cảnh báo từ giám thị.')
         }
         if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
           applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'), payload.message || 'Bài thi đã bị đình chỉ.')
@@ -889,7 +808,6 @@ const connectProctorRealtime = async () => {
         if (type === 'RISK_UPDATE') {
           syncRiskState({ riskScore: payload.riskScore, riskLevel: payload.riskLevel, status: payload.status })
           handleProctorActions([payload.actionTaken], payload)
-          // handleProctorActions đã hiện toast WARNING rồi → không toast lại
         }
       }
     }]
@@ -947,10 +865,7 @@ const selectQuestion = (index) => {
   if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
   currentIndex.value = index
   const q = questions.value[index]
-  if (q?.id != null) {
-    markVisited(q.id)
-    examSessionStore.setCurrentQuestion(q.id)
-  }
+  if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
 }
 
 const goPrevious = () => {
@@ -959,10 +874,7 @@ const goPrevious = () => {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value -= 1
     const q = questions.value[currentIndex.value]
-    if (q?.id != null) {
-      markVisited(q.id)
-      examSessionStore.setCurrentQuestion(q.id)
-    }
+    if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
   }
 }
 
@@ -972,15 +884,11 @@ const goNext = () => {
     if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value += 1
     const q = questions.value[currentIndex.value]
-    if (q?.id != null) {
-      markVisited(q.id)
-      examSessionStore.setCurrentQuestion(q.id)
-    }
+    if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
   }
 }
 
 const handleRightClick = (e) => { if (examConfig.value.monitorRightClick !== false) { e.preventDefault(); e.stopPropagation(); void reportViolation('RIGHT_CLICK', 'Chuột phải bị chặn', VIOLATION_COOLDOWN_MS) } }
-
 const handlePrintScreen = (e) => { if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) { e.preventDefault(); void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS) } }
 
 const checkMultiMonitor = () => {
@@ -1034,7 +942,12 @@ const toggleMarkCurrentQuestion = () => {
 }
 
 const manualSaveDraft = async () => {
-  try { await forceSave(); showSuccessPopup.value = true; successPopupMessage.value = 'Đã lưu bài làm thành công!' } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không lưu được. Vui lòng thử lại.' }
+  try {
+    await forceSave()
+    showModal({ type: 'success', title: 'Thành công', message: 'Đã lưu bài làm thành công!', confirmLabel: 'Đóng' })
+  } catch {
+    showModal({ type: 'error', title: 'Lỗi', message: 'Không lưu được. Vui lòng thử lại.', confirmLabel: 'Đóng' })
+  }
 }
 
 const buildSubmitPayload = () => Object.entries(answers.value).filter(([, v]) => hasAnswerValue(v)).map(([questionId, selectedAnswer]) => {
@@ -1053,16 +966,10 @@ const autoSubmitOnTimeUp = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({
-      path: '/student/submission-confirmation',
-      query: buildSubmissionQuery({
-        examTitle: examTitle.value,
-        attemptId: attemptId.value,
-        score: Math.round(Number(result?.score || 0)),
-        submittedAt: result?.submittedAt || ''
-      })
-    })
-  } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp tự động được. Vui lòng thử nộp lại.' } finally { isSubmitting.value = false }
+    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
+  } catch {
+    showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp tự động được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
+  } finally { isSubmitting.value = false }
 }
 
 const submitExamAction = async () => {
@@ -1072,16 +979,10 @@ const submitExamAction = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
-    router.push({
-      path: '/student/submission-confirmation',
-      query: buildSubmissionQuery({
-        examTitle: examTitle.value,
-        attemptId: attemptId.value,
-        score: Math.round(Number(result?.score || 0)),
-        submittedAt: result?.submittedAt || ''
-      })
-    })
-  } catch { showErrorPopup.value = true; errorPopupMessage.value = 'Không nộp được. Vui lòng thử lại.' } finally { isSubmitting.value = false }
+    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
+  } catch {
+    showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
+  } finally { isSubmitting.value = false }
 }
 
 const questionButtonClass = (index) => {
@@ -1099,218 +1000,125 @@ const questionButtonClass = (index) => {
   return 'ei-q-grid-btn--default'
 }
 
-const handleBeforeUnload = (e) => { if (isSubmitting.value || !attemptId.value || Object.keys(answers.value).length === 0) return; e.preventDefault(); e.returnValue = '' }
-const handleConnectivityChange = () => { isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine !== false }
-
-const handleExamKeydown = (e) => {
-  if (isSuspended.value) return
-  if (e.key === 'F12' || (e.ctrlKey && ['c', 'v', 'u'].includes(String(e.key || '').toLowerCase()))) { e.preventDefault(); void reportViolation('DEVTOOLS_OPEN', `Phát hiện phím tắt: ${e.key}`, LONG_VIOLATION_COOLDOWN_MS); return }
-  if (!e.ctrlKey) return
-  if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevious() }
-  else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
+const startTimer = () => {
+  if (timerId) clearInterval(timerId)
+  timerId = setInterval(() => {
+    if (isSuspended.value) return
+    if (remainingSeconds.value > 0) {
+      remainingSeconds.value -= 1
+      if (remainingSeconds.value === 0) void autoSubmitOnTimeUp()
+    }
+  }, 1000)
 }
 
-onBeforeRouteLeave((to) => {
-  if (allowConfirmedLeave.value) {
-    allowConfirmedLeave.value = false
-    return true
+const restoreSession = async () => {
+  if (!attemptId.value) return
+  const draft = await getDraftAnswers(attemptId.value)
+  if (!draft?.answers?.length) return
+  for (const item of draft.answers) {
+    const q = questionById.value.get(Number(item.questionId))
+    if (q) {
+      answers.value[item.questionId] = deserializeAnswerValue(q, item.selectedAnswer)
+    }
   }
-  if (isSubmitting.value) return true
-  if (isPracticeExam.value) return true
-  pendingLeaveCallback.value = () => {
-    allowConfirmedLeave.value = true
-    router.push(to.fullPath)
-  }
-  showLeaveConfirm.value = true
-  return false
-})
-
-const onConfirmLeave = () => {
-  const cb = pendingLeaveCallback.value
-  pendingLeaveCallback.value = null
-  showLeaveConfirm.value = false
-  if (cb) cb()
 }
 
-const onCancelLeave = () => {
-  pendingLeaveCallback.value = null
-  showLeaveConfirm.value = false
+const loadExam = async () => {
+  if (!examId.value) return
+  try {
+    const data = await listExamQuestions(examId.value)
+    questionList = Array.isArray(data) ? data : (data?.questions || [])
+    questions.value = questionList.map(parseQuestionOptions)
+    examSurfaceReady.value = true
+    if (attemptId.value) void restoreSession()
+  } catch {
+    examLoadFailed.value = true
+  }
+}
+
+const attachEventListeners = () => {
+  window.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('blur', handleWindowBlur)
+  window.addEventListener('focus', handleWindowFocus)
+  window.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('mousemove', onIdleActivity)
+  document.addEventListener('keydown', onIdleActivity)
+  document.addEventListener('contextmenu', handleRightClick)
+  document.addEventListener('keydown', handlePrintScreen)
+  void checkMultiMonitor()
+}
+
+const removeEventListeners = () => {
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('blur', handleWindowBlur)
+  window.removeEventListener('focus', handleWindowFocus)
+  window.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('mousemove', onIdleActivity)
+  document.removeEventListener('keydown', onIdleActivity)
+  document.removeEventListener('contextmenu', handleRightClick)
+  document.removeEventListener('keydown', handlePrintScreen)
 }
 
 onMounted(async () => {
-  window.addEventListener('online', handleConnectivityChange)
-  window.addEventListener('offline', handleConnectivityChange)
-  try {
-    if (!examId.value || !attemptId.value) { showErrorPopup.value = true; errorPopupMessage.value = 'Thiếu thông tin bài thi. Vui lòng quay lại và thử lại.'; examLoadFailed.value = true; examSurfaceReady.value = true; return }
-
-    const [{ getExamDetail }] = await Promise.all([import('../../services/examService')])
-    questionList = await listExamQuestions(examId.value, { attemptId: attemptId.value })
-    const emptyDraft = { answers: [], status: 'IN_PROGRESS' }
-    const [draftOutcome, examOutcome] = await Promise.allSettled([
-      getDraftAnswers(attemptId.value),
-      getExamDetail(examId.value)
-    ])
-    const draftData =
-      draftOutcome.status === 'fulfilled' && draftOutcome.value != null
-        ? draftOutcome.value
-        : emptyDraft
-    const examDetail = examOutcome.status === 'fulfilled' ? examOutcome.value : null
-
-    examConfig.value = {
-      monitorTabSwitch: examDetail?.monitorTabSwitch !== false, monitorBlur: examDetail?.monitorBlur !== false,
-      monitorExitFullscreen: examDetail?.monitorExitFullscreen !== false, monitorCopyPaste: examDetail?.monitorCopyPaste !== false,
-      monitorIdleTime: examDetail?.monitorIdleTime !== false, monitorDevtools: examDetail?.monitorDevtools !== false,
-      monitorDuplicateIp: examDetail?.monitorDuplicateIp !== false, monitorFastSubmit: examDetail?.monitorFastSubmit !== false,
-      monitorRightClick: examDetail?.monitorRightClick !== false, monitorPrintScreen: examDetail?.monitorPrintScreen !== false,
-      monitorRapidQuestionSwitch: examDetail?.monitorRapidQuestionSwitch !== false,
-      monitorMultiMonitor: examDetail?.monitorMultiMonitor !== false, requireCameraMic: examDetail?.requireCameraMic !== false
-    }
-
-    questions.value = questionList.map((item) => ({
-      id: item.id,
-      content: item.content,
-      type: item.type || 'SINGLE_CHOICE',
-      options: parseQuestionOptions(item.options),
-      metadata: parseQuestionJson(item.metadata, null),
-      attachments: parseQuestionJson(item.attachments, []),
-      latexContent: item.latexContent ?? item.latex_content ?? null,
-      latexOptions: item.latexOptions ?? item.latex_options ?? null
-    }))
-    examSurfaceReady.value = true
-
-    const serverAnswers = (draftData?.answers || []).reduce((acc, answer) => {
-      const q = questionById.value.get(Number(answer.questionId))
-      acc[answer.questionId] = normalizeAnswerIdsForQuestion(q, answer.selectedAnswer)
-      return acc
-    }, {})
-    answers.value = Object.entries(mergeLocalIntoAnswers(serverAnswers)).reduce((acc, [questionId, value]) => {
-      const q = questionById.value.get(Number(questionId))
-      acc[questionId] = normalizeAnswerIdsForQuestion(q, value)
-      return acc
-    }, {})
-    const answeredQuestionKeys = Object.keys(answers.value).reduce((acc, key) => { acc[String(key)] = true; return acc }, {})
-    examSessionStore.hydrateSession({ attempt: { id: attemptId.value, status: draftData?.status || 'IN_PROGRESS' }, exam: { id: examId.value, title: examTitle.value }, questions: questions.value, answers: answers.value })
-    if (questions.value[0]?.id != null) {
-      visitedQuestions.value = { [String(questions.value[0].id)]: true, ...answeredQuestionKeys }
-      examSessionStore.setCurrentQuestion(questions.value[0].id)
-    }
-
-    applyAttemptStatus(draftData?.status || 'IN_PROGRESS')
-
-    if (typeof draftData?.remainingSeconds === 'number' && draftData.remainingSeconds >= 0) remainingSeconds.value = Math.max(0, draftData.remainingSeconds)
-    else if (draftData?.deadlineAt || route.query.deadlineAt) {
-      const dlDate = parseBackendDate(String(draftData?.deadlineAt || route.query.deadlineAt))
-      if (dlDate) remainingSeconds.value = Math.max(0, Math.floor((dlDate.getTime() - Date.now()) / 1000))
-    }
-    initialRemainingForProgress.value = Math.max(remainingSeconds.value, 1)
-
-    if (remainingSeconds.value <= 0 && !isPracticeExam.value) { void autoSubmitOnTimeUp(); return }
-
-    timerId = window.setInterval(() => {
-      if (remainingSeconds.value > 0) {
-        remainingSeconds.value -= 1
-        if (remainingSeconds.value === 0) { clearInterval(timerId); timerId = null; void autoSubmitOnTimeUp() }
-      }
-    }, 1000)
-
-    await enforceDeviceAccess()
-    if (!devicesReady.value && shouldCheckDevices.value) { showErrorPopup.value = true; errorPopupMessage.value = suspensionMessage.value || 'Thiết bị của bạn chưa sẵn sàng. Vui lòng kiểm tra camera và micro.'; return }
-    isSuspended.value = false
-    isFullscreenActive.value = Boolean(document.fullscreenElement)
-    if (!isPracticeExam.value && examConfig.value.monitorExitFullscreen !== false && !isFullscreenActive.value) { showFullscreenPrompt.value = true; await requestExamFullscreen() }
-
-    setupBlockBackButton()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('keydown', handleExamKeydown)
-
-    if (!isPracticeExam.value) {
-      try {
-        await connectProctorRealtime()
-      } catch {
-        /* WebSocket/STOMP lỗi không nên chặn làm bài khi đề đã tải */
-      }
-      startHeartbeat(); void syncHeartbeat()
-      attemptStatusTimer = window.setInterval(() => { syncAttemptStatus(); enforceDeviceAccess() }, 5000)
-      if (examConfig.value.monitorIdleTime !== false) { onIdleActivity(); window.addEventListener('mousemove', onIdleActivity); window.addEventListener('keydown', onIdleActivity); window.addEventListener('scroll', onIdleActivity) }
-      if (examConfig.value.monitorDevtools !== false) scheduleDevToolsCheck()
-      if (examConfig.value.monitorTabSwitch !== false) document.addEventListener('visibilitychange', handleVisibilityChange)
-      if (examConfig.value.monitorBlur !== false) { window.addEventListener('blur', handleWindowBlur); window.addEventListener('focus', handleWindowFocus) }
-      if (examConfig.value.monitorExitFullscreen !== false) document.addEventListener('fullscreenchange', handleFullscreenChange)
-      if (examConfig.value.monitorCopyPaste !== false) { document.addEventListener('copy', handleCopyPaste); document.addEventListener('paste', handleCopyPaste) }
-      if (examConfig.value.monitorPrintScreen !== false) document.addEventListener('keydown', handlePrintScreen)
-      if (examConfig.value.monitorMultiMonitor !== false) setTimeout(checkMultiMonitor, 3000)
-    }
-  } catch (error) {
-    examLoadFailed.value = true
-    examSurfaceReady.value = true
-
-    let userMessage = 'Không tải được nội dung bài thi. Vui lòng làm mới trang.'
-    if (error?.message?.includes('403') || error?.status === 403) {
-      userMessage = 'Bạn không có quyền làm bài thi này.'
-    } else if (error?.message?.includes('404') || error?.status === 404) {
-      userMessage = 'Bài thi không tồn tại hoặc đã bị xóa.'
-    } else if (error?.message?.includes('401') || error?.status === 401) {
-      userMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
-    } else if (questionList?.length === 0) {
-      userMessage = 'Bài thi chưa có câu hỏi. Vui lòng liên hệ giáo viên.'
-    }
-    errorPopupMessage.value = userMessage
-    showErrorPopup.value = true
+  await loadExam()
+  attachEventListeners()
+  setupBlockBackButton()
+  if (!isPracticeExam.value) {
+    void enforceDeviceAccess()
+    void connectProctorRealtime()
+    void syncAttemptStatus()
+    attemptStatusTimer = setInterval(syncAttemptStatus, 30000)
   }
+  scheduleDevToolsCheck()
+  startHeartbeat()
+  startTimer()
+  onIdleActivity()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('online', handleConnectivityChange)
-  window.removeEventListener('offline', handleConnectivityChange)
-  window.removeEventListener('beforeunload', handleBeforeUnload)
-  window.removeEventListener('keydown', handleExamKeydown)
+  removeEventListeners()
   teardownBlockBackButton()
   stopMediaStream()
-  stopHeartbeat()
-  void flushQueuedViolations().catch(() => {})
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)
-  if (idleTimer) clearTimeout(idleTimer)
   if (devtoolsCheckTimer) clearInterval(devtoolsCheckTimer)
-  clearBlurGraceTimer()
+  stopHeartbeat()
+  flushQueuedViolations()
   realtimeChannel.disconnect()
-  if (!isPracticeExam.value) {
-    if (examConfig.value.monitorTabSwitch !== false) document.removeEventListener('visibilitychange', handleVisibilityChange)
-    if (examConfig.value.monitorBlur !== false) { window.removeEventListener('blur', handleWindowBlur); window.removeEventListener('focus', handleWindowFocus) }
-    if (examConfig.value.monitorExitFullscreen !== false) document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    if (examConfig.value.monitorCopyPaste !== false) { document.removeEventListener('copy', handleCopyPaste); document.removeEventListener('paste', handleCopyPaste) }
-    if (examConfig.value.monitorPrintScreen !== false) document.removeEventListener('keydown', handlePrintScreen)
-    if (examConfig.value.monitorIdleTime !== false) { window.removeEventListener('mousemove', onIdleActivity); window.removeEventListener('keydown', onIdleActivity); window.removeEventListener('scroll', onIdleActivity) }
+})
+
+onBeforeRouteLeave(() => {
+  if (!allowConfirmedLeave.value) {
+    showLeaveConfirm.value = true
+    return false
   }
 })
+
+const onConfirmLeave = () => {
+  allowConfirmedLeave.value = true
+  showLeaveConfirm.value = false
+  router.push('/student/dashboard')
+}
+
+const onCancelLeave = () => {
+  showLeaveConfirm.value = false
+}
 </script>
 
 <style scoped>
-/* ── Root ─────────────────────────────────────────────── */
-.ei-root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--ds-bg);
-}
-
-/* ── Top Bar ──────────────────────────────────────────── */
+/* ── Topbar ─────────────────────────────────────────── */
 .ei-topbar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  background: var(--ds-surface);
-  border-bottom: 2px solid var(--ds-border);
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   position: sticky;
   top: 0;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-sm);
 }
-
-.dark .ei-topbar { border-bottom-color: var(--ds-border-strong); }
 
 .ei-topbar__left {
   display: flex;
@@ -1320,186 +1128,123 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-/* Exam chip */
 .ei-topbar__exam-chip {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.875rem;
-  background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%);
+  gap: 0.375rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
   border-radius: var(--ds-radius-full);
-  color: white;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-  box-shadow: 0 2px 8px rgba(79,70,229,0.3);
   flex-shrink: 0;
 }
 
 .ei-topbar__exam-title {
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Device badges */
 .ei-topbar__device-badges {
   display: flex;
-  align-items: center;
   gap: 0.375rem;
+  flex-wrap: wrap;
 }
 
 .ei-device-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem 0.625rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--ds-radius-full);
   font-size: 0.65rem;
-  font-weight: 800;
-  border: 1.5px solid;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  font-weight: 700;
 }
 
 .ei-device-badge--ok {
   background: var(--ds-success-soft);
-  border-color: rgba(22, 163, 74, 0.3);
   color: var(--ds-success);
 }
 
 .ei-device-badge--fail {
   background: var(--ds-danger-soft);
-  border-color: rgba(220, 38, 38, 0.3);
   color: var(--ds-danger);
-  animation: eiDeviceBlink 2s ease-in-out infinite;
 }
 
-@keyframes eiDeviceBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Timer — rectangular, prominent */
 .ei-topbar__timer {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 1rem;
-  background: var(--ds-surface);
-  border: 2px solid var(--ds-border);
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  background: var(--ds-gray-50);
+  border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
-  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   flex-shrink: 0;
 }
 
-.dark .ei-topbar__timer { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+.ei-timer--warn { border-color: var(--ds-warning); background: var(--ds-warning-soft); color: var(--ds-warning); }
+.ei-timer--danger { border-color: var(--ds-danger); background: var(--ds-danger-soft); color: var(--ds-danger); }
+.ei-timer--pulse { animation: eiPulse 1s ease-in-out infinite; }
+@keyframes eiPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-.ei-timer--warn {
-  border-color: rgba(245,158,11,0.5);
-  background: rgba(245,158,11,0.06);
-}
-
-.ei-timer--danger {
-  border-color: rgba(220,38,38,0.5);
-  background: rgba(220,38,38,0.06);
-  animation: eiTimerPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes eiTimerPulse {
-  0%, 100% { box-shadow: 0 2px 8px rgba(220,38,38,0.2); }
-  50% { box-shadow: 0 2px 20px rgba(220,38,38,0.45); }
-}
-
-.ei-topbar__timer-icon {
-  color: var(--ds-primary);
-  flex-shrink: 0;
-}
-
+.ei-topbar__timer-icon { color: var(--ds-text-muted); }
 .ei-timer--warn .ei-topbar__timer-icon { color: var(--ds-warning); }
 .ei-timer--danger .ei-topbar__timer-icon { color: var(--ds-danger); }
 
 .ei-topbar__timer-digits {
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: baseline;
+  gap: 0.125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .ei-timer-unit {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.05rem;
-  min-width: 30px;
+  align-items: baseline;
+  gap: 0.125rem;
 }
 
 .ei-timer-val {
   font-family: var(--ds-font-display);
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 900;
   color: var(--ds-text);
   line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  min-width: 1.5ch;
+  text-align: center;
 }
 
-.dark .ei-timer-val { color: #f1f5f9; }
+.ei-timer-lbl {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--ds-text-muted);
+  min-width: 0.5ch;
+}
 
 .ei-timer--warn .ei-timer-val { color: var(--ds-warning); }
 .ei-timer--danger .ei-timer-val { color: var(--ds-danger); }
 
-.ei-timer-lbl {
-  font-size: 0.48rem;
-  font-weight: 700;
-  color: var(--ds-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  line-height: 1;
-}
-
-.ei-timer-colon {
-  font-family: var(--ds-font-display);
-  font-size: 1.125rem;
-  font-weight: 300;
-  color: var(--ds-gray-300);
-  line-height: 1;
-  align-self: flex-start;
-  margin-top: 1px;
-  min-width: 6px;
-  text-align: center;
-}
-
-.dark .ei-timer-colon { color: var(--ds-gray-600); }
-.ei-timer--warn .ei-timer-colon { color: rgba(234,179,8,0.35); }
-.ei-timer--danger .ei-timer-colon { color: rgba(220,38,38,0.35); }
-
 .ei-topbar__timer-progress {
-  width: 100%;
+  width: 48px;
   height: 4px;
   background: var(--ds-gray-100);
-  border-radius: var(--ds-radius-full);
+  border-radius: 2px;
   overflow: hidden;
-  margin-top: 0.25rem;
-  flex-shrink: 0;
 }
-
-.dark .ei-topbar__timer-progress { background: var(--ds-gray-700); }
 
 .ei-topbar__timer-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--ds-primary), #6366f1);
-  border-radius: var(--ds-radius-full);
-  transition: width 1s linear, background 0.3s ease;
+  background: var(--ds-primary);
+  border-radius: 2px;
+  transition: width 1s linear;
 }
 
 .ei-timer--warn .ei-topbar__timer-progress-fill { background: var(--ds-warning); }
-.ei-timer--danger .ei-topbar__timer-progress-fill { background: linear-gradient(90deg, var(--ds-danger), #b91c1c); }
+.ei-timer--danger .ei-topbar__timer-progress-fill { background: var(--ds-danger); }
 
-/* Right actions */
 .ei-topbar__right {
   display: flex;
   align-items: center;
@@ -1510,53 +1255,36 @@ onUnmounted(() => {
 .ei-save-status {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--ds-radius-full);
-  font-size: 0.65rem;
-  font-weight: 700;
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
+  gap: 0.3rem;
+  font-size: 0.68rem;
   color: var(--ds-text-muted);
 }
 
-.dark .ei-save-status { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+@keyframes eiSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.ei-save-icon--spin { animation: eiSpin 1s linear infinite; }
 
-.ei-save-icon--spin { animation: eiSpin 1s linear infinite; color: var(--ds-info); }
-.ei-save-icon--ok { color: var(--ds-success); }
-.ei-save-icon--pending { color: var(--ds-warning); }
-.ei-save-icon--err { color: var(--ds-danger); }
 .ei-save-label { white-space: nowrap; }
 
-@keyframes eiSpin { to { transform: rotate(360deg) translateZ(0); } }
-
-/* Buttons */
 .ei-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.875rem;
   border-radius: var(--ds-radius-xl);
-  font-size: 0.8rem;
-  font-weight: 800;
+  border: 1.5px solid var(--ds-border);
+  font-size: 0.78rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  border: 1.5px solid transparent;
   font-family: inherit;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.ei-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.ei-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Save button */
 .ei-btn--save {
   background: var(--ds-surface);
   border-color: var(--ds-border);
   color: var(--ds-text-secondary);
 }
-
-.dark .ei-btn--save { border-color: var(--ds-border-strong); color: var(--ds-gray-300); background: var(--ds-gray-800); }
-
 .ei-btn--save:hover:not(:disabled) {
   border-color: var(--ds-primary-border);
   color: var(--ds-primary);
@@ -1564,104 +1292,47 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
-/* Submit button — most prominent */
 .ei-btn--submit {
-  background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
+  background: var(--ds-success);
   color: white;
-  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
-  padding: 0.5rem 1.25rem;
-  font-size: 0.875rem;
+  border-color: var(--ds-success);
+  box-shadow: 0 2px 12px rgba(22, 163, 74, 0.3);
 }
-
 .ei-btn--submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(22, 163, 74, 0.45);
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  background: var(--ds-success-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.4);
 }
 
-.ei-btn--submit:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-/* ── Fullscreen warning ─────────────────────────────── */
+/* ── Fullscreen warning ──── */
 .ei-fs-warn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1.25rem;
   background: var(--ds-warning-soft);
-  border-bottom: 1px solid var(--ds-warning-border, rgba(217,119,6,0.3));
-  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(217, 119, 6, 0.3);
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--ds-warning);
 }
 
 .ei-fs-warn__btn {
-  padding: 0.3rem 0.875rem;
+  padding: 0.25rem 0.75rem;
   border-radius: var(--ds-radius-full);
   border: 1.5px solid var(--ds-warning);
   background: transparent;
   color: var(--ds-warning);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .ei-fs-warn__btn:hover { background: var(--ds-warning); color: white; }
 
-/* ── Suspended Overlay ──────────────────────────── */
-.ei-suspend-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(15, 23, 42, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.ei-suspend-card {
-  max-width: 480px;
-  width: 100%;
-  text-align: center;
-  padding: 2.5rem 2rem;
-  background: var(--ds-surface);
-  border: 2px solid var(--ds-danger);
-  border-radius: var(--ds-radius-2xl);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.ei-suspend-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-}
-
-.ei-suspend-title {
-  font-family: var(--ds-font-display);
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: var(--ds-text);
-  margin: 0 0 0.75rem;
-}
-
-.ei-suspend-desc {
-  font-size: 0.9rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-  line-height: 1.6;
-}
-
-/* ── Modal ─────────────────────────────────────────── */
+/* ── Unified Modal ──── */
 .ei-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1674,18 +1345,19 @@ onUnmounted(() => {
 }
 
 .ei-modal {
-  max-width: 520px;
+  max-width: 480px;
   width: 100%;
   background: var(--ds-surface);
   border-radius: var(--ds-radius-2xl);
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   overflow: hidden;
+  border: 2px solid var(--ds-border);
 }
 
-.ei-modal--warn { border: 2px solid var(--ds-warning); }
-.ei-modal--error { border: 2px solid var(--ds-danger); }
-.ei-modal--success { border: 2px solid var(--ds-success); }
-.ei-modal--info { border: 2px solid var(--ds-info); }
+.ei-modal--warning { border-color: var(--ds-warning); }
+.ei-modal--error { border-color: var(--ds-danger); }
+.ei-modal--success { border-color: var(--ds-success); }
+.ei-modal--info { border-color: var(--ds-primary); }
 
 .ei-modal__header {
   display: flex;
@@ -1696,75 +1368,139 @@ onUnmounted(() => {
 }
 
 .ei-modal__icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--ds-radius-xl);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.ei-modal__icon--warn { background: var(--ds-warning-soft); color: var(--ds-warning); }
+
+.ei-modal__icon--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
 .ei-modal__icon--error { background: var(--ds-danger-soft); color: var(--ds-danger); }
 .ei-modal__icon--success { background: var(--ds-success-soft); color: var(--ds-success); }
-.ei-modal__icon--info { background: var(--ds-info-soft); color: var(--ds-info); }
+.ei-modal__icon--info { background: var(--ds-primary-soft); color: var(--ds-primary); }
 
 .ei-modal__title {
   font-family: var(--ds-font-display);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--ds-text);
   margin: 0;
 }
-.ei-modal__sub { font-size: 0.78rem; color: var(--ds-text-muted); margin: 0.25rem 0 0; }
 
-.ei-modal__body { padding: 1.25rem 1.5rem; }
+.ei-modal__sub { font-size: 0.75rem; color: var(--ds-text-muted); margin: 0.25rem 0 0; }
+
+.ei-modal__body { padding: 1.125rem 1.5rem; }
 
 .ei-modal__msg {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--ds-text);
   line-height: 1.6;
-  padding: 1rem;
-  background: rgba(245,158,11,0.06);
-  border: 1px solid rgba(245,158,11,0.2);
+  padding: 0.875rem;
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   margin: 0;
 }
 
+.ei-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding: 0.75rem 1.5rem 1.25rem;
+}
+
+.ei-modal__cancel {
+  padding: 0.6rem 1.125rem;
+  border-radius: var(--ds-radius-xl);
+  border: 1.5px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ei-modal__cancel:hover { border-color: var(--ds-primary); color: var(--ds-primary); }
+
 .ei-modal__confirm {
+  padding: 0.6rem 1.125rem;
+  border-radius: var(--ds-radius-xl);
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.ei-modal__confirm:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.ei-modal__confirm--warning { background: var(--ds-warning); }
+.ei-modal__confirm--error { background: var(--ds-danger); }
+.ei-modal__confirm--success { background: var(--ds-success); }
+.ei-modal__confirm--info { background: var(--ds-primary); }
+
+/* ── Suspended Overlay ──── */
+.ei-suspend-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  width: calc(100% - 3rem);
-  margin: 0 1.5rem 1.5rem;
-  padding: 0.75rem;
-  border-radius: var(--ds-radius-xl);
-  border: none;
-  background: var(--ds-warning);
-  color: white;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  padding: 1.5rem;
 }
-.ei-modal__confirm:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
-.ei-modal__confirm--error { background: var(--ds-danger); }
-.ei-modal__confirm--error:hover { background: var(--ds-danger-hover); }
-.ei-modal__confirm--success { background: var(--ds-success); }
-.ei-modal__confirm--success:hover { background: var(--ds-success-hover); }
-.ei-modal__confirm--info { background: var(--ds-info); }
-.ei-modal__confirm--info:hover { background: var(--ds-info-hover); }
 
-/* ── Main Layout ────────────────────────────────────── */
+.ei-suspend-card {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  background: var(--ds-surface);
+  border: 2px solid var(--ds-danger);
+  border-radius: var(--ds-radius-2xl);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.ei-suspend-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.ei-suspend-title {
+  font-family: var(--ds-font-display);
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--ds-text);
+  margin: 0 0 0.75rem;
+}
+
+.ei-suspend-desc {
+  font-size: 0.875rem;
+  color: var(--ds-text-muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Main Layout ──── */
 .ei-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 1rem;
+  grid-template-columns: 1fr 280px;
+  gap: 0.875rem;
   padding: 1rem 1.25rem;
-  max-width: 1280px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   align-items: start;
@@ -1775,25 +1511,26 @@ onUnmounted(() => {
   .ei-sidebar { order: -1; }
 }
 
-/* ── Empty States ─────────────────────────────────── */
+/* ── Empty States ──── */
 .ei-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 4rem 2rem;
+  gap: 0.625rem;
+  padding: 3.5rem 2rem;
   text-align: center;
   background: var(--ds-surface);
   border: 1.5px dashed var(--ds-border);
   border-radius: var(--ds-radius-2xl);
+  grid-column: 1 / -1;
 }
 
 .ei-empty-icon { color: var(--ds-text-muted); opacity: 0.5; }
-.ei-empty-title { font-size: 1rem; font-weight: 700; color: var(--ds-text); margin: 0; }
-.ei-empty-desc { font-size: 0.8rem; color: var(--ds-text-muted); margin: 0; max-width: 280px; }
+.ei-empty-title { font-size: 0.95rem; font-weight: 700; color: var(--ds-text); margin: 0; }
+.ei-empty-desc { font-size: 0.775rem; color: var(--ds-text-muted); margin: 0; max-width: 260px; }
 
-/* ── Question Card ─────────────────────────────────── */
+/* ── Question Card ──── */
 .ei-question-card {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
@@ -1806,12 +1543,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1.125rem;
   border-bottom: 1px solid var(--ds-border);
   background: var(--ds-gray-50);
 }
 
-/* Question progress ring */
 .ei-q-progress-ring {
   position: relative;
   display: flex;
@@ -1841,70 +1577,57 @@ onUnmounted(() => {
 .ei-q-ring-label {
   position: absolute;
   font-family: var(--ds-font-display);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 900;
   color: var(--ds-primary);
 }
 
-.dark .ei-q-ring-label { color: var(--ds-primary-soft, #818cf8); }
-
 .ei-q-badge {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--ds-text-muted);
 }
 
 .ei-mark-btn {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.875rem;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
   border-radius: var(--ds-radius-full);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--ds-text-muted);
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 .ei-mark-btn:hover:not(:disabled) { border-color: var(--ds-warning); color: var(--ds-warning); background: var(--ds-warning-soft); }
 .ei-mark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.ei-mark-btn--sm { font-size: 0.7rem; padding: 0.3rem 0.75rem; }
 
-.ei-q-content {
-  padding: 1.5rem 1.25rem 1rem;
-}
+.ei-q-content { padding: 1.25rem 1.125rem 0.875rem; }
 
 .ei-q-text {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--ds-text);
   line-height: 1.6;
   margin: 0;
 }
 
-/* KaTeX rendered math in questions */
-.ei-q-text :deep(.katex) {
-  font-size: 1.05em;
-}
+.ei-q-text :deep(.katex) { font-size: 1.05em; }
+.ei-q-text :deep(.katex-display) { margin: 0.75em 0; overflow-x: auto; }
 
-.ei-q-text :deep(.katex-display) {
-  margin: 0.75em 0;
-  overflow-x: auto;
-}
-
-.ei-q-answer {
-  padding: 0 1.25rem 1rem;
-}
+.ei-q-answer { padding: 0 1.125rem 0.875rem; }
 
 .ei-q-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1.125rem;
   border-top: 1px solid var(--ds-border);
   background: var(--ds-gray-50);
 }
@@ -1912,32 +1635,31 @@ onUnmounted(() => {
 .ei-nav-btn {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.25rem;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
   border-radius: var(--ds-radius-xl);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
   border: 1.5px solid var(--ds-border);
 }
 .ei-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ei-nav-btn--prev { background: var(--ds-surface); color: var(--ds-text-secondary); }
 .ei-nav-btn--prev:hover:not(:disabled) { border-color: var(--ds-primary); color: var(--ds-primary); }
-.ei-nav-btn--next { background: var(--ds-primary); color: white; border-color: var(--ds-primary); box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
-.ei-nav-btn--next:hover:not(:disabled) { background: var(--edu-primary-hover); transform: translateY(-1px); }
+.ei-nav-btn--next { background: var(--ds-primary); color: white; border-color: var(--ds-primary); }
+.ei-nav-btn--next:hover:not(:disabled) { background: var(--ds-primary-hover); }
 
-/* ── Sidebar ─────────────────────────────────────────── */
+/* ── Sidebar ──── */
 .ei-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.75rem;
   position: sticky;
-  top: 80px;
+  top: 72px;
 }
 
-/* Camera card */
 .ei-cam-card {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
@@ -1950,24 +1672,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.625rem 0.875rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--ds-border);
 }
 
-.ei-cam-label { font-size: 0.72rem; font-weight: 700; color: var(--ds-text-muted); }
-
-.ei-cam-actions { display: flex; gap: 0.375rem; }
+.ei-cam-label { font-size: 0.68rem; font-weight: 700; color: var(--ds-text-muted); }
+.ei-cam-actions { display: flex; gap: 0.3rem; }
 
 .ei-cam-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--ds-radius-md);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
 }
 .ei-cam-btn--on { background: var(--ds-success-soft); color: var(--ds-success); }
 .ei-cam-btn--off { background: var(--ds-gray-100); color: var(--ds-text-muted); }
@@ -1978,7 +1699,6 @@ onUnmounted(() => {
   position: relative;
   aspect-ratio: 4/3;
   background: var(--ds-gray-900);
-  border-radius: 0 0 var(--ds-radius-2xl) var(--ds-radius-2xl);
   overflow: hidden;
 }
 
@@ -1987,7 +1707,6 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
-  transition: opacity 0.3s ease;
 }
 .ei-cam-video--hidden { opacity: 0; }
 
@@ -1999,9 +1718,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(20,20,30,0.85) 100%);
+  background: rgba(0,0,0,0.8);
   color: var(--ds-gray-500);
-  transition: opacity 0.3s ease;
 }
 
 /* Progress card */
@@ -2009,197 +1727,177 @@ onUnmounted(() => {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 0.875rem;
   box-shadow: var(--ds-shadow-sm);
 }
 
 .ei-prog-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.625rem;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
   color: var(--ds-text-secondary);
 }
 
-.ei-prog-title { font-size: 0.75rem; font-weight: 700; color: var(--ds-text-muted); flex: 1; }
-.ei-prog-pct { font-family: var(--ds-font-display); font-size: 1.1rem; font-weight: 900; color: var(--ds-primary); }
+.ei-prog-title { font-size: 0.7rem; font-weight: 700; color: var(--ds-text-muted); flex: 1; }
+.ei-prog-pct { font-family: var(--ds-font-display); font-size: 1rem; font-weight: 900; color: var(--ds-primary); }
 
 .ei-prog-bar {
-  height: 6px;
+  height: 5px;
   background: var(--ds-gray-100);
   border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 0.625rem;
+  margin-bottom: 0.5rem;
 }
 .ei-prog-bar__fill { height: 100%; background: var(--ds-primary); border-radius: 3px; transition: width 0.5s ease; }
 
 .ei-prog-stats {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 0.625rem;
 }
 
 .ei-prog-stat {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  font-size: 0.7rem;
+  gap: 0.3rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--ds-text-muted);
 }
 
-.ei-prog-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
+.ei-prog-dot { width: 7px; height: 7px; border-radius: 50%; }
 .ei-prog-dot--done { background: var(--ds-primary); }
 .ei-prog-dot--skip { background: var(--ds-gray-300); }
 
-.ei-prog-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.ei-prog-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
 
 .ei-prog-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.625rem;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
   border-radius: var(--ds-radius-full);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
-.ei-prog-tag--mark { background: var(--ds-warning-soft); color: var(--ds-warning); border: 1px solid rgba(245,158,11,0.2); }
-.ei-prog-tag--skip { background: var(--ds-gray-100); color: var(--ds-text-muted); border: 1px solid var(--ds-border); }
+.ei-prog-tag--mark { background: var(--ds-warning-soft); color: var(--ds-warning); }
 
-/* Question Navigator Card */
+/* Question Navigator */
 .ei-nav-card {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 0.875rem;
   box-shadow: var(--ds-shadow-sm);
 }
 
 .ei-nav-card__header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
+  gap: 0.375rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--ds-text-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.625rem;
 }
 
 .ei-nav-card__count {
   margin-left: auto;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem 0.4rem;
   background: var(--ds-primary-soft);
   color: var(--ds-primary);
   border-radius: var(--ds-radius-full);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
 }
 
 .ei-q-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 0.375rem;
-  margin-bottom: 0.625rem;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
 }
 
 .ei-q-grid-btn {
   aspect-ratio: 1;
   border-radius: var(--ds-radius-lg);
   border: 1.5px solid transparent;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .ei-q-grid-btn--default { background: var(--ds-gray-100); color: var(--ds-text-muted); border-color: var(--ds-border); }
-.ei-q-grid-btn--active {
-  background: var(--ds-primary);
-  color: white;
-  border-color: var(--ds-primary);
-  box-shadow: 0 0 0 2px rgba(79,70,229,0.3), 0 4px 12px rgba(79,70,229,0.3);
-  transform: scale(1.05);
-}
+.ei-q-grid-btn--active { background: var(--ds-primary); color: white; border-color: var(--ds-primary); transform: scale(1.08); box-shadow: 0 0 0 2px rgba(79,70,229,0.3); }
 .ei-q-grid-btn--done { background: var(--ds-primary); color: white; border-color: var(--ds-primary); }
 .ei-q-grid-btn--mark { background: var(--ds-warning-soft); color: var(--ds-warning); border-color: rgba(245,158,11,0.4); }
 .ei-q-grid-btn--mark-done { background: var(--ds-warning); color: white; border-color: var(--ds-warning); }
 .ei-q-grid-btn--skip { background: var(--ds-gray-200); color: var(--ds-text-secondary); border-color: var(--ds-gray-300); }
-.ei-q-grid-btn:hover:not(:disabled) { transform: scale(1.08); }
-.ei-q-grid-btn--active:hover { transform: scale(1.1); }
+.ei-q-grid-btn:hover:not(:disabled) { transform: scale(1.1); }
 
 .ei-q-legend {
   display: flex;
-  gap: 0.625rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .ei-legend-item {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.62rem;
+  gap: 0.25rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: var(--ds-text-muted);
 }
 
-.ei-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
+.ei-legend-dot { width: 7px; height: 7px; border-radius: 50%; }
 .ei-legend-dot--done { background: var(--ds-primary); }
 .ei-legend-dot--mark { background: var(--ds-warning); }
-.ei-legend-dot--skip { background: var(--ds-gray-300); }
 
-/* ── Submit Modal Content ─────────────────────────────── */
+/* ── Submit Modal Content ──── */
 .ei-submit-info { padding: 0.25rem 0; }
 
 .ei-submit-count {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--ds-text);
   line-height: 1.5;
-  margin: 0 0 1rem;
+  margin: 0 0 0.875rem;
 }
 .ei-submit-warn { color: var(--ds-warning); font-weight: 700; }
 
 .ei-submit-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.625rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.875rem;
 }
 
 .ei-submit-stat {
-  padding: 0.75rem;
+  padding: 0.625rem;
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   text-align: center;
 }
-.ei-submit-stat__label { font-size: 0.65rem; font-weight: 600; color: var(--ds-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
-.ei-submit-stat__val { font-family: var(--ds-font-display); font-size: 1.25rem; font-weight: 900; color: var(--ds-text); }
+.ei-submit-stat__label { font-size: 0.62rem; font-weight: 600; color: var(--ds-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
+.ei-submit-stat__val { font-family: var(--ds-font-display); font-size: 1.15rem; font-weight: 900; color: var(--ds-text); }
 .ei-submit-stat__val--warn { color: var(--ds-warning); }
 
-.ei-submit-note { font-size: 0.8rem; color: var(--ds-text-muted); margin: 0 0 1rem; }
+.ei-submit-note { font-size: 0.775rem; color: var(--ds-text-muted); margin: 0 0 0.875rem; }
 
 .ei-submit-unanswered {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
-  padding: 0.875rem;
+  padding: 0.75rem;
   background: rgba(245,158,11,0.06);
   border: 1px solid rgba(245,158,11,0.2);
   border-radius: var(--ds-radius-xl);
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   color: var(--ds-warning);
-  line-height: 1.4;
 }
 
 .ei-modal-actions {
@@ -2209,32 +1907,19 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* ── Transitions ────────────────────────────────────── */
+/* ── Transitions ──── */
 .ei-fade-enter-active, .ei-fade-leave-active { transition: opacity 0.2s ease; }
 .ei-fade-enter-from, .ei-fade-leave-to { opacity: 0; }
 
-.ei-slide-down-enter-active, .ei-slide-down-leave-active { transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease; }
+.ei-slide-down-enter-active, .ei-slide-down-leave-active { transition: transform 0.25s ease, opacity 0.25s ease; }
 .ei-slide-down-enter-from, .ei-slide-down-leave-to { transform: translateY(-100%); opacity: 0; }
 
-/* Question slide transition */
-.ei-q-slide-enter-active {
-  transition: color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.ei-q-slide-leave-active {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease-in;
-}
-.ei-q-slide-enter-from {
-  opacity: 0;
-  transform: translateX(24px);
-}
-.ei-q-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-24px);
+.ei-q-slide-enter-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+.ei-q-slide-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.ei-q-slide-enter-from { opacity: 0; transform: translateX(20px); }
+.ei-q-slide-leave-to { opacity: 0; transform: translateX(-20px); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

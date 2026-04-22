@@ -60,7 +60,7 @@
 
       <template v-if="activeTab !== 'upcoming'">
         <!-- Summary + Trend row -->
-        <div class="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start min-w-0 isolate ds-animate-fade-up" style="animation-delay: 0.06s">
+        <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-start min-w-0 isolate ds-animate-fade-up" style="animation-delay: 0.06s">
           <ResultSummaryCard :attempts="filteredAttempts" />
           <ScoreTrendCard :attempts="filteredAttempts" />
         </div>

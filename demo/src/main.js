@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { pinia } from './stores'
-import { toastService } from './services/toastService'
+import { useToastStore } from './stores/toastStore'
 import LucideIcon from './components/common/LucideIcon.vue'
 import './styles/tailwind.css'
 import './fonts.css'
@@ -17,4 +17,18 @@ import './styles/teacher-ui-refresh.css'
 import './styles/portal-ui.css'
 import './styles/anti-blur-overrides.css'
 
-createApp(App).use(pinia).provide('toast', toastService).use(router).component('LucideIcon', LucideIcon).mount('#app')
+let _toast = null
+const toastServiceProxy = () => {
+  if (!_toast) _toast = useToastStore()
+  return {
+    show: (...args) => _toast.show(...args),
+    success: (...args) => _toast.success(...args),
+    error: (...args) => _toast.error(...args),
+    info: (...args) => _toast.info(...args),
+    warning: (...args) => _toast.warning(...args),
+    dismiss: (...args) => _toast.dismiss(...args),
+    clearAll: () => _toast.clearAll()
+  }
+}
+
+createApp(App).use(pinia).provide('toast', toastServiceProxy()).use(router).component('LucideIcon', LucideIcon).mount('#app')

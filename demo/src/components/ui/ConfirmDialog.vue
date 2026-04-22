@@ -19,6 +19,17 @@
       </div>
     </div>
 
+    <!-- Reason input (replaces ActionConfirmModal) -->
+    <div v-if="showReason" class="mb-1">
+      <label class="block text-xs font-bold text-[var(--ds-text-secondary)] mb-1.5">{{ reasonLabel }}</label>
+      <textarea
+        v-model="localReason"
+        rows="3"
+        class="confirm-dialog-reason-input"
+        :placeholder="reasonPlaceholder"
+      />
+    </div>
+
     <slot />
 
     <template #footer>
@@ -59,14 +70,25 @@ const props = defineProps({
   variant: { type: String, default: 'primary', validator: (v) => ['primary', 'danger', 'warning'].includes(v) },
   icon: { type: String, default: 'help' },
   persistent: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  showReason: { type: Boolean, default: false },
+  reasonLabel: { type: String, default: 'Lý do (tùy chọn)' },
+  reasonPlaceholder: { type: String, default: 'Nhập lý do...' },
+  reason: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
+const emit = defineEmits(['update:modelValue', 'confirm', 'cancel', 'update:reason'])
 
 const open = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
+})
+
+const localReason = ref(props.reason)
+
+watch(() => props.reason, (val) => { localReason.value = val })
+watch(() => props.modelValue, (open) => {
+  if (open) localReason.value = props.reason
 })
 
 const confirmClass = computed(() => {
@@ -96,7 +118,47 @@ const iconColorClass = computed(() => {
   return map[props.variant] || map.primary
 })
 
-const confirm = () => emit('confirm')
+const confirm = () => {
+  emit('update:reason', localReason.value)
+  emit('confirm', localReason.value)
+}
 const cancel = () => emit('cancel')
 </script>
+
+<style scoped>
+.confirm-dialog-reason-input {
+  width: 100%;
+  padding: 0.6875rem 1rem;
+  background: var(--ds-surface);
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-xl);
+  font-size: 0.875rem;
+  color: var(--ds-text);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  line-height: 1.5;
+  min-height: 80px;
+}
+
+.dark .confirm-dialog-reason-input {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-text);
+}
+
+.confirm-dialog-reason-input::placeholder {
+  color: var(--ds-text-muted);
+}
+
+.dark .confirm-dialog-reason-input::placeholder {
+  color: var(--ds-gray-500);
+}
+
+.confirm-dialog-reason-input:focus {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px var(--ds-primary-ring);
+}
+</style>
 

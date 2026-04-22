@@ -54,27 +54,27 @@
       <!-- Tab: overview -->
       <div v-show="activeTab === 'overview'" class="td-tab-panel">
 
-        <div class="mb-5">
+        <div class="mb-6">
           <DashboardKpiGrid
             :stats="kpiStats"
             :alert-count="alertCount"
           />
         </div>
 
-        <div v-if="liveExam" class="mb-5">
+        <div v-if="liveExam" class="mb-6">
           <MonitoringCard
             :live-exam="liveExam"
             @go-monitoring="goToMonitoring"
           />
         </div>
 
-        <div class="mb-5">
+        <div class="mb-6">
           <div class="td-panel td-panel--1">
             <DashboardExamStatusBars :counts="statusCounts" />
           </div>
         </div>
 
-        <div v-if="!rawExams.length" class="mb-5">
+        <div v-if="!rawExams.length" class="mb-6">
           <EmptyState
             icon="assignment"
             title="Chưa có đề thi nào"
@@ -84,7 +84,7 @@
           />
         </div>
 
-        <div v-if="rawExams.length" class="mb-5">
+        <div v-if="rawExams.length" class="mb-6">
           <div class="td-panel td-panel--2">
             <SchedulePanel :schedule-series="scheduleSeries" />
           </div>

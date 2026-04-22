@@ -9,14 +9,11 @@
           :class-info="selectedExamMeta"
           :online-count="onlineCount"
           :alert-count="alertCount"
-          :issue-count="offlineCount"
           :total-count="store.cards.length"
           :is-connected="isSocketConnected"
-          :connection-mode="connectionMode"
           :loading="isSyncing"
           :all-panels-collapsed="allPanelsCollapsed"
           @back="handleBack"
-          @connection-mode="toggleConnectionMode"
           @refresh="handleRefresh"
           @toggle-alerts="allPanelsCollapsed = !allPanelsCollapsed"
           @toggle-all-panels="handleToggleAllPanels"
@@ -82,14 +79,16 @@
     </ControlCenterLayout>
 
     <!-- Action Confirm Modal (reused for warn/pause/invalidate) -->
-    <ActionConfirmModal
+    <ConfirmDialog
       v-model="showActionModal"
       :variant="actionModalConfig.variant"
       :title="actionModalConfig.title"
-      :action-label="actionModalConfig.actionLabel"
+      :message="actionModalConfig.title"
+      :confirm-label="actionModalConfig.actionLabel"
       :icon="actionModalConfig.icon"
-      :placeholder="actionModalConfig.placeholder"
-      :student-name="actionTarget?.userName || actionTarget?.name || '—'"
+      :show-reason="true"
+      :reason-label="'Lý do'"
+      :reason-placeholder="actionModalConfig.placeholder"
       :loading="actionLoading"
       @confirm="handleActionConfirm"
     />
@@ -114,7 +113,7 @@ import MonitoringHeader from './monitoring/MonitoringHeader.vue'
 import MonitoringFilters from './monitoring/MonitoringFilters.vue'
 import StudentMonitorTable from './monitoring/StudentMonitorTable.vue'
 import ActivityFeed from './monitoring/ActivityFeed.vue'
-import ActionConfirmModal from './monitoring/ActionConfirmModal.vue'
+import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,7 +143,10 @@ let refreshTimer = null
 let reconnectTimer = null
 
 // ── Realtime channel ───────────────────────────────────────────────────────────
-const { isConnected: isSocketConnected, lastError: wsError, connect, disconnect } = useRealtimeChannel()
+const rt = useRealtimeChannel()
+const isSocketConnected = rt.isConnected
+const wsError = rt.lastError
+const retryConnection = rt.retryConnection
 
 // ── Alerts & Events ────────────────────────────────────────────────────────────
 const liveAlerts = ref([])
@@ -363,7 +365,7 @@ const connectRealtime = async () => {
   if (!examId.value) return
   disconnectRealtime()
 
-  await connect({
+  await rt.connect({
     topics: [
       {
         destination: `/topic/exams/${examId.value}/alerts`,
@@ -398,7 +400,7 @@ const disconnectRealtime = () => {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
-  disconnect()
+  rt.disconnect()
 }
 
 const scheduleReconnect = () => {
@@ -409,11 +411,6 @@ const scheduleReconnect = () => {
       void connectRealtime()
     }
   }, 5000)
-}
-
-const retryConnection = () => {
-  wsError.value = ''
-  void connectRealtime()
 }
 
 const toggleConnectionMode = (mode) => {
