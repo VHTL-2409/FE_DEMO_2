@@ -8,7 +8,7 @@
           <RouterLink
             class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
             style="color: var(--ds-text-muted)"
-            to="/teacher/exams/list"
+            to="/teacher/exams"
           >
             <LucideIcon name="assignment" size="16" />
             Đề thi
@@ -31,7 +31,7 @@
         <PageHeader
           :eyebrow="'Báo cáo chi tiết'"
           :title="examTitle"
-          :subtitle="pageSubtitle"
+          :subtitle="'Xem chi tiết kết quả làm bài của học sinh'"
         >
           <template #actions>
             <button
@@ -45,17 +45,6 @@
             </button>
           </template>
         </PageHeader>
-      </div>
-
-      <div v-if="loadError" class="mb-6">
-        <EmptyState
-          icon="warning"
-          title="Không tải được báo cáo học sinh"
-          :description="loadError"
-          action-label="Quay lại tổng quan kết quả"
-          fill
-          @action="goBack"
-        />
       </div>
 
       <!-- Student Info Header -->
@@ -210,20 +199,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
-import { getAttemptDetail, getAttemptReport, listExamAttempts } from '../../services/attemptService'
-import { ApiError } from '../../services/apiClient'
-import {
-  formatAttemptAnswer,
-  formatScoreTen,
-  getAttemptStatusMeta,
-  parseResultOptions,
-  scorePercentValue
-} from '../../utils/attemptResult'
 import PageHeader from '../ui/PageHeader.vue'
 import DsCard from '../ui/DsCard.vue'
-import EmptyState from '../ui/EmptyState.vue'
 import DsStatCard from '../ui/DsStatCard.vue'
 import DataTable from '../ui/DataTable.vue'
 import StatusChip from '../ui/StatusChip.vue'
@@ -231,97 +210,44 @@ import StatusChip from '../ui/StatusChip.vue'
 const router = useRouter()
 const route = useRoute()
 
-const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
-const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
+const examId = computed(() => route.query.examId || '')
 const examTitle = computed(() => route.query.title || 'Đề thi')
-const attemptDetail = ref(null)
-const attemptReport = ref(null)
-const examAttempts = ref([])
-const isLoading = ref(false)
-const loadError = ref('')
-let latestRequestId = 0
 
-const selectedAttempt = computed(() =>
-  examAttempts.value.find((attempt) => Number(attempt.id) === attemptId.value) || null
-)
-
-const studentInfo = computed(() => {
-  const statusMeta = getAttemptStatusMeta(attemptDetail.value?.status || selectedAttempt.value?.status)
-  return {
-    name:
-      selectedAttempt.value?.student ||
-      attemptDetail.value?.student ||
-      String(route.query.student || 'Học sinh không rõ'),
-    studentId:
-      selectedAttempt.value?.studentCode ||
-      String(route.query.studentCode || `AT-${attemptId.value || 'N/A'}`),
-    email:
-      selectedAttempt.value?.email ||
-      String(route.query.email || 'Chưa có email'),
-    status: statusMeta.label,
-    statusKey: statusMeta.key
-  }
-})
+// Mock student data
+const studentInfo = computed(() => ({
+  name: 'Trần Minh Đức',
+  studentId: 'SV2024001',
+  email: 'tranminhduc@student.edu.vn',
+  status: 'Hoàn thành',
+  statusKey: 'active'
+}))
 
 const studentInitials = computed(() => {
-  const parts = String(studentInfo.value.name || '').trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return 'HS'
-  const first = parts[0]?.charAt(0) || 'H'
-  const last = parts[parts.length - 1]?.charAt(0) || 'S'
-  return `${last}${first}`.toUpperCase()
+  const parts = studentInfo.value.name.split(' ')
+  return parts[parts.length - 1].charAt(0) + parts[0].charAt(0)
 })
 
 const scoreSummary = computed(() => {
-  const scoreRaw = scorePercentValue(attemptReport.value?.score ?? attemptDetail.value?.score ?? 0)
-  const totalScore = Number(formatScoreTen(scoreRaw))
-  const submittedAttempts = examAttempts.value
-    .filter((attempt) => ['SUBMITTED', 'AUTO_SUBMITTED'].includes(String(attempt.status || '').toUpperCase()))
-    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
-  const rankIndex = submittedAttempts.findIndex((attempt) => Number(attempt.id) === attemptId.value)
-  const timeSpentMinutes = (() => {
-    const startedAt = attemptDetail.value?.startedAt
-    const submittedAt = attemptDetail.value?.submittedAt
-    if (!startedAt || !submittedAt) return '-'
-    const elapsedMs = new Date(submittedAt).getTime() - new Date(startedAt).getTime()
-    if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return '-'
-    return `${Math.max(1, Math.round(elapsedMs / 60000))} phút`
-  })()
-  const maxTimeMinutes = (() => {
-    const startedAt = attemptDetail.value?.startedAt
-    const deadlineAt = attemptDetail.value?.deadlineAt
-    if (!startedAt || !deadlineAt) return '-'
-    const elapsedMs = new Date(deadlineAt).getTime() - new Date(startedAt).getTime()
-    if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return '-'
-    return `${Math.max(1, Math.round(elapsedMs / 60000))} phút`
-  })()
-  const totalStudents = submittedAttempts.length || examAttempts.value.length || 0
-  const correctCount = Number(attemptReport.value?.correctCount || 0)
-  const totalQuestions = Number(attemptDetail.value?.totalQuestions || attemptReport.value?.answers?.length || 0)
-  const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
+  const totalScore = 8.5
   const badgeVariant = totalScore >= 8 ? 'success' : totalScore >= 5 ? 'warning' : 'danger'
   return {
     totalScore: totalScore.toFixed(1),
     badgeVariant,
-    accuracy: String(accuracy),
-    accuracyNote: `${correctCount}/${totalQuestions} câu`,
-    timeSpent: timeSpentMinutes,
-    maxTime: maxTimeMinutes,
-    rank: rankIndex >= 0 ? String(rankIndex + 1) : '-',
-    totalStudents: String(totalStudents || '-'),
-    className: selectedAttempt.value?.className || examTitle.value
+    accuracy: '85',
+    accuracyNote: '17/20 câu',
+    timeSpent: '15 phút',
+    maxTime: '30 phút',
+    rank: '3',
+    totalStudents: '45',
+    className: '22IT1'
   }
 })
 
-const answerStats = computed(() => {
-  const totalQuestions = Number(attemptDetail.value?.totalQuestions || attemptReport.value?.answers?.length || 0)
-  const answeredCount = Number(attemptReport.value?.answeredCount || 0)
-  const correct = Number(attemptReport.value?.correctCount || 0)
-  return {
-    correct,
-    wrong: Math.max(answeredCount - correct, 0),
-    skipped: Math.max(totalQuestions - answeredCount, 0)
-  }
-})
+const answerStats = computed(() => ({
+  correct: 17,
+  wrong: 2,
+  skipped: 1
+}))
 
 const questionColumns = [
   { key: 'number', label: '#', width: '60px', align: 'center' },
@@ -331,32 +257,88 @@ const questionColumns = [
   { key: 'status', label: 'Kết quả', width: '80px', align: 'center' }
 ]
 
-const questionsData = computed(() => (attemptReport.value?.answers || []).map((answer, index) => {
-  const questionContent = typeof answer.question === 'string'
-    ? answer.question
-    : (answer.question?.content || answer.question?.text || 'Câu hỏi không có nội dung')
-  const questionOptions = answer.options || answer.questionOptions || answer.question?.options || []
-  const normalizedOptions = parseResultOptions(questionOptions)
-  const hasSelected = String(answer.selectedAnswer || '').trim() !== ''
-  const status = !hasSelected
-    ? 'skipped'
-    : (answer.correct === true ? 'correct' : 'wrong')
-  return {
-    id: answer.questionId || index,
-    number: index + 1,
-    content: questionContent,
-    selectedAnswer: hasSelected ? formatAttemptAnswer(answer.selectedAnswer, normalizedOptions) : '',
-    correctAnswer: formatAttemptAnswer(answer.correctAnswer, normalizedOptions),
-    status
+const questionsData = computed(() => [
+  {
+    id: 1,
+    number: 1,
+    content: 'Giải phương trình: x² - 5x + 6 = 0',
+    selectedAnswer: 'A. x = 2 hoặc x = 3',
+    correctAnswer: 'A. x = 2 hoặc x = 3',
+    status: 'correct'
+  },
+  {
+    id: 2,
+    number: 2,
+    content: 'Đạo hàm của f(x) = x³ + 2x là?',
+    selectedAnswer: 'B. 3x² + 2',
+    correctAnswer: 'B. 3x² + 2',
+    status: 'correct'
+  },
+  {
+    id: 3,
+    number: 3,
+    content: 'Tích phân ∫x dx = ?',
+    selectedAnswer: 'D. x²/2 + C',
+    correctAnswer: 'C. x²/2',
+    status: 'wrong'
+  },
+  {
+    id: 4,
+    number: 4,
+    content: 'Giới hạn lim(x→0) sin(x)/x = ?',
+    selectedAnswer: 'A. 1',
+    correctAnswer: 'A. 1',
+    status: 'correct'
+  },
+  {
+    id: 5,
+    number: 5,
+    content: 'Ma trận đơn vị cấp 3 có dạng?',
+    selectedAnswer: 'B. Ma trận có đường chéo chính bằng 1',
+    correctAnswer: 'B. Ma trận có đường chéo chính bằng 1',
+    status: 'correct'
+  },
+  {
+    id: 6,
+    number: 6,
+    content: 'Số phức liên hợp của z = 3 + 4i là?',
+    selectedAnswer: 'Không chọn',
+    correctAnswer: 'C. 3 - 4i',
+    status: 'skipped'
+  },
+  {
+    id: 7,
+    number: 7,
+    content: 'Diện tích hình tròn bán kính r là?',
+    selectedAnswer: 'B. πr²',
+    correctAnswer: 'B. πr²',
+    status: 'correct'
+  },
+  {
+    id: 8,
+    number: 8,
+    content: 'Nghiệm của phương trình 2ˣ = 8 là?',
+    selectedAnswer: 'C. x = 3',
+    correctAnswer: 'C. x = 3',
+    status: 'correct'
+  },
+  {
+    id: 9,
+    number: 9,
+    content: 'Vector (1, 2, 3) có độ dài là?',
+    selectedAnswer: 'A. √14',
+    correctAnswer: 'B. √12',
+    status: 'wrong'
+  },
+  {
+    id: 10,
+    number: 10,
+    content: 'Hàm số f(x) = eˣ có đạo hàm là?',
+    selectedAnswer: 'C. eˣ',
+    correctAnswer: 'C. eˣ',
+    status: 'correct'
   }
-}))
-
-const pageSubtitle = computed(() => {
-  if (attemptDetail.value?.submittedAt) {
-    return `Nộp bài lúc ${new Date(attemptDetail.value.submittedAt).toLocaleString('vi-VN')}`
-  }
-  return 'Xem chi tiết kết quả làm bài của học sinh'
-})
+])
 
 const getStatusBg = (status) => {
   const bgs = {
@@ -386,53 +368,8 @@ const getStatusIcon = (status) => {
 }
 
 const goBack = () => {
-  router.push({
-    path: '/teacher/exams/review/summary',
-    query: {
-      examId: examId.value,
-      title: examTitle.value
-    }
-  })
+  router.back()
 }
-
-const loadReport = async () => {
-  const requestId = ++latestRequestId
-  attemptDetail.value = null
-  attemptReport.value = null
-  examAttempts.value = []
-  if (!attemptId.value) {
-    loadError.value = 'Thiếu mã lượt làm. Vui lòng mở lại từ trang tổng quan kết quả.'
-    return
-  }
-
-  isLoading.value = true
-  loadError.value = ''
-  try {
-    const [detailPayload, reportPayload, attemptsPayload] = await Promise.all([
-      getAttemptDetail(attemptId.value),
-      getAttemptReport(attemptId.value),
-      examId.value ? listExamAttempts(examId.value) : Promise.resolve([])
-    ])
-    if (requestId !== latestRequestId) {
-      return
-    }
-    attemptDetail.value = detailPayload
-    attemptReport.value = reportPayload
-    examAttempts.value = Array.isArray(attemptsPayload) ? attemptsPayload : []
-  } catch (error) {
-    if (requestId !== latestRequestId) {
-      return
-    }
-    loadError.value = error instanceof ApiError ? error.message : 'Không thể tải báo cáo học sinh.'
-  } finally {
-    if (requestId === latestRequestId) {
-      isLoading.value = false
-    }
-  }
-}
-
-onMounted(loadReport)
-watch(() => [route.query.examId, route.query.attemptId], loadReport)
 </script>
 
 <style scoped>

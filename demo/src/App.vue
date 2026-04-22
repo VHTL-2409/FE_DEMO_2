@@ -1,7 +1,7 @@
 <template>
   <div class="app-route-host">
-    <!-- Teacher portal: dashboard, exams, classes, live monitoring — shared sidebar -->
-    <PortalLayout v-if="currentLayout === 'portal'">
+    <!-- Teacher portal routes -->
+    <PortalLayout v-if="isTeacherRoute">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -10,7 +10,7 @@
     </PortalLayout>
 
     <!-- Student portal routes -->
-    <StudentPortalLayout v-else-if="currentLayout === 'studentPortal'">
+    <StudentPortalLayout v-else-if="isStudentPortalRoute">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -19,7 +19,7 @@
     </StudentPortalLayout>
 
     <!-- Student exam layout -->
-    <StudentExamLayout v-else-if="currentLayout === 'exam'">
+    <StudentExamLayout v-else-if="isExamRoute">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -43,27 +43,43 @@ const StudentPortalLayout = defineAsyncComponent(() => import('./layouts/Student
 const StudentExamLayout = defineAsyncComponent(() => import('./layouts/StudentExamLayout.vue'))
 
 const route = useRoute()
-const currentLayout = computed(() => route.meta?.layout || 'default')
 
+const isTeacherRoute = computed(() => (route.path || '').startsWith('/teacher/'))
+const isStudentPortalRoute = computed(() =>
+  (route.path || '').startsWith('/student/') && route.path !== '/student/exam-interface'
+)
+const isExamRoute = computed(() => route.path === '/student/exam-interface')
 </script>
 
 <style>
-/* ── Page transition — opacity only to keep text crisp ── */
+/* ── Page transition — admin-style: blur + scale + slide ── */
 .page-enter-active {
-  transition: opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.28s ease;
 }
 .page-leave-active {
-  transition: opacity 0.14s cubic-bezier(0.4, 0, 1, 1);
+  transition:
+    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 1, 1),
+    filter 0.18s ease;
 }
 .page-enter-from {
   opacity: 0;
+  transform: translateX(22px) scale(0.985);
+  filter: blur(1px);
 }
 .page-leave-to {
   opacity: 0;
+  transform: translateX(-14px) scale(0.99);
+  filter: blur(0.5px);
 }
 .page-enter-to,
 .page-leave-from {
   opacity: 1;
+  transform: translateX(0) scale(1);
+  filter: blur(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -73,6 +89,7 @@ const currentLayout = computed(() => route.meta?.layout || 'default')
   }
   .page-enter-from,
   .page-leave-to {
+    transform: none !important;
     filter: none !important;
   }
 }

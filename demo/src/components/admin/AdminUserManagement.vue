@@ -318,17 +318,6 @@
       </div>
     </Teleport>
 
-    <ConfirmDialog
-      v-model="showDeleteConfirm"
-      :title="`Xóa tài khoản ${deleteVariantLabel}`"
-      :message="deleteTargetRow ? `Xóa tài khoản &quot;${deleteTargetRow.username}&quot;?` : ''"
-      description="Hành động không thể hoàn tác."
-      confirm-label="Xóa"
-      cancel-label="Hủy"
-      variant="danger"
-      icon="trash-2"
-      @confirm="onConfirmDeleteRow"
-    />
   </div>
 </template>
 
@@ -347,18 +336,8 @@ import {
 } from '../../services/adminService'
 import { useToast } from '../../composables/useToast'
 import LucideIcon from '../common/LucideIcon.vue'
-import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const toast = useToast()
-
-const showDeleteConfirm = ref(false)
-const deleteTargetRow = ref(null)
-
-const deleteVariantLabel = computed(() => {
-  if (props.variant === 'students') return 'học sinh'
-  if (props.variant === 'teachers') return 'giáo viên'
-  return 'quản trị'
-})
 
 const props = defineProps({
   variant: {
@@ -556,14 +535,10 @@ const openDetail = async (row) => {
 const closeDetail = () => { detailOpen.value = false; detail.value = null }
 
 const confirmDelete = (row) => {
-  deleteTargetRow.value = row
-  showDeleteConfirm.value = true
-}
-
-const onConfirmDeleteRow = () => {
-  if (deleteTargetRow.value) doDelete(deleteTargetRow.value.userId)
-  showDeleteConfirm.value = false
-  deleteTargetRow.value = null
+  const label = props.variant === 'students' ? 'học sinh' : props.variant === 'teachers' ? 'giáo viên' : 'quản trị'
+  const msg = `Xóa tài khoản ${label} "${row.username}"? Thao tác không hoàn tác.`
+  if (!window.confirm(msg)) return
+  doDelete(row.userId)
 }
 
 const doDelete = async (userId) => {

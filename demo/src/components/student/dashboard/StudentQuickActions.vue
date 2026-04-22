@@ -24,7 +24,7 @@
           <LucideIcon :name="action.icon" />
         </div>
         <span class="sq__action-label">{{ action.label }}</span>
-        <span v-if="action.description" class="sq__action-desc">{{ action.description }}</span>
+        <span class="sq__action-desc">{{ action.description }}</span>
       </button>
     </div>
   </div>
@@ -34,31 +34,22 @@
 defineEmits(['action'])
 
 const actions = [
-  { id: 'schedule', label: 'Lịch thi', description: '', icon: 'calendar_month', accent: 'primary' },
-  { id: 'join-exam', label: 'Vào thi', description: '', icon: 'login', accent: 'info' },
-  { id: 'practice', label: 'Luyện tập', description: '', icon: 'model_training', accent: 'warning' },
-  { id: 'history', label: 'Lịch sử', description: '', icon: 'history', accent: 'success' },
-  { id: 'classes', label: 'Lớp học', description: '', icon: 'school', accent: 'neutral' },
-  { id: 'profile', label: 'Hồ sơ', description: '', icon: 'person', accent: 'neutral' }
+  { id: 'join-exam', label: 'Vào thi', description: 'Nhập mã đề thi', icon: 'login', accent: 'primary' },
+  { id: 'practice', label: 'Luyện tập', description: 'Tạo bài luyện tự chọn', icon: 'model_training', accent: 'info' },
+  { id: 'results', label: 'Kết quả', description: 'Xem điểm thi gần đây', icon: 'grade', accent: 'success' },
+  { id: 'history', label: 'Lịch sử', description: 'Xem lại bài thi đã làm', icon: 'history', accent: 'neutral' },
+  { id: 'schedule', label: 'Lịch thi', description: 'Xem lịch thi sắp tới', icon: 'calendar_month', accent: 'warning' },
+  { id: 'profile', label: 'Hồ sơ', description: 'Cập nhật thông tin', icon: 'person', accent: 'neutral' }
 ]
 </script>
 
 
 <style scoped>
-/* Fade-only entrance keeps labels crisp */
-@keyframes fadeInUp {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 .sq {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  /* Optimize paint */
-  contain: layout style;
-  content-visibility: auto;
 }
 
 .dark .sq {
@@ -92,6 +83,7 @@ const actions = [
   flex-shrink: 0;
 }
 
+
 .sq__title {
   font-family: var(--ds-font-display);
   font-size: 0.875rem;
@@ -110,7 +102,7 @@ const actions = [
   padding: 1rem;
 }
 
-/* Action button */
+/* Action */
 .sq__action {
   display: flex;
   flex-direction: column;
@@ -128,24 +120,29 @@ const actions = [
     background 0.2s ease;
   text-align: center;
   font-family: inherit;
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: fadeInUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
 }
 
-.sq__grid .sq__action:nth-child(1) { animation-delay: 0.32s; }
-.sq__grid .sq__action:nth-child(2) { animation-delay: 0.35s; }
-.sq__grid .sq__action:nth-child(3) { animation-delay: 0.38s; }
-.sq__grid .sq__action:nth-child(4) { animation-delay: 0.41s; }
-.sq__grid .sq__action:nth-child(5) { animation-delay: 0.44s; }
-.sq__grid .sq__action:nth-child(6) { animation-delay: 0.47s; }
+.sq__grid .sq__action:nth-child(1) { animation-delay: 0.05s; }
+.sq__grid .sq__action:nth-child(2) { animation-delay: 0.1s; }
+.sq__grid .sq__action:nth-child(3) { animation-delay: 0.15s; }
+.sq__grid .sq__action:nth-child(4) { animation-delay: 0.2s; }
+.sq__grid .sq__action:nth-child(5) { animation-delay: 0.25s; }
+.sq__grid .sq__action:nth-child(6) { animation-delay: 0.3s; }
 
-.sq__action:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .dark .sq__action {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
+}
+
+.sq__action:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
 }
 
 .sq__action:active {
@@ -160,7 +157,6 @@ const actions = [
 
 .dark .sq__action--neutral:hover { background: var(--ds-gray-700); }
 
-/* Icon */
 .sq__action-icon {
   width: 48px;
   height: 48px;
@@ -169,20 +165,19 @@ const actions = [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  will-change: transform;
-  transform: translateZ(0);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, color 0.2s ease;
 }
 
-.sq__action:hover .sq__action-icon { transform: scale(1.15) rotate(-5deg) translateZ(0); }
-.sq__action:hover .sq__action-icon--primary { background: var(--ds-primary); color: white; transform: scale(1.15) rotate(-6deg) translateZ(0); }
-.sq__action:hover .sq__action-icon--info { background: var(--ds-info); color: white; transform: scale(1.15) rotate(-6deg) translateZ(0); }
-.sq__action:hover .sq__action-icon--success { background: var(--ds-success); color: white; transform: scale(1.15) rotate(-6deg) translateZ(0); }
-.sq__action:hover .sq__action-icon--warning { background: var(--ds-warning); color: white; transform: scale(1.15) rotate(-6deg) translateZ(0); }
-.sq__action:hover .sq__action-icon--neutral { background: var(--ds-gray-200); color: var(--ds-text); transform: scale(1.15) rotate(-6deg) translateZ(0); }
+.sq__action:hover .sq__action-icon { transform: scale(1.15) rotate(-5deg); }
+
+.sq__action:hover .sq__action-icon--primary { background: var(--ds-primary); color: white; transform: scale(1.15) rotate(-6deg); }
+.sq__action:hover .sq__action-icon--info { background: var(--ds-info); color: white; transform: scale(1.15) rotate(-6deg); }
+.sq__action:hover .sq__action-icon--success { background: var(--ds-success); color: white; transform: scale(1.15) rotate(-6deg); }
+.sq__action:hover .sq__action-icon--warning { background: var(--ds-warning); color: white; transform: scale(1.15) rotate(-6deg); }
+.sq__action:hover .sq__action-icon--neutral { background: var(--ds-gray-200); color: var(--ds-text); transform: scale(1.15) rotate(-6deg); }
 
 .dark .sq__action-icon--neutral { background: var(--ds-gray-700); color: var(--ds-text-muted); }
-.dark .sq__action:hover .sq__action-icon--neutral { background: var(--ds-gray-600); color: var(--ds-text); transform: scale(1.15) rotate(-6deg) translateZ(0); }
+.dark .sq__action:hover .sq__action-icon--neutral { background: var(--ds-gray-600); color: var(--ds-text); transform: scale(1.15) rotate(-6deg); }
 
 .sq__action-label {
   font-size: 0.8rem;
@@ -197,16 +192,6 @@ const actions = [
   color: var(--ds-text-muted);
   font-weight: 500;
   line-height: 1.3;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .sq__action,
-  .sq__action-icon,
-  .sh__wave-icon {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
 }
 
 /* Responsive */

@@ -42,6 +42,11 @@ defineEmits(['create-exam', 'open-monitoring'])
 
 
 <style scoped>
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .tdl-root {
   display: flex;
   flex-direction: column;
@@ -50,6 +55,7 @@ defineEmits(['create-exam', 'open-monitoring'])
 
 .tdl-topbar-overlay {
   padding: 1rem 0 0;
+  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.05s both;
 }
 
 .tdl-topbar-overlay__inner {
@@ -84,7 +90,7 @@ defineEmits(['create-exam', 'open-monitoring'])
   font-size: 0.75rem;
   color: var(--ds-text-muted);
   cursor: default;
-  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: all 0.18s ease;
 }
 
 .tdl-topbar-overlay__search-hint:hover {
@@ -110,7 +116,7 @@ defineEmits(['create-exam', 'open-monitoring'])
   font-size: 0.65rem;
   font-family: monospace;
   color: var(--ds-text-secondary);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .tdl-topbar-overlay__search-hint:hover .tdl-topbar-overlay__kbd {
@@ -140,6 +146,7 @@ defineEmits(['create-exam', 'open-monitoring'])
 .tdl-content {
   flex: 1;
   min-width: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.15s both;
 }
 
 /* Dark mode */

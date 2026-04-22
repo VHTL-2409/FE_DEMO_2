@@ -6,22 +6,22 @@
  * Supports .dark class.
  */
 
-/* ─── Keyframes — GPU optimized ────────────────────────────── */
+/* ─── Keyframes ─────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 @keyframes fadeInUp {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeInRight {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+  100% { background-position: 200% 0; }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -35,18 +35,16 @@
   100% { transform: scale(2.2); opacity: 0; }
 }
 @keyframes slideInPanel {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ─── Reduced motion (admin-only scope — does NOT reset global *) ── */
+/* ─── Reduced motion ───────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .tui-skeleton,
-  .tui-skeleton-row,
-  .tui-dot--running,
-  .tui-dot--deploying,
-  .tui-pulse-dot::after {
-    animation: none;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -237,7 +235,7 @@
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1.5px solid transparent;
   font-family: var(--ds-font, 'Be Vietnam Pro', sans-serif);
   text-decoration: none;
@@ -715,7 +713,7 @@
   border: 1.5px solid var(--ds-gray-200);
   border-radius: var(--ds-radius-lg, 12px);
   padding: 0 0.75rem;
-  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: all 0.18s ease;
 }
 
 .tui-search-wrap:focus-within {
@@ -749,7 +747,7 @@
   border: 1.5px solid var(--ds-gray-200);
   background: var(--ds-surface);
   color: var(--ds-text-secondary);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
   font-family: inherit;
 }
 .tui-filter-pill:hover {
@@ -853,7 +851,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: all 0.18s ease;
   border: 1.5px solid transparent;
   font-family: inherit;
 }
@@ -918,7 +916,6 @@
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
   border-radius: var(--ds-radius-md, 10px);
-  will-change: opacity;
 }
 
 .tui-skeleton-row {
@@ -926,9 +923,8 @@
   margin: 0.25rem 1.25rem;
   background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-50) 50%, var(--ds-gray-100) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite, fadeInUp 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+  animation: shimmer 1.2s infinite, fadeInUp 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
   border-radius: var(--ds-radius-md, 10px);
-  will-change: opacity;
 }
 
 /* ─── Alert ─────────────────────────────────────────────────────── */
@@ -966,6 +962,8 @@
   inset: 0;
   z-index: 100;
   background: rgba(15,23,42,0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1015,7 +1013,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.15s ease;
 }
 .tui-modal-close:hover {
   background: var(--ds-gray-100);
@@ -1213,7 +1211,7 @@
   border-radius: var(--ds-radius-md, 10px);
   background: var(--ds-surface);
   cursor: pointer;
-  transition: color 0.18s cubic-bezier(0.34, 1.2, 0.64, 1), background-color 0.18s cubic-bezier(0.34, 1.2, 0.64, 1), border-color 0.18s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.18s cubic-bezier(0.34, 1.2, 0.64, 1), transform 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
+  transition: all 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
   user-select: none;
 }
 .tui-perm-card:hover {

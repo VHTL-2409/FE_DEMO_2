@@ -33,16 +33,13 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="db-sidebar__nav" :aria-label="navAriaLabel">
+    <nav class="db-sidebar__nav" aria-label="Admin navigation">
       <RouterLink
         v-for="(item, idx) in items"
         :key="item.section"
         :to="item.to"
-        active-class=""
-        exact-active-class=""
         :class="navItemClass(item.section)"
         class="db-sidebar-nav-item"
-        :aria-current="activeSection === item.section ? 'page' : undefined"
         :style="{ animationDelay: `${0.05 + idx * 0.05}s` }"
         @click="$emit('close-mobile')"
       >
@@ -125,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { clearAuthSession } from '../../services/authService'
 import AppLogo from '../common/AppLogo.vue'
@@ -147,8 +144,6 @@ const roleLabel = computed(() => {
   const labels = { teacher: 'Giao vien', student: 'Hoc sinh', admin: 'Quan tri' }
   return labels[props.role] || props.role
 })
-
-const navAriaLabel = computed(() => `${roleLabel.value} navigation`)
 
 const userInitial = computed(() => {
   if (!props.user?.username) return '?'
@@ -192,8 +187,8 @@ const handleLogout = () => {
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Light mode */
-  background: var(--portal-shell-surface);
-  border-right: 1px solid var(--portal-shell-border);
+  background: var(--db-surface);
+  border-right: 1px solid var(--db-border);
   box-shadow: 2px 0 12px rgba(15, 23, 42, 0.06);
 
   /* Entrance animation */
@@ -201,17 +196,17 @@ const handleLogout = () => {
 }
 
 .db-sidebar--expanded {
-  width: var(--portal-sidebar-width);
+  width: var(--db-sidebar-w);
 }
 
 .db-sidebar--collapsed {
-  width: var(--portal-sidebar-collapsed);
+  width: var(--db-sidebar-collapsed);
 }
 
 /* ─── Header ────────────────────────────────────────────────────── */
 .db-sidebar__header {
   padding: 1.25rem 1rem;
-  border-bottom: 1px solid var(--portal-shell-border);
+  border-bottom: 1px solid var(--db-border);
   flex-shrink: 0;
 }
 
@@ -241,7 +236,7 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform var(--duration-normal) var(--easing-default);
+  transition: transform var(--db-transition-spring);
 }
 
 .db-sidebar__brand:hover .db-sidebar__logo {
@@ -260,10 +255,10 @@ const handleLogout = () => {
 }
 
 .db-sidebar__brand-name {
-  font-family: var(--portal-shell-font);
+  font-family: var(--db-font);
   font-size: 1rem;
   font-weight: 900;
-  color: var(--portal-shell-text);
+  color: var(--db-text);
   margin: 0;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -275,7 +270,7 @@ const handleLogout = () => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--portal-shell-text-muted);
+  color: var(--db-text-muted);
   margin: 0.125rem 0 0;
   white-space: nowrap;
 }
@@ -307,12 +302,12 @@ const handleLogout = () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 0.875rem;
-  border-radius: var(--ds-radius-xl);
+  border-radius: var(--db-radius);
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--portal-shell-text-muted);
+  color: var(--db-text-muted);
   text-decoration: none;
-  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all var(--db-transition);
   overflow: hidden;
   white-space: nowrap;
 
@@ -321,8 +316,8 @@ const handleLogout = () => {
 }
 
 .db-sidebar-nav-item:hover {
-  color: var(--portal-shell-text);
-  background: var(--portal-shell-muted);
+  color: var(--db-text);
+  background: var(--db-surface-3);
   transform: translateX(3px);
 }
 
@@ -341,14 +336,14 @@ const handleLogout = () => {
 
 /* Active state */
 .db-sidebar-nav-item--active {
-  color: var(--portal-shell-primary);
-  background: var(--portal-shell-primary-soft);
+  color: var(--db-primary);
+  background: var(--db-primary-soft);
   font-weight: 700;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--portal-shell-primary) 16%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.15);
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item--active {
-  background: var(--portal-shell-primary);
+  background: var(--db-primary);
   color: white;
   box-shadow:
     0 0 0 2px rgba(79, 70, 229, 0.3),
@@ -370,7 +365,7 @@ const handleLogout = () => {
   width: 3px;
   height: 60%;
   border-radius: 0 3px 3px 0;
-  background: var(--portal-shell-primary);
+  background: var(--db-primary);
   animation: slideInLeft 0.2s ease;
 }
 
@@ -390,7 +385,7 @@ const handleLogout = () => {
 
 .db-sidebar-nav-item:hover .db-sidebar-nav-item__icon {
   transform: scale(1.15) rotate(-5deg);
-  color: var(--portal-shell-primary);
+  color: var(--db-primary);
 }
 
 .db-sidebar--collapsed .db-sidebar-nav-item__icon {
@@ -418,11 +413,11 @@ const handleLogout = () => {
   border-radius: 9999px;
   font-size: 0.6rem;
   font-weight: 800;
-  background: var(--portal-shell-danger);
+  background: var(--db-danger);
   color: white;
   white-space: nowrap;
   opacity: 1;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
+  transition: all 0.2s ease;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
   animation: badge-shake 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -443,13 +438,13 @@ const handleLogout = () => {
   top: 50%;
   transform: translateY(-50%) translateX(-4px);
   padding: 0.375rem 0.75rem;
-  background: var(--portal-shell-surface);
-  border: 1px solid var(--portal-shell-border);
-  border-radius: var(--ds-radius-xl);
+  background: var(--db-surface);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--portal-shell-text);
+  color: var(--db-text);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
@@ -466,7 +461,7 @@ const handleLogout = () => {
 /* ─── Bottom ────────────────────────────────────────────────────── */
 .db-sidebar__bottom {
   padding: 0.625rem;
-  border-top: 1px solid var(--portal-shell-border);
+  border-top: 1px solid var(--db-border);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -479,23 +474,23 @@ const handleLogout = () => {
   align-items: center;
   gap: 0.625rem;
   padding: 0.625rem 0.75rem;
-  border-radius: var(--ds-radius-xl);
-  background: color-mix(in srgb, var(--portal-shell-surface) 72%, var(--portal-shell-bg));
-  border: 1px solid var(--portal-shell-border);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  border-radius: var(--db-radius);
+  background: var(--db-surface-2);
+  border: 1px solid var(--db-border);
+  transition: all var(--db-transition);
   overflow: hidden;
 }
 
 .db-sidebar-user:hover {
-  border-color: var(--portal-shell-border-strong);
-  background: var(--portal-shell-muted);
+  border-color: var(--db-border-strong);
+  background: var(--db-surface-3);
 }
 
 .db-sidebar-user__avatar {
   width: 32px;
   height: 32px;
-  border-radius: var(--ds-radius-lg);
-  background: linear-gradient(135deg, var(--portal-shell-primary), color-mix(in srgb, var(--portal-shell-primary) 82%, #312e81));
+  border-radius: var(--db-radius-sm);
+  background: linear-gradient(135deg, var(--db-primary), #4338ca);
   color: white;
   display: flex;
   align-items: center;
@@ -522,7 +517,7 @@ const handleLogout = () => {
 .db-sidebar-user__name {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--portal-shell-text);
+  color: var(--db-text);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -532,7 +527,7 @@ const handleLogout = () => {
 .db-sidebar-user__role {
   font-size: 0.65rem;
   font-weight: 600;
-  color: var(--portal-shell-text-muted);
+  color: var(--db-text-muted);
   margin: 0.125rem 0 0;
   text-transform: capitalize;
   white-space: nowrap;
@@ -542,15 +537,15 @@ const handleLogout = () => {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
-  border-radius: var(--ds-radius-lg);
+  border-radius: var(--db-radius-sm);
   background: none;
   border: none;
-  color: var(--portal-shell-text-muted);
+  color: var(--db-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: all var(--db-transition);
   opacity: 0;
 }
 
@@ -559,8 +554,8 @@ const handleLogout = () => {
 }
 
 .db-sidebar-user__logout:hover {
-  background: var(--portal-shell-danger-soft);
-  color: var(--portal-shell-danger);
+  background: var(--db-danger-soft);
+  color: var(--db-danger);
 }
 
 /* Collapse button */
@@ -569,22 +564,22 @@ const handleLogout = () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.625rem 0.875rem;
-  border-radius: var(--ds-radius-xl);
+  border-radius: var(--db-radius);
   background: none;
   border: none;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--portal-shell-text-muted);
+  color: var(--db-text-muted);
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: all var(--db-transition);
   overflow: hidden;
   white-space: nowrap;
   width: 100%;
 }
 
 .db-sidebar-collapse-btn:hover {
-  color: var(--portal-shell-text);
-  background: var(--portal-shell-muted);
+  color: var(--db-text);
+  background: var(--db-surface-3);
 }
 
 .db-sidebar-collapse-btn .lucide {
@@ -625,49 +620,5 @@ const handleLogout = () => {
 
 .db-sidebar--collapsed .db-sidebar-user__logout {
   display: none;
-}
-
-/* ── prefers-reduced-motion ── */
-@media (prefers-reduced-motion: reduce) {
-  .db-sidebar-nav-item,
-  .db-sidebar-nav-item__icon,
-  .db-sidebar-nav-item__label,
-  .db-sidebar-user__info,
-  .db-sidebar-collapse-btn__label {
-    transition: none;
-    animation: none;
-  }
-
-  .db-sidebar-nav-item:hover {
-    transform: none;
-  }
-
-  .db-sidebar--collapsed .db-sidebar-nav-item:hover {
-    transform: none;
-  }
-
-  .db-sidebar-nav-item--active {
-    animation: none;
-  }
-
-  .db-sidebar-nav-item__badge {
-    animation: none;
-  }
-
-  .db-sidebar-nav-item__bar {
-    animation: none;
-  }
-
-  .db-sidebar__logo {
-    transition: none;
-  }
-
-  .db-sidebar__brand:hover .db-sidebar__logo {
-    transform: none;
-  }
-
-  .db-sidebar-backdrop {
-    animation: none;
-  }
 }
 </style>

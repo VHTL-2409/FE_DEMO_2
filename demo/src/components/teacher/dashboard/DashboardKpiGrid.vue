@@ -1,9 +1,9 @@
 <template>
-  <div class="td-kpi-grid">
+  <div class="td-kpi-grid ds-animate-fade-up" style="animation-delay: 0.05s">
     <!-- Card: Total -->
-    <div class="td-kpi-card td-kpi-card--primary td-kpi-card--1">
+    <div class="td-kpi-card td-kpi-card--default">
       <div class="td-kpi-card__header">
-        <div class="td-kpi-card__icon-wrap">
+        <div class="td-kpi-card__icon-wrap td-kpi-card__icon-wrap--primary">
           <LucideIcon name="inventory_2" />
         </div>
         <span class="td-kpi-card__badge td-kpi-card__badge--total">Tổng</span>
@@ -13,7 +13,7 @@
         <span class="td-kpi-card__sub">đề thi đã tạo</span>
       </div>
       <div class="td-kpi-card__footer">
-        <span class="td-kpi-card__trend">
+        <span class="td-kpi-card__trend td-kpi-card__trend--neutral">
           <LucideIcon name="bar_chart" />
           Tất cả các trạng thái
         </span>
@@ -21,10 +21,10 @@
     </div>
 
     <!-- Card: Ongoing (highlighted) -->
-    <div class="td-kpi-card td-kpi-card--success" :class="{ 'td-kpi-card--live': stats.active > 0 }">
+    <div class="td-kpi-card td-kpi-card--ongoing" :class="{ 'td-kpi-card--live': stats.active > 0 }">
       <div class="td-kpi-card__glow" v-if="stats.active > 0" />
       <div class="td-kpi-card__header">
-        <div class="td-kpi-card__icon-wrap">
+        <div class="td-kpi-card__icon-wrap td-kpi-card__icon-wrap--success">
           <LucideIcon name="timer" />
         </div>
         <span v-if="stats.active > 0" class="td-kpi-card__live-dot">
@@ -42,7 +42,7 @@
           <LucideIcon name="check_circle" />
           Có thể giám sát ngay
         </span>
-        <span v-else class="td-kpi-card__trend">
+        <span v-else class="td-kpi-card__trend td-kpi-card__trend--muted">
           <LucideIcon name="schedule" />
           Không có kỳ thi đang thi
         </span>
@@ -50,9 +50,9 @@
     </div>
 
     <!-- Card: Scheduled -->
-    <div class="td-kpi-card td-kpi-card--info td-kpi-card--3">
+    <div class="td-kpi-card td-kpi-card--scheduled">
       <div class="td-kpi-card__header">
-        <div class="td-kpi-card__icon-wrap">
+        <div class="td-kpi-card__icon-wrap td-kpi-card__icon-wrap--info">
           <LucideIcon name="schedule" />
         </div>
         <span class="td-kpi-card__badge td-kpi-card__badge--scheduled">Sắp tới</span>
@@ -62,7 +62,7 @@
         <span class="td-kpi-card__sub">kỳ thi sắp tới</span>
       </div>
       <div class="td-kpi-card__footer">
-        <span class="td-kpi-card__trend">
+        <span class="td-kpi-card__trend td-kpi-card__trend--info">
           <LucideIcon name="event" />
           {{ upcomingDaysLabel }}
         </span>
@@ -70,9 +70,9 @@
     </div>
 
     <!-- Card: Alerts (danger when > 0) -->
-    <div class="td-kpi-card td-kpi-card--4" :class="{ 'td-kpi-card--danger': alertCount > 0, 'td-kpi-card--safe': alertCount === 0 }">
+    <div class="td-kpi-card" :class="alertCardClass">
       <div class="td-kpi-card__header">
-        <div class="td-kpi-card__icon-wrap">
+        <div class="td-kpi-card__icon-wrap" :class="alertIconClass">
           <LucideIcon :name="alertIcon" />
         </div>
         <span v-if="alertCount > 0" class="td-kpi-card__badge td-kpi-card__badge--danger">
@@ -121,10 +121,22 @@ const upcomingDaysLabel = computed(() => {
   return `${u} kỳ thi sắp tới`
 })
 
+// Alert card logic
+const alertCardClass = computed(() => {
+  if (props.alertCount > 0) return 'td-kpi-card--alert'
+  return 'td-kpi-card--safe'
+})
+
+const alertIconClass = computed(() => {
+  if (props.alertCount > 0) return 'td-kpi-card__icon-wrap--danger'
+  return 'td-kpi-card__icon-wrap--success'
+})
+
 const alertIcon = computed(() => props.alertCount > 0 ? 'warning' : 'verified')
 
 const alertTrendClass = computed(() => {
-  return props.alertCount > 0 ? 'td-kpi-card__trend td-kpi-card__trend--danger' : 'td-kpi-card__trend td-kpi-card__trend--success'
+  if (props.alertCount > 0) return 'td-kpi-card__trend td-kpi-card__trend--danger'
+  return 'td-kpi-card__trend td-kpi-card__trend--success'
 })
 
 const alertTrendIcon = computed(() => props.alertCount > 0 ? 'flag' : 'check_circle')
@@ -137,15 +149,16 @@ const alertTrendLabel = computed(() => {
 
 
 <style scoped>
-/* Ultra Simplified - Performance First */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .td-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--ds-gray-200);
-  border-radius: var(--ds-radius-lg, 14px);
-  overflow: hidden;
-  background: var(--ds-surface);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.2s both;
 }
 
 .td-kpi-card {
@@ -153,87 +166,63 @@ const alertTrendLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  min-width: 0;
-  padding: 1.125rem 1.25rem;
+  padding: 1.375rem;
   background: var(--ds-surface);
-  border: none;
-  border-right: 1px solid var(--ds-gray-200);
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
+  box-shadow: var(--ds-shadow-xs);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+  overflow: hidden;
+  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
-.td-kpi-card--1 { animation-delay: 0s; }
-.td-kpi-card--2 { animation-delay: 0.06s; }
-.td-kpi-card--3 { animation-delay: 0.12s; }
-.td-kpi-card--4 { animation-delay: 0.18s; }
+.td-kpi-card:nth-child(1) { animation-delay: 0.25s; }
+.td-kpi-card:nth-child(2) { animation-delay: 0.3s; }
+.td-kpi-card:nth-child(3) { animation-delay: 0.35s; }
+.td-kpi-card:nth-child(4) { animation-delay: 0.4s; }
 
-.td-kpi-card:last-child { border-right: none; }
-.td-kpi-card:hover { background: var(--ds-gray-50); }
-
-.td-kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
+.td-kpi-card:hover {
+  box-shadow: var(--ds-shadow-md);
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(148, 163, 184, 0.3);
 }
 
-.td-kpi-card--primary::before  { background: var(--ds-primary); }
-.td-kpi-card--success::before { background: var(--ds-success); }
-.td-kpi-card--info::before    { background: var(--ds-info); }
-.td-kpi-card--danger::before  { background: var(--ds-danger); }
-.td-kpi-card--safe::before    { background: var(--ds-success); }
+.dark .td-kpi-card:hover { border-color: var(--ds-border-strong); }
 
-.td-kpi-card:hover::before { opacity: 1; }
-
-.td-kpi-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-width: 0;
+.td-kpi-card:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
-.td-kpi-card__icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--ds-radius-xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+@media (max-width: 1024px) {
+  .td-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.td-kpi-card:hover .td-kpi-card__icon-wrap {
-  transform: scale(1.08);
+@media (min-width: 1600px) {
+  .td-kpi-grid {
+    gap: 1.5rem;
+  }
+  .td-kpi-card__value {
+    font-size: 3rem;
+  }
+  .td-kpi-card {
+    padding: 1.5rem;
+  }
 }
 
-.td-kpi-card__icon-wrap { background: var(--ds-primary-soft); color: var(--ds-primary); }
-
-.td-kpi-card__live-dot {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  background: var(--ds-success);
-  border-radius: var(--ds-radius-full);
-  font-size: 0.6rem;
-  font-weight: 800;
-  color: white;
-  letter-spacing: 0.1em;
+@media (max-width: 480px) {
+  .td-kpi-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.td-kpi-card__live-ring {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: white;
-  animation: pulse 2s ease-in-out infinite;
-}
+/* ===== KPI Card Base ===== */
 
+/* Glow effect for live card */
 .td-kpi-card--live {
   border-color: rgba(22, 163, 74, 0.25);
   background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
@@ -254,6 +243,90 @@ const alertTrendLabel = computed(() => {
   pointer-events: none;
 }
 
+/* Header */
+.td-kpi-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.td-kpi-card__icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ds-radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.td-kpi-card__icon-wrap--primary {
+  background: var(--ds-primary-soft);
+}
+
+.td-kpi-card__icon-wrap--success {
+  background: var(--ds-success-soft);
+}
+
+.td-kpi-card__icon-wrap--info {
+  background: var(--ds-info-soft);
+}
+
+.td-kpi-card__icon-wrap--danger {
+  background: var(--ds-danger-soft);
+}
+
+.td-kpi-card__icon {
+  font-size: 1.375rem;
+  color: var(--ds-primary);
+}
+
+.td-kpi-card__icon-wrap--success .td-kpi-card__icon {
+  color: var(--ds-success);
+}
+
+.td-kpi-card__icon-wrap--info .td-kpi-card__icon {
+  color: var(--ds-info);
+}
+
+.td-kpi-card__icon-wrap--danger .td-kpi-card__icon {
+  color: var(--ds-danger);
+}
+
+.td-kpi-card__icon-wrap--safe {
+  background: var(--ds-success-soft);
+}
+
+/* Live dot */
+.td-kpi-card__live-dot {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--ds-success);
+  border-radius: var(--ds-radius-full);
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.1em;
+  position: relative;
+}
+
+.td-kpi-card__live-ring {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: white;
+  animation: td-live-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes td-live-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.6); opacity: 0.5; }
+}
+
+/* Badge */
 .td-kpi-card__badge {
   padding: 0.25rem 0.625rem;
   border-radius: var(--ds-radius-full);
@@ -263,12 +336,32 @@ const alertTrendLabel = computed(() => {
   letter-spacing: 0.08em;
 }
 
-.td-kpi-card__badge--total     { background: var(--ds-primary-soft); color: var(--ds-primary); }
-.td-kpi-card__badge--ongoing   { background: var(--ds-success-soft); color: var(--ds-success); }
-.td-kpi-card__badge--scheduled { background: var(--ds-info-soft); color: var(--ds-info); }
-.td-kpi-card__badge--danger     { background: var(--ds-danger-soft); color: var(--ds-danger); }
-.td-kpi-card__badge--safe       { background: var(--ds-success-soft); color: var(--ds-success); }
+.td-kpi-card__badge--total {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+}
 
+.td-kpi-card__badge--ongoing {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.td-kpi-card__badge--scheduled {
+  background: var(--ds-info-soft);
+  color: var(--ds-info);
+}
+
+.td-kpi-card__badge--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.td-kpi-card__badge--safe {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+/* Body */
 .td-kpi-card__body {
   display: flex;
   flex-direction: column;
@@ -277,7 +370,7 @@ const alertTrendLabel = computed(() => {
 
 .td-kpi-card__value {
   font-family: var(--ds-font-display);
-  font-size: clamp(1.65rem, 2.8vw + 0.9rem, 2.5rem);
+  font-size: 2.5rem;
   font-weight: 800;
   color: var(--ds-text);
   letter-spacing: -0.03em;
@@ -285,20 +378,26 @@ const alertTrendLabel = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.dark .td-kpi-card__value { color: #f1f5f9; }
-.td-kpi-card--live .td-kpi-card__value { color: var(--ds-success); }
-.td-kpi-card--danger .td-kpi-card__value { color: var(--ds-danger); }
+.dark .td-kpi-card__value {
+  color: #f1f5f9;
+}
+
+.td-kpi-card--live .td-kpi-card__value {
+  color: var(--ds-success);
+}
+
+.td-kpi-card--alert .td-kpi-card__value {
+  color: var(--ds-danger);
+}
 
 .td-kpi-card__sub {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--ds-text-muted);
   margin-top: 0.25rem;
-  line-height: 1.35;
-  overflow-wrap: break-word;
-  word-break: normal;
 }
 
+/* Footer trend */
 .td-kpi-card__footer {
   margin-top: auto;
   padding-top: 0.5rem;
@@ -311,33 +410,36 @@ const alertTrendLabel = computed(() => {
   gap: 0.375rem;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+
+.td-kpi-card__trend--neutral {
   color: var(--ds-text-muted);
 }
 
-.td-kpi-card__trend--success { color: var(--ds-success); }
-.td-kpi-card__trend--danger  { color: var(--ds-danger); }
-
-@media (max-width: 1280px) {
-  .td-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .td-kpi-card:nth-child(2) { border-right: none; }
-  .td-kpi-card:nth-child(3) { border-top: 1px solid var(--ds-gray-200); }
-  .td-kpi-card:nth-child(4) { border-top: 1px solid var(--ds-gray-200); border-right: none; }
+.td-kpi-card__trend--success {
+  color: var(--ds-success);
 }
 
-@media (max-width: 480px) {
-  .td-kpi-grid { grid-template-columns: 1fr; }
-  .td-kpi-card { border-right: none; border-bottom: 1px solid var(--ds-gray-200); }
-  .td-kpi-card:last-child { border-bottom: none; }
+.td-kpi-card__trend--info {
+  color: var(--ds-info);
 }
 
-@media (min-width: 1600px) {
-  .td-kpi-card__value { font-size: 3rem; }
-  .td-kpi-card { padding: 1.25rem; }
+.td-kpi-card__trend--danger {
+  color: var(--ds-danger);
+}
+
+.td-kpi-card__trend--muted {
+  color: var(--ds-text-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .td-kpi-card { animation: none; }
-  .td-kpi-card__live-ring { animation: none; }
-  .td-kpi-card:hover .td-kpi-card__icon-wrap { transform: none; }
+  .td-kpi-grid,
+  .td-kpi-card {
+    animation: none;
+  }
+  .td-kpi-card:hover {
+    transform: none;
+  }
 }
 </style>

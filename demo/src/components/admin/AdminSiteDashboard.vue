@@ -52,7 +52,7 @@
     </div>
 
     <!-- Main content: panels row -->
-    <div ref="contentScrollEl" style="flex: 1; display: flex; flex-direction: column; padding: 1rem 1.5rem 1.5rem; gap: 1rem; min-height: 0; overflow-y: auto">
+    <div style="flex: 1; display: flex; flex-direction: column; padding: 1rem 1.5rem 1.5rem; gap: 1rem; min-height: 0; overflow-y: auto">
 
       <!-- Row 1: So sanh KPI (bar ngang) + Radar tong quan -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem">
@@ -179,19 +179,12 @@ const barChartRef = ref(null)
 const pieChartRef = ref(null)
 const kpiHBarChartRef = ref(null)
 const radarChartRef = ref(null)
-const contentScrollEl = ref(null)
 let lineChart = null
 let barChart = null
 let pieChart = null
 let kpiHBarChart = null
 let radarChart = null
 let echartsLib = null
-const chartResizeObserver = ref(null)
-
-const getChartPixelRatio = () => {
-  if (typeof window === 'undefined') return 1
-  return Math.min(Math.max(window.devicePixelRatio || 1, 1), 2)
-}
 
 const formatNum = (n) => (n == null ? '0' : new Intl.NumberFormat('vi-VN').format(n))
 
@@ -238,19 +231,9 @@ const userDistLegend = computed(() => {
 
 const getEcharts = async () => {
   if (!echartsLib) {
-    echartsLib = (await import('../../utils/echartsCore.js')).default
+    echartsLib = await import('echarts')
   }
-  return echartsLib
-}
-
-const initChartInstance = (echarts, el, currentChart) => {
-  if (!el) return currentChart
-  if (currentChart) return currentChart
-
-  return echarts.init(el, null, {
-    renderer: 'canvas',
-    devicePixelRatio: getChartPixelRatio()
-  })
+  return echartsLib.default || echartsLib
 }
 
 const baseTooltip = () => ({
@@ -486,28 +469,6 @@ const disposeAll = () => {
   kpiHBarChart = null; radarChart = null
 }
 
-const observeChartContainers = () => {
-  chartResizeObserver.value?.disconnect()
-
-  if (typeof ResizeObserver === 'undefined') return
-
-  const elements = [
-    lineChartRef.value,
-    barChartRef.value,
-    pieChartRef.value,
-    kpiHBarChartRef.value,
-    radarChartRef.value
-  ].filter(Boolean)
-
-  if (!elements.length) return
-
-  chartResizeObserver.value = new ResizeObserver(() => {
-    onResize()
-  })
-
-  elements.forEach((el) => chartResizeObserver.value.observe(el))
-}
-
 const renderCharts = async () => {
   await nextTick()
   if (!stats.value) return
@@ -516,29 +477,24 @@ const renderCharts = async () => {
   const s = stats.value
 
   if (lineChartRef.value) {
-    lineChart = initChartInstance(echarts, lineChartRef.value, lineChart)
-    lineChart.setOption(buildLineOption(echarts, series), true)
-    lineChart.resize()
+    if (!lineChart) lineChart = echarts.init(lineChartRef.value)
+    lineChart.setOption(buildLineOption(echarts, series))
   }
   if (barChartRef.value) {
-    barChart = initChartInstance(echarts, barChartRef.value, barChart)
-    barChart.setOption(buildBarOption(echarts, series), true)
-    barChart.resize()
+    if (!barChart) barChart = echarts.init(barChartRef.value)
+    barChart.setOption(buildBarOption(echarts, series))
   }
   if (pieChartRef.value) {
-    pieChart = initChartInstance(echarts, pieChartRef.value, pieChart)
-    pieChart.setOption(buildPieOption(echarts, s), true)
-    pieChart.resize()
+    if (!pieChart) pieChart = echarts.init(pieChartRef.value)
+    pieChart.setOption(buildPieOption(echarts, s))
   }
   if (kpiHBarChartRef.value) {
-    kpiHBarChart = initChartInstance(echarts, kpiHBarChartRef.value, kpiHBarChart)
-    kpiHBarChart.setOption(buildKpiHorizontalBarOption(echarts, s), true)
-    kpiHBarChart.resize()
+    if (!kpiHBarChart) kpiHBarChart = echarts.init(kpiHBarChartRef.value)
+    kpiHBarChart.setOption(buildKpiHorizontalBarOption(echarts, s))
   }
   if (radarChartRef.value) {
-    radarChart = initChartInstance(echarts, radarChartRef.value, radarChart)
-    radarChart.setOption(buildRadarStatsOption(echarts, s), true)
-    radarChart.resize()
+    if (!radarChart) radarChart = echarts.init(radarChartRef.value)
+    radarChart.setOption(buildRadarStatsOption(echarts, s))
   }
 }
 
@@ -555,12 +511,6 @@ const loadStats = async () => {
     stats.value = dashboardStats
     chartMetaTime.value = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     await renderCharts()
-    observeChartContainers()
-
-    if (contentScrollEl.value) {
-      contentScrollEl.value.scrollTop = 0
-      contentScrollEl.value.scrollLeft = 0
-    }
   } catch (e) {
     errorMsg.value = e?.payload?.message || e?.message || 'Không tải được dữ liệu.'
     stats.value = null
@@ -572,10 +522,5 @@ const loadStats = async () => {
 }
 
 onMounted(async () => { await loadStats(); window.addEventListener('resize', onResize, { passive: true }) })
-onUnmounted(() => {
-  window.removeEventListener('resize', onResize)
-  chartResizeObserver.value?.disconnect()
-  chartResizeObserver.value = null
-  disposeAll()
-})
+onUnmounted(() => { window.removeEventListener('resize', onResize); disposeAll() })
 </script>

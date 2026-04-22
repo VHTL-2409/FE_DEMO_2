@@ -1,168 +1,92 @@
 <template>
   <div class="td-page">
     <div class="td-page__inner mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-      <!-- Shell: breadcrumb + tabs + lời chào / tiêu đề phân tích (một khối) -->
-      <div class="td-shell mb-5">
-        <div class="td-shell__breadcrumb">
-          <RouterLink class="td-shell__bc-link" to="/teacher/dashboard">
-            <LucideIcon name="home" />
-            <span>Trang chủ</span>
-          </RouterLink>
-          <LucideIcon class="td-shell__bc-sep" name="chevron_right" />
-          <span class="td-shell__bc-current">{{ breadcrumbCurrent }}</span>
-        </div>
 
-        <nav class="td-tabs td-tabs--in-shell" role="tablist" aria-label="Khu vực bảng điều khiển">
-          <button
-            v-for="t in tabDefs"
-            :key="t.id"
-            type="button"
-            role="tab"
-            class="td-tabs__btn"
-            :class="{ 'td-tabs__btn--active': activeTab === t.id }"
-            :aria-selected="activeTab === t.id"
-            @click="goTab(t.id)"
-          >
-            <LucideIcon :name="t.icon" class="td-tabs__icon" />
-            {{ t.label }}
-          </button>
-        </nav>
+      <!-- 1. Hero Section -->
+      <div class="mb-5">
+        <DashboardHero
+          :teacher-name="teacherName"
+          :live-exam-count="statusCounts.started"
+          :active-student-count="activeStudentCount"
+          :alert-count="alertCount"
+          @go-monitoring="goToMonitoring"
+          @create-exam="goToCreate"
+        />
+      </div>
 
-        <div v-if="activeTab === 'overview'" class="td-shell__band">
-          <DashboardHero
-            embedded
-            :teacher-name="teacherName"
-            :live-exam-count="statusCounts.started"
-            :active-student-count="activeStudentCount"
-            :alert-count="alertCount"
+      <!-- 2. KPI Grid -->
+      <div class="mb-5">
+        <DashboardKpiGrid
+          :stats="kpiStats"
+          :alert-count="alertCount"
+        />
+      </div>
+
+      <!-- 3. Active Monitoring (most important) -->
+      <div v-if="liveExam" class="mb-5">
+        <MonitoringCard
+          :live-exam="liveExam"
+          @go-monitoring="goToMonitoring"
+        />
+      </div>
+
+      <!-- 4. Recent Submissions + Quick Actions -->
+      <div class="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+        <!-- Recent Submissions -->
+        <div class="td-panel">
+          <SubmissionList
+            :exams="examTableData"
+            @view-exam="openExamResult"
+            @view-all="goToList"
+            @create-exam="goToCreate"
           />
         </div>
 
-        <div v-else class="td-shell__band td-shell__band--analytics">
-          <div class="td-shell__analytics-head">
-            <div class="td-shell__analytics-icon">
-              <LucideIcon name="bar_chart" />
-            </div>
-            <div>
-              <h2 class="td-shell__analytics-title">Phân tích & hiệu suất</h2>
-              <p class="td-shell__analytics-sub">Xu hướng làm bài và hiệu quả đề thi</p>
-            </div>
-          </div>
+        <!-- Quick Actions -->
+        <div class="td-panel">
+          <QuickActionGrid @action="handleQuickAction" />
         </div>
       </div>
 
-      <!-- Tab: overview -->
-      <div v-show="activeTab === 'overview'" class="td-tab-panel">
-
-        <div class="mb-6">
-          <DashboardKpiGrid
+      <!-- 5. Weekly Schedule + Insights -->
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+        <div class="td-panel">
+          <SchedulePanel :schedule-series="scheduleSeries" />
+        </div>
+        <div class="td-panel">
+          <InsightCard
+            :exams="examTableData"
             :stats="kpiStats"
-            :alert-count="alertCount"
           />
-        </div>
-
-        <div v-if="liveExam" class="mb-6">
-          <MonitoringCard
-            :live-exam="liveExam"
-            @go-monitoring="goToMonitoring"
-          />
-        </div>
-
-        <div v-if="!rawExams.length" class="mb-6">
-          <EmptyState
-            icon="assignment"
-            title="Chưa có đề thi nào"
-            :action-label="dashCopy.emptyCta"
-            fill
-            @action="goToCreate"
-          />
-        </div>
-
-        <div v-if="rawExams.length" class="mb-6">
-          <div class="td-panel td-panel--2">
-            <SchedulePanel :schedule-series="scheduleSeries" />
-          </div>
         </div>
       </div>
 
-      <!-- Tab: Phân tích (nhúng cùng trang) -->
-      <div v-show="activeTab === 'analytics'" class="td-tab-panel td-tab-panel--embed">
-        <TeacherAnalyticsDashboard />
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch, defineAsyncComponent } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ApiError } from '../../services/apiClient'
 import { listExams } from '../../services/examService'
 import { useToast } from '../../composables/useToast'
 
+// Dashboard sub-components
 import DashboardHero from './dashboard/DashboardHero.vue'
 import DashboardKpiGrid from './dashboard/DashboardKpiGrid.vue'
 import MonitoringCard from './dashboard/MonitoringCard.vue'
+import SubmissionList from './dashboard/SubmissionList.vue'
+import QuickActionGrid from './dashboard/QuickActionGrid.vue'
 import SchedulePanel from './dashboard/SchedulePanel.vue'
-import EmptyState from '../ui/EmptyState.vue'
+import InsightCard from './dashboard/InsightCard.vue'
 
-const TeacherAnalyticsDashboard = defineAsyncComponent(() => import('./TeacherAnalyticsDashboard.vue'))
-
-const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
 const rawExams = ref([])
 
-const dashCopy = {
-  tabOverview: 'T\u1ed5ng quan',
-  tabAnalytics: 'Ph\u00e2n t\u00edch',
-  emptyCta: 'M\u1edf workspace t\u1ea1o \u0111\u1ec1',
-  statusUpcoming: 'Ch\u01b0a b\u1eaft \u0111\u1ea7u',
-  statusStarted: '\u0110ang di\u1ec5n ra'
-}
-
-const tabDefs = [
-  { id: 'overview', label: dashCopy.tabOverview, icon: 'dashboard' },
-  { id: 'analytics', label: dashCopy.tabAnalytics, icon: 'bar_chart' }
-]
-
-const activeTab = computed(() => (route.query.tab === 'analytics' ? 'analytics' : 'overview'))
-
-const breadcrumbCurrent = computed(() =>
-  activeTab.value === 'analytics' ? 'Phân tích' : 'Bảng điều khiển'
-)
-
-const goTab = (tabId) => {
-  const q = { ...route.query }
-  if (tabId === 'overview') {
-    delete q.tab
-  } else if (tabId === 'analytics') {
-    q.tab = 'analytics'
-  }
-  router.replace({ path: '/teacher/dashboard', query: q })
-}
-
-/** Back-compat: ?tab=results -> /teacher/exams/review/summary */
-watch(
-  () => [route.path, route.query.tab, route.query.examId, route.query.title],
-  () => {
-    if (route.path !== '/teacher/dashboard') return
-    if (route.query.tab !== 'results') return
-    const examId = route.query.examId
-    const title = route.query.title
-    if (examId != null && String(examId) !== '') {
-      router.replace({
-        path: '/teacher/exams/review/summary',
-        query: { examId: String(examId), title: title || '' }
-      })
-    } else {
-      router.replace({ path: '/teacher/exams/list' })
-    }
-  },
-  { immediate: true }
-)
-
+// ─── Exam helpers ────────────────────────────────────────────
 const getExamStatusMeta = (exam) => {
   if (!exam.isActive) {
     return { key: 'draft', label: 'Bản nháp' }
@@ -171,10 +95,10 @@ const getExamStatusMeta = (exam) => {
   const startMs = new Date(exam.startTime || '').getTime()
   const endMs = new Date(exam.endTime || '').getTime()
   if (!Number.isNaN(startMs) && nowMs < startMs) {
-    return { key: 'upcoming', label: dashCopy.statusUpcoming }
+    return { key: 'upcoming', label: 'Chưa bắt đầu' }
   }
   if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && nowMs >= startMs && nowMs <= endMs) {
-    return { key: 'started', label: dashCopy.statusStarted }
+    return { key: 'started', label: 'Đang diễn ra' }
   }
   return { key: 'ended', label: 'Đã kết thúc' }
 }
@@ -185,6 +109,13 @@ const getSortTime = (exam) => {
     if (!Number.isNaN(t)) return t
   }
   return 0
+}
+
+const formatDateTime = (value) => {
+  const d = new Date(value || '')
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+  })
 }
 
 const exams = computed(() =>
@@ -202,6 +133,7 @@ const statusCounts = computed(() =>
 const activeStudentCount = computed(() => statusCounts.value.started * 3)
 const alertCount = ref(0)
 
+// Live exam data for the monitoring card
 const liveExam = computed(() => {
   const started = exams.value.find(e => getExamStatusMeta(e).key === 'started')
   if (!started) return null
@@ -215,6 +147,7 @@ const liveExam = computed(() => {
   }
 })
 
+// ─── KPI Stats ────────────────────────────────────────────────
 const kpiStats = computed(() => ({
   total: rawExams.value.length,
   active: statusCounts.value.started,
@@ -224,6 +157,25 @@ const kpiStats = computed(() => ({
   activeTrend: null
 }))
 
+// ─── Table data ──────────────────────────────────────────────
+const examTableData = computed(() =>
+  exams.value.slice(0, 8).map(exam => {
+    const { key, label } = getExamStatusMeta(exam)
+    return {
+      id: exam.id,
+      title: exam.title,
+      subtitle: exam.description || '—',
+      date: formatDateTime(exam.endTime || exam.startTime),
+      status: label,
+      statusKey: key,
+      participants: `${exam.questionCount ?? 0} câu`,
+      disabled: key !== 'ended',
+      resultPath: '/teacher/exams/review/summary'
+    }
+  })
+)
+
+// ─── Schedule series ──────────────────────────────────────────
 const padDateKey = (d) => {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -256,11 +208,33 @@ const scheduleSeries = computed(() => {
   }
 })
 
+// ─── Teacher name ─────────────────────────────────────────────
 const teacherName = ref('Giáo viên')
 
+// ─── Navigation ───────────────────────────────────────────────
 const goToMonitoring = () => router.push('/teacher/live-monitoring')
+const goToList = () => router.push('/teacher/exams/list')
 const goToCreate = () => router.push('/teacher/exams/create')
+const goToProfile = () => router.push('/teacher/profile')
 
+const openExamResult = (exam) => {
+  if (exam.disabled) return
+  router.push({ path: exam.resultPath, query: { title: exam.title, examId: exam.id } })
+}
+
+const handleQuickAction = (actionId) => {
+  switch (actionId) {
+    case 'create': goToCreate(); break
+    case 'list': goToList(); break
+    case 'monitoring': goToMonitoring(); break
+    case 'analytics': router.push('/teacher/exams/review/summary'); break
+    case 'profile': goToProfile(); break
+    case 'help': router.push('/teacher/profile'); break
+  }
+}
+
+// ─── Data loading ────────────────────────────────────────────
+// Reads from sessionStorage if prefetched by RedirectPage
 const loadExams = async () => {
   try {
     const cached = sessionStorage.getItem('prefetch_teacher_data')
@@ -285,167 +259,11 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-.td-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
-}
-
-.dark .td-shell {
-  background: var(--ds-gray-900);
-}
-
-.td-shell__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-}
-
-.td-shell__bc-link {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--ds-text-muted);
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.15s ease;
-}
-
-.td-shell__bc-link:hover {
-  color: var(--ds-primary);
-}
-
-.td-shell__bc-sep {
-  color: var(--ds-text-muted);
-  width: 14px;
-  height: 14px;
-}
-
-.td-shell__bc-current {
-  font-weight: 600;
-  color: var(--ds-text);
-}
-
-.td-shell__band {
-  padding-top: 0.25rem;
-  margin-top: 0.25rem;
-  border-top: 1px solid var(--ds-border);
-}
-
-.td-shell__band--analytics {
-  padding-top: 1rem;
-  margin-top: 0;
-}
-
-.td-shell__analytics-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.td-shell__analytics-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-  flex-shrink: 0;
-}
-
-.td-shell__analytics-title {
-  margin: 0;
-  font-family: var(--ds-font-display);
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--ds-text);
-  letter-spacing: -0.02em;
-}
-
-.td-shell__analytics-sub {
-  margin: 0.25rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--ds-text-secondary);
-  line-height: 1.45;
-}
-
-.td-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0;
-  padding: 0.25rem;
-  border-radius: var(--ds-radius-xl);
-  background: color-mix(in srgb, var(--ds-gray-50) 80%, transparent);
-  border: 1px solid var(--ds-border);
-}
-
-.dark .td-tabs {
-  background: color-mix(in srgb, var(--ds-gray-800) 65%, transparent);
-}
-
-.td-tabs--in-shell {
-  margin-bottom: 0;
-}
-
-.td-tabs__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  border-radius: var(--ds-radius-lg);
-  border: none;
-  background: transparent;
-  color: var(--ds-text-muted);
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.td-tabs__btn:hover {
-  color: var(--ds-text);
-  background: var(--ds-primary-soft);
-}
-
-.td-tabs__btn--active {
-  color: var(--ds-primary);
-  background: var(--ds-primary-soft);
-  box-shadow: inset 0 0 0 1px var(--ds-primary-border);
-}
-
-.td-tabs__icon {
-  flex-shrink: 0;
-}
-
-.td-tab-panel--embed {
-  margin-top: 0.25rem;
-}
-
 .td-panel {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   padding: 1.375rem;
-  animation: slideInPanel 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
-}
-
-@keyframes slideInPanel {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.td-panel--1 { animation-delay: 0s; }
-.td-panel--2 { animation-delay: 0.06s; }
-
-@media (prefers-reduced-motion: reduce) {
-  .td-panel { animation: none; }
+  box-shadow: var(--ds-shadow-xs);
 }
 </style>

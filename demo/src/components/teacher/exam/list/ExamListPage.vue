@@ -6,14 +6,14 @@
       icon="assignment"
       icon-color="primary"
       title="Quản lý đề thi"
-      class="tui-panel--anim elp__header"
+      subtitle="Tạo, chỉnh sửa và theo dõi các kỳ thi của bạn"
     >
       <template #actions>
-        <button type="button" class="elp__btn elp__btn--outline tui-btn tui-btn--secondary" @click="handleExport">
+        <button type="button" class="elp__btn elp__btn--outline" @click="handleExport">
           <LucideIcon name="download" />
           Xuất danh sách
         </button>
-        <button type="button" class="elp__btn elp__btn--primary tui-btn tui-btn--primary" @click="goToCreate">
+        <button type="button" class="elp__btn elp__btn--primary" @click="goToCreate">
           <LucideIcon name="add" />
           Tạo đề thi mới
         </button>
@@ -21,33 +21,33 @@
     </TeacherPageHeader>
 
     <!-- Stats bar -->
-    <div class="elp__stats tui-stat-grid tui-panel tui-panel--anim">
-      <div class="elp__stat-card tui-kpi-card tui-kpi-card--primary elp__stat-1">
-        <LucideIcon name="assignment" class="elp__stat-icon elp__stat-icon--total" />
+    <div class="elp__stats">
+      <div class="elp__stat-card">
+        <LucideIcon name="assignment" />
         <div>
-          <p class="elp__stat-val tui-kpi-value">{{ allExams.length }}</p>
-          <p class="elp__stat-label tui-kpi-label">Tổng đề thi</p>
+          <p class="elp__stat-val">{{ allExams.length }}</p>
+          <p class="elp__stat-label">Tổng đề thi</p>
         </div>
       </div>
-      <div class="elp__stat-card tui-kpi-card tui-kpi-card--success elp__stat-2">
-        <LucideIcon name="play_circle" class="elp__stat-icon elp__stat-icon--live" />
+      <div class="elp__stat-card">
+        <LucideIcon name="play_circle" />
         <div>
-          <p class="elp__stat-val tui-kpi-value">{{ liveCount }}</p>
-          <p class="elp__stat-label tui-kpi-label">Đang diễn ra</p>
+          <p class="elp__stat-val">{{ liveCount }}</p>
+          <p class="elp__stat-label">Đang diễn ra</p>
         </div>
       </div>
-      <div class="elp__stat-card tui-kpi-card tui-kpi-card--info elp__stat-3">
-        <LucideIcon name="schedule" class="elp__stat-icon elp__stat-icon--upcoming" />
+      <div class="elp__stat-card">
+        <LucideIcon name="schedule" />
         <div>
-          <p class="elp__stat-val tui-kpi-value">{{ upcomingCount }}</p>
-          <p class="elp__stat-label tui-kpi-label">Sắp diễn ra</p>
+          <p class="elp__stat-val">{{ upcomingCount }}</p>
+          <p class="elp__stat-label">Sắp diễn ra</p>
         </div>
       </div>
-      <div class="elp__stat-card tui-kpi-card tui-kpi-card--primary elp__stat-4">
-        <LucideIcon name="group" class="elp__stat-icon elp__stat-icon--students" />
+      <div class="elp__stat-card">
+        <LucideIcon name="group" />
         <div>
-          <p class="elp__stat-val tui-kpi-value">{{ totalStudents }}</p>
-          <p class="elp__stat-label tui-kpi-label">Tổng học sinh</p>
+          <p class="elp__stat-val">{{ totalStudents }}</p>
+          <p class="elp__stat-label">Tổng học sinh</p>
         </div>
       </div>
     </div>
@@ -58,7 +58,6 @@
       v-model:statusFilter="statusFilter"
       v-model:sortBy="sortBy"
       @reset="resetFilters"
-      class="tui-panel tui-panel--anim elp__toolbar"
     />
 
     <!-- Table -->
@@ -128,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../../../../services/apiClient'
 import {
@@ -400,13 +399,13 @@ const confirmDelete = async () => {
       selectedIds.value = []
     } else {
       await deleteExam(examToDelete.value.id)
-      toast.success(`Đã xóa đề thi "${examToDelete.value.title}".`)
+      toast.success('Đã xóa đề thi.')
     }
     showDeleteModal.value = false
     examToDelete.value = null
     await loadExams()
   } catch (err) {
-    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa đề thi. Vui lòng thử lại.')
+    toast.error(err instanceof ApiError ? err.message : 'Không thể xóa đề thi.')
   } finally {
     deleteLoading.value = false
   }
@@ -463,28 +462,21 @@ const resetFilters = () => {
   currentPage.value = 1
 }
 
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
+// Reset page when filters change
+const unwatchSearch = computed(() => {
+  if (searchQuery.value || statusFilter.value !== 'all') currentPage.value = 1
 })
 
 onMounted(() => {
+  // Force scroll to top when component mounts
+  window.scrollTo({ top: 0, behavior: 'instant' })
+
   loadExams()
 })
 </script>
 
 
 <style scoped>
-/* GPU Optimized Keyframes */
-@keyframes fadeInUp {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes slideInPanel {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 .elp {
   display: flex;
   flex-direction: column;
@@ -504,7 +496,47 @@ onMounted(() => {
 
 /* Header */
 .elp__header {
-  animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.elp__header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.elp__header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+
+.elp__header-title {
+  font-family: var(--ds-font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ds-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.dark .elp__header-title { color: var(--ds-text); }
+
+.elp__header-sub {
+  font-size: 0.8rem;
+  color: var(--ds-text-muted);
+  margin: 0.25rem 0 0;
 }
 
 .elp__header-actions {
@@ -514,16 +546,11 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-/* Stats - GPU Optimized */
+/* Stats */
 .elp__stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  border: 1px solid var(--ds-gray-200);
-  border-radius: var(--ds-radius-lg, 14px);
-  overflow: hidden;
-  background: var(--ds-surface);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  gap: 0.875rem;
 }
 
 @media (max-width: 640px) {
@@ -536,50 +563,14 @@ onMounted(() => {
   gap: 0.875rem;
   padding: 1rem 1.25rem;
   background: var(--ds-surface);
-  border: none;
-  border-right: 1px solid var(--ds-gray-200);
-  position: relative;
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Staggered animations using nth-child */
-.elp__stat-1 { animation-delay: 0.05s; }
-.elp__stat-2 { animation-delay: 0.1s; }
-.elp__stat-3 { animation-delay: 0.15s; }
-.elp__stat-4 { animation-delay: 0.2s; }
-
-.elp__stat-card:last-child { border-right: none; }
-
-.elp__stat-card:hover {
-  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-2xl);
 }
 
 .dark .elp__stat-card {
   background: var(--ds-gray-800);
   border-color: var(--ds-border-strong);
 }
-
-.dark .elp__stat-card:hover {
-  background: rgba(255,255,255,0.03);
-}
-
-/* KPI left accent border */
-.elp__stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.tui-kpi-card--primary::before  { background: var(--ds-primary); }
-.tui-kpi-card--success::before { background: var(--ds-success); }
-.tui-kpi-card--info::before    { background: var(--ds-info); }
-
-.elp__stat-card:hover::before { opacity: 1; }
 
 .elp__stat-icon {
   width: 40px;
@@ -590,11 +581,6 @@ onMounted(() => {
   justify-content: center;
   flex-shrink: 0;
   font-size: 1.25rem;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.elp__stat-card:hover .elp__stat-icon {
-  transform: scale(1.08) rotate(-3deg);
 }
 
 .elp__stat-icon--total { background: var(--ds-primary-soft); color: var(--ds-primary); }
@@ -608,7 +594,6 @@ onMounted(() => {
   color: var(--ds-text);
   margin: 0;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
 }
 
 .dark .elp__stat-val { color: var(--ds-text); }
@@ -617,16 +602,10 @@ onMounted(() => {
   font-size: 0.7rem;
   color: var(--ds-text-muted);
   margin: 0.25rem 0 0;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
-/* Toolbar */
-.elp__toolbar {
-  animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
-}
-
+/* Buttons */
 .elp__btn {
   display: inline-flex;
   align-items: center;
@@ -636,10 +615,11 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.15s ease;
   border: 1.5px solid transparent;
   white-space: nowrap;
 }
+
 
 .elp__btn--primary {
   background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%);
@@ -648,13 +628,13 @@ onMounted(() => {
 }
 
 .elp__btn--primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
 }
 
 .elp__btn--outline {
   background: var(--ds-surface);
-  border-color: var(--ds-gray-200);
+  border-color: var(--ds-border);
   color: var(--ds-text-secondary);
 }
 
@@ -668,8 +648,6 @@ onMounted(() => {
   border-color: var(--ds-primary);
   color: var(--ds-primary);
   background: var(--ds-primary-soft);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
 }
 
 .elp__btn--danger {
@@ -682,13 +660,11 @@ onMounted(() => {
 
 .elp__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
-.elp-spin {
-  animation: spin 1s linear infinite;
-}
+.elp-spin { animation: spin 1s linear infinite; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Pagination - GPU Optimized */
+/* Pagination */
 .elp__pagination {
   display: flex;
   align-items: center;
@@ -707,7 +683,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .dark .elp__page-btn {
@@ -719,7 +695,6 @@ onMounted(() => {
 .elp__page-btn:hover:not(:disabled) {
   border-color: var(--ds-primary);
   color: var(--ds-primary);
-  transform: translateY(-1px);
 }
 
 .elp__page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -732,11 +707,12 @@ onMounted(() => {
 
 .dark .elp__page-info { color: var(--ds-text-muted); }
 
-/* Modal - GPU Optimized */
+/* Modal */
 .elp-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.56);
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -751,7 +727,6 @@ onMounted(() => {
   max-width: 480px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.2);
   overflow: hidden;
-  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark .elp-modal { background: var(--ds-gray-800); }
@@ -779,6 +754,7 @@ onMounted(() => {
 }
 
 .elp-modal__icon--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
+
 
 .elp-modal__title {
   font-family: var(--ds-font-display);
@@ -818,8 +794,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transform: translateZ(0);
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: all 0.12s ease;
   flex-shrink: 0;
 }
 
@@ -883,6 +858,7 @@ onMounted(() => {
   border-color: var(--ds-border-strong);
 }
 
+
 .elp-detail-item__label {
   font-size: 0.7rem;
   font-weight: 700;
@@ -931,10 +907,10 @@ onMounted(() => {
 
 .dark .elp-detail-desc__val { color: var(--ds-text-muted); }
 
-/* Modal transition - GPU Optimized */
+/* Modal transition */
 .elp-modal-enter-active,
 .elp-modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .elp-modal-enter-from,
@@ -944,22 +920,6 @@ onMounted(() => {
 
 .elp-modal-enter-from .elp-modal,
 .elp-modal-leave-to .elp-modal {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .elp__stats,
-  .elp__stat-card,
-  .elp__btn,
-  .elp__header,
-  .elp__toolbar,
-  .elp-modal {
-    animation: none;
-  }
-  .elp__btn:hover,
-  .elp__stat-card:hover .elp__stat-icon,
-  .elp__page-btn:hover {
-    transform: none;
-  }
+  transform: scale(0.95);
 }
 </style>

@@ -5,8 +5,9 @@
       <!-- 1. Hero with greeting + date + key metrics -->
       <div class="mb-6 ds-animate-fade-up">
         <PageHeader
-          :title="`Xin chào, ${teacherName}`"
-          :subtitle="currentDate"
+          eyebrow="Bảng điều khiển"
+          title="Xin chào, {{ teacherName }}"
+          subtitle="{{ currentDate }}"
         >
           <template #actions>
             <button
@@ -115,7 +116,7 @@
       </div>
 
       <!-- 5. Quick Actions + Upcoming Exams -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr] ds-animate-fade-up" style="animation-delay: 0.2s">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr] ds-animate-fade-up" style="animation-delay: 0.2s">
         <!-- Quick Actions -->
         <DsCard padding="lg">
           <template #header>
@@ -124,7 +125,7 @@
               <h3 class="text-lg font-bold" style="color: var(--ds-text)">Thao tác nhanh</h3>
             </div>
           </template>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ActionCard
               v-for="action in quickActions"
               :key="action.title"
@@ -181,11 +182,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { ApiError } from '../../services/apiClient'
-import { listExams } from '../../services/examService'
-import { useToast } from '../../composables/useToast'
+import * as echarts from 'echarts'
 import PageHeader from '../ui/PageHeader.vue'
 import DsStatCard from '../ui/DsStatCard.vue'
 import DsCard from '../ui/DsCard.vue'
@@ -193,11 +192,10 @@ import DataTable from '../ui/DataTable.vue'
 import StatusChip from '../ui/StatusChip.vue'
 import ActionCard from '../ui/ActionCard.vue'
 
-const toast = useToast()
-const teacherName = ref('Giáo viên')
+// Mock data
+const teacherName = ref('Nguyễn Văn A')
 const isLoading = ref(false)
 const selectedPeriod = ref('7')
-const rawExams = ref([])
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('vi-VN', {
@@ -208,58 +206,42 @@ const currentDate = computed(() => {
   })
 })
 
-const getExamStatusMeta = (exam) => {
-  if (!exam?.isActive) return { key: 'draft', label: 'Bản nháp' }
-  const now = Date.now()
-  const start = new Date(exam.startTime || '').getTime()
-  const end = new Date(exam.endTime || '').getTime()
-  if (!Number.isNaN(start) && now < start) return { key: 'upcoming', label: 'Sắp diễn ra' }
-  if (!Number.isNaN(start) && !Number.isNaN(end) && now >= start && now <= end) {
-    return { key: 'live', label: 'Đang diễn ra' }
-  }
-  return { key: 'ended', label: 'Đã kết thúc' }
-}
-
-const statusCounts = computed(() =>
-  rawExams.value.reduce((acc, exam) => {
-    const { key } = getExamStatusMeta(exam)
-    acc[key] = (acc[key] || 0) + 1
-    return acc
-  }, { draft: 0, upcoming: 0, live: 0, ended: 0 })
-)
-
 const kpiStats = computed(() => [
   {
     label: 'Tổng số đề thi',
-    value: String(rawExams.value.length),
+    value: '24',
     subValue: 'đề',
-    sub: `${statusCounts.value.draft} bản nháp`,
+    sub: '8 đang hoạt động',
     icon: 'assignment',
-    badge: 'Tổng quan',
-    badgeVariant: 'info'
+    badge: 'Đang hoạt động',
+    badgeVariant: 'success',
+    trend: 12
   },
   {
-    label: 'Đang diễn ra',
-    value: String(statusCounts.value.live),
-    subValue: 'đề',
-    sub: 'Có thể mở giám sát ngay',
-    icon: 'live_tv',
-    badge: statusCounts.value.live > 0 ? 'Cần theo dõi' : 'Ổn định',
-    badgeVariant: statusCounts.value.live > 0 ? 'warning' : 'success'
+    label: 'Học sinh đang thi',
+    value: '156',
+    subValue: 'em',
+    sub: 'Đang theo dõi',
+    icon: 'school',
+    badge: 'Đang thi',
+    badgeVariant: 'warning',
+    trend: 5
   },
   {
-    label: 'Sắp diễn ra',
-    value: String(statusCounts.value.upcoming),
-    subValue: 'đề',
-    sub: 'Cần kiểm tra lịch thi',
-    icon: 'schedule'
+    label: 'Điểm trung bình',
+    value: '7.2',
+    subValue: '/10',
+    sub: 'Cải thiện 8%',
+    icon: 'trending_up',
+    trend: 8
   },
   {
-    label: 'Đã kết thúc',
-    value: String(statusCounts.value.ended),
-    subValue: 'đề',
-    sub: 'Sẵn sàng xem báo cáo',
-    icon: 'check_circle'
+    label: 'Tỷ lệ hoàn thành',
+    value: '94',
+    subValue: '%',
+    sub: 'Tháng này',
+    icon: 'check_circle',
+    trend: 3
   }
 ])
 
@@ -277,79 +259,102 @@ const quickActions = [
     to: '/teacher/live-monitoring'
   },
   {
-    icon: 'list_alt',
-    title: 'Danh sách đề thi',
-    description: 'Chọn đề để xem phân tích kết quả',
-    to: '/teacher/exams/list'
+    icon: 'analytics',
+    title: 'Xem báo cáo',
+    description: 'Phân tích kết quả học tập',
+    to: '/teacher/exams'
   },
   {
-    icon: 'edit_square',
-    title: 'Soạn đề mới',
-    description: 'Quay lại workspace tạo và nhập đề',
-    to: '/teacher/exams/build'
+    icon: 'quiz',
+    title: 'Tạo câu hỏi',
+    description: 'Thêm câu hỏi mới vào ngân hàng',
+    to: '/teacher/questions'
   }
 ]
 
-const formatDateTime = (value) => {
-  const date = new Date(value || '')
-  return Number.isNaN(date.getTime())
-    ? 'Chưa có lịch'
-    : date.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-}
-
-const formatTimeUntil = (value) => {
-  const start = new Date(value || '').getTime()
-  if (Number.isNaN(start)) return 'Chưa xác định'
-  const diff = start - Date.now()
-  if (diff <= 0) return 'Đang diễn ra hoặc đã bắt đầu'
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  if (days > 0) return `Còn ${days} ngày`
-  const hours = Math.max(1, Math.floor(diff / (60 * 60 * 1000)))
-  return `Còn ${hours} giờ`
-}
-
-const upcomingExams = computed(() => rawExams.value
-  .filter((exam) => getExamStatusMeta(exam).key === 'upcoming')
-  .sort((a, b) => new Date(a.startTime || '').getTime() - new Date(b.startTime || '').getTime())
-  .slice(0, 4)
-  .map((exam) => ({
-    id: exam.id,
-    title: exam.title || 'Đề thi',
-    date: formatDateTime(exam.startTime),
-    students: exam.participantCount || 0,
-    timeUntil: formatTimeUntil(exam.startTime)
-  })))
+const upcomingExams = computed(() => [
+  {
+    id: 1,
+    title: 'Giữa kỳ Toán cao cấp',
+    date: '01/04/2026 09:00',
+    students: 45,
+    timeUntil: 'Còn 3 ngày'
+  },
+  {
+    id: 2,
+    title: 'Cuối kỳ Vật lý đại cương',
+    date: '05/04/2026 14:00',
+    students: 38,
+    timeUntil: 'Còn 7 ngày'
+  },
+  {
+    id: 3,
+    title: 'Kiểm tra Tiếng Anh B1',
+    date: '10/04/2026 08:00',
+    students: 52,
+    timeUntil: 'Còn 12 ngày'
+  }
+])
 
 const activityColumns = [
   { key: 'exam', label: 'Kỳ thi' },
-  { key: 'score', label: 'Số câu', align: 'center' },
-  { key: 'time', label: 'Bắt đầu', align: 'center' },
+  { key: 'score', label: 'Điểm', align: 'center' },
+  { key: 'time', label: 'Thời gian', align: 'center' },
   { key: 'status', label: 'Trạng thái', align: 'center' }
 ]
 
-const recentActivity = computed(() => rawExams.value
-  .slice()
-  .sort((a, b) => new Date(b.updatedAt || b.startTime || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.startTime || a.createdAt || 0).getTime())
-  .slice(0, 6)
-  .map((exam) => {
-    const status = getExamStatusMeta(exam)
-    return {
-      id: exam.id,
-      type: 'exam',
-      examTitle: exam.title || 'Đề thi',
-      studentName: exam.className || exam.subject || 'Đề thi tự do',
-      score: String(exam.questionCount || 0),
-      time: formatDateTime(exam.startTime),
-      status: status.label,
-      statusKey: status.key === 'live' ? 'warning' : (status.key === 'ended' ? 'active' : 'info')
-    }
-  }))
+const recentActivity = computed(() => [
+  {
+    id: 1,
+    type: 'exam',
+    examTitle: 'Giữa kỳ Toán cao cấp',
+    studentName: 'Trần Minh Đức',
+    score: '8.5/10',
+    time: '15 phút',
+    status: 'Hoàn thành',
+    statusKey: 'active'
+  },
+  {
+    id: 2,
+    type: 'exam',
+    examTitle: 'Giữa kỳ Toán cao cấp',
+    studentName: 'Lê Thị Hương',
+    score: '6.0/10',
+    time: '28 phút',
+    status: 'Hoàn thành',
+    statusKey: 'active'
+  },
+  {
+    id: 3,
+    type: 'violation',
+    examTitle: 'Cuối kỳ Vật lý',
+    studentName: 'Phạm Văn Bình',
+    score: '-',
+    time: '12 phút',
+    status: 'Cảnh báo',
+    statusKey: 'warning'
+  },
+  {
+    id: 4,
+    type: 'exam',
+    examTitle: 'Kiểm tra Tiếng Anh',
+    studentName: 'Nguyễn Thị Lan',
+    score: '9.0/10',
+    time: '22 phút',
+    status: 'Hoàn thành',
+    statusKey: 'active'
+  },
+  {
+    id: 5,
+    type: 'exam',
+    examTitle: 'Giữa kỳ Toán cao cấp',
+    studentName: 'Hoàng Văn An',
+    score: '7.5/10',
+    time: '18 phút',
+    status: 'Hoàn thành',
+    statusKey: 'active'
+  }
+])
 
 // Methods
 const getExamTypeColor = (type) => {
@@ -372,93 +377,26 @@ const getExamTypeIcon = (type) => {
 
 const getScoreColor = (score) => {
   const num = parseFloat(score)
-  if (num >= 40) return 'var(--ds-success)'
-  if (num >= 20) return 'var(--ds-warning)'
-  return 'var(--ds-text)'
+  if (num >= 8) return 'var(--ds-success)'
+  if (num >= 5) return 'var(--ds-warning)'
+  return 'var(--ds-danger)'
 }
 
-const refreshData = async () => {
+const refreshData = () => {
   isLoading.value = true
-  try {
-    rawExams.value = await listExams()
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : 'Không thể tải dữ liệu phân tích.')
-  } finally {
+  setTimeout(() => {
     isLoading.value = false
-  }
+  }, 1000)
 }
 
 // Chart setup
 const performanceChartRef = ref(null)
 let performanceChart = null
-let performanceResizeObserver = null
-let echartsLibPromise = null
 
-const getChartPixelRatio = () => {
-  if (typeof window === 'undefined') return 1
-  return Math.min(Math.max(window.devicePixelRatio || 1, 1), 2)
-}
-
-const getEcharts = async () => {
-  if (!echartsLibPromise) {
-    echartsLibPromise = import('../../utils/echartsCore.js').then((mod) => mod.default)
-  }
-  return echartsLibPromise
-}
-
-const chartData = computed(() => {
-  const days = Number.parseInt(selectedPeriod.value, 10) || 7
-  const bucketCount = days <= 7 ? 7 : 6
-  const bucketSpan = Math.ceil(days / bucketCount)
-  const end = new Date()
-  end.setHours(23, 59, 59, 999)
-  const buckets = Array.from({ length: bucketCount }, (_, index) => {
-    const bucketEnd = new Date(end)
-    bucketEnd.setDate(end.getDate() - ((bucketCount - 1 - index) * bucketSpan))
-    const bucketStart = new Date(bucketEnd)
-    bucketStart.setDate(bucketEnd.getDate() - bucketSpan + 1)
-    bucketStart.setHours(0, 0, 0, 0)
-    return {
-      start: bucketStart,
-      end: bucketEnd,
-      label: bucketSpan === 1
-        ? bucketStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-        : `${bucketStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}-${bucketEnd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`,
-      started: 0,
-      ended: 0
-    }
-  })
-
-  for (const exam of rawExams.value) {
-    const startMs = new Date(exam.startTime || exam.createdAt || '').getTime()
-    const endMs = new Date(exam.endTime || '').getTime()
-    for (const bucket of buckets) {
-      if (!Number.isNaN(startMs) && startMs >= bucket.start.getTime() && startMs <= bucket.end.getTime()) {
-        bucket.started += 1
-      }
-      if (!Number.isNaN(endMs) && endMs >= bucket.start.getTime() && endMs <= bucket.end.getTime()) {
-        bucket.ended += 1
-      }
-    }
-  }
-
-  return {
-    labels: buckets.map((bucket) => bucket.label),
-    started: buckets.map((bucket) => bucket.started),
-    ended: buckets.map((bucket) => bucket.ended)
-  }
-})
-
-const initPerformanceChart = async () => {
+const initPerformanceChart = () => {
   if (!performanceChartRef.value) return
-  const echarts = await getEcharts()
 
-  if (!performanceChart) {
-    performanceChart = echarts.init(performanceChartRef.value, null, {
-      renderer: 'canvas',
-      devicePixelRatio: getChartPixelRatio()
-    })
-  }
+  performanceChart = echarts.init(performanceChartRef.value)
 
   const option = {
     tooltip: {
@@ -476,7 +414,7 @@ const initPerformanceChart = async () => {
       extraCssText: 'box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);'
     },
     legend: {
-      data: ['Đề bắt đầu', 'Đề kết thúc'],
+      data: ['Điểm trung bình', 'Số lượng nộp bài'],
       bottom: 0,
       textStyle: { 
         color: 'var(--ds-text-muted)',
@@ -494,7 +432,7 @@ const initPerformanceChart = async () => {
     },
     xAxis: {
       type: 'category',
-      data: chartData.value.labels,
+      data: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
       axisLine: { lineStyle: { color: 'var(--ds-border)', width: 2 } },
       axisLabel: { 
         color: 'var(--ds-text-muted)',
@@ -505,16 +443,18 @@ const initPerformanceChart = async () => {
     yAxis: [
       {
         type: 'value',
-        name: 'Số đề',
+        name: 'Điểm',
         min: 0,
+        max: 10,
         axisLine: { lineStyle: { color: 'var(--ds-border)' } },
         axisLabel: { color: 'var(--ds-text-muted)', fontWeight: 600 },
         splitLine: { lineStyle: { color: 'var(--ds-border)', type: 'dashed', opacity: 0.5 } }
       },
       {
         type: 'value',
-        name: 'Số đề',
+        name: 'Số bài',
         min: 0,
+        max: 50,
         axisLine: { lineStyle: { color: 'var(--ds-border)' } },
         axisLabel: { color: 'var(--ds-text-muted)', fontWeight: 600 },
         splitLine: { show: false }
@@ -522,7 +462,7 @@ const initPerformanceChart = async () => {
     ],
     series: [
       {
-        name: 'Đề bắt đầu',
+        name: 'Điểm trung bình',
         type: 'bar',
         barWidth: '35%',
         animationDuration: 1500,
@@ -542,10 +482,10 @@ const initPerformanceChart = async () => {
             shadowBlur: 15
           }
         },
-        data: chartData.value.started
+        data: [7.2, 7.5, 6.8, 7.9, 8.1, 7.4, 7.6]
       },
       {
-        name: 'Đề kết thúc',
+        name: 'Số lượng nộp bài',
         type: 'line',
         yAxisIndex: 1,
         smooth: 0.4,
@@ -577,60 +517,43 @@ const initPerformanceChart = async () => {
             shadowBlur: 10
           }
         },
-        data: chartData.value.ended
+        data: [32, 28, 45, 38, 42, 35, 40]
       }
     ]
   }
 
-  performanceChart.setOption(option, true)
-  performanceChart.resize()
+  performanceChart.setOption(option)
 }
 
-onMounted(async () => {
-  await refreshData()
+onMounted(() => {
   nextTick(() => {
-    void initPerformanceChart()
-
-    if (typeof ResizeObserver !== 'undefined' && performanceChartRef.value) {
-      performanceResizeObserver = new ResizeObserver(() => {
-        performanceChart?.resize()
-      })
-      performanceResizeObserver.observe(performanceChartRef.value)
-    }
+    initPerformanceChart()
   })
 
-  window.addEventListener('resize', handlePerformanceResize, { passive: true })
+  window.addEventListener('resize', () => {
+    performanceChart?.resize()
+  })
 })
 
-watch([selectedPeriod, rawExams], () => {
-  void initPerformanceChart()
-})
-
-const handlePerformanceResize = () => {
-  performanceChart?.resize()
-}
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handlePerformanceResize)
-  performanceResizeObserver?.disconnect()
-  performanceResizeObserver = null
-  performanceChart?.dispose()
-  performanceChart = null
+watch(selectedPeriod, () => {
+  initPerformanceChart()
 })
 </script>
 
 
 <style scoped>
 .ds-animate-fade-up {
-  animation: fadeUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: fadeUp 0.5s ease-out;
 }
 
 @keyframes fadeUp {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ds-animate-fade-up { animation: none; }
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

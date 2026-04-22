@@ -43,20 +43,6 @@
 
   --font-sans:
     'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --portal-sidebar-width: 260px;
-  --portal-sidebar-collapsed: 72px;
-  --portal-shell-font: var(--font-sans);
-  --portal-shell-bg: var(--color-bg);
-  --portal-shell-surface: var(--color-surface);
-  --portal-shell-muted: var(--color-surface-muted);
-  --portal-shell-border: var(--color-border);
-  --portal-shell-border-strong: var(--color-border-strong);
-  --portal-shell-text: var(--color-text);
-  --portal-shell-text-muted: var(--color-text-secondary);
-  --portal-shell-primary: var(--color-primary);
-  --portal-shell-primary-soft: var(--color-primary-soft);
-  --portal-shell-danger: var(--color-danger);
-  --portal-shell-danger-soft: color-mix(in srgb, var(--color-danger) 10%, white);
   /* Giữ cỡ chữ gần 16px để giao diện đỡ "phồng" và đọc tiếng Việt ổn định hơn */
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -98,16 +84,13 @@ body {
   flex-direction: column;
   font-family: var(--font-sans);
   line-height: 1.5;
-  background: var(--edu-bg-light);
+  background:
+    linear-gradient(180deg, var(--edu-bg-light) 0%, var(--edu-bg-light) 100%);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  /* overflow-y must be 'visible' (default) so child scroll containers
-     (e.g. .db-app-shell__main { height: 100dvh; overflow-y: auto })
-     can scroll independently. Using 'hidden' here would clip all child
-     overflow, making dashboards blank even though content exists. */
-  overflow-y: visible;
+  overflow-x: clip;
+  overflow-y: hidden;
 }
 
 #app {
@@ -247,13 +230,15 @@ body {
 }
 
 .portal-glass-panel {
-  background: rgb(255 255 255 / 0.94);
-  border: 1px solid rgb(226 232 240 / 0.88);
+  background: rgb(255 255 255 / 0.74);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgb(255 255 255 / 0.72);
   box-shadow: var(--shadow-lg);
 }
 
 .dark .portal-glass-panel {
-  background: rgb(15 23 42 / 0.94);
+  background: rgb(15 23 42 / 0.72);
   border-color: rgb(148 163 184 / 0.14);
 }
 
@@ -281,13 +266,11 @@ body {
 }
 
 .portal-chip {
-  background: rgb(255 255 255 / 0.94);
+  background: rgb(255 255 255 / 0.78);
   border: 1px solid rgb(79 70 229 / 0.16);
   box-shadow: 0 10px 24px -20px rgb(79 70 229 / 0.45);
-}
-
-.dark .portal-chip {
-  background: rgb(15 23 42 / 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .portal-gradient-text {
@@ -309,11 +292,14 @@ body {
   box-shadow: var(--shadow-focus);
 }
 
-/* Skeleton pulse GPU — uses opacity + transform, no paint */
-@keyframes portal-gpu-shimmer {
-  0%   { opacity: 0.45; transform: scaleX(0.2); }
-  50%  { opacity: 1;   transform: scaleX(1); }
-  100% { opacity: 0.45; transform: scaleX(0.2); }
+/* Skeleton pulse nhẹ (dùng chung) */
+@keyframes portal-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .portal-skeleton {
@@ -336,14 +322,6 @@ body {
     rgb(30 41 59) 100%
   );
   background-size: 200% 100%;
-}
-
-@keyframes portal-shimmer {
-  0%   { background-position:  200% 0; transform: scaleX(0.2); opacity: 0.5; }
-  30%  { opacity: 1; transform: scaleX(0.85); }
-  50%  { background-position: -200% 0; transform: scaleX(1); opacity: 1; }
-  80%  { opacity: 1; transform: scaleX(0.85); }
-  100% { background-position:  200% 0; transform: scaleX(0.2); opacity: 0.5; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -461,7 +439,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    all 0.22s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.22s ease;
 }
 
@@ -506,7 +485,7 @@ body {
 .portal-btn--primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
-  background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
+  filter: brightness(1.05);
 }
 
 .portal-btn--primary:active {
@@ -535,8 +514,7 @@ body {
   .portal-icon-btn,
   .portal-btn,
   .portal-btn--primary,
-  .portal-btn--ghost,
-  .portal-skeleton {
+  .portal-btn--ghost {
     transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
     animation: none !important;
   }

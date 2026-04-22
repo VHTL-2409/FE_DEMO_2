@@ -49,7 +49,7 @@
         </div>
       </div>
 
-      <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ds-animate-fade-up-delay">
+      <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 ds-animate-fade-up-delay">
         <DsStatCard
           v-for="card in summaryCards"
           :key="card.title"
@@ -84,70 +84,35 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Khoảng thời gian</label>
-            <select
-              v-model="periodFilter"
-              class="w-full rounded-lg text-sm"
-              style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)"
-            >
-              <option value="30d">30 ngày gần nhất</option>
-              <option value="7d">7 ngày gần nhất</option>
-              <option value="24h">24 giờ gần nhất</option>
-              <option value="all">Tất cả thời gian</option>
+            <select class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)">
+              <option>30 ngày gần nhất</option>
+              <option>7 ngày gần nhất</option>
+              <option>24 giờ gần nhất</option>
             </select>
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Loại vi phạm</label>
-            <select
-              v-model="violationFilter"
-              class="w-full rounded-lg text-sm"
-              style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)"
-            >
-              <option value="all">Tất cả vi phạm</option>
-              <option value="suspicious">Hành vi đáng ngờ</option>
-              <option value="high">Mức độ cao</option>
-              <option value="risk">Vượt ngưỡng rủi ro</option>
+            <select class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)">
+              <option>Tất cả vi phạm</option>
+              <option>Chuyển tab</option>
+              <option>Phát hiện gian lận bằng AI</option>
+              <option>Thiết bị không được phép</option>
             </select>
           </div>
           <div class="flex flex-col gap-1.5 lg:col-span-2">
             <label class="text-xs font-bold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tìm kiếm</label>
-            <input
-              v-model.trim="searchQuery"
-              class="w-full rounded-lg text-sm"
-              style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)"
-              placeholder="Tìm tên hoặc mã học sinh..."
-            />
+            <input class="w-full rounded-lg text-sm" style="background-color: var(--ds-gray-50); border-color: var(--ds-border); color: var(--ds-text); outline-color: var(--ds-primary)" placeholder="Tìm tên hoặc mã học sinh..." />
           </div>
         </div>
       </div>
 
-      <div v-if="loadError" class="mb-6 ds-animate-fade-up-delay">
-        <EmptyState
-          icon="warning"
-          title="Không tải được dữ liệu sự cố"
-          :description="loadError"
-          action-label="Mở lại tổng quan điểm"
-          fill
-          @action="goToSummaryReview"
-        />
-      </div>
-
-      <div v-else-if="!isLoading && filteredIncidents.length === 0" class="mb-6 ds-animate-fade-up-delay">
-        <EmptyState
-          icon="fact_check"
-          title="Chưa có sự cố cần xử lý"
-          action-label="Mở tổng quan điểm"
-          fill
-          @action="goToSummaryReview"
-        />
-      </div>
-
-      <div v-else class="overflow-hidden ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)">
+      <div class="overflow-hidden ds-animate-fade-up-delay" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)">
         <DataTable
           :columns="incidentColumns"
-          :data="filteredIncidents"
+          :data="incidents"
           :row-key="'attemptId'"
           :loading="isLoading"
-          :empty-text="'Không tìm thấy sự cố đáng ngờ nào cho đề thi này.'"
+          :empty-text="loadError || 'Không tìm thấy sự cố đáng ngờ nào cho đề thi này.'"
           :loading-text="'Đang tải sự cố...'"
         >
           <template #cell-student="{ value }">
@@ -193,7 +158,7 @@
         </div>
       </template>
 
-      <div v-if="selectedIncident" class="space-y-6">
+      <div v-if="selectedIncident" class="space-y-8">
         <div class="flex gap-2">
           <button type="button" @click="activeReportTab = 'result'" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" :style="activeReportTab === 'result' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { backgroundColor: 'var(--ds-gray-100)', color: 'var(--ds-text-secondary)' }">
             Kết quả
@@ -203,7 +168,7 @@
           </button>
         </div>
 
-        <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section v-if="activeReportTab === 'result'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="col-span-1 md:col-span-2 grid grid-cols-2 gap-y-4 gap-x-8 p-6" style="background-color: var(--ds-surface); border-radius: var(--ds-radius-xl); border: 1px solid var(--ds-border)">
             <div class="space-y-1">
               <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--ds-text-muted)">Tên học sinh</p>
@@ -308,41 +273,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../../services/apiClient'
-import { listExamAttempts } from '../../services/attemptService'
+import { getAttemptReport, listExamAttempts } from '../../services/attemptService'
 import { getAnswerSimilarity } from '../../services/examService'
 import { exportToCsv } from '../../utils/reportExport'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import DsStatCard from '../ui/DsStatCard.vue'
 import DataTable from '../ui/DataTable.vue'
 import Modal from '../ui/Modal.vue'
-import EmptyState from '../ui/EmptyState.vue'
 
 const route = useRoute()
-const router = useRouter()
 const showIncidentModal = ref(false)
 const activeReportTab = ref('result')
 const selectedIncident = ref(null)
 const isLoading = ref(false)
 const loadError = ref('')
 const attempts = ref([])
+const reportByAttempt = ref({})
 const similarityPairs = ref([])
 const isLoadingSimilarity = ref(false)
-const periodFilter = ref('30d')
-const violationFilter = ref('all')
-const searchQuery = ref('')
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')
-const summaryTabLink = computed(() => ({
-  path: '/teacher/exams/review/summary',
-  query: { ...route.query }
-}))
+const summaryTabLink = computed(() => ({ path: '/teacher/exams/review/summary', query: route.query }))
 const incidentTabLink = computed(() => ({ path: '/teacher/exams/review/incidents', query: route.query }))
-const goToSummaryReview = () => {
-  router.push(summaryTabLink.value)
-}
 
 const incidentColumns = computed(() => [
   { key: 'student', label: 'Học sinh' },
@@ -365,21 +320,8 @@ const formatTime = (value) => {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString()
 }
 
-const withinPeriod = (value) => {
-  if (periodFilter.value === 'all') return true
-  const date = new Date(String(value))
-  if (Number.isNaN(date.getTime())) return false
-  const now = Date.now()
-  const diffMs = now - date.getTime()
-  const periodMap = {
-    '24h': 24 * 60 * 60 * 1000,
-    '7d': 7 * 24 * 60 * 60 * 1000,
-    '30d': 30 * 24 * 60 * 60 * 1000
-  }
-  return diffMs <= (periodMap[periodFilter.value] ?? periodMap['30d'])
-}
-
 const buildIncident = (attempt) => {
+  const report = reportByAttempt.value[attempt.id]
   const riskScore = Number(attempt.riskScore || 0)
   const suspicious = Boolean(attempt.suspicious)
   const warningCount = Math.max(riskScore, suspicious ? 1 : 0)
@@ -393,8 +335,7 @@ const buildIncident = (attempt) => {
   return {
     attemptId: attempt.id,
     student: attempt.student || 'Học sinh không rõ',
-    studentId: attempt.studentCode || `AT-${attempt.id}`,
-    submittedAt,
+    studentId: `AT-${attempt.id}`,
     date: formatDate(submittedAt),
     time: latestWarningTime,
     violation,
@@ -412,7 +353,7 @@ const buildIncident = (attempt) => {
     warningTimeline: [
       { time: formatTime(attempt.startedAt), label: 'Bắt đầu thi', sub: '', icon: 'play_arrow', dotClass: 'bg-[var(--ds-primary)]', timeClass: 'text-[var(--ds-text-muted)]' },
       { time: firstWarningTime, label: 'Kích hoạt cờ rủi ro', sub: `Điểm rủi ro: ${riskScore}`, icon: 'warning', dotClass: 'bg-[var(--ds-accent)]', timeClass: 'text-[var(--ds-accent)]' },
-      { time: latestWarningTime, label: 'Đã nộp bài', sub: attempt.status, icon: 'fact_check', dotClass: 'bg-[var(--ds-danger)]', timeClass: 'text-[var(--ds-danger)]' }
+      { time: latestWarningTime, label: 'Đã nộp bài', sub: report?.status || attempt.status, icon: 'fact_check', dotClass: 'bg-[var(--ds-danger)]', timeClass: 'text-[var(--ds-danger)]' }
     ]
   }
 }
@@ -421,57 +362,11 @@ const incidents = computed(() => attempts.value
   .filter((attempt) => Number(attempt.riskScore || 0) > 0 || Boolean(attempt.suspicious))
   .map(buildIncident))
 
-const incidentSummary = computed(() => {
-  const counts = new Map()
-  let high = 0
-  let resolved = 0
-
-  for (const incident of filteredIncidents.value) {
-    if (incident.severity === 'CAO') high += 1
-    if (incident.result !== 'Đang xem xét') resolved += 1
-    counts.set(incident.violation, (counts.get(incident.violation) || 0) + 1)
-  }
-
-  const commonViolation = filteredIncidents.value.length
-    ? [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '-'
-    : '-'
-
-  return {
-    total: filteredIncidents.value.length,
-    high,
-    resolved,
-    commonViolation
-  }
-})
-
-const filteredIncidents = computed(() => {
-  let list = incidents.value
-
-  if (periodFilter.value !== 'all') {
-    list = list.filter((incident) => withinPeriod(incident.submittedAt))
-  }
-
-  if (violationFilter.value === 'suspicious') {
-    list = list.filter((incident) => incident.violation === 'Hành vi đáng ngờ')
-  } else if (violationFilter.value === 'high') {
-    list = list.filter((incident) => incident.severity === 'CAO')
-  } else if (violationFilter.value === 'risk') {
-    list = list.filter((incident) => incident.violation === 'Vượt ngưỡng rủi ro')
-  }
-
-  if (searchQuery.value) {
-    const keyword = searchQuery.value.toLowerCase()
-    list = list.filter((incident) =>
-      String(incident.student || '').toLowerCase().includes(keyword) ||
-      String(incident.studentId || '').toLowerCase().includes(keyword)
-    )
-  }
-
-  return list
-})
-
 const summaryCards = computed(() => {
-  const { total, high, resolved, commonViolation } = incidentSummary.value
+  const total = incidents.value.length
+  const high = incidents.value.filter((incident) => incident.severity === 'HIGH').length
+  const resolved = incidents.value.filter((incident) => incident.result !== 'Đang xem xét').length
+  const commonViolation = incidents.value.length ? incidents.value[0].violation : '-'
   const incidentRate = attempts.value.length ? (total / attempts.value.length) * 100 : 0
 
   return [
@@ -513,7 +408,7 @@ const downloadReport = () => {
     { key: 'warningCount', label: 'Số cảnh báo' }
   ]
   const safeTitle = (selectedExamTitle.value || 'bao-cao-gian-lan').replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, '-')
-  exportToCsv(filteredIncidents.value, columns, `bao-cao-gian-lan-${safeTitle}.csv`)
+  exportToCsv(incidents.value, columns, `bao-cao-gian-lan-${safeTitle}.csv`)
 }
 
 const printIncidentReport = () => {
@@ -545,6 +440,16 @@ const loadIncidentData = async () => {
   try {
     const attemptsPayload = await listExamAttempts(examId.value)
     attempts.value = attemptsPayload
+
+    const reports = await Promise.all(attemptsPayload.map(async (attempt) => {
+      try {
+        const report = await getAttemptReport(attempt.id)
+        return [attempt.id, report]
+      } catch {
+        return [attempt.id, null]
+      }
+    }))
+    reportByAttempt.value = Object.fromEntries(reports)
   } catch (error) {
     loadError.value = error instanceof ApiError ? error.message : 'Không thể tải dữ liệu sự cố.'
   } finally {
@@ -566,7 +471,6 @@ const loadAnswerSimilarity = async () => {
 }
 
 onMounted(loadIncidentData)
-watch(() => route.query.examId, loadIncidentData)
 </script>
 
 <style scoped>
