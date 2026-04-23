@@ -79,9 +79,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { resetPassword } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
-import BaseButton from '../shared/BaseButton.vue'
-import BaseField from '../shared/BaseField.vue'
-import BaseInput from '../shared/BaseInput.vue'
+import BaseButton from '../../shared/BaseButton.vue'
+import BaseField from '../../shared/BaseField.vue'
+import BaseInput from '../../shared/BaseInput.vue'
 
 const route = useRoute()
 const router = useRouter()

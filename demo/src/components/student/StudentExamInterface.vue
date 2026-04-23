@@ -382,9 +382,9 @@ import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
 import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
 import Modal from '../ui/Modal.vue'
-import BaseButton from '../shared/BaseButton.vue'
+import BaseButton from '../../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
-import MathDisplay from '../shared/MathDisplay.vue'
+import MathDisplay from '../../shared/MathDisplay.vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const route = useRoute()

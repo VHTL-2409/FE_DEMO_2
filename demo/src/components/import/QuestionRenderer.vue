@@ -130,7 +130,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { fetchExamQuestionImage } from '../../services/importService'
-import MathDisplay from '../shared/MathDisplay.vue'
+import MathDisplay from '../../shared/MathDisplay.vue'
 
 const props = defineProps({
   question: {

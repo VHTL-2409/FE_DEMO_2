@@ -65,9 +65,9 @@
 import { ref, computed } from 'vue'
 import { forgotPassword } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
-import BaseButton from '../shared/BaseButton.vue'
-import BaseField from '../shared/BaseField.vue'
-import BaseInput from '../shared/BaseInput.vue'
+import BaseButton from '../../shared/BaseButton.vue'
+import BaseField from '../../shared/BaseField.vue'
+import BaseInput from '../../shared/BaseInput.vue'
 
 const toast = useToast()
 const email = ref('')

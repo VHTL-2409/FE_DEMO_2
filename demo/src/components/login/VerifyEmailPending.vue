@@ -84,7 +84,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { resendVerification } from '../../services/authService'
-import BaseButton from '../shared/BaseButton.vue'
+import BaseButton from '../../shared/BaseButton.vue'
 
 const route = useRoute()
 const email = ref(route.query.email || '')
