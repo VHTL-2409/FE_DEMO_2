@@ -8,7 +8,7 @@ import {
 } from './services/authService'
 import { pinia } from './stores'
 import { useAuthStore } from './stores/authStore'
-import { toastService } from './services/toastService'
+import { toastService } from './stores/toastStore'
 import { readMonitoringSessionQuery } from './services/monitoringContextStorage'
 
 const devRoutes = import.meta.env.DEV
