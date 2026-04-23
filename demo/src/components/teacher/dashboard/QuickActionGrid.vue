@@ -54,8 +54,8 @@ const actions = [
   {
     id: 'analytics',
     icon: 'bar_chart',
-    title: 'Phân tích & Báo cáo',
-    subtitle: 'Xem thống kê chi tiết',
+    title: 'Phân tích kết quả',
+    subtitle: 'Theo dõi điểm và tỷ lệ hoàn thành',
     color: 'accent'
   },
   {
@@ -69,7 +69,7 @@ const actions = [
     id: 'help',
     icon: 'help',
     title: 'Trung tâm trợ giúp',
-    subtitle: 'Hướng dẫn sử dụng',
+    subtitle: 'Xem hướng dẫn và câu hỏi thường gặp',
     color: 'muted'
   }
 ]
@@ -123,21 +123,21 @@ const actions = [
   background: var(--ds-surface);
   cursor: pointer;
   transition:
-    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.22s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
   text-align: left;
   width: 100%;
-  animation: fadeInRight 0.35s cubic-bezier(0.34, 1.1, 0.64, 1) backwards;
+  animation: fadeInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
-.td-qa__item:nth-child(1) { animation-delay: 0.05s; }
-.td-qa__item:nth-child(2) { animation-delay: 0.1s; }
-.td-qa__item:nth-child(3) { animation-delay: 0.15s; }
-.td-qa__item:nth-child(4) { animation-delay: 0.2s; }
-.td-qa__item:nth-child(5) { animation-delay: 0.25s; }
-.td-qa__item:nth-child(6) { animation-delay: 0.3s; }
+.td-qa__item:nth-child(1) { animation-delay: 0s; }
+.td-qa__item:nth-child(2) { animation-delay: 0.06s; }
+.td-qa__item:nth-child(3) { animation-delay: 0.12s; }
+.td-qa__item:nth-child(4) { animation-delay: 0.18s; }
+.td-qa__item:nth-child(5) { animation-delay: 0.24s; }
+.td-qa__item:nth-child(6) { animation-delay: 0.30s; }
 
 @keyframes fadeInRight {
   from { opacity: 0; transform: translateX(-10px); }
@@ -148,6 +148,7 @@ const actions = [
   border-color: var(--ds-primary-border);
   background: var(--ds-primary-soft);
   transform: translateX(4px);
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.18);
 }
 
 .td-qa__item:active {
@@ -170,11 +171,14 @@ const actions = [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, color 0.2s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .td-qa__item:hover .td-qa__item-icon {
-  transform: scale(1.15) rotate(-5deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-icon--primary {
@@ -185,7 +189,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--primary {
   background: var(--ds-primary);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-icon--info {
@@ -196,7 +200,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--info {
   background: var(--ds-info);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-icon--success {
@@ -207,7 +211,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--success {
   background: var(--ds-success);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-icon--accent {
@@ -218,7 +222,7 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--accent {
   background: var(--ds-accent);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-icon--muted {
@@ -233,13 +237,13 @@ const actions = [
 .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-300);
   color: var(--ds-text);
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .dark .td-qa__item:hover .td-qa__item-icon--muted {
   background: var(--ds-gray-600);
   color: white;
-  transform: scale(1.15) rotate(-6deg);
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .td-qa__item-body {
@@ -278,7 +282,7 @@ const actions = [
   font-size: 1.125rem;
   color: var(--ds-text-muted);
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .td-qa__item:hover .td-qa__item-arrow {
@@ -286,3 +290,9 @@ const actions = [
   transform: translateX(2px);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  .td-qa__item { animation: none; }
+  .td-qa__item:hover { transform: none; box-shadow: none; }
+  .td-qa__item:hover .td-qa__item-icon { transform: none; }
+  .td-qa__item:hover .td-qa__item-arrow { transform: none; }
+}

@@ -146,6 +146,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import {
+  normalizeAnswerIds,
+  scorePercentValue
+} from '../../../utils/attemptResult'
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -159,10 +163,7 @@ const props = defineProps({
   reviewAnswers: { type: Array, default: () => [] }
 })
 
-const scorePercent = computed(() => {
-  const s = Number(props.score)
-  return s > 0 ? Math.round(s) : 0
-})
+const scorePercent = computed(() => scorePercentValue(props.score))
 
 const scoreDisplay = computed(() => (scorePercent.value / 10).toFixed(1))
 
@@ -186,123 +187,21 @@ const correctRatio = computed(() => Math.round((props.correctCount / total.value
 const incorrectRatio = computed(() => Math.round((props.incorrectCount / total.value) * 100))
 const skippedRatio = computed(() => Math.round((props.skippedCount / total.value) * 100))
 
-const normalizeOptionId = (value) => {
-  if (!value) return ''
-  const str = String(value).trim().toUpperCase()
-  return ['A', 'B', 'C', 'D'].includes(str) ? str : str.charAt(0)
-}
-
-const parseOptions = (options) => {
-  if (!options) return []
-  if (Array.isArray(options)) {
-    return options.map((opt) => {
-      if (typeof opt === 'string') {
-        const match = opt.match(/^([A-D])\.\s*(.*)/)
-        return match ? { id: match[1].trim(), text: match[2].trim() } : { id: '?', text: opt.trim() }
-      }
-      return { 
-        id: normalizeOptionId(opt.id || opt.key || opt.letter || opt.label), 
-        text: String(opt.text || opt.content || opt.value || '').replace(/^[A-D]\.\s*/, '').trim() 
-      }
-    })
-  }
-  if (typeof options === 'string') {
-    const trimmed = options.trim()
-    // Handle JSON array format: [{"id":"A","text":"..."},...]
-    if (trimmed.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        const arr = Array.isArray(parsed) ? parsed : (parsed.options || parsed.choices || [])
-        if (Array.isArray(arr) && arr.length > 0) {
-          return arr.map((opt) => {
-            if (typeof opt === 'string') {
-              const match = opt.match(/^([A-D])\.\s*(.*)/)
-              return match ? { id: match[1].trim(), text: match[2].trim() } : { id: '?', text: opt.trim() }
-            }
-            return { 
-              id: normalizeOptionId(opt.id || opt.key || opt.letter || opt.label), 
-              text: String(opt.text || opt.content || opt.value || opt.option || '').replace(/^[A-D]\.\s*/, '').trim() 
-            }
-          })
-        }
-      } catch {
-        // fall through to line-by-line
-      }
-    }
-    // Handle JSON object format
-    if (trimmed.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        const arr = parsed.options || parsed.choices || parsed.answers || parsed.items || []
-        if (Array.isArray(arr) && arr.length > 0) {
-          return arr.map((opt) => {
-            if (typeof opt === 'string') {
-              const match = opt.match(/^([A-D])\.\s*(.*)/)
-              return match ? { id: match[1].trim(), text: match[2].trim() } : { id: '?', text: opt.trim() }
-            }
-            return { 
-              id: normalizeOptionId(opt.id || opt.key || opt.letter || opt.label), 
-              text: String(opt.text || opt.content || opt.value || opt.option || '').replace(/^[A-D]\.\s*/, '').trim() 
-            }
-          })
-        }
-      } catch {
-        // fall through to line-by-line
-      }
-    }
-    // Line-by-line format
-    return trimmed.split(/\n/).filter(Boolean).map((line) => {
-      const match = line.trim().match(/^([A-D])\.\s*(.*)/)
-      return match ? { id: match[1].trim(), text: match[2].trim() } : { id: '?', text: line.trim() }
-    })
-  }
-  return []
-}
-
-const parseAnswerValue = (value) => {
-  if (!value) return null
-  if (typeof value === 'object' && !Array.isArray(value)) return value
-  if (typeof value === 'object' && Array.isArray(value)) return value
-  try { return JSON.parse(String(value)) } catch { return null }
-}
-
-const normalizeAnswerIds = (value) => {
-  if (!value) return []
-  // Already an array
-  if (Array.isArray(value)) return value.map(normalizeOptionId)
-  // Try to parse as JSON
-  if (typeof value === 'object') {
-    if (Array.isArray(value)) return value.map(normalizeOptionId)
-    // Single string value in object
-    return [normalizeOptionId(value)]
-  }
-  // String - try JSON parse first
-  try { 
-    const parsed = JSON.parse(String(value))
-    if (Array.isArray(parsed)) return parsed.map(normalizeOptionId)
-    if (typeof parsed === 'string') return [normalizeOptionId(parsed)]
-  } catch { /* continue */ }
-  // Plain string
-  return [normalizeOptionId(value)]
-}
-
 const isSelectedOption = (item, option) => {
   const selected = normalizeAnswerIds(item.selectedAnswer || item.selectedIds || item.selectedIds_ || item.selected || [])
   const optId = String(option.id || '').toUpperCase().trim()
-  const optText = String(option.text || '').trim()
   return selected.some(id => {
     const normalizedId = String(id || '').toUpperCase().trim()
-    return normalizedId === optId || normalizedId === optText
+    return normalizedId === optId
   })
 }
 
 const isCorrectOption = (item, option) => {
   const correct = normalizeAnswerIds(item.correctAnswer || item.correctIds || item.correctIds_ || item.correct || [])
   const optId = String(option.id || '').toUpperCase().trim()
-  const optText = String(option.text || '').trim()
   return correct.some(id => {
     const normalizedId = String(id || '').toUpperCase().trim()
-    return normalizedId === optId || normalizedId === optText
+    return normalizedId === optId
   })
 }
 
@@ -321,9 +220,26 @@ const optionClass = (item, option) => {
 .rdp__skeleton { display: flex; flex-direction: column; gap: 0.625rem; }
 .rdp__skel-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
 .rdp__skel-card { padding: 0.875rem; border-radius: var(--ds-radius-xl); background: var(--ds-surface); border: 1.5px solid var(--ds-border); display: flex; flex-direction: column; gap: 0.375rem; align-items: center; }
-.rdp__skel { background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%); background-size: 200% 100%; animation: rdpShimmer 1.5s infinite; border-radius: var(--ds-radius-md); }
-.dark .rdp__skel { background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%); background-size: 200% 100%; }
-@keyframes rdpShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+/* GPU shimmer — transform+opacity avoids paint, runs at 60fps */
+@keyframes rdpShimmer {
+  0%   { opacity: 0.45; transform: scaleX(0.2); }
+  30%  { opacity: 1;   transform: scaleX(0.85); }
+  50%  { opacity: 1;   transform: scaleX(1); }
+  80%  { opacity: 0.8; transform: scaleX(0.85); }
+  100% { opacity: 0.45; transform: scaleX(0.2); }
+}
+.rdp__skel {
+  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
+  background-size: 200% 100%;
+  animation: rdpShimmer 1.2s ease-in-out infinite;
+  border-radius: var(--ds-radius-md);
+  will-change: transform, opacity;
+  transform-origin: left;
+}
+.dark .rdp__skel {
+  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
+  background-size: 200% 100%;
+}
 
 /* Top cards */
 .rdp__top-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
@@ -367,7 +283,7 @@ const optionClass = (item, option) => {
   padding: 0.5rem 1.25rem;
   border-radius: var(--ds-radius-xl);
   border: 1.5px solid;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
   margin: 0.125rem 0;
 }
 
@@ -609,7 +525,7 @@ const optionClass = (item, option) => {
   padding: 0.5rem 0.75rem;
   border-radius: var(--ds-radius-lg);
   border: 1.5px solid;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .rdp__option:hover { background: rgba(79, 70, 229, 0.03); }

@@ -93,11 +93,11 @@
 <script setup>
 import { ref } from 'vue'
 import PageHeader from '../ui/PageHeader.vue'
-import BaseButton from '../../shared/BaseButton.vue'
-import BaseCard from '../../shared/BaseCard.vue'
-import BaseField from '../../shared/BaseField.vue'
-import BaseInput from '../../shared/BaseInput.vue'
-import EmptyState from '../../shared/EmptyState.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import BaseCard from '../shared/BaseCard.vue'
+import BaseField from '../shared/BaseField.vue'
+import BaseInput from '../shared/BaseInput.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const demoName = ref('')
 const demoEmail = ref('')

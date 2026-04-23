@@ -1,5 +1,6 @@
 <template>
-  <div class="sdl">
+  <!-- sdl--visible must live on ancestor: CSS uses .sdl--visible .sdl__hero (descendant), not same element -->
+  <div ref="containerRef" class="sdl" :class="{ 'sdl--visible': isVisible }">
     <!-- Hero section -->
     <div class="sdl__hero">
       <slot name="hero" />
@@ -26,12 +27,22 @@
 </template>
 
 <script setup>
+import { useIntersectionObserver } from '../../../composables/useIntersectionObserver'
+
+// Use intersection observer for optimized animation triggering
+// Only animate when component enters viewport
+const { containerRef, isVisible } = useIntersectionObserver({
+  threshold: 0.05,
+  rootMargin: '0px 0px -20px 0px',
+  once: true
+})
 </script>
 
 <style scoped>
+/* Entrance animation without GPU text compositing */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .sdl {
@@ -39,28 +50,49 @@
   flex-direction: column;
   gap: 1.5rem;
   padding: 1.5rem;
-  max-width: 1200px;
+  max-width: 1640px;
+  width: 100%;
   margin: 0 auto;
+  contain: layout style;
+  /* Note: NOT using content-visibility: auto here — it breaks
+     IntersectionObserver sizing, causing the dashboard to stay invisible */
 }
 
-/* Entrance animations */
+/* Entrance animations - GPU accelerated, triggered by visibility class */
 .sdl__hero {
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.05s both;
+  opacity: 0;
+}
+
+.sdl--visible .sdl__hero {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
 .sdl__kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.15s both;
+  opacity: 0;
+}
+
+.sdl--visible .sdl__kpis {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 .sdl__main {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: start;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.25s both;
+  opacity: 0;
+}
+
+.sdl__main:has(.sdl__sidebar) {
+  grid-template-columns: 1fr 320px;
+}
+
+/* Main section enters sooner (0.22s) so cards are visible faster */
+.sdl--visible .sdl__main {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
 
 .sdl__main-col {
@@ -84,29 +116,32 @@
   .sdl__hero,
   .sdl__kpis,
   .sdl__main {
-    animation: none;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    will-change: auto;
   }
 }
 
 /* Responsive - large screens */
 @media (min-width: 1400px) {
-  .sdl { max-width: 1400px; }
-  .sdl__main { grid-template-columns: 1fr 360px; }
+  .sdl { max-width: 1640px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 360px; }
 }
 
 @media (min-width: 1600px) {
-  .sdl { max-width: 1600px; }
-  .sdl__main { grid-template-columns: 1fr 400px; }
+  .sdl { max-width: 1720px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 400px; }
 }
 
 @media (min-width: 1920px) {
   .sdl { max-width: 1800px; }
-  .sdl__main { grid-template-columns: 1fr 440px; }
+  .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 440px; }
 }
 
 /* Responsive - medium screens */
 @media (max-width: 1200px) {
-  .sdl__main {
+  .sdl__main:has(.sdl__sidebar) {
     grid-template-columns: 1fr 280px;
   }
 }

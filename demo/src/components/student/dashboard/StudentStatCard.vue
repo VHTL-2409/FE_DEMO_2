@@ -50,9 +50,10 @@ const formattedValue = computed(() => {
 
 
 <style scoped>
+/* Fade-only entrance keeps KPI text crisp */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .ssc {
@@ -69,13 +70,21 @@ const formattedValue = computed(() => {
     border-color 0.2s ease;
   min-width: 0;
   cursor: default;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  contain: layout;
+  content-visibility: auto;
 }
 
-.sdl__kpis .ssc:nth-child(1) { animation-delay: 0.2s; }
-.sdl__kpis .ssc:nth-child(2) { animation-delay: 0.27s; }
-.sdl__kpis .ssc:nth-child(3) { animation-delay: 0.34s; }
-.sdl__kpis .ssc:nth-child(4) { animation-delay: 0.41s; }
+/* Staggered entrance — tighter delays for faster perceived load (total spread: 0.21s) */
+.sdl__kpis .ssc:nth-child(1) { animation-delay: 0.12s; }
+.sdl__kpis .ssc:nth-child(2) { animation-delay: 0.16s; }
+.sdl__kpis .ssc:nth-child(3) { animation-delay: 0.20s; }
+.sdl__kpis .ssc:nth-child(4) { animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ssc { animation-duration: 0.01ms !important; }
+  .ssc__icon-wrap { transition-duration: 0.01ms !important; }
+}
 
 .dark .ssc {
   border-color: var(--ds-border-strong);

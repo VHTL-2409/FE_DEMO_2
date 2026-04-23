@@ -168,10 +168,10 @@ import { listMyAttempts } from '../../services/attemptService'
 import { useToast } from '../../composables/useToast'
 import { buildResultQuery } from '../../services/studentExamContextStorage'
 import StudentTopHeader from './StudentTopHeader.vue'
-import BaseButton from '../../shared/BaseButton.vue'
-import EmptyState from '../../shared/EmptyState.vue'
+import BaseButton from '../shared/BaseButton.vue'
+import EmptyState from '../shared/EmptyState.vue'
 import PageHeader from '../ui/PageHeader.vue'
-import SkeletonLoader from '../../shared/SkeletonLoader.vue'
+import SkeletonLoader from '../shared/SkeletonLoader.vue'
 
 const router = useRouter()
 const isDark = ref(false)

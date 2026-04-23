@@ -125,8 +125,8 @@ const displayExams = computed(() => {
 
 <style scoped>
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .td-sub {
@@ -208,7 +208,7 @@ const displayExams = computed(() => {
   font-weight: 600;
   color: var(--ds-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .td-sub__filter-tab:hover {
@@ -266,7 +266,7 @@ const displayExams = computed(() => {
   font-weight: 600;
   color: var(--ds-primary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 
@@ -435,11 +435,12 @@ const displayExams = computed(() => {
 .td-sub__status--started .td-sub__status-dot {
   background: var(--ds-success);
   animation: td-sub-pulse 1.5s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
 @keyframes td-sub-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: scale(1) translateZ(0); }
+  50% { opacity: 0.4; transform: scale(0.9) translateZ(0); }
 }
 
 .td-sub__status--ended {
@@ -461,7 +462,7 @@ const displayExams = computed(() => {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: none;
 }
 
@@ -508,3 +509,4 @@ const displayExams = computed(() => {
   opacity: 0.3;
 }
 </style>
+}

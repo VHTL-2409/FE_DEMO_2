@@ -7,7 +7,7 @@
     <nav class="lp__nav" :class="{ 'lp__nav--scrolled': isScrolled }">
       <div class="lp__nav-inner">
         <a href="/" class="lp__nav-logo">
-          <AppLogo size="sm" variant="default" tag="span" :show-text="false" />
+          <AppLogo size="sm" variant="default" tag="span" />
           <span class="lp__nav-brand">EduExam</span>
         </a>
         <div class="lp__nav-links">
@@ -426,7 +426,7 @@
       <div class="lp__footer-main">
         <div class="lp__footer-brand">
           <a href="/" class="lp__footer-logo">
-            <AppLogo size="md" variant="default" tag="span" :show-text="false" />
+            <AppLogo size="md" variant="default" tag="span" />
             <span>EduExam</span>
           </a>
           <p class="lp__footer-tagline">
@@ -497,13 +497,12 @@ const openFaq = ref(null)
 const activeTestimonial = ref(0)
 const animatedStats = reactive([0, 0, 0, 0])
 const cardTilts = reactive({})
-const counterAnimated = reactive({})
 let testimonialInterval = null
 let particleAnimationId = null
 
 const primaryCta = computed(() =>
   authStore.isAuthenticated
-    ? { to: authStore.dashboardPath || '/select-role', label: 'Bắt Đầu Miên Phí' }
+    ? { to: authStore.dashboardPath || '/select-role', label: 'Vào bảng điều khiển' }
     : { to: '/register', label: 'Bắt đầu miễn phí' }
 )
 
@@ -636,66 +635,68 @@ const faqItems = [
   },
 ]
 
-// Scroll handler — throttled để tránh lag
-let scrollRafId = null
+// Scroll handler
 const handleScroll = () => {
-  if (scrollRafId) return
-  scrollRafId = requestAnimationFrame(() => {
-    isScrolled.value = window.scrollY > 20
-    scrollRafId = null
-  })
+  isScrolled.value = window.scrollY > 50
 }
 
 // Intersection Observer for animations
 const setupScrollAnimations = () => {
   if (typeof IntersectionObserver === 'undefined') return
 
+  const observerOptions = {
+    root: null,
+    rootMargin: '0px 0px -80px 0px',
+    threshold: 0.1
+  }
+
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const el = entry.target
+        const delay = parseInt(el.dataset.delay || '0')
         const animType = el.dataset.animate
 
-        el.classList.add('is-visible')
+        setTimeout(() => {
+          el.classList.add('is-visible')
 
-        if (animType?.startsWith('stat-')) {
-          const idx = parseInt(animType.replace('stat-', ''))
-          animateCounter(idx)
-        }
+          // Trigger counter animation for stats
+          if (animType?.startsWith('stat-')) {
+            const idx = parseInt(animType.replace('stat-', ''))
+            animateCounter(idx)
+          }
+        }, delay)
 
         observer.unobserve(el)
       }
     })
-  }, {
-    root: null,
-    rootMargin: '0px 0px -60px 0px',
-    threshold: 0.08
-  })
+  }, observerOptions)
 
   document.querySelectorAll('.animate-on-scroll').forEach(el => {
     observer.observe(el)
   })
 }
 
-// Counter animation — runs once
+// Counter animation
 const animateCounter = (index) => {
-  if (counterAnimated[index]) return
-  counterAnimated[index] = true
-
   const target = stats[index].value
-  const duration = 1800
+  const duration = 2000
   const startTime = performance.now()
 
-  const tick = (now) => {
-    const elapsed = now - startTime
-    const t = Math.min(elapsed / duration, 1)
-    const eased = 1 - Math.pow(1 - t, 3)
-    animatedStats[index] = parseFloat((target * eased).toFixed(target % 1 !== 0 ? 1 : 0))
-    if (t < 1) requestAnimationFrame(tick)
-    else animatedStats[index] = target
+  const animate = (currentTime) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
+    animatedStats[index] = parseFloat((target * eased).toFixed(1))
+
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    } else {
+      animatedStats[index] = target
+    }
   }
 
-  requestAnimationFrame(tick)
+  requestAnimationFrame(animate)
 }
 
 // FAQ toggle
@@ -712,124 +713,23 @@ const prevTestimonial = () => {
   activeTestimonial.value = (activeTestimonial.value - 1 + testimonials.length) % testimonials.length
 }
 
-// Card tilt effect — throttled with rAF
+// Card tilt effect
 const handleCardTilt = (event, index) => {
-  if (cardTilts[index]) return
-  const card = event.currentTarget
-  if (!card) return
-  cardTilts[index] = requestAnimationFrame(() => {
-    if (!card || !card.getBoundingClientRect) return
-    const rect = card.getBoundingClientRect()
-    const x = event.clientX - rect.left
-    const y = event.clientY - rect.top
-    const rx = ((y / rect.height) - 0.5) * -6
-    const ry = ((x / rect.width) - 0.5) * 6
-
-    card.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg) scale3d(1.02, 1.02, 1.02)`
-    cardTilts[index] = null
-  })
+  if (!event?.currentTarget) return
+  event.currentTarget.style.transform = ''
+  cardTilts[index] = false
 }
 
 const resetCardTilt = (index) => {
-  if (cardTilts[index]) {
-    cancelAnimationFrame(cardTilts[index])
-    cardTilts[index] = null
-  }
+  cardTilts[index] = false
 }
 
-// Particle animation — optimized: lazy init, throttled resize, reduced count
+// Particle animation — DISABLED for performance. Background is already
+// visually rich via CSS gradient orbs; the RAF loop (80 particles + O(n²)
+// connection draws at 60fps) causes jank on low-end devices.
 const initParticles = () => {
-  const canvas = particleCanvas.value
-  if (!canvas) return
-
-  const ctx = canvas.getContext('2d')
-  let particles = []
-  let width = canvas.width = window.innerWidth
-  let height = canvas.height = window.innerHeight
-  let animId = null
-  let resizeTimer = null
-
-  class Particle {
-    constructor() { this.reset(true) }
-
-    reset(randomY = false) {
-      this.x = Math.random() * width
-      this.y = randomY ? Math.random() * height : -5
-      this.size = Math.random() * 1.8 + 0.3
-      this.speedX = (Math.random() - 0.5) * 0.25
-      this.speedY = Math.random() * 0.3 + 0.05
-      this.opacity = Math.random() * 0.4 + 0.05
-    }
-
-    update() {
-      this.x += this.speedX
-      this.y += this.speedY
-      if (this.y > height + 5 || this.x < -5 || this.x > width + 5) this.reset()
-    }
-
-    draw() {
-      ctx.beginPath()
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(99, 102, 241, ${this.opacity})`
-      ctx.fill()
-    }
-  }
-
-  // Reduced particle count for performance
-  for (let i = 0; i < 45; i++) particles.push(new Particle())
-
-  let lastTime = 0
-  const targetFPS = 30
-  const interval = 1000 / targetFPS
-
-  const animate = (timestamp) => {
-    if (timestamp - lastTime >= interval) {
-      lastTime = timestamp
-      ctx.clearRect(0, 0, width, height)
-
-      // Draw particles
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update()
-        particles[i].draw()
-      }
-
-      // Draw connections — only check nearby particles using spatial grid
-      for (let i = 0; i < particles.length; i += 3) {
-        const p1 = particles[i]
-        for (let j = i + 1; j < Math.min(i + 8, particles.length); j++) {
-          const p2 = particles[j]
-          const dx = p1.x - p2.x
-          const dy = p1.y - p2.y
-          const distSq = dx * dx + dy * dy
-          if (distSq < 14400) { // 120^2
-            const dist = Math.sqrt(distSq)
-            const alpha = (1 - dist / 120) * 0.08
-            ctx.beginPath()
-            ctx.moveTo(p1.x, p1.y)
-            ctx.lineTo(p2.x, p2.y)
-            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`
-            ctx.lineWidth = 0.4
-            ctx.stroke()
-          }
-        }
-      }
-    }
-
-    animId = requestAnimationFrame(animate)
-  }
-
-  particleAnimationId = animId
-
-  const resize = () => {
-    clearTimeout(resizeTimer)
-    resizeTimer = setTimeout(() => {
-      width = canvas.width = window.innerWidth
-      height = canvas.height = window.innerHeight
-    }, 200)
-  }
-
-  animate(0)
-  window.addEventListener('resize', resize, { passive: true })
+  // Disabled: particle canvas caused jank on lower-end devices.
+  // Background retains CSS gradient orbs which are GPU-composited.
 }
 
 // Ripple effect for buttons
@@ -936,17 +836,10 @@ onUnmounted(() => {
 }
 
 /* ============================================
-   PARTICLE CANVAS
+   PARTICLE CANVAS — hidden (RAF loop disabled)
    ============================================ */
 .lp__particles {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  contain: strict;
+  display: none;
 }
 
 /* ============================================
@@ -954,14 +847,11 @@ onUnmounted(() => {
    ============================================ */
 .animate-on-scroll {
   opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .animate-on-scroll.is-visible {
   opacity: 1;
-  transform: translateY(0);
 }
 
 [data-animate="badge"] { transition-delay: 0.1s; }
@@ -969,9 +859,8 @@ onUnmounted(() => {
 [data-animate="desc"] { transition-delay: 0.35s; }
 [data-animate="cta"] { transition-delay: 0.5s; }
 [data-animate="trust"] { transition-delay: 0.65s; }
-[data-animate="preview"] { transition-delay: 0.4s; transform: translateX(60px); }
-[data-animate="preview"].is-visible { transform: translateX(0); }
-[data-animate="section-header"] { transform: translateY(30px); }
+[data-animate="preview"] { transition-delay: 0.4s; }
+[data-animate="section-header"] { }
 
 /* ============================================
    NAVIGATION
@@ -983,58 +872,13 @@ onUnmounted(() => {
   right: 0;
   z-index: 100;
   padding: 1rem 2rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .lp__nav--scrolled {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.08),
-    0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  border-radius: 0;
-}
-
-/* Navbar card wrapper — creates the floating card look */
-.lp__nav--scrolled .lp__nav-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  background: white;
-  border-radius: 0;
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.04),
-    0 8px 32px rgba(0, 0, 0, 0.06);
-}
-
-.lp__nav--scrolled .lp__nav-brand {
-  color: var(--lp-text);
-}
-
-.lp__nav--scrolled .lp__nav-link {
-  color: var(--lp-text-secondary);
-}
-
-.lp__nav--scrolled .lp__nav-link:hover {
-  color: var(--lp-primary);
-  background: var(--lp-primary-soft);
-}
-
-.lp__nav--scrolled .lp__nav-login {
-  color: var(--lp-text-secondary);
-}
-
-.lp__nav--scrolled .lp__nav-login:hover {
-  color: var(--lp-primary);
-  background: var(--lp-primary-soft);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  padding: 0.75rem 2rem;
 }
 
 .lp__nav-inner {
@@ -1074,7 +918,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.5rem 0.875rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__nav-link:hover {
@@ -1095,7 +939,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__nav-login:hover {
@@ -1114,16 +958,11 @@ onUnmounted(() => {
   padding: 0.625rem 1.25rem;
   border-radius: 10px;
   text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
 }
 
-.lp__nav--scrolled .lp__nav-cta {
-  background: var(--lp-primary);
-  color: white;
-}
-
-.lp__nav--scrolled .lp__nav-cta:hover {
+.lp__nav-cta:hover {
   background: var(--lp-primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
@@ -1145,7 +984,7 @@ onUnmounted(() => {
   height: 2px;
   background: var(--lp-text);
   border-radius: 2px;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__mobile-menu {
@@ -1168,7 +1007,7 @@ onUnmounted(() => {
   text-decoration: none;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__mobile-link:hover {
@@ -1204,7 +1043,7 @@ onUnmounted(() => {
   text-decoration: none;
   border: none;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -1299,14 +1138,12 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+/* Landing page orbs: keep static (filter: blur creates GPU layer automatically) */
 .lp__orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-  animation: orbFloat 25s ease-in-out infinite;
-  will-change: transform, opacity;
-  transform: translateZ(0);
+  opacity: 0.22;
+  animation: none !important;
 }
 
 .lp__orb--1 {
@@ -1487,14 +1324,12 @@ onUnmounted(() => {
 }
 
 .lp__preview-card--float {
-  animation: cardFloat 7s ease-in-out infinite;
-  will-change: transform;
-  transform: translateZ(0);
+  animation: none;
 }
 
 @keyframes cardFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg) translateZ(0); }
-  50% { transform: translateY(-10px) rotate(0.3deg) translateZ(0); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(0.5deg); }
 }
 
 .lp__preview-card:hover {
@@ -1682,7 +1517,7 @@ onUnmounted(() => {
   padding: 0.625rem 0.75rem;
   background: var(--lp-bg);
   border-radius: 10px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__preview-student:hover {
@@ -1831,7 +1666,7 @@ onUnmounted(() => {
 
 .lp__marquee-content {
   display: flex;
-  animation: marquee 30s linear infinite;
+  animation: none;
   width: max-content;
 }
 
@@ -1909,7 +1744,7 @@ onUnmounted(() => {
   justify-content: center;
   color: white;
   margin: 0 auto 1rem;
-  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .lp__stat-value {
@@ -1989,7 +1824,7 @@ onUnmounted(() => {
   background: var(--lp-surface);
   border: 1px solid var(--lp-border);
   padding: 2rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: default;
   overflow: hidden;
 }
@@ -2008,7 +1843,6 @@ onUnmounted(() => {
 }
 
 .lp__feature-card:hover {
-  transform: translateY(-8px);
   box-shadow:
     0 25px 50px -12px rgba(79, 70, 229, 0.15),
     0 0 0 1px rgba(79, 70, 229, 0.1);
@@ -2044,7 +1878,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin-bottom: 1.25rem;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__feature-card:hover .lp__feature-icon-wrap {
@@ -2102,10 +1936,7 @@ onUnmounted(() => {
 .lp__workflow-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-  will-change: transform;
-  transform: translateZ(0);
+  opacity: 0.18;
 }
 
 .lp__workflow-orb--1 {
@@ -2184,7 +2015,7 @@ onUnmounted(() => {
   margin-bottom: 1.5rem;
   position: relative;
   z-index: 2;
-  transition: all 0.4s ease;
+  transition: color 0.4s ease, background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
 }
 
 .lp__workflow-step:hover .lp__workflow-step-number {
@@ -2211,7 +2042,7 @@ onUnmounted(() => {
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__workflow-step-card:hover {
@@ -2275,18 +2106,16 @@ onUnmounted(() => {
   border: 1px solid var(--lp-border);
   border-radius: 24px;
   padding: 2.5rem;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   position: absolute;
   inset: 0;
-  transform: translateX(40px);
   pointer-events: none;
 }
 
 .lp__testimonial-card--active {
   opacity: 1;
   position: relative;
-  transform: translateX(0);
   pointer-events: auto;
 }
 
@@ -2362,7 +2191,7 @@ onUnmounted(() => {
   justify-content: center;
   color: var(--lp-text);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__testimonials-btn:hover {
@@ -2383,7 +2212,7 @@ onUnmounted(() => {
   border: none;
   background: var(--lp-border);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__testimonials-dot--active {
@@ -2415,7 +2244,7 @@ onUnmounted(() => {
   border: 1px solid var(--lp-border);
   border-radius: 16px;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .lp__faq-item:hover {
@@ -2497,9 +2326,7 @@ onUnmounted(() => {
 .lp__cta-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
-  will-change: transform;
-  transform: translateZ(0);
+  opacity: 0.2;
 }
 
 .lp__cta-orb--1 {
@@ -2661,7 +2488,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--lp-text-secondary);
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .lp__footer-social-link:hover {

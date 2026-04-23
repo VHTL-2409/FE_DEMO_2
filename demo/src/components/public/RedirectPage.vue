@@ -129,6 +129,7 @@ const goToDashboard = () => {
 }
 
 const run = async () => {
+  // Safety timeout: 15 seconds
   timeoutId = setTimeout(() => {
     if (!hasError.value) {
       hasError.value = true
@@ -137,8 +138,13 @@ const run = async () => {
   }, 15000)
 
   try {
+    // Step 1: Auth (instant - token already exists from login)
     advance(1)
+
+    // Small visual pause so user can see step 1 complete
     await new Promise(r => setTimeout(r, 300))
+
+    // Step 2: Fetch dashboard data
     advance(2)
 
     let data
@@ -150,7 +156,10 @@ const run = async () => {
       sessionStorage.setItem('prefetch_teacher_data', JSON.stringify(data))
     }
 
+    // Step 3: Ready
     advance(3)
+
+    // Brief pause to show completion
     await new Promise(r => setTimeout(r, 400))
 
     clearTimeout(timeoutId)
@@ -185,6 +194,7 @@ onUnmounted(() => {
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* Animated background orbs */
 .rdl__bg {
   position: absolute;
   inset: 0;
@@ -194,8 +204,7 @@ onUnmounted(() => {
 .rdl__orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
+  opacity: 0.22;
   animation: orb-drift 20s ease-in-out infinite;
 }
 
@@ -233,13 +242,12 @@ onUnmounted(() => {
   66% { transform: translate(-20px, 30px) scale(0.97); }
 }
 
+/* Card */
 .rdl__card {
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 28px;
   padding: 3rem 3.5rem;
   width: 100%;
@@ -252,16 +260,18 @@ onUnmounted(() => {
 }
 
 @keyframes card-enter {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
+/* Logo */
 .rdl__logo {
   display: flex;
   justify-content: center;
   margin-bottom: 1.25rem;
 }
 
+/* Role badge */
 .rdl__role-badge {
   display: inline-flex;
   align-items: center;
@@ -285,6 +295,7 @@ onUnmounted(() => {
   color: #5eead4;
 }
 
+/* Spinner */
 .rdl__spinner {
   position: relative;
   width: 90px;
@@ -335,6 +346,7 @@ onUnmounted(() => {
   50% { opacity: 0.7; transform: scale(0.92); }
 }
 
+/* Title */
 .rdl__title {
   font-family: 'Be Vietnam Pro', sans-serif;
   font-size: 1.375rem;
@@ -344,6 +356,7 @@ onUnmounted(() => {
   margin: 0 0 2rem;
 }
 
+/* Steps */
 .rdl__steps {
   display: flex;
   flex-direction: column;
@@ -356,7 +369,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .rdl__step-icon {
@@ -368,7 +381,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -413,6 +426,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+/* Progress bar */
 .rdl__progress {
   height: 4px;
   background: rgba(255, 255, 255, 0.12);
@@ -428,6 +442,7 @@ onUnmounted(() => {
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Error state */
 .rdl__error {
   display: flex;
   align-items: center;
@@ -474,6 +489,7 @@ onUnmounted(() => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
+/* Footer */
 .rdl__footer {
   position: relative;
   z-index: 1;
@@ -482,6 +498,7 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* Responsive */
 @media (max-width: 480px) {
   .rdl__card {
     padding: 2rem 1.5rem;
@@ -494,6 +511,7 @@ onUnmounted(() => {
   }
 }
 
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .rdl__orb,
   .rdl__spinner-ring,

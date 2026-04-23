@@ -13,13 +13,6 @@
       </div>
 
       <p class="sh__headline">{{ headlineText }}</p>
-
-      <!-- Quick todo hint -->
-      <div v-if="nextAction" class="sh__next-action" @click="$emit('action-click', nextAction.action)">
-        <LucideIcon :name="nextAction.icon" />
-        <span>{{ nextAction.label }}</span>
-        <LucideIcon name="chevron-right" class="sh__next-arrow" />
-      </div>
     </div>
 
     <!-- Right: stats summary -->
@@ -79,8 +72,6 @@ const props = defineProps({
   avgScore: { type: [Number, String], default: null }
 })
 
-defineEmits(['action-click'])
-
 const timeOfDayLabel = computed(() => {
   const h = new Date().getHours()
   if (h < 12) return 'Buổi sáng'
@@ -94,36 +85,25 @@ const todayLabel = computed(() =>
 
 const headlineText = computed(() => {
   if (props.examCount > 0) {
-    return `Bạn có ${props.examCount} kỳ thi sắp tới. Chuẩn bị thật kỹ nhé!`
+    return `Bạn có ${props.examCount} kỳ thi sắp tới.`
   }
   if (props.pendingCount > 0) {
-    return `Bạn có ${props.pendingCount} bài thi chưa hoàn thành.`
+    return `${props.pendingCount} bài thi chưa hoàn thành.`
   }
   if (props.newScoreCount > 0) {
-    return `Có ${props.newScoreCount} kết quả thi mới đang chờ bạn xem.`
+    return `${props.newScoreCount} kết quả thi mới.`
   }
-  return 'Không có kỳ thi nào sắp tới. Hãy luyện tập thêm!'
+  return 'Không có kỳ thi nào sắp tới.'
 })
 
-const nextAction = computed(() => {
-  if (props.examCount > 0) {
-    return { action: 'exam', label: 'Xem lịch thi', icon: 'calendar_month' }
-  }
-  if (props.pendingCount > 0) {
-    return { action: 'pending', label: 'Hoàn thành bài thi', icon: 'quiz' }
-  }
-  if (props.newScoreCount > 0) {
-    return { action: 'results', label: 'Xem kết quả mới', icon: 'grade' }
-  }
-  return { action: 'practice', label: 'Luyện tập ngay', icon: 'model_training' }
-})
 </script>
 
 
 <style scoped>
+/* Entrance animation without forcing text onto a composited layer */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .sh {
@@ -138,7 +118,9 @@ const nextAction = computed(() => {
   box-shadow: var(--ds-shadow-sm);
   position: relative;
   overflow: hidden;
-  animation: fadeInUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  content-visibility: auto;
+  contain: layout;
 }
 
 .dark .sh {
@@ -183,19 +165,22 @@ const nextAction = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* GPU optimization for animation */
+  will-change: transform;
+  transform: translateZ(0);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
   animation: wave 3s ease-in-out infinite;
 }
 
 .sh__greeting-row:hover .sh__wave-icon {
-  transform: scale(1.15) rotate(-8deg);
+  transform: scale(1.15) rotate(-8deg) translateZ(0);
   background: rgba(79, 70, 229, 0.2);
 }
 
-
+/* GPU-accelerated wave animation using transform3d */
 @keyframes wave {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+  0%, 100% { transform: rotate(-5deg) translateZ(0); }
+  50% { transform: rotate(5deg) translateZ(0); }
 }
 
 .sh__greeting-text {
@@ -298,9 +283,8 @@ const nextAction = computed(() => {
   gap: 0.625rem;
   padding: 0.5rem 0.875rem;
   border-radius: var(--ds-radius-xl);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--ds-border);
-  backdrop-filter: blur(4px);
   box-shadow: var(--ds-shadow-xs);
   transition:
     transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),

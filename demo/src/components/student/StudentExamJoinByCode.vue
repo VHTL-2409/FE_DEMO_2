@@ -12,9 +12,7 @@
       <!-- Page Header -->
       <div class="mb-6 ds-animate-fade-up max-w-6xl">
         <PageHeader
-          eyebrow="Học sinh"
           title="Vào thi"
-          subtitle="Chọn đề thi từ lớp học hoặc nhập mã đề để tham gia thi."
           size="default"
         />
       </div>
@@ -31,7 +29,6 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-[var(--ds-text)]">Thi qua mã đề</h2>
-              <p class="mt-0.5 text-xs text-[var(--ds-text-muted)]">Nhập mã hoặc tiêu đề để vào phòng chờ</p>
             </div>
           </div>
 
@@ -43,7 +40,7 @@
               v-model.trim="examCode"
               type="text"
               autocomplete="off"
-              placeholder="Nhập mã đề hoặc tiêu đề bài thi..."
+              placeholder="Mã hoặc tiêu đề"
               class="ds-input w-full pl-12 pr-4 py-4 rounded-[var(--ds-radius-xl)] text-sm transition-all duration-200"
               :class="{ 'ring-2 ring-primary/20': isInputFocused }"
               @focus="isInputFocused = true"
@@ -51,11 +48,6 @@
               @keyup.enter="goToWaitingRoom"
             />
           </div>
-
-          <p class="mt-2 text-xs text-[var(--ds-text-muted)] flex items-center gap-1.5">
-            <LucideIcon name="info" size="14" />
-            Mã đề thi thường là chuỗi ký tự do giảng viên cung cấp.
-          </p>
 
           <div v-if="errorMsg" class="mt-4 flex items-center gap-2 rounded-[var(--ds-radius-xl)] border border-[rgba(220,38,38,0.2)] bg-[var(--ds-danger-bg)] px-4 py-3 animate-fade-up">
             <LucideIcon name="error" size="18" />
@@ -89,7 +81,6 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-[var(--ds-text)]">Đề thi từ lớp học</h2>
-              <p class="mt-0.5 text-xs text-[var(--ds-text-muted)]">Chọn đề thi được giao từ lớp học của bạn</p>
             </div>
           </div>
 
@@ -105,7 +96,7 @@
                 class="ds-select w-full appearance-none rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 py-2 pr-10 text-sm font-medium text-[var(--ds-text)] cursor-pointer transition-all duration-200 hover:border-[var(--ds-primary-border)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-[var(--ds-primary)]"
               >
                 <option value="">Tất cả lớp học</option>
-                <option v-for="cls in uniqueClasses" :key="cls.id" :value="cls.id">
+                <option v-for="cls in uniqueClasses" :key="cls.id" :value="String(cls.id)">
                   {{ cls.name }}{{ cls.subject ? ` - ${cls.subject}` : '' }}
                 </option>
               </select>
@@ -127,7 +118,25 @@
               <LucideIcon name="school" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
             <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Chưa tham gia lớp học nào</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Bạn chưa được thêm vào lớp học nào. Vui lòng liên hệ giáo viên để được thêm.</p>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Tham gia lớp hoặc liên hệ giáo viên.</p>
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                class="ejc__cta-btn ejc__cta-btn--primary"
+                @click="router.push('/student/classes')"
+              >
+                <LucideIcon name="school" size="16" />
+                Đi tới lớp học
+              </button>
+              <button
+                type="button"
+                class="ejc__cta-btn ejc__cta-btn--outline"
+                @click="router.push('/student/classes')"
+              >
+                <LucideIcon name="key-round" size="16" />
+                Tham gia bằng mã lớp
+              </button>
+            </div>
           </div>
 
           <!-- Loading exams for selected class -->
@@ -142,9 +151,7 @@
               <LucideIcon name="quiz" size="28" class="text-[var(--ds-text-muted)]" />
             </div>
             <h3 class="text-sm font-bold text-[var(--ds-text)] mb-1">Không có đề thi đang diễn ra</h3>
-            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">
-              {{ selectedClassExams.length === 0 ? 'Lớp này chưa có đề thi nào.' : 'Lớp này hiện không có đề thi nào đang diễn ra.' }}
-            </p>
+            <p class="text-xs text-[var(--ds-text-muted)] max-w-xs">Không có đề thi phù hợp.</p>
           </div>
 
           <!-- Class exam list -->
@@ -204,6 +211,7 @@ import { useRouter } from 'vue-router'
 import { joinExamByCode } from '../../services/examService'
 import { getMyClasses, getStudentClassExams } from '../../services/classService'
 import { useToast } from '../../composables/useToast'
+import { buildWaitingRoomQuery } from '../../services/studentExamContextStorage'
 import PageHeader from '../ui/PageHeader.vue'
 
 const router = useRouter()
@@ -239,7 +247,7 @@ const hasSelectedClass = computed(() => !!selectedClassId.value)
 const filteredClassExams = computed(() => {
   if (!hasSelectedClass.value) return []
   return [{
-    ...studentClasses.value.find(c => c.id === selectedClassId.value),
+    ...studentClasses.value.find(c => String(c.id) === String(selectedClassId.value)),
     exams: currentClassExams.value
   }]
 })
@@ -253,7 +261,11 @@ watch(selectedClassId, async (newClassId) => {
   isLoadingClassExams.value = true
   try {
     const exams = await getStudentClassExams(newClassId)
-    selectedClassExams.value = exams || []
+    const selectedClass = studentClasses.value.find(c => String(c.id) === String(newClassId))
+    selectedClassExams.value = (exams || []).map((exam) => ({
+      ...exam,
+      className: exam.className || selectedClass?.name || selectedClass?.className || ''
+    }))
   } catch {
     selectedClassExams.value = []
   } finally {
@@ -274,16 +286,7 @@ const goToWaitingRoom = async () => {
     }
     router.push({
       path: '/student/exam-waiting-room',
-      query: {
-        examId: matchedExam.id,
-        examCode: matchedExam.code || '',
-        exam: matchedExam.title || 'Bài thi',
-        duration: matchedExam.durationMinutes || 60,
-        questions: matchedExam.questionCount || 0,
-        startAt: matchedExam.startTime || '',
-        endAt: matchedExam.endTime || '',
-        requireCameraMic: matchedExam.requireCameraMic === false ? 'false' : 'true'
-      }
+      query: buildWaitingRoomQuery(matchedExam)
     })
   } catch (error) {
     errorMsg.value = 'Không thể tìm bài thi lúc này. Vui lòng thử lại.'
@@ -295,16 +298,7 @@ const goToWaitingRoom = async () => {
 const enterClassExam = (exam) => {
   router.push({
     path: '/student/exam-waiting-room',
-    query: {
-      examId: exam.id,
-      examCode: exam.code || '',
-      exam: exam.title || exam.name || 'Bài thi',
-      duration: exam.durationMinutes || exam.duration || 60,
-      questions: exam.questionCount || 0,
-      startAt: exam.startTime || '',
-      endAt: exam.endTime || '',
-      requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true'
-    }
+    query: buildWaitingRoomQuery({ ...exam, title: exam.title || exam.name || 'Bài thi' })
   })
 }
 
@@ -385,7 +379,7 @@ onMounted(() => { loadMyClasses() })
   border: 1.5px solid var(--ds-border);
   background: var(--ds-surface);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   text-align: left;
   width: 100%;
   font-family: inherit;
@@ -443,9 +437,42 @@ onMounted(() => { loadMyClasses() })
   font-style: italic;
 }
 
+.ejc__cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0.625rem 0.95rem;
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ejc__cta-btn--primary {
+  background: linear-gradient(135deg, var(--ds-primary), #6366f1);
+  color: white;
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.2);
+}
+
+.ejc__cta-btn--outline {
+  background: var(--ds-surface);
+  border-color: var(--ds-border);
+  color: var(--ds-text-secondary);
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up { animation: fadeUp 0.4s ease-out; }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

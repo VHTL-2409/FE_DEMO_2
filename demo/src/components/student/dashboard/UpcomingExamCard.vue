@@ -12,14 +12,14 @@
         </div>
       </div>
       <button type="button" class="uec__see-all" @click="$emit('see-all')">
-        Xem lịch thi
+        Tất cả
         <LucideIcon name="chevron_right" />
       </button>
     </div>
 
     <!-- Loading -->
     <div v-if="loading" class="uec__loading">
-      <div v-for="i in 3" :key="i" class="uec__skel-item">
+      <div v-for="i in 3" :key="i" class="uec__skel-item" :style="{ animationDelay: `${i * 0.08}s` }">
         <div class="uec__skel uec__skel--icon" />
         <div class="uec__skel-content">
           <div class="uec__skel uec__skel--title" />
@@ -80,16 +80,6 @@
         </div>
       </div>
 
-      <!-- View more -->
-      <button
-        v-if="upcomingExams.length > displayLimit"
-        type="button"
-        class="uec__show-more"
-        @click="$emit('see-all')"
-      >
-        <LucideIcon name="expand_more" />
-        Xem thêm {{ upcomingExams.length - displayLimit }} kỳ thi
-      </button>
     </div>
   </div>
 </template>
@@ -166,22 +156,28 @@ const formatDateTime = (value) => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.uec {
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}.uec {
   background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
+  /* Optimize paint layers */
+  content-visibility: auto;
+  contain: layout style;
+  will-change: auto;
+  transform: translateZ(0);
 }
 
 .dark .uec {
   border-color: var(--ds-border-strong);
 }
+
+/* Entrance: handled by parent sdl__main — no duplicate animation layer */
 
 /* Header */
 .uec__header {
@@ -270,23 +266,29 @@ const formatDateTime = (value) => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  animation: uecFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes uecFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .uec__skel {
-  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
-  background-size: 200% 100%;
-  animation: uecShimmer 1.5s infinite;
+  background: var(--ds-gray-200);
   border-radius: var(--ds-radius-md);
+  will-change: opacity;
+  animation: uecShimmer 1.4s ease-in-out infinite;
 }
 
 .dark .uec__skel {
-  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
-  background-size: 200% 100%;
+  background: var(--ds-gray-700);
 }
 
 @keyframes uecShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1)   translateZ(0); }
+  100% { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
 }
 
 .uec__skel--icon { width: 40px; height: 40px; border-radius: var(--ds-radius-xl); flex-shrink: 0; }
@@ -480,7 +482,7 @@ const formatDateTime = (value) => {
   border: none;
   border-top: 1px solid var(--ds-border);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   font-family: inherit;
 }
 
@@ -494,3 +496,9 @@ const formatDateTime = (value) => {
 }
 
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

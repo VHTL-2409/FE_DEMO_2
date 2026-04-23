@@ -63,7 +63,7 @@
     </aside>
 
     <!-- Main: no topbar, page fills remaining height -->
-    <div class="adm-main">
+    <div ref="mainScrollEl" class="adm-main">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import AppLogo from '../common/AppLogo.vue'
 import LucideIcon from '../common/LucideIcon.vue'
@@ -88,6 +88,7 @@ const { user: authUser } = storeToRefs(auth)
 
 const collapsed = ref(false)
 const mobileOpen = ref(false)
+const mainScrollEl = ref(null)
 
 const navItems = [
   { to: '/admin/dashboard', icon: 'layout_dashboard', label: 'Tổng quan' },
@@ -109,6 +110,27 @@ const logout = async () => {
   auth.logout()
   router.push('/gioi-thieu')
 }
+
+watch(
+  () => route.path,
+  async () => {
+    await nextTick()
+    requestAnimationFrame(() => {
+      const pageScrollEl = mainScrollEl.value?.querySelector('.tui-page-wrap')
+
+      if (pageScrollEl) {
+        pageScrollEl.scrollTop = 0
+        pageScrollEl.scrollLeft = 0
+      } else if (mainScrollEl.value) {
+        mainScrollEl.value.scrollTop = 0
+        mainScrollEl.value.scrollLeft = 0
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    })
+  },
+  { flush: 'post' }
+)
 </script>
 
 <style scoped>
@@ -320,36 +342,6 @@ const logout = async () => {
   }
 }
 
-/* ─── Page transition (premium slide-fade) ─────────────────── */
-/* Enter: fade + subtle right-slide with scale */
-/* Leave: fade + subtle left-slide */
-.page-enter-active {
-  transition:
-    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.page-leave-active {
-  transition:
-    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
-    transform 0.22s cubic-bezier(0.4, 0, 1, 1);
-}
-.page-enter-from {
-  opacity: 0;
-  transform: translateX(20px) scale(0.985);
-  filter: blur(1px);
-}
-.page-leave-to {
-  opacity: 0;
-  transform: translateX(-12px) scale(0.99);
-  filter: blur(0.5px);
-}
-.page-enter-to,
-.page-leave-from {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-  filter: blur(0);
-}
-
 /* ─── Dark mode ─────────────────────────────────────────── */
 .dark .adm-shell {
   background: #0f172a;
@@ -393,6 +385,7 @@ const logout = async () => {
   .adm-sidebar--mobile {
     transition: none;
   }
+  /* page transition is handled globally in animation.css */
 }
 
 @keyframes fadeIn {

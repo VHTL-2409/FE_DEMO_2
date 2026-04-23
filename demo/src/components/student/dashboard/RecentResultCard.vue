@@ -12,14 +12,14 @@
         </div>
       </div>
       <button type="button" class="rrc__see-all" @click="$emit('see-all')">
-        Xem tất cả
+        Tất cả
         <LucideIcon name="chevron_right" />
       </button>
     </div>
 
     <!-- Loading -->
     <div v-if="loading" class="rrc__loading">
-      <div v-for="i in 4" :key="i" class="rrc__skel-item">
+      <div v-for="i in 4" :key="i" class="rrc__skel-item" :style="{ animationDelay: `${i * 0.08}s` }">
         <div class="rrc__skel rrc__skel--icon" />
         <div class="rrc__skel-content">
           <div class="rrc__skel rrc__skel--title" />
@@ -68,8 +68,8 @@
         <!-- Status chip -->
         <div class="rrc__item-status">
           <span class="rrc__status-chip" :class="passChipClass(result.score)">
-            <LucideIcon :name="result.score >= 5 ? 'check_circle' : 'cancel'" />
-            {{ result.score >= 5 ? 'Đạt' : 'Không đạt' }}
+            <LucideIcon :name="scorePercentValue(result.score) >= 50 ? 'check_circle' : 'cancel'" />
+            {{ scorePercentValue(result.score) >= 50 ? 'Đạt' : 'Không đạt' }}
           </span>
         </div>
       </div>
@@ -79,6 +79,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatScoreTen, scorePercentValue } from '../../../utils/attemptResult'
 
 const props = defineProps({
   results: { type: Array, default: () => [] },
@@ -92,7 +93,7 @@ const displayResults = computed(() => props.results.slice(0, props.displayLimit)
 
 const formatScore = (score) => {
   if (score === null || score === undefined) return '—'
-  return (Number(score) / 10).toFixed(1)
+  return formatScoreTen(score)
 }
 
 const formatDate = (value) => {
@@ -103,7 +104,7 @@ const formatDate = (value) => {
 }
 
 const scoreClass = (score) => {
-  const s = Number(score)
+  const s = scorePercentValue(score)
   if (isNaN(s)) return ''
   if (s >= 80) return 'rrc__score-wrap--excellent'
   if (s >= 50) return 'rrc__score-wrap--pass'
@@ -111,7 +112,7 @@ const scoreClass = (score) => {
 }
 
 const passChipClass = (score) => {
-  const s = Number(score)
+  const s = scorePercentValue(score)
   if (isNaN(s)) return ''
   return s >= 50 ? 'rrc__status-chip--pass' : 'rrc__status-chip--fail'
 }
@@ -119,9 +120,11 @@ const passChipClass = (score) => {
 
 
 <style scoped>
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 .rrc {
@@ -129,12 +132,16 @@ const passChipClass = (score) => {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
   overflow: hidden;
-  animation: fadeInUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) 0.3s both;
+  /* Optimize paint layers */
+  content-visibility: auto;
+  contain: layout;
 }
 
 .dark .rrc {
   border-color: var(--ds-border-strong);
 }
+
+/* Entrance: handled by parent sdl__main — no duplicate animation layer */
 
 /* Header */
 .rrc__header {
@@ -221,26 +228,31 @@ const passChipClass = (score) => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  animation: rrcFadeIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes rrcFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .rrc__skel {
-  background: linear-gradient(90deg, var(--ds-gray-100) 25%, var(--ds-gray-200) 50%, var(--ds-gray-100) 75%);
-  background-size: 200% 100%;
-  animation: rrcShimmer 1.5s infinite;
+  background: var(--ds-gray-200);
   border-radius: var(--ds-radius-md);
+  will-change: opacity;
+  animation: rrcShimmer 1.4s ease-in-out infinite;
 }
 
 .dark .rrc__skel {
-  background: linear-gradient(90deg, var(--ds-gray-800) 25%, var(--ds-gray-700) 50%, var(--ds-gray-800) 75%);
-  background-size: 200% 100%;
+  background: var(--ds-gray-700);
 }
 
 @keyframes rrcShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
+  50%  { opacity: 1;   transform: scaleX(1)   translateZ(0); }
+  100% { opacity: 0.6; transform: scaleX(0.3) translateZ(0); }
 }
 
-.rrc__skel--icon { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
 .rrc__skel-content { flex: 1; display: flex; flex-direction: column; gap: 0.375rem; }
 .rrc__skel--title { height: 14px; width: 70%; }
 .rrc__skel--meta { height: 10px; width: 50%; }
@@ -257,7 +269,7 @@ const passChipClass = (score) => {
 }
 
 
-.dark .rrc__empty
+.dark .rrc__empty p { color: #f1f5f9; }
 
 .rrc__empty p {
   font-size: 0.875rem;
@@ -265,8 +277,6 @@ const passChipClass = (score) => {
   color: var(--ds-text);
   margin: 0;
 }
-
-.dark .rrc__empty p { color: #f1f5f9; }
 
 .rrc__empty span:last-child {
   font-size: 0.75rem;
@@ -305,7 +315,7 @@ const passChipClass = (score) => {
   border-radius: var(--ds-radius-xl);
   border: 1px solid;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .rrc__score-wrap--excellent {
@@ -402,3 +412,9 @@ const passChipClass = (score) => {
   color: var(--ds-danger);
 }
 </style>
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
