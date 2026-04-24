@@ -488,7 +488,22 @@ function buildAlert(alert, severity, riskLevel, message) {
   }
 }
 
+// Dedupe alerts: nếu cùng attemptId + severity trong 10s thì gộp (cập nhật score)
+const ALERT_DEDUPE_WINDOW_MS = 10000
 function pushAlert(alert) {
+  const now = Date.now()
+  const existingIndex = liveAlerts.value.findIndex(a =>
+    a.attemptId === alert.attemptId
+    && a.severity === alert.severity
+    && (now - new Date(a.timestamp).getTime()) < ALERT_DEDUPE_WINDOW_MS
+  )
+  if (existingIndex >= 0) {
+    // Cập nhật alert hiện hữu thay vì thêm mới
+    const updated = [...liveAlerts.value]
+    updated[existingIndex] = { ...updated[existingIndex], riskScore: alert.riskScore, message: alert.message, timestamp: alert.timestamp, read: false }
+    liveAlerts.value = updated
+    return
+  }
   liveAlerts.value = [alert, ...liveAlerts.value].slice(0, MAX_ALERTS)
 }
 
@@ -541,8 +556,26 @@ function handleTeacherAlert(alert) {
   }
 }
 
+// Dedupe trong 5s: tránh trùng event giữa addEvent local và WS broadcast
+const EVENT_DEDUPE_WINDOW_MS = 5000
 function addEvent(event) {
-  const evt = { ...event, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, timestamp: new Date().toISOString() }
+  const now = Date.now()
+  const message = event.message || ''
+  const studentName = event.studentName || ''
+  const dup = recentEvents.value.find(e =>
+    e.type === event.type
+    && e.studentName === studentName
+    && (e.message || '') === message
+    && (now - new Date(e.timestamp).getTime()) < EVENT_DEDUPE_WINDOW_MS
+  )
+  if (dup) return
+  const evt = {
+    ...event,
+    message,
+    studentName,
+    id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: new Date().toISOString()
+  }
   recentEvents.value = [evt, ...recentEvents.value].slice(0, MAX_EVENTS)
 }
 
@@ -612,11 +645,14 @@ const openStudentDetail = (student) => {
     }
   })
 }
+// BE sẽ broadcast WS event tương ứng (WARNING_SENT, ATTEMPT_PAUSED, etc.)
+// nên KHÔNG addEvent local ở đây để tránh duplicate trong feed sự kiện.
+// Toast đã đủ feedback tức thì cho user.
 const ACTION_HANDLERS = {
-  warn: { call: sendTeacherWarning, eventType: 'WARN', success: 'Đã gửi cảnh báo tới', error: 'Không gửi được cảnh báo.' },
-  pause: { call: pauseAttempt, eventType: 'PAUSE', success: 'Đã tạm dừng bài thi của', error: 'Không thể tạm dừng bài thi.' },
-  resume: { call: resumeAttempt, eventType: 'RESUME', success: 'Đã cho phép tiếp tục bài thi của', error: 'Không thể khôi phục bài thi.' },
-  invalidate: { call: invalidateAttempt, eventType: 'INVALIDATE', success: 'Đã đình chỉ bài thi của', error: 'Không thể đình chỉ bài thi.' }
+  warn: { call: sendTeacherWarning, success: 'Đã gửi cảnh báo tới', error: 'Không gửi được cảnh báo.' },
+  pause: { call: pauseAttempt, success: 'Đã tạm dừng bài thi của', error: 'Không thể tạm dừng bài thi.' },
+  resume: { call: resumeAttempt, success: 'Đã cho phép tiếp tục bài thi của', error: 'Không thể khôi phục bài thi.' },
+  invalidate: { call: invalidateAttempt, success: 'Đã đình chỉ bài thi của', error: 'Không thể đình chỉ bài thi.' }
 }
 
 const handleActionConfirm = async (reason) => {
@@ -629,7 +665,6 @@ const handleActionConfirm = async (reason) => {
     const studentName = actionTarget.value.student
     await handler.call(id, reason)
     toast.success(`${handler.success} ${studentName}.`)
-    addEvent({ type: handler.eventType, studentName })
     showActionModal.value = false
     actionTarget.value = null
     await loadAttempts()
@@ -646,7 +681,7 @@ const clearSelection = () => { selectedIds.value = [] }
 const toggleSelect = (id) => { selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter(i => i !== id) : [...selectedIds.value, id] }
 
 // ── Batch ─────────────────────────────────────────────────────────────
-const runBatchAction = async ({ ids, call, reason, eventType, successMsg, errorMsg, refresh = false }) => {
+const runBatchAction = async ({ ids, call, reason, successMsg, errorMsg, refresh = false }) => {
   if (!ids.length) return
   actionLoading.value = true
   try {
@@ -655,7 +690,6 @@ const runBatchAction = async ({ ids, call, reason, eventType, successMsg, errorM
     const failed = results.length - ok
     if (ok > 0) {
       toast.success(`${successMsg} ${ok} học sinh.${failed > 0 ? ` (${failed} thất bại)` : ''}`)
-      addEvent({ type: eventType, message: `${successMsg} ${ok} HS`, studentName: '' })
     } else {
       toast.error(errorMsg)
     }
@@ -670,11 +704,11 @@ const runBatchAction = async ({ ids, call, reason, eventType, successMsg, errorM
 
 const handleBatchWarn = () => runBatchAction({
   ids: selectedIds.value, call: sendTeacherWarning, reason: '',
-  eventType: 'WARN', successMsg: 'Đã gửi cảnh báo tới', errorMsg: 'Không gửi được cảnh báo hàng loạt.'
+  successMsg: 'Đã gửi cảnh báo tới', errorMsg: 'Không gửi được cảnh báo hàng loạt.'
 })
 const handleBatchPause = () => runBatchAction({
   ids: selectedIds.value, call: pauseAttempt, reason: 'Tạm dừng hàng loạt',
-  eventType: 'PAUSE', successMsg: 'Đã tạm dừng', errorMsg: 'Không thể tạm dừng hàng loạt.', refresh: true
+  successMsg: 'Đã tạm dừng', errorMsg: 'Không thể tạm dừng hàng loạt.', refresh: true
 })
 const handleBatchResume = () => {
   const pausedIds = selectedIds.value.filter(id => {
@@ -687,12 +721,12 @@ const handleBatchResume = () => {
   }
   return runBatchAction({
     ids: pausedIds, call: resumeAttempt, reason: 'Cho phép tiếp tục hàng loạt',
-    eventType: 'RESUME', successMsg: 'Đã cho phép tiếp tục bài thi của', errorMsg: 'Không thể khôi phục hàng loạt.', refresh: true
+    successMsg: 'Đã cho phép tiếp tục bài thi của', errorMsg: 'Không thể khôi phục hàng loạt.', refresh: true
   })
 }
 const handleBatchInvalidate = () => runBatchAction({
   ids: selectedIds.value, call: invalidateAttempt, reason: 'Đình chỉ hàng loạt',
-  eventType: 'INVALIDATE', successMsg: 'Đã đình chỉ', errorMsg: 'Không thể đình chỉ hàng loạt.', refresh: true
+  successMsg: 'Đã đình chỉ', errorMsg: 'Không thể đình chỉ hàng loạt.', refresh: true
 })
 
 const hasPausedSelection = computed(() =>

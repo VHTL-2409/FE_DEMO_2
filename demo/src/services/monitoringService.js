@@ -34,17 +34,19 @@ export const sendMonitoringHeartbeat = async (attemptId, heartbeatPayload) => {
 }
 
 export const fetchAttemptRisk = async (attemptId) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/risk`)
+  // suppressToast: caller (StudentViolationDetailMonitoring) tự render error
+  // bằng tiếng Việt với resolveLoadErrorMessage; tránh double toast tiếng Anh
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/risk`, { suppressToast: true })
   return unwrapApiData(payload)
 }
 
 export const listMonitoringTimeline = async (attemptId) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/timeline`)
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/timeline`, { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 
 export const listMonitoringAudit = async (attemptId) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/audit`)
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/audit`, { suppressToast: true })
   return unwrapApiData(payload) || []
 }
 

@@ -451,7 +451,6 @@ import {
 } from '../../services/monitoringService'
 import { isAttemptPaused, isAttemptTerminal } from '../../utils/proctorStatusMeta'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
-import LucideIcon from '../common/LucideIcon.vue'
 
 const REFRESH_INTERVAL_MS = 15000
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
@@ -585,11 +584,14 @@ let refreshTimer = null
 // ── Student info ──────────────────────────────────────────────────────────────
 // Fallback chuỗi: riskData (API response) → store cards (đã fetch ở list view) →
 // route.query (deep-link). Tránh khoảnh khắc placeholder "—" hoặc dính tên thí sinh trước đó.
+const cleanName = (raw) => (raw == null ? '' : String(raw).trim())
 const studentName = computed(() => {
   const s = riskData.value.student
-  if (s?.name || s?.username) return s.name || s.username
-  if (storeCard.value?.student || storeCard.value?.name) return storeCard.value.student || storeCard.value.name
-  return route.query.student || route.query.studentName || '—'
+  const fromRisk = cleanName(s?.name || s?.username)
+  if (fromRisk) return fromRisk
+  const fromStore = cleanName(storeCard.value?.student || storeCard.value?.name)
+  if (fromStore) return fromStore
+  return cleanName(route.query.student || route.query.studentName) || '—'
 })
 const studentCode = computed(() => {
   const s = riskData.value.student
@@ -787,6 +789,18 @@ const lastUpdatedLabel = computed(() => {
 })
 
 // ── Data loading ──────────────────────────────────────────────────────────────
+function resolveLoadErrorMessage(err) {
+  const status = err?.status
+  if (status === 404) return 'Không tìm thấy bài làm này. Có thể đã bị xóa hoặc bạn không có quyền xem.'
+  if (status === 403) return 'Bạn không có quyền xem chi tiết bài làm này.'
+  if (status === 401) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+  if (status === 0) return 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra mạng và thử lại.'
+  // Tránh expose message tiếng Anh raw từ BE
+  const msg = err?.message
+  if (msg && /^(Attempt|User|Exam) not found/i.test(msg)) return 'Không tìm thấy bài làm này.'
+  return msg || 'Không thể tải dữ liệu giám sát.'
+}
+
 async function loadData(silent = false) {
   if (!attemptId.value) {
     error.value = 'Thiếu mã bài làm. Vui lòng quay lại danh sách giám sát.'
@@ -818,7 +832,7 @@ async function loadData(silent = false) {
 
     lastUpdatedAt.value = Date.now()
   } catch (err) {
-    error.value = err?.message || 'Không thể tải dữ liệu giám sát'
+    error.value = resolveLoadErrorMessage(err)
     if (!silent) toast.error(error.value)
   } finally {
     loading.value = false
@@ -942,7 +956,7 @@ async function runAttemptAction({ key, call, payload, successMsg, errorMsg, clos
     toast.success(successMsg)
     await loadData(true)
   } catch (err) {
-    toast.error(err?.message || errorMsg)
+    toast.error(resolveLoadErrorMessage(err) || errorMsg)
   } finally {
     actionLoading.value = ''
   }

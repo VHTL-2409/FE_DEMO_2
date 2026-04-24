@@ -81,6 +81,16 @@ const close = () => {
   emit('close')
 }
 
+// Global Escape handler: bắt cả khi focus rơi ra ngoài modal (vd: do Teleport,
+// hoặc user vừa click overlay làm mất focus). @keydown.esc ở overlay không
+// đủ vì không bubble nếu focus đang ở body.
+const handleGlobalEscape = (event) => {
+  if (event.key === 'Escape' && !props.persistent && props.modelValue) {
+    event.stopPropagation()
+    close()
+  }
+}
+
 // Focus trap
 let previousFocus = null
 
@@ -90,14 +100,17 @@ watch(() => props.modelValue, async (open) => {
     await nextTick()
     dialogRef.value?.focus()
     document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleGlobalEscape)
   } else {
     document.body.style.overflow = ''
-    previousFocus?.focus()
+    window.removeEventListener('keydown', handleGlobalEscape)
+    previousFocus?.focus?.()
   }
 })
 
 onUnmounted(() => {
   document.body.style.overflow = ''
+  window.removeEventListener('keydown', handleGlobalEscape)
 })
 </script>
 
