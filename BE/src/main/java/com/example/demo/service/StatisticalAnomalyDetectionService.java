@@ -36,7 +36,7 @@ import java.util.*;
 public class StatisticalAnomalyDetectionService {
 
     private final ExamAttemptRepository examAttemptRepository;
-    private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionRepository questionRepository;
     private final FraudSignalRepository fraudSignalRepository;
     private final FraudSignalService fraudSignalService;
 

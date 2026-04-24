@@ -35,7 +35,7 @@ public class AnswerPlagiarismService {
 
     private final AnswerRepository answerRepository;
     private final ExamAttemptRepository examAttemptRepository;
-    private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionRepository questionRepository;
     private final FraudSignalRepository fraudSignalRepository;
     private final FraudSignalService fraudSignalService;
 
@@ -178,7 +178,7 @@ public class AnswerPlagiarismService {
             if (ans1 == null || ans2 == null) continue;
             if (isEmpty(ans1.getEssayContent()) || isEmpty(ans2.getEssayContent())) continue;
 
-            ExamQuestion question = examQuestionRepository.findById(questionId).orElse(null);
+            Question question = questionRepository.findById(questionId).orElse(null);
             if (question == null || !"ESSAY".equalsIgnoreCase(question.getQuestionType())) continue;
 
             totalEssayQuestions++;

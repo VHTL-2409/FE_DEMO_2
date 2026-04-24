@@ -37,7 +37,7 @@ public class AnswerTimingAnomalyService {
 
     private final ExamEventRepository examEventRepository;
     private final ExamAttemptRepository examAttemptRepository;
-    private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionRepository questionRepository;
     private final FraudSignalRepository fraudSignalRepository;
     private final FraudSignalService fraudSignalService;
 
@@ -172,7 +172,7 @@ public class AnswerTimingAnomalyService {
                 attempt.getStartedAt(), attempt.getSubmittedAt()
         ).toMillis();
 
-        List<ExamQuestion> questions = examQuestionRepository.findByExamId(attempt.getExam().getId());
+        List<Question> questions = questionRepository.findByExam(attempt.getExam());
 
         if (questions.isEmpty()) return results;
 

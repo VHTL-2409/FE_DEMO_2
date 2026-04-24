@@ -35,7 +35,7 @@ import java.util.*;
 public class IntelligentGradingService {
 
     private final ExamAttemptRepository examAttemptRepository;
-    private final ExamQuestionRepository examQuestionRepository;
+    private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final FraudSignalService fraudSignalService;
 
@@ -57,7 +57,7 @@ public class IntelligentGradingService {
         ExamAttempt attempt = examAttemptRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Attempt not found: " + attemptId));
 
-        List<ExamQuestion> questions = examQuestionRepository.findByExamId(attempt.getExam().getId());
+        List<Question> questions = questionRepository.findByExam(attempt.getExam());
         List<Answer> answers = answerRepository.findByAttemptId(attemptId);
 
         if (questions.isEmpty()) {
@@ -98,7 +98,7 @@ public class IntelligentGradingService {
 
     // ========== RAW SCORING ==========
 
-    private RawScoringResult computeRawScore(ExamAttempt attempt, List<ExamQuestion> questions, List<Answer> answers) {
+    private RawScoringResult computeRawScore(ExamAttempt attempt, List<Question> questions, List<Answer> answers) {
         Map<Long, Answer> answerMap = new HashMap<>();
         for (Answer a : answers) {
             if (a.getQuestion() != null) {
@@ -113,7 +113,7 @@ public class IntelligentGradingService {
 
         List<QuestionScoreDetail> details = new ArrayList<>();
 
-        for (ExamQuestion question : questions) {
+        for (Question question : questions) {
             Answer answer = answerMap.get(question.getId());
             QuestionScoreDetail detail = scoreQuestion(question, answer);
             details.add(detail);
@@ -128,7 +128,7 @@ public class IntelligentGradingService {
         return new RawScoringResult(totalScore, maxScore, correctCount, totalQuestions, details);
     }
 
-    private QuestionScoreDetail scoreQuestion(ExamQuestion question, Answer answer) {
+    private QuestionScoreDetail scoreQuestion(Question question, Answer answer) {
         String questionType = question.getQuestionType();
         double maxScore = question.getPoints() != null ? question.getPoints() : 1.0;
 
@@ -149,7 +149,7 @@ public class IntelligentGradingService {
         return new QuestionScoreDetail(question.getId(), 0.0, maxScore, false, "UNKNOWN_TYPE", null);
     }
 
-    private QuestionScoreDetail scoreMcq(ExamQuestion question, Answer answer, double maxScore) {
+    private QuestionScoreDetail scoreMcq(Question question, Answer answer, double maxScore) {
         String correctAnswer = normalizeAnswer(question.getCorrectAnswer());
         String selectedAnswer = normalizeAnswer(answer.getSelectedAnswer());
 
@@ -176,7 +176,7 @@ public class IntelligentGradingService {
         return new QuestionScoreDetail(question.getId(), 0.0, maxScore, false, "INCORRECT", correctAnswer);
     }
 
-    private double computePartialCredit(ExamQuestion question, Answer answer, double maxScore) {
+    private double computePartialCredit(Question question, Answer answer, double maxScore) {
         // So sanh tap hop selected vs correct
         Set<String> correctSet = parseOptionSet(question.getCorrectAnswer());
         Set<String> selectedSet = parseOptionSet(answer.getSelectedAnswer());
@@ -216,7 +216,7 @@ public class IntelligentGradingService {
         return set;
     }
 
-    private QuestionScoreDetail scoreTrueFalse(ExamQuestion question, Answer answer, double maxScore) {
+    private QuestionScoreDetail scoreTrueFalse(Question question, Answer answer, double maxScore) {
         String correct = normalizeAnswer(question.getCorrectAnswer());
         String selected = normalizeAnswer(answer.getSelectedAnswer());
 
@@ -231,7 +231,7 @@ public class IntelligentGradingService {
         );
     }
 
-    private QuestionScoreDetail scoreEssay(ExamQuestion question, Answer answer, double maxScore) {
+    private QuestionScoreDetail scoreEssay(Question question, Answer answer, double maxScore) {
         // Essay duoc cham diem thu cong hoac boi AI
         Double essayScore = answer.getEssayScore();
 
@@ -250,7 +250,7 @@ public class IntelligentGradingService {
         );
     }
 
-    private QuestionScoreDetail scoreFillBlank(ExamQuestion question, Answer answer, double maxScore) {
+    private QuestionScoreDetail scoreFillBlank(Question question, Answer answer, double maxScore) {
         // Fill in the blank: so sanh chinh xac
         String correct = normalizeAnswer(question.getCorrectAnswer());
         String selected = normalizeAnswer(answer.getSelectedAnswer());
@@ -286,13 +286,13 @@ public class IntelligentGradingService {
 
     // ========== IRT SCORING (1PL / Rasch Model) ==========
 
-    private IrtScoreResult computeIrtScore(ExamAttempt attempt, List<ExamQuestion> questions, List<Answer> answers) {
+    private IrtScoreResult computeIrtScore(ExamAttempt attempt, List<Question> questions, List<Answer> answers) {
         // Chi tinh cho MCQ
         List<IrtQuestionItem> items = new ArrayList<>();
         Map<Long, Boolean> answerMap = new HashMap<>();
         Map<Long, Double> difficultyMap = estimateDifficulties(questions, answers);
 
-        for (ExamQuestion q : questions) {
+        for (Question q : questions) {
             String qType = q.getQuestionType();
             if (!"MCQ".equalsIgnoreCase(qType) && !"MULTIPLE_CHOICE".equalsIgnoreCase(qType)) {
                 continue;
@@ -324,7 +324,7 @@ public class IntelligentGradingService {
      * Uoc luong do kho cau hoi (b) dua tren ti le tra loi dung cua lop.
      * b = -logit(p) = -ln(p / (1-p))
      */
-    private Map<Long, Double> estimateDifficulties(List<ExamQuestion> questions, List<Answer> answers) {
+    private Map<Long, Double> estimateDifficulties(List<Question> questions, List<Answer> answers) {
         Map<Long, Boolean> answerMap = new HashMap<>();
         for (Answer a : answers) {
             if (a.getQuestion() != null) {
@@ -334,7 +334,7 @@ public class IntelligentGradingService {
 
         Map<Long, Double> difficulties = new HashMap<>();
 
-        for (ExamQuestion q : questions) {
+        for (Question q : questions) {
             String qType = q.getQuestionType();
             if (!"MCQ".equalsIgnoreCase(qType) && !"MULTIPLE_CHOICE".equalsIgnoreCase(qType)) {
                 continue;
@@ -421,7 +421,7 @@ public class IntelligentGradingService {
         return Math.max(0.0, 1.0 - se * se);
     }
 
-    private Boolean isCorrectAnswer(ExamQuestion question, List<Answer> answers) {
+    private Boolean isCorrectAnswer(Question question, List<Answer> answers) {
         for (Answer a : answers) {
             if (a.getQuestion() != null && a.getQuestion().getId().equals(question.getId())) {
                 return a.getCorrect();
@@ -497,7 +497,7 @@ public class IntelligentGradingService {
         return Math.round(raw.rawScore() * 100.0) / 100.0;
     }
 
-    private List<QuestionAnalysis> analyzeQuestions(List<ExamQuestion> questions, List<Answer> answers) {
+    private List<QuestionAnalysis> analyzeQuestions(List<Question> questions, List<Answer> answers) {
         Map<Long, Boolean> answerMap = new HashMap<>();
         for (Answer a : answers) {
             if (a.getQuestion() != null) {
@@ -508,7 +508,7 @@ public class IntelligentGradingService {
         int totalAttempts = Math.max(answerMap.size(), 1);
         List<QuestionAnalysis> analyses = new ArrayList<>();
 
-        for (ExamQuestion q : questions) {
+        for (Question q : questions) {
             long correct = answerMap.values().stream().filter(Boolean::booleanValue).count();
             double discrimination = computeDiscrimination(correct, totalAttempts);
             double difficulty = computeDifficulty(correct, totalAttempts);
