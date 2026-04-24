@@ -2,23 +2,29 @@
  * Intelligent Grading Service
  * API calls for IRT-based scoring, peer comparison, and question analysis.
  */
-import apiClient from './apiClient'
+import { apiRequest, unwrapApiData } from './apiClient'
 
 const BASE = '/api/v1/grading'
 
 export async function gradeAttempt(attemptId) {
-  const response = await apiClient.post(`${BASE}/attempts/${attemptId}/grade`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/attempts/${attemptId}/grade`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function getGradingResult(attemptId) {
-  const response = await apiClient.get(`${BASE}/attempts/${attemptId}/result`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/attempts/${attemptId}/result`)
+  return unwrapApiData(payload)
 }
 
 export async function gradeAllAttempts(examId) {
-  const response = await apiClient.post(`${BASE}/exams/${examId}/grade-all`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/exams/${examId}/grade-all`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 /**

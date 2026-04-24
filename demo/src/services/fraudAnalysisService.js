@@ -2,61 +2,94 @@
  * Fraud Analysis Service
  * API calls for plagiarism, timing, statistical, biometrics, and IP reputation analysis.
  */
-import apiClient from './apiClient'
+import { apiRequest, unwrapApiData } from './apiClient'
 
 const BASE = '/api/v1/fraud'
 
 export async function runPlagiarismAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/plagiarism/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/plagiarism/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runStudentPlagiarismAnalysis(attemptId) {
-  const response = await apiClient.post(`${BASE}/plagiarism/attempts/${attemptId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/plagiarism/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runTimingAnalysis(attemptId) {
-  const response = await apiClient.post(`${BASE}/timing/attempts/${attemptId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/timing/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runExamTimingAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/timing/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/timing/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runStatisticalAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/statistical/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/statistical/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runStudentStatisticalAnalysis(attemptId) {
-  const response = await apiClient.post(`${BASE}/statistical/attempts/${attemptId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/statistical/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runBiometricsAnalysis(attemptId) {
-  const response = await apiClient.post(`${BASE}/biometrics/attempts/${attemptId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/biometrics/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runExamBiometricsAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/biometrics/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/biometrics/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runIpReputationAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/ip-reputation/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/ip-reputation/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runComprehensiveAnalysis(attemptId) {
-  const response = await apiClient.post(`${BASE}/analyze/attempts/${attemptId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/analyze/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
 
 export async function runComprehensiveExamAnalysis(examId) {
-  const response = await apiClient.post(`${BASE}/analyze/exam/${examId}`)
-  return response.data.data
+  const payload = await apiRequest(`${BASE}/analyze/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
 }
