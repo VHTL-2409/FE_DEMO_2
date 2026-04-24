@@ -98,7 +98,7 @@
         <button
           type="button"
           class="db-sidebar-user__logout"
-          title="Dang xuat"
+          title="Đăng xuất"
           @click="handleLogout"
         >
           <LucideIcon name="log_out" :size="16" />
@@ -350,15 +350,6 @@ const handleLogout = () => {
 .db-sidebar--collapsed .db-sidebar-nav-item--active {
   background: var(--portal-shell-primary);
   color: white;
-  box-shadow:
-    0 0 0 2px rgba(79, 70, 229, 0.3),
-    0 0 16px rgba(79, 70, 229, 0.25);
-  animation: active-glow 2.5s ease-in-out infinite;
-}
-
-@keyframes active-glow {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3), 0 0 12px rgba(79, 70, 229, 0.2); }
-  50%       { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.45), 0 0 22px rgba(79, 70, 229, 0.35); }
 }
 
 /* Active left bar (only when expanded) */
@@ -647,14 +638,6 @@ const handleLogout = () => {
   }
 
   .db-sidebar-nav-item--active {
-    animation: none;
-  }
-
-  .db-sidebar-nav-item__badge {
-    animation: none;
-  }
-
-  .db-sidebar-nav-item__bar {
     animation: none;
   }
 

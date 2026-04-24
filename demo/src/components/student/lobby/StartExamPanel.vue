@@ -37,32 +37,6 @@
       <LucideIcon :name="reasonIcon" />
       <span class="sep__reason-text">{{ reasonText }}</span>
     </div>
-
-    <!-- Tips -->
-    <div v-if="canStart && !isStarting && !compact" class="sep__tips">
-      <div class="sep__tips-header">
-        <LucideIcon name="tips_and_updates" />
-        <span>Lưu ý trước khi thi</span>
-      </div>
-      <div class="sep__tip">
-        <div class="sep__tip-icon">
-          <LucideIcon name="lightbulb" />
-        </div>
-        <span>Đảm bảo ở yên, tắt thông báo có thể</span>
-      </div>
-      <div class="sep__tip">
-        <div class="sep__tip-icon">
-          <LucideIcon name="wifi" />
-        </div>
-        <span>Kiểm tra mạng WiFi ổn định</span>
-      </div>
-      <div v-if="requireCameraMic" class="sep__tip">
-        <div class="sep__tip-icon sep__tip-icon--cam">
-          <LucideIcon name="videocam" />
-        </div>
-        <span>Camera sẽ bật trong suốt buổi thi</span>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -76,9 +50,7 @@ const props = defineProps({
   isBeforeStart: { type: Boolean, default: false },
   devicesReady: { type: Boolean, default: true },
   requireCameraMic: { type: Boolean, default: false },
-  /** Ẩn khối mẹo + bo gọn để dùng trong thanh CTA cố định */
   compact: { type: Boolean, default: false },
-  /** Nhãn khi đủ điều kiện bắt đầu */
   joinLabel: { type: String, default: 'Bắt đầu làm bài' }
 })
 
@@ -270,76 +242,6 @@ const reasonClass = computed(() => {
 .sep__reason--locked {
   color: var(--ds-text-muted);
 }
-
-/* Tips */
-.sep__tips {
-  padding: 1rem 1.25rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-top: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-}
-
-.dark .sep__tips {
-  border-top-color: var(--ds-border-strong);
-  background: var(--ds-gray-800);
-}
-
-.sep__tips-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ds-text-muted);
-  margin-bottom: 0.25rem;
-}
-
-.sep__tips-header .lucide {
-  color: var(--ds-warning);
-  font-size: 0.875rem;
-}
-
-.sep__tip {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.625rem;
-  border-radius: var(--ds-radius-lg);
-  transition: background 0.15s ease;
-}
-
-.sep__tip:hover { background: rgba(79, 70, 229, 0.04); }
-
-.sep__tip-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--ds-radius-md);
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--ds-warning);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 0.875rem;
-}
-
-.sep__tip-icon--cam {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--ds-info);
-}
-
-.sep__tip span:last-child {
-  font-size: 0.775rem;
-  color: var(--ds-text-secondary);
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.dark .sep__tip span:last-child { color: var(--ds-text-muted); }
 
 /* Compact — thanh CTA dưới cùng */
 .sep--compact {

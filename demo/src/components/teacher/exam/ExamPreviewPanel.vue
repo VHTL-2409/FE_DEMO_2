@@ -63,26 +63,24 @@
         Tiến độ hoàn thiện
       </h4>
 
-      <div class="epp__checklist-items">
-        <div
-          v-for="item in checklist"
-          :key="item.key"
-          class="epp__check-item"
-          :class="{ 'epp__check-item--done': item.done, 'epp__check-item--warn': item.warn }"
-        >
-          <span class="epp__check-icon">
-            <LucideIcon name="check_circle" v-if="item.done" />
-            <LucideIcon
-              v-else-if="item.warn"
-              name="warning"
-              class="epp__check-icon--warn"
-            />
-            <LucideIcon name="radio_button_unchecked" v-else />
-          </span>
-          <div class="epp__check-body">
-            <p class="epp__check-label">{{ item.label }}</p>
-            <p v-if="item.sub" class="epp__check-sub">{{ item.sub }}</p>
-          </div>
+      <div
+        v-for="item in checklist"
+        :key="item.key"
+        class="epp__check-item"
+        :class="{ 'epp__check-item--done': item.done, 'epp__check-item--warn': item.warn }"
+      >
+        <span class="epp__check-icon">
+          <LucideIcon name="check_circle" v-if="item.done" />
+          <LucideIcon
+            v-else-if="item.warn"
+            name="warning"
+            class="epp__check-icon--warn"
+          />
+          <LucideIcon name="radio_button_unchecked" v-else />
+        </span>
+        <div class="epp__check-body">
+          <p class="epp__check-label">{{ item.label }}</p>
+          <p v-if="item.sub" class="epp__check-sub">{{ item.sub }}</p>
         </div>
       </div>
 
@@ -93,17 +91,6 @@
         </div>
         <p class="epp__progress-label">{{ doneCount }}/{{ totalCount }} hoàn tất</p>
       </div>
-    </div>
-
-    <!-- Quick tips -->
-    <div class="epp__tips">
-      <h4 class="epp__tips-title">
-        <LucideIcon name="tips_and_updates" />
-        Mẹo nhanh
-      </h4>
-      <ul class="epp__tips-list">
-        <li v-for="tip in tips" :key="tip">{{ tip }}</li>
-      </ul>
     </div>
 
   </div>
@@ -175,13 +162,13 @@ const checklist = computed(() => [
       props.form.questions.length > 0
     ),
     warn: false,
-    sub: computed(() => {
+    sub: (() => {
       const hasInfo = !!(props.form.title && (props.form.subject || props.form.classId))
       const hasConfig = !!(props.form.durationMinutes && props.form.durationMinutes > 0)
       const hasQuestions = !!(props.form.questions && props.form.questions.length > 0)
       if (hasInfo && hasConfig && hasQuestions) return 'Có thể xuất bản ngay'
       return 'Hoàn tất thông tin, cài đặt và câu hỏi'
-    }).value
+    })()
   }
 ])
 
@@ -205,13 +192,6 @@ const scheduleSummary = computed(() => {
   }
   return parts.join(' ')
 })
-
-const tips = [
-  'Đặt thời gian thi trước ít nhất 1 giờ để học sinh chuẩn bị.',
-  'Bật giám sát để giảm thiểu gian lện trong kỳ thi trực tuyến.',
-  'Xáo trộn câu hỏi giúp mỗi học sinh có đề thi khác nhau.',
-  'Lưu nháp trước khi xuất bản để tránh mất dữ liệu.',
-]
 </script>
 
 
@@ -239,7 +219,6 @@ const tips = [
   justify-content: center;
   flex-shrink: 0;
 }
-
 
 .epp__header-title {
   font-family: var(--ds-font-display);
@@ -374,14 +353,7 @@ const tips = [
   color: var(--ds-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin: 0;
-}
-
-
-.epp__checklist-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+  margin: 0 0 0.75rem;
 }
 
 .epp__check-item {
@@ -475,45 +447,5 @@ const tips = [
   color: var(--ds-text-muted);
   text-align: right;
   margin: 0;
-}
-
-/* Tips */
-.epp__tips {
-  padding: 1rem 1.125rem;
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
-}
-
-.dark .epp__tips {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-.epp__tips-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ds-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 0.625rem;
-}
-
-
-.epp__tips-list {
-  margin: 0;
-  padding: 0 0 0 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.epp__tips-list li {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  line-height: 1.5;
 }
 </style>

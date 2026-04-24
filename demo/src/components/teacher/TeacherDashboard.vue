@@ -1,7 +1,6 @@
 <template>
   <div class="td-page">
     <div class="td-page__inner mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-      <!-- Shell: breadcrumb + tabs + lời chào / tiêu đề phân tích (một khối) -->
       <div class="td-shell mb-5">
         <div class="td-shell__breadcrumb">
           <RouterLink class="td-shell__bc-link" to="/teacher/dashboard">

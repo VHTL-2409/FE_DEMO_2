@@ -549,11 +549,6 @@ const groupedAlerts = computed(() => {
   scrollbar-color: var(--ds-gray-300) transparent;
 }
 
-.ap__group {
-  padding: 0.375rem 0;
-  overflow: visible;
-}
-
 .ap__list::-webkit-scrollbar { width: 4px; }
 .ap__list::-webkit-scrollbar-track { background: transparent; }
 .ap__list::-webkit-scrollbar-thumb { background: var(--ds-gray-300); border-radius: 2px; }
@@ -915,6 +910,3 @@ const groupedAlerts = computed(() => {
   transform: translateX(12px);
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  .ap__skeleton { animation: none; }
-}

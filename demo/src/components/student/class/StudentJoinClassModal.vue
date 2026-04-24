@@ -18,17 +18,6 @@
 
         <!-- Body -->
         <div class="sjcm__body">
-          <div class="sjcm__tips">
-            <div class="sjcm__tip-item">
-              <LucideIcon name="key-round" />
-              <span>Nhập đúng mã lớp giáo viên đã chia sẻ.</span>
-            </div>
-            <div class="sjcm__tip-item">
-              <LucideIcon name="info" />
-              <span>Sau khi tham gia, lớp sẽ xuất hiện ngay trong danh sách lớp học của bạn.</span>
-            </div>
-          </div>
-
           <!-- Error Alert -->
           <div v-if="error" class="sjcm__alert sjcm__alert--error">
             <LucideIcon name="alert-circle" />
@@ -52,7 +41,6 @@
                 @input="handleInput"
               />
             </div>
-            <p class="sjcm__hint">Mã lớp có thể là chuỗi chữ và số, không phân biệt hoa thường</p>
           </div>
         </div>
 
@@ -254,35 +242,6 @@ const handleJoin = async () => {
   gap: 1.25rem;
 }
 
-.sjcm__tips {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  padding: 0.875rem 1rem;
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-primary-soft);
-  color: var(--ds-text-secondary);
-}
-
-.sjcm__tip-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  font-size: 0.825rem;
-  line-height: 1.5;
-}
-
-.sjcm__tip-item :deep(svg) {
-  color: var(--ds-primary);
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-}
-
-.dark .sjcm__tips {
-  background: rgba(79, 70, 229, 0.15);
-  color: var(--ds-text-muted);
-}
-
 /* Alerts */
 .sjcm__alert {
   display: flex;
@@ -375,12 +334,6 @@ const handleJoin = async () => {
 .sjcm__input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.sjcm__hint {
-  font-size: 0.8rem;
-  color: var(--ds-text-muted);
-  margin: 0;
 }
 
 /* Footer */

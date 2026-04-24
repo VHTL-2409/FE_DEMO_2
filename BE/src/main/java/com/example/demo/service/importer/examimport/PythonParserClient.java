@@ -34,7 +34,7 @@ public class PythonParserClient {
 
     public PythonParserClient(
             ObjectMapper objectMapper,
-            @Value("${exam-import.python-service-url:http://localhost:8000}") String serviceBaseUrl
+            @Value("${exam-import.python-parser-legacy-url:http://localhost:8000}") String serviceBaseUrl
     ) {
         this.objectMapper = objectMapper;
         this.serviceBaseUrl = serviceBaseUrl;

@@ -339,17 +339,34 @@ public class ExamImportService {
 
             // Save report
             @SuppressWarnings("unchecked")
-            Map<String, Object> report = (Map<String, Object>) pythonResponse.get("report");
-            @SuppressWarnings("unchecked")
             Map<String, Object> meta = (Map<String, Object>) pythonResponse.get("meta");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> report = (Map<String, Object>) pythonResponse.get("report");
             session.setReportData(writeReportEnvelope(meta, report));
 
             // Save questions
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> questions = (List<Map<String, Object>>) pythonResponse.get("questions");
-            if (questions != null) {
-                session.setParseResult(writeJson(Map.of("questions", questions)));
+            if (questions == null) {
+                questions = List.of();
+            }
+            session.setParseResult(writeJson(Map.of("questions", questions)));
+            if (!questions.isEmpty()) {
                 saveRenders(session, questions);
+            }
+
+            // If Python returned 0 questions, flag as FAILED with a clear warning
+            if (questions.isEmpty()) {
+                log.warn("[ExamImport] Session {} returned 0 questions from Python parser (template={})",
+                        sessionKey, template);
+                session.setStatus(ExamImportSession.SessionStatus.FAILED);
+                session.setReportData(writeReportEnvelope(
+                        meta,
+                        buildZeroQuestionReport(template, report, sessionKey)
+                ));
+                session.setUpdatedAt(LocalDateTime.now());
+                sessionRepository.save(session);
+                return;
             }
 
             session.setStatus(ExamImportSession.SessionStatus.DONE);
@@ -358,7 +375,7 @@ public class ExamImportService {
             sessionRepository.save(session);
 
             log.info("[ExamImport] Session {} parsed successfully: {} questions, template={}",
-                    sessionKey, questions != null ? questions.size() : 0, template);
+                    sessionKey, questions.size(), template);
 
         } catch (Exception ex) {
             log.error("[ExamImport] Session {} parse failed: {}", sessionKey, ex.getMessage(), ex);
@@ -765,6 +782,36 @@ public class ExamImportService {
             return DEFAULT_IMPORTED_EXAM_TITLE;
         }
         return normalized.length() <= 200 ? normalized : normalized.substring(0, 200).trim();
+    }
+
+    /**
+     * Build a report map when Python returns 0 questions.
+     * Copies existing report fields and adds a clear warning so the FE can display it.
+     */
+    private Map<String, Object> buildZeroQuestionReport(
+            String template,
+            Map<String, Object> existingReport,
+            String sessionKey) {
+        List<String> warnings = new ArrayList<>();
+        warnings.add("Không trích xuất được câu hỏi từ file. File có thể có cấu trúc không đúng template "
+                + "(template: " + template + "). Vui lòng kiểm tra lại file nguồn.");
+        warnings.add("Nếu đây là file DOCX, hãy đảm bảo file sử dụng template chuẩn (docx_mau_1.docx hoặc docx_mau_2.docx).");
+        if (existingReport != null) {
+            @SuppressWarnings("unchecked")
+            List<String> existingWarnings = (List<String>) existingReport.get("warnings");
+            if (existingWarnings != null) {
+                warnings.addAll(existingWarnings);
+            }
+        }
+
+        Map<String, Object> base = existingReport != null ? new LinkedHashMap<>(existingReport) : new LinkedHashMap<>();
+        base.put("selectedTemplate", template);
+        base.put("questionCount", 0);
+        base.put("answerCount", 0);
+        base.put("warnings", warnings);
+        base.put("errors", List.of("Parser returned 0 questions for session " + sessionKey));
+        base.put("confidence", 0.0);
+        return base;
     }
 
     private static int toInt(Object val) {

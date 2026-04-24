@@ -105,12 +105,6 @@
         </div>
       </div>
 
-      <!-- Drag hint -->
-      <div v-if="localQuestions.length > 1" class="qe__drag-hint">
-        <LucideIcon name="drag_indicator" />
-        Kéo thả để sắp xếp lại thứ tự câu hỏi
-      </div>
-
       <!-- Questions list -->
       <div class="qe__list">
         <div v-if="localQuestions.length === 0" class="qe__empty">
@@ -787,22 +781,6 @@ const processImportFile = async (file) => {
 }
 
 .qe__stats-clear:hover { background: var(--ds-primary-soft); }
-
-/* Drag hint */
-.qe__drag-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1.5rem;
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  font-weight: 500;
-  font-style: italic;
-  border-bottom: 1px solid var(--ds-border);
-  background: rgba(79, 70, 229, 0.03);
-}
-
-.dark .qe__drag-hint { border-bottom-color: var(--ds-border-strong); background: rgba(79, 70, 229, 0.05); }
 
 /* List */
 .qe__list {

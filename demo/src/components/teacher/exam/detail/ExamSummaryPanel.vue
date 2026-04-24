@@ -99,7 +99,7 @@
           <span class="esp__schedule-val">{{ formatDateTime(exam?.endTime) }}</span>
         </div>
       </div>
-      <div v-else class="esp__empty-hint">
+      <div v-else class="esp__schedule-item--empty">
         <LucideIcon name="event_busy" />
         Chưa thiết lập lịch thi
       </div>
@@ -503,7 +503,7 @@ const formatDateTime = (d) => {
 
 .dark .esp__schedule-val { color: #f1f5f9; }
 
-.esp__empty-hint {
+.esp__schedule-item--empty {
   display: flex;
   align-items: center;
   gap: 0.5rem;

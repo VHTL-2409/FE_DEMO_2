@@ -213,22 +213,6 @@
         </div>
       </div>
 
-      <!-- Share Info — chỉ với bài thi tự do -->
-      <div v-if="examType === 'free'" class="mt-8 ds-animate-fade-up" style="animation-delay: 0.2s">
-        <DsCard padding="md" variant="accent" accent-color="info">
-          <div class="flex items-start gap-3">
-            <LucideIcon name="tips_and_updates" />
-            <div>
-              <p class="text-sm font-semibold" style="color: var(--ds-text)">Mẹo chia sẻ đợt thi</p>
-              <p class="mt-1 text-xs" style="color: var(--ds-text-secondary)">
-                Chia sẻ mã đề thi <span class="font-bold" style="color: #0284c7">{{ examCode }}</span> với học sinh qua email, Zalo, hoặc phương tiện khác.
-                Học sinh sẽ nhập mã này để tham gia thi.
-              </p>
-            </div>
-          </div>
-        </DsCard>
-      </div>
-
       <!-- Info — với bài thi riêng tư -->
       <div v-if="examType === 'private'" class="mt-8 ds-animate-fade-up" style="animation-delay: 0.2s">
         <DsCard padding="md" variant="accent" accent-color="primary">

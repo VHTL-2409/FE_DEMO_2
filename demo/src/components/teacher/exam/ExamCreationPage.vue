@@ -3,8 +3,8 @@
     <!-- Body: top header strip + form columns -->
     <div class="ec-body">
 
-      <!-- Page header: breadcrumb + save status + action buttons -->
-      <div class="ec-page-header tui-panel--anim">
+      <!-- Page header -->
+      <div class="ec-page-header">
         <div class="ec-page-header__breadcrumb">
           <RouterLink class="ec-page-header__bc-link" to="/teacher/exams/list">
             <LucideIcon name="assignment" />
@@ -18,11 +18,11 @@
             <LucideIcon :name="saveStatusIcon" />
             <span>{{ saveStatusLabel }}</span>
           </div>
-          <button type="button" class="ec-btn ec-btn--ghost tui-btn tui-btn--ghost" @click="handleSaveDraft">
+          <button type="button" class="ec-btn ec-btn--ghost" @click="handleSaveDraft">
             <LucideIcon name="save" />
             <span>Lưu nháp</span>
           </button>
-          <button type="button" class="ec-btn ec-btn--primary tui-btn tui-btn--primary" @click="handlePublish" :disabled="!canPublish">
+          <button type="button" class="ec-btn ec-btn--primary" @click="handlePublish" :disabled="!canPublish">
             <LucideIcon name="rocket_launch" />
             <span>Xuất bản</span>
           </button>
@@ -42,7 +42,7 @@
               v-for="(step, i) in steps"
               :key="step.id"
               type="button"
-              :class="['ec-steps__item', activeStep === step.id && 'ec-steps__item--active', isStepComplete(step.id) && 'ec-steps__item--done', activeStep === step.id ? 'ec-steps__item--active' : '']"
+              :class="['ec-steps__item', activeStep === step.id && 'ec-steps__item--active', isStepComplete(step.id) && 'ec-steps__item--done']"
               @click="jumpToStep(step.id)"
             >
               <span class="ec-steps__num">
@@ -153,7 +153,7 @@
 
         </div>
 
-        <!-- Right column: Preview + checklist + tips -->
+        <!-- Right column -->
         <div class="ec-preview-col">
           <ExamPreviewPanel
             :form="form"
@@ -239,7 +239,7 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 
-// ─── Steps definition ────────────────────────────────────────
+// Steps definition
 const steps = [
   { id: 'info', label: 'Thông tin' },
   { id: 'settings', label: 'Cài đặt' },
@@ -248,7 +248,7 @@ const steps = [
   { id: 'proctor', label: 'Giám sát' }
 ]
 
-// ─── Form state ───────────────────────────────────────────────
+// Form state
 const form = reactive({
   // Info
   title: '',
@@ -325,7 +325,7 @@ const loadTeacherClasses = async () => {
   }
 }
 
-// ─── Init from query ─────────────────────────────────────────
+// Init from query
 onMounted(async () => {
   const type = route.query.type
   if (type === 'free' || type === 'private') {
@@ -339,9 +339,9 @@ onMounted(async () => {
   }
 })
 
-// ─── UI state ─────────────────────────────────────────────────
+// UI state
 const activeStep = ref('info')
-const saveState = ref('idle') // idle | saving | saved | error
+const saveState = ref('idle')
 const showPreviewModal = ref(false)
 const showSavedToast = ref(false)
 const createdExamId = ref(null)
@@ -385,7 +385,7 @@ const jumpToStep = (stepId) => {
   activeStep.value = stepId
 }
 
-// ─── Save status ───────────────────────────────────────────────
+// Save status
 const saveStatusLabel = computed(() => {
   if (saveState.value === 'saving') return 'Đang lưu...'
   if (saveState.value === 'saved') return 'Đã lưu'
@@ -406,7 +406,7 @@ const saveStatusClass = computed(() => ({
   'ec-page-header__save-status--error': saveState.value === 'error'
 }))
 
-// ─── Validation ───────────────────────────────────────────────
+// Validation
 const isInfoValid = computed(() => {
   if (form.title.trim().length < 3) return false
   if (form.examType === 'free' && form.subject.trim().length === 0) return false
@@ -528,7 +528,7 @@ const canPublish = computed(() =>
   !isSubmitting.value
 )
 
-// ─── Handlers ─────────────────────────────────────────────────
+// Handlers
 const handleSaveDraft = async () => {
   if (!form.title.trim()) {
     toast.error('Vui lòng nhập tiêu đề đề thi trước khi lưu.')
@@ -711,7 +711,7 @@ watch(isQuestionsValid, (v) => {
   to   { opacity: 1; }
 }
 
-/* ===== Page Header — breadcrumb strip inside content, not a separate bar ===== */
+/* ===== Page Header ===== */
 .ec-page-header {
   display: flex;
   align-items: center;
@@ -775,15 +775,6 @@ watch(isQuestionsValid, (v) => {
   border-color: rgba(2, 132, 199, 0.2);
 }
 
-.ec-page-header__save-status--saving .ec-page-header__save-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg) translateZ(0); }
-}
-
 .ec-page-header__save-status--saved {
   background: var(--ds-success-soft);
   color: var(--ds-success);
@@ -796,11 +787,7 @@ watch(isQuestionsValid, (v) => {
   border-color: rgba(220, 38, 38, 0.2);
 }
 
-.ec-page-header__save-icon {
-  font-size: 1rem;
-}
-
-/* ===== Button styles ===== */
+/* Button styles */
 .ec-btn {
   display: inline-flex;
   align-items: center;
@@ -1230,7 +1217,7 @@ watch(isQuestionsValid, (v) => {
     padding: 1rem;
   }
 }
-</style>
+
 @media (prefers-reduced-motion: reduce) {
   .ec-page { animation: none; }
   .ec-modal-enter-active, .ec-modal-leave-active,
@@ -1238,3 +1225,4 @@ watch(isQuestionsValid, (v) => {
   .ec-modal-enter-from, .ec-modal-leave-to,
   .ec-toast-enter-from, .ec-toast-leave-to { opacity: 1; transform: none; }
 }
+</style>

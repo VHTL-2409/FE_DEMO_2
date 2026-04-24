@@ -96,27 +96,6 @@
           <span class="ec-field__hint">{{ localDescription.length }}/500 ký tự</span>
         </div>
       </div>
-
-      <!-- Quick templates -->
-      <div class="ec-field">
-        <label class="ec-field__label">Mẫu nhanh</label>
-        <div class="ec-templates">
-          <button
-            v-for="tpl in templates"
-            :key="tpl.title"
-            type="button"
-            class="ec-template-btn"
-            @click="applyTemplate(tpl)"
-          >
-            <LucideIcon :name="tpl.icon" />
-            <span>{{ tpl.title }}</span>
-          </button>
-        </div>
-        <p v-if="localTitle" class="ec-templates__hint">
-          <LucideIcon name="info" size="12" />
-          Nhấn mẫu để điền nhanh môn học và mô tả
-        </p>
-      </div>
     </div>
   </div>
 </template>
@@ -160,30 +139,6 @@ const localClassId = computed({
   get: () => props.classId,
   set: (v) => emit('update:classId', v)
 })
-
-const templates = computed(() => {
-  if (props.examType === 'private') {
-    return [
-      { title: 'Giữa kỳ', icon: 'history_edu', description: 'Đề thi giữa học kỳ I, phạm vi chương 1-3' },
-      { title: 'Cuối kỳ', icon: 'school', description: 'Đề thi cuối học kỳ II, toàn bộ chương trình' },
-      { title: '15 phút', icon: 'timer', description: 'Đề thi 15 phút, chương Kim loại' },
-      { title: 'Thực hành', icon: 'science', description: 'Đề thi thực hành, phòng lab' }
-    ]
-  }
-  return [
-    { title: 'Giữa kỳ', icon: 'history_edu', subject: 'Toán học', description: 'Đề thi giữa học kỳ I, phạm vi chương 1-3' },
-    { title: 'Cuối kỳ', icon: 'school', subject: 'Vật lý', description: 'Đề thi cuối học kỳ II, toàn bộ chương trình' },
-    { title: '15 phút', icon: 'timer', subject: 'Hóa học', description: 'Đề thi 15 phút, chương Kim loại' },
-    { title: 'Thực hành', icon: 'science', subject: 'Sinh học', description: 'Đề thi thực hành, phòng lab' }
-  ]
-})
-
-const applyTemplate = (tpl) => {
-  localDescription.value = tpl.description
-  if (props.examType === 'free' && tpl.subject) {
-    localSubject.value = tpl.subject
-  }
-}
 </script>
 
 
@@ -228,12 +183,6 @@ const applyTemplate = (tpl) => {
 
 .dark .ec-section__title {
   color: var(--ds-text);
-}
-
-.ec-section__desc {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  margin: 0.25rem 0 0;
 }
 
 .ec-section__body {
@@ -343,51 +292,5 @@ const applyTemplate = (tpl) => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.ec-templates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.ec-template-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--ds-radius-full);
-  border: 1.5px solid var(--ds-border);
-  background: var(--ds-surface);
-  color: var(--ds-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.ec-template-btn:hover {
-  border-color: var(--ds-primary);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-  transform: translateY(-1px);
-}
-
-.dark .ec-template-btn {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-.dark .ec-template-btn:hover {
-  background: rgba(79, 70, 229, 0.15);
-}
-
-.ec-templates__hint {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.7rem;
-  color: var(--ds-text-muted);
-  margin: 0;
 }
 </style>

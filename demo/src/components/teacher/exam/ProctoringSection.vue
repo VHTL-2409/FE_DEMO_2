@@ -70,13 +70,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Disabled state hint -->
-      <div v-if="!localEnabled" class="ec-proctor-disabled-hint">
-        <LucideIcon name="info" />
-        <p>Giám sát đang tắt. Bật để kích hoạt các quy tắc chống gian lận cho kỳ thi này.</p>
-      </div>
-
     </div>
   </div>
 </template>
@@ -425,25 +418,4 @@ const enableAll = () => {
   margin: 0.25rem 0 0;
   line-height: 1.4;
 }
-
-/* Disabled hint */
-.ec-proctor-disabled-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: var(--ds-gray-50);
-  border: 1px dashed var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  color: var(--ds-text-muted);
-  font-size: 0.8rem;
-}
-
-.dark .ec-proctor-disabled-hint {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-
-.ec-proctor-disabled-hint p { margin: 0; line-height: 1.5; }
 </style>

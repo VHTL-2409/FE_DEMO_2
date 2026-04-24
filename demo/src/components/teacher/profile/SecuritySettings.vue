@@ -153,28 +153,6 @@
         </div>
       </div>
 
-      <!-- Security tips -->
-      <div class="ss__section">
-        <div class="ss__section-header">
-          <div class="ss__section-icon ss__section-icon--warning">
-            <LucideIcon name="tips_and_updates" />
-          </div>
-          <div>
-            <h4 class="ss__section-title">Mẹo bảo mật</h4>
-            <p class="ss__section-desc">Bảo vệ tài khoản của bạn tốt hơn</p>
-          </div>
-        </div>
-        <div class="ss__tips">
-          <div v-for="tip in securityTips" :key="tip.title" class="ss__tip">
-            <LucideIcon :name="tip.icon" />
-            <div>
-              <strong>{{ tip.title }}</strong>
-              <p>{{ tip.desc }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Login sessions placeholder -->
       <div class="ss__section">
         <div class="ss__section-header">
@@ -271,24 +249,6 @@ const getStrengthClass = (i) => {
   }
   return ''
 }
-
-const securityTips = [
-  {
-    icon: 'password',
-    title: 'Sử dụng mật khẩu mạnh',
-    desc: 'Kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt. Tối thiểu 10 ký tự.'
-  },
-  {
-    icon: 'update',
-    title: 'Đổi mật khẩu định kỳ',
-    desc: 'Nên thay đổi mật khẩu mỗi 3-6 tháng để tăng cường bảo mật.'
-  },
-  {
-    icon: 'share',
-    title: 'Không chia sẻ thông tin',
-    desc: 'Tuyệt đối không chia sẻ mật khẩu với người khác, kể cả đồng nghiệp.'
-  }
-]
 
 const validate = () => {
   errors.value = {}
@@ -736,48 +696,6 @@ defineExpose({ closePasswordForm, resetSavingState })
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg) translateZ(0); }
-}
-
-/* Tips */
-.ss__tips {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.ss__tip {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-gray-50);
-}
-
-.dark .ss__tip {
-  background: var(--ds-gray-800);
-}
-
-
-.ss__tip strong {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin-bottom: 0.25rem;
-}
-
-.dark .ss__tip strong {
-  color: #f1f5f9;
-}
-
-.ss__tip p {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-  font-weight: 500;
-  line-height: 1.4;
 }
 
 /* Sessions */

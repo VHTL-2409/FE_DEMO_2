@@ -122,9 +122,6 @@
         <span>Tiếp tục tạo đề thi</span>
         <LucideIcon name="arrow_forward" />
       </button>
-      <p class="ets__footer-hint">
-        Bạn có thể thay đổi hình thức bất cứ lúc nào trước khi xuất bản
-      </p>
     </div>
   </div>
 </template>
@@ -494,13 +491,6 @@ const proceed = () => {
 .ets__next-btn--purple:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(79, 70, 229, 0.35);
-}
-
-.ets__footer-hint {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-  text-align: center;
 }
 
 @keyframes fadeUp {

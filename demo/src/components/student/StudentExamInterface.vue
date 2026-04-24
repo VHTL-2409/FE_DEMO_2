@@ -443,13 +443,6 @@ const handleModalConfirm = () => {
   modal.value.show = false
 }
 
-const showErrorPopup = ref(false)
-const errorPopupMessage = ref('')
-const showSuccessPopup = ref(false)
-const successPopupMessage = ref('')
-const showInfoPopup = ref(false)
-const infoPopupMessage = ref('')
-const infoPopupTitle = ref('')
 const answers = ref({})
 const markedQuestions = ref({})
 const visitedQuestions = ref({})
@@ -457,8 +450,6 @@ const currentIndex = ref(0)
 const remainingSeconds = ref(Number.parseInt(String(route.query.remainingSeconds || ''), 10) || 0)
 const initialRemainingForProgress = ref(0)
 const attemptStatus = ref('IN_PROGRESS')
-const teacherWarningMessage = ref('')
-const showTeacherWarningModal = ref(false)
 const isSuspended = ref(false)
 const suspensionMessage = ref('')
 const lastViolationAtByType = ref({})

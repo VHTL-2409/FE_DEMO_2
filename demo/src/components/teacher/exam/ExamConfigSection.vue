@@ -46,15 +46,12 @@
 
       <!-- Review options -->
       <div class="ec-field">
-        <label class="ec-field__label">Tùy chọn xem lại</label>
+        <label class="ec-field__label">Tùy chọn hiển thị</label>
         <div class="ec-toggle-list">
           <div class="ec-toggle-item">
             <div class="ec-toggle-item__body">
               <LucideIcon name="visibility" />
-              <div>
-                <p class="ec-toggle-item__title">Hiển thị đáp án sau thi</p>
-                <p class="ec-toggle-item__desc">Học sinh được xem đáp án đúng sau khi nộp bài</p>
-              </div>
+              <p class="ec-toggle-item__title">Hiển thị đáp án sau thi</p>
             </div>
             <button
               type="button"
@@ -69,10 +66,7 @@
           <div class="ec-toggle-item">
             <div class="ec-toggle-item__body">
               <LucideIcon name="rate_review" />
-              <div>
-                <p class="ec-toggle-item__title">Cho phép xem lại bài</p>
-                <p class="ec-toggle-item__desc">Học sinh có thể xem lại bài thi của mình</p>
-              </div>
+              <p class="ec-toggle-item__title">Cho phép xem lại bài</p>
             </div>
             <button
               type="button"
@@ -87,10 +81,7 @@
           <div class="ec-toggle-item">
             <div class="ec-toggle-item__body">
               <LucideIcon name="grade" />
-              <div>
-                <p class="ec-toggle-item__title">Hiển thị điểm ngay sau nộp</p>
-                <p class="ec-toggle-item__desc">Học sinh thấy điểm trên màn xác nhận nộp bài</p>
-              </div>
+              <p class="ec-toggle-item__title">Hiển thị điểm sau nộp</p>
             </div>
             <button
               type="button"
@@ -222,12 +213,6 @@ const localMaxAttempts = computed({
 
 .dark .ec-section__title {
   color: var(--ds-text);
-}
-
-.ec-section__desc {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  margin: 0.25rem 0 0;
 }
 
 .ec-section__body {
@@ -406,12 +391,6 @@ const localMaxAttempts = computed({
   min-width: 0;
 }
 
-.ec-toggle-item__icon {
-  font-size: 1.25rem;
-  color: var(--ds-text-muted);
-  flex-shrink: 0;
-}
-
 .ec-toggle-item__title {
   font-size: 0.875rem;
   font-weight: 700;
@@ -422,13 +401,6 @@ const localMaxAttempts = computed({
 
 .dark .ec-toggle-item__title {
   color: var(--ds-text);
-}
-
-.ec-toggle-item__desc {
-  font-size: 0.7rem;
-  color: var(--ds-text-muted);
-  margin: 0.25rem 0 0;
-  line-height: 1.4;
 }
 
 /* Toggle switch */

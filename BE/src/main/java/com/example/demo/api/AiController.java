@@ -15,10 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * AI-powered features controller.
- * Provides endpoints for question generation, essay evaluation, and analytics.
- */
+
 @RestController
 @RequiredArgsConstructor
 public class AiController {

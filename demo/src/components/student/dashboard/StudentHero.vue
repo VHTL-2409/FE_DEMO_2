@@ -100,7 +100,6 @@ const headlineText = computed(() => {
 
 
 <style scoped>
-/* Entrance animation without forcing text onto a composited layer */
 @keyframes fadeInUp {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -140,7 +139,6 @@ const headlineText = computed(() => {
   pointer-events: none;
 }
 
-/* Left */
 .sh__left {
   display: flex;
   flex-direction: column;
@@ -165,22 +163,12 @@ const headlineText = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* GPU optimization for animation */
   will-change: transform;
-  transform: translateZ(0);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
-  animation: wave 3s ease-in-out infinite;
 }
 
 .sh__greeting-row:hover .sh__wave-icon {
-  transform: scale(1.15) rotate(-8deg) translateZ(0);
   background: rgba(79, 70, 229, 0.2);
-}
-
-/* GPU-accelerated wave animation using transform3d */
-@keyframes wave {
-  0%, 100% { transform: rotate(-5deg) translateZ(0); }
-  50% { transform: rotate(5deg) translateZ(0); }
 }
 
 .sh__greeting-text {
@@ -218,57 +206,9 @@ const headlineText = computed(() => {
   color: var(--ds-text);
 }
 
-@media (min-width: 1400px) {
-  .sh__headline { max-width: 580px; }
-}
+@media (min-width: 1400px) { .sh__headline { max-width: 580px; } }
+@media (min-width: 1600px) { .sh__headline { max-width: 700px; } }
 
-@media (min-width: 1600px) {
-  .sh__headline { max-width: 700px; }
-}
-
-/* Next action chip */
-.sh__next-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--ds-radius-full);
-  background: var(--ds-primary);
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.22s ease,
-    background 0.2s ease;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
-  width: fit-content;
-  margin-top: 0.25rem;
-}
-
-.sh__next-action:hover {
-  background: var(--ds-primary-hover, #4338ca);
-  transform: translateX(4px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-}
-
-.sh__next-action:active {
-  transform: translateX(2px) scale(0.98);
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-}
-
-.sh__next-arrow {
-  margin-left: 0.25rem;
-  font-size: 1.125rem;
-  transition: transform 0.2s ease;
-}
-
-.sh__next-action:hover .sh__next-arrow {
-  transform: translateX(3px);
-}
-
-/* Right */
 .sh__right {
   display: flex;
   flex-direction: column;
@@ -286,10 +226,7 @@ const headlineText = computed(() => {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--ds-border);
   box-shadow: var(--ds-shadow-xs);
-  transition:
-    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.22s ease,
-    border-color 0.2s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, border-color 0.2s ease;
 }
 
 .dark .sh__stat-item {
@@ -327,26 +264,12 @@ const headlineText = computed(() => {
 .sh__stat-icon-wrap--success { background: var(--ds-success-soft); color: var(--ds-success); }
 .sh__stat-icon-wrap--info { background: var(--ds-info-soft); color: var(--ds-info); }
 
-.sh__stat-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.sh__stat-icon--exam { color: var(--ds-primary); }
-.sh__stat-icon--pending { color: var(--ds-warning); }
-.sh__stat-icon--score { color: var(--ds-success); }
-.sh__stat-icon--history { color: var(--ds-info); }
-
 .sh__stat-val {
   font-family: var(--ds-font-display);
   font-size: 1.125rem;
   font-weight: 800;
   color: var(--ds-text);
   line-height: 1.1;
-}
-
-.dark .sh__stat-val {
-  color: var(--ds-text);
 }
 
 .sh__stat-lbl {
@@ -358,72 +281,23 @@ const headlineText = computed(() => {
   white-space: nowrap;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
-  .sh {
-    padding: 1.25rem 1.5rem;
-  }
-
-  .sh__right {
-    flex-direction: row;
-    flex-wrap: wrap;
-    min-width: unset;
-    width: 100%;
-  }
-
-  .sh__stat-item {
-    flex: 1;
-    min-width: 140px;
-  }
+  .sh { padding: 1.25rem 1.5rem; }
+  .sh__right { flex-direction: row; flex-wrap: wrap; min-width: unset; width: 100%; }
+  .sh__stat-item { flex: 1; min-width: 140px; }
 }
 
 @media (max-width: 768px) {
-  .sh {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1.25rem;
-    gap: 1rem;
-  }
-
-  .sh__right {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .sh__stat-item {
-    flex: 1;
-    min-width: 120px;
-    padding: 0.5rem 0.75rem;
-  }
-
-  .sh__headline {
-    max-width: 100%;
-  }
+  .sh { flex-direction: column; align-items: flex-start; padding: 1.25rem; gap: 1rem; }
+  .sh__right { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
+  .sh__stat-item { flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; }
+  .sh__headline { max-width: 100%; }
 }
 
 @media (max-width: 480px) {
-  .sh {
-    padding: 1rem;
-  }
-
-  .sh__right {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .sh__stat-item {
-    width: 100%;
-    flex: none;
-  }
-
-  .sh__greeting-row {
-    gap: 0.625rem;
-  }
-
-  .sh__wave-icon {
-    width: 40px;
-    height: 40px;
-  }
+  .sh { padding: 1rem; }
+  .sh__right { flex-direction: column; gap: 0.5rem; }
+  .sh__stat-item { width: 100%; flex: none; }
+  .sh__wave-icon { width: 40px; height: 40px; }
 }
 </style>

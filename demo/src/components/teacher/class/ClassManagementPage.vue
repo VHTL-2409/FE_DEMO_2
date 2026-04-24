@@ -186,7 +186,7 @@
               <LucideIcon :name="copied ? 'check' : 'copy'" />
             </button>
           </div>
-          <p class="cmp__modal__hint">Học sinh có thể nhập mã này để tham gia lớp</p>
+          <p class="cmp__modal__hint">Chia sẻ mã này với học sinh</p>
           <div class="cmp__modal__actions">
             <button type="button" class="cmp__btn cmp__btn--primary" @click="showSuccessModal = false">
               Đã hiểu

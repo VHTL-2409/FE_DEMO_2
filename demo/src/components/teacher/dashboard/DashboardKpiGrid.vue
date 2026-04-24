@@ -82,7 +82,7 @@
       </div>
       <div class="td-kpi-card__body">
         <span class="td-kpi-card__value">{{ alertCount }}</span>
-        <span class="td-kpi-card__sub">cảnh báo / kỳ thi đã kết</span>
+        <span class="td-kpi-card__sub">cảnh báo</span>
       </div>
       <div class="td-kpi-card__footer">
         <span :class="alertTrendClass">
@@ -130,14 +130,14 @@ const alertTrendClass = computed(() => {
 const alertTrendIcon = computed(() => props.alertCount > 0 ? 'flag' : 'check_circle')
 
 const alertTrendLabel = computed(() => {
-  if (props.alertCount > 0) return `${props.alertCount} cần xử lý ngay`
-  return 'Không có cảnh báo'
+  if (props.alertCount === 0) return 'Hệ thống ổn định'
+  return `${props.alertCount} cần xử lý`
 })
 </script>
 
 
 <style scoped>
-/* Ultra Simplified - Performance First */
+/* Ultra Simplified */
 
 .td-kpi-grid {
   display: grid;

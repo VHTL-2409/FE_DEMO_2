@@ -83,11 +83,15 @@ class Template04DocxVietParser(DocxBaseParser):
         essay_idx = len(paragraphs)
 
         for i, p in enumerate(paragraphs):
-            t = p.text.strip()
-            if t.startswith("Phần 2") or "ĐIỀN ĐÁP ÁN" in t.upper():
+            t = p.text.strip().lstrip('\ufeff').strip()
+            if not t:
+                continue
+
+            # Case-insensitive, whitespace-flexible, BOM-safe section detection
+            if re.match(r"^\s*Phần\s*2", t, re.IGNORECASE) or "ĐIỀN ĐÁP ÁN" in t.upper():
                 if fill_idx == len(paragraphs):
                     fill_idx = i
-            if "TỰ LUẬN" in t.upper():
+            if re.match(r"^\s*TỰ\s*LUẬN", t, re.IGNORECASE) or "TỰ LUẬN" in t.upper():
                 essay_idx = i
                 break
 
@@ -110,7 +114,7 @@ class Template04DocxVietParser(DocxBaseParser):
 
         while i < len(paragraphs):
             p = paragraphs[i]
-            t = p.text.strip()
+            t = p.text.strip().lstrip('\ufeff').strip()
 
             # Detect question number marker — possibly split across two lines:
             # Line 1: "1."   Line 2: "(0.200 Point)"
@@ -123,7 +127,7 @@ class Template04DocxVietParser(DocxBaseParser):
             elif re.match(r"^\d+\.\s*$", t):
                 # Line 1 of split format: "1."
                 if i + 1 < len(paragraphs):
-                    next_t = paragraphs[i + 1].text.strip()
+                    next_t = paragraphs[i + 1].text.strip().lstrip('\ufeff').strip()
                     if re.match(r"^\(\d+\.\d+\s*Point\)$", next_t):
                         header_text = t + " " + next_t
                         is_header = True
@@ -137,15 +141,15 @@ class Template04DocxVietParser(DocxBaseParser):
 
                 # Collect all lines belonging to this question
                 while j < len(paragraphs):
-                    next_t = paragraphs[j].text.strip()
+                    next_t = paragraphs[j].text.strip().lstrip('\ufeff').strip()
                     # Stop at next question marker or section marker
                     if re.match(r"^\d+\.\s*\(\d+\.\d+\s*Point\)$", next_t):
                         break
                     if re.match(r"^\d+\.\s*$", next_t):
                         # Peek: if next line after this looks like "(0.200 Point)", it's a header
-                        if j + 1 < len(paragraphs) and re.match(r"^\(\d+\.\d+\s*Point\)$", paragraphs[j + 1].text.strip()):
+                        if j + 1 < len(paragraphs) and re.match(r"^\(\d+\.\d+\s*Point\)$", paragraphs[j + 1].text.strip().lstrip('\ufeff').strip()):
                             break
-                    if "Phần 2" in next_t or "ĐIỀN ĐÁP ÁN" in next_t.upper() or "TỰ LUẬN" in next_t.upper():
+                    if re.match(r"^\s*Phần\s*2", next_t, re.IGNORECASE) or "ĐIỀN ĐÁP ÁN" in next_t.upper() or re.match(r"^\s*TỰ\s*LUẬN", next_t, re.IGNORECASE):
                         break
                     block_lines.append(next_t)
                     j += 1
@@ -227,13 +231,13 @@ class Template04DocxVietParser(DocxBaseParser):
 
         while i < len(paragraphs):
             p = paragraphs[i]
-            t = p.text.strip()
+            t = p.text.strip().lstrip('\ufeff').strip()
             if not t:
                 i += 1
                 continue
 
-            # Skip section headers
-            if re.match(r"^Phần\s*\d", t) or "ĐIỀN ĐÁP ÁN" in t.upper() or t == "TỰ LUẬN":
+            # Skip section headers (BOM-safe, case-insensitive)
+            if re.match(r"^\s*Phần\s*\d", t, re.IGNORECASE) or "ĐIỀN ĐÁP ÁN" in t.upper() or re.match(r"^\s*TỰ\s*LUẬN", t, re.IGNORECASE):
                 i += 1
                 continue
 
@@ -247,14 +251,14 @@ class Template04DocxVietParser(DocxBaseParser):
                 # Collect answer lines (start with "- " or "=>")
                 answer_parts: list[str] = []
                 while i < len(paragraphs):
-                    next_t = paragraphs[i].text.strip()
+                    next_t = paragraphs[i].text.strip().lstrip('\ufeff').strip()
                     if re.match(r"^(\d+)\.\s*\(0\.250\s*Point\)", next_t):
                         break
                     if next_t.startswith("- ") or next_t.startswith("=>"):
                         answer_parts.append(next_t.lstrip("-=> ").strip())
                     elif next_t.startswith("-"):
                         answer_parts.append(next_t.lstrip("-").strip())
-                    elif "Phần" in next_t or next_t == "TỰ LUẬN":
+                    elif re.match(r"^\s*Phần", next_t, re.IGNORECASE) or re.match(r"^\s*TỰ\s*LUẬN", next_t, re.IGNORECASE):
                         break
                     elif not next_t:
                         pass
@@ -292,10 +296,10 @@ class Template04DocxVietParser(DocxBaseParser):
         q_num = start_num + 1
 
         for p in paragraphs:
-            t = p.text.strip()
+            t = p.text.strip().lstrip('\ufeff').strip()
             if not t:
                 continue
-            if "TỰ LUẬN" in t.upper() or re.match(r"^Phần", t):
+            if re.match(r"^\s*TỰ\s*LUẬN", t, re.IGNORECASE) or re.match(r"^\s*Phần", t, re.IGNORECASE):
                 continue
 
             # Essay question: starts with number

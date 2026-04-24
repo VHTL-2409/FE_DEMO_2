@@ -590,17 +590,6 @@ watch(() => props.events.length, () => {
 
 .lef__checkbox { display: none; }
 
-.lef__checkbox-icon {
-  font-size: 1rem;
-  color: var(--ds-text-muted);
-}
-
-.dark .lef__checkbox-icon { color: #94a3b8; }
-
-.lef__auto-scroll input:checked ~ .lef__checkbox-icon {
-  color: var(--ds-primary);
-}
-
 .lef__footer-clear {
   display: flex;
   align-items: center;
