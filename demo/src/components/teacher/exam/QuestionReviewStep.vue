@@ -73,8 +73,7 @@
             class="ec-qb-item"
             :class="{
               'ec-qb-item--expanded': expandedIds.has(i),
-              'ec-qb-item--essay': q.type && q.type.toUpperCase().includes('ESSAY'),
-              'ec-qb-item--low-conf': q.parseConfidence != null && q.parseConfidence < 0.7
+              'ec-qb-item--essay': q.type && q.type.toUpperCase().includes('ESSAY')
             }"
           >
             <!-- Card header (always visible, click to expand/collapse) -->
@@ -90,10 +89,6 @@
                   :title="q.section || q.sectionKind || ''"
                 >
                   {{ sectionHeaderChip(q) }}
-                </span>
-                <span v-if="q.parseConfidence != null && q.parseConfidence < 0.7" class="ec-qb-conf-warn">
-                  <LucideIcon name="warning" size="11" />
-                  Confidence thấp
                 </span>
               </div>
               <div class="ec-qb-item__header-right">
@@ -1476,10 +1471,6 @@ const onConfirmDeleteAll = () => {
 
 .ec-qb-item--essay {
   border-left: 3px solid var(--ds-warning);
-}
-
-.ec-qb-item--low-conf {
-  border-left: 3px solid var(--ds-danger);
 }
 
 .ec-qb-type-badge {
