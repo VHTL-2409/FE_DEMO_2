@@ -369,7 +369,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchExamList } from '../../../services/examService'
+import { listExams } from '../../../services/examService'
 import {
   runPlagiarismAnalysis,
   runExamTimingAnalysis,
@@ -377,7 +377,6 @@ import {
   runExamBiometricsAnalysis,
   runIpReputationAnalysis,
 } from '../../../services/fraudAnalysisService'
-import { gradeAttempt } from '../../../services/gradingService'
 
 const props = defineProps({
   initialExamId: {
@@ -427,7 +426,7 @@ const gradeCircleClass = computed(() => {
 })
 
 onMounted(async () => {
-  exams.value = await fetchExamList()
+  exams.value = await listExams()
 })
 
 async function runFullAnalysis() {
