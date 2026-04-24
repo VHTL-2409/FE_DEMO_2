@@ -23,6 +23,15 @@ export const listExams = async () => {
   return unwrapApiData(payload) || []
 }
 
+/**
+ * Fetches all exams the current teacher can monitor, with monitoring-specific
+ * metadata (session status, current participants, time remaining).
+ */
+export const listMonitoringExams = async () => {
+  const payload = await apiRequest('/api/exams/for-monitoring', { suppressToast: true })
+  return unwrapApiData(payload) || []
+}
+
 export const getExamDetail = async (examId) => {
   const payload = await apiRequest(`/api/exams/${examId}`, { suppressToast: true })
   return unwrapApiData(payload)

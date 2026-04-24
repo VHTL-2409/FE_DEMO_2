@@ -1,445 +1,364 @@
 <template>
-  <div class="bg-[var(--ds-bg)] min-h-full">
-    <div class="mx-auto max-w-5xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+  <div class="sd-root">
 
-      <!-- Breadcrumb -->
-      <div class="mb-4 ds-animate-fade-up">
-        <div class="flex items-center gap-2 text-sm" style="color: var(--ds-text-muted)">
-          <RouterLink
-            class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
-            style="color: var(--ds-text-muted)"
-            to="/teacher/live-monitoring"
-          >
-            <LucideIcon name="monitor_heart" size="16" />
-            Giám sát thi
-          </RouterLink>
-          <LucideIcon name="chevron_right" size="12" />
-          <RouterLink
-            class="flex items-center gap-1 transition-colors hover:text-[var(--ds-primary)]"
-            style="color: var(--ds-text-muted)"
-            :to="{ path: '/teacher/exams/review/incidents', query: { examId } }"
-          >
-            Tổng quan hành vi
-          </RouterLink>
-          <LucideIcon name="chevron_right" size="12" />
-          <span class="font-medium" style="color: var(--ds-text)">Chi tiết vi phạm</span>
+    <!-- Loading -->
+    <div v-if="loading" class="sd-loading">
+      <div class="sd-loading__spinner" />
+      <span class="sd-loading__text">Đang tải dữ liệu...</span>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="sd-error">
+      <div class="sd-error__card">
+        <LucideIcon name="alert-circle" :size="28" class="sd-error__icon" />
+        <p class="sd-error__msg">{{ error }}</p>
+        <button class="sd-btn sd-btn--secondary" @click="loadData">Thử lại</button>
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- Top bar -->
+      <div class="sd-topbar">
+        <div class="sd-topbar__left">
+          <button class="sd-topbar__back" @click="goBack">
+            <LucideIcon name="arrow-left" :size="16" />
+            <span>Quay lại</span>
+          </button>
+          <div class="sd-topbar__sep" />
+          <nav class="sd-topbar__crumbs">
+            <RouterLink to="/teacher/live-monitoring" class="sd-topbar__crumb">Giám sát thi</RouterLink>
+            <LucideIcon name="chevron-right" :size="12" class="sd-topbar__crumb-sep" />
+            <RouterLink :to="{ path: '/teacher/exams/review/incidents', query: { examId } }" class="sd-topbar__crumb">Hành vi</RouterLink>
+            <LucideIcon name="chevron-right" :size="12" class="sd-topbar__crumb-sep" />
+            <span class="sd-topbar__crumb sd-topbar__crumb--active">{{ studentName }}</span>
+          </nav>
+        </div>
+        <div v-if="attemptId" class="sd-topbar__id">
+          <LucideIcon name="hash" :size="12" />
+          <span>{{ attemptId }}</span>
         </div>
       </div>
 
-      <!-- Loading state -->
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-[var(--ds-primary)] border-t-transparent"></div>
-        <span class="ml-3" style="color: var(--ds-text-muted)">Đang tải dữ liệu...</span>
-      </div>
-
-      <!-- Error state -->
-      <div v-else-if="error" class="rounded-lg border border-[var(--ds-danger)] bg-[var(--ds-danger-soft)] p-4 text-center">
-        <LucideIcon name="alert_circle" size="24" class="mx-auto mb-2" style="color: var(--ds-danger)" />
-        <p style="color: var(--ds-danger)">{{ error }}</p>
-        <button class="mt-3 rounded-lg px-4 py-2 text-sm font-bold transition-all hover:-translate-y-0.5" style="background-color: var(--ds-primary); color: white" @click="loadData">
-          Thử lại
-        </button>
-      </div>
-
-      <template v-else>
-        <!-- Page Header -->
-        <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.05s">
-          <PageHeader
-            eyebrow="Theo dõi vi phạm"
-            title="Chi tiết hành vi học sinh"
-            :subtitle="'Phân tích vi phạm của ' + (studentInfo.name || '—')"
-          >
-            <template #actions>
-              <button
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5"
-                style="background-color: var(--ds-surface); color: var(--ds-text); border: 1px solid var(--ds-border); box-shadow: var(--ds-shadow-sm)"
-                @click="goBack"
-              >
-                <LucideIcon name="arrow_back" size="18" />
-                <span>Quay lại</span>
-              </button>
-            </template>
-          </PageHeader>
-        </div>
-
-        <!-- Student Info Header -->
-        <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.1s">
-          <DsCard padding="lg">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div class="flex items-center gap-4">
-                <div
-                  class="relative flex size-14 items-center justify-center rounded-full text-xl font-bold"
-                  :style="{ backgroundColor: riskColor }"
-                  style="color: white"
-                >
-                  {{ studentInitials }}
-                  <span
-                    class="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full"
-                    :style="{ backgroundColor: riskColor, color: 'white' }"
-                  >
-                    <LucideIcon name="warning" size="12" />
-                  </span>
-                </div>
-                <div>
-                  <h2 class="text-xl font-bold" style="color: var(--ds-text)">{{ studentInfo.name || '—' }}</h2>
-                  <p class="text-sm" style="color: var(--ds-text-muted)">Mã học sinh: {{ studentInfo.studentId || '—' }}</p>
-                  <p class="text-xs" style="color: var(--ds-text-secondary)">{{ studentInfo.email || '—' }}</p>
-                </div>
-              </div>
-              <StatusChip :status="riskLevelBadge" :label="riskLevelLabel" />
+      <!-- Hero -->
+      <div class="sd-hero" :class="`sd-hero--${riskBand}`">
+        <div class="sd-hero__left">
+          <div class="sd-hero__avatar-wrap">
+            <div class="sd-hero__avatar" :style="{ background: avatarBg }">
+              <span class="sd-hero__initials" :style="{ color: riskColor }">{{ studentInitials }}</span>
+              <div class="sd-hero__status-ring" :style="{ borderColor: attemptStatusColor }" />
             </div>
-          </DsCard>
-        </div>
-
-        <!-- Risk Score Indicator -->
-        <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.15s">
-          <DsCard padding="lg" variant="alert">
-            <div class="flex items-center gap-4">
-              <div
-                class="flex size-16 items-center justify-center rounded-full"
-                :style="{ backgroundColor: riskBgColor }"
-              >
-                <span class="text-3xl font-extrabold" :style="{ color: riskColor }">
-                  {{ riskData.score ?? 0 }}
-                </span>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold" style="color: var(--ds-text)">Điểm rủi ro tổng thể</p>
-                <p class="text-xs" style="color: var(--ds-text-muted)">
-                  {{ riskDescription }}
-                </p>
-                <div class="mt-2 h-2 w-full overflow-hidden rounded-full" style="background-color: var(--ds-gray-100)">
-                  <div
-                    class="h-full rounded-full transition-all duration-500"
-                    :style="{
-                      width: (riskData.score ?? 0) + '%',
-                      backgroundColor: riskColor
-                    }"
-                  />
-                </div>
-              </div>
+          </div>
+          <div class="sd-hero__info">
+            <div class="sd-hero__name-row">
+              <h1 class="sd-hero__name">{{ studentName }}</h1>
+              <span class="sd-hero__status-badge" :style="{ color: attemptStatusColor, background: attemptStatusBg }">
+                <LucideIcon :name="attemptStatusIcon" :size="11" />
+                {{ attemptStatusLabel }}
+              </span>
             </div>
-          </DsCard>
+            <p class="sd-hero__meta">
+              <span v-if="studentCode">{{ studentCode }}</span>
+              <span v-if="studentCode && studentEmail" class="sd-hero__meta-sep">·</span>
+              <span v-if="studentEmail">{{ studentEmail }}</span>
+            </p>
+            <div class="sd-hero__badges">
+              <span class="sd-badge" :style="{ background: riskBg, color: riskColor }">
+                <LucideIcon name="shield-alert" :size="11" />
+                {{ riskLevelLabel }}
+              </span>
+              <span v-if="riskData.reviewRequired" class="sd-badge sd-badge--warn">
+                <LucideIcon name="eye" :size="11" />
+                Cần review
+              </span>
+              <span class="sd-badge sd-badge--neutral">
+                <LucideIcon name="clock" :size="11" />
+                {{ sessionTime }}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div v-if="riskData.reviewRequired || riskData.recommendedAction || (riskData.reasons && riskData.reasons.length)" class="mb-6 ds-animate-fade-up" style="animation-delay: 0.18s">
-          <DsCard padding="lg">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <LucideIcon name="fact_check" />
-                <h3 class="text-lg font-bold" style="color: var(--ds-text)">Đề xuất xử lý</h3>
+        <div class="sd-hero__right">
+          <!-- Circular risk gauge -->
+          <div class="sd-gauge">
+            <svg class="sd-gauge__svg" viewBox="0 0 120 120">
+              <circle class="sd-gauge__track" cx="60" cy="60" r="52" />
+              <circle
+                class="sd-gauge__fill"
+                cx="60" cy="60" r="52"
+                :stroke="riskColor"
+                :stroke-dasharray="gaugeArc"
+              />
+            </svg>
+            <div class="sd-gauge__center">
+              <span class="sd-gauge__score" :style="{ color: riskColor }">{{ riskScore }}</span>
+              <span class="sd-gauge__label">điểm rủi ro</span>
+            </div>
+          </div>
+          <div class="sd-hero__gauge-desc">
+            <p class="sd-gauge-desc__text">{{ riskDescription }}</p>
+            <div class="sd-gauge-desc__track">
+              <div class="sd-gauge-desc__fill" :style="{ width: riskScore + '%', background: riskColor }" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="sd-stats">
+        <div class="sd-stat">
+          <div class="sd-stat__icon-wrap" style="color: #94a3b8">
+            <LucideIcon name="users" :size="16" />
+          </div>
+          <div class="sd-stat__body">
+            <span class="sd-stat__value">{{ store.cards.length }}</span>
+            <span class="sd-stat__label">Tổng thí sinh</span>
+          </div>
+        </div>
+        <div class="sd-stat">
+          <div class="sd-stat__icon-wrap" style="color: #4ade80">
+            <LucideIcon name="play-circle" :size="16" />
+          </div>
+          <div class="sd-stat__body">
+            <span class="sd-stat__value" style="color: #4ade80">{{ onlineCount }}</span>
+            <span class="sd-stat__label">Đang thi</span>
+          </div>
+        </div>
+        <div class="sd-stat">
+          <div class="sd-stat__icon-wrap" style="color: #fbbf24">
+            <LucideIcon name="alert-triangle" :size="16" />
+          </div>
+          <div class="sd-stat__body">
+            <span class="sd-stat__value" style="color: #fbbf24">{{ alertCount }}</span>
+            <span class="sd-stat__label">Nghi ngờ</span>
+          </div>
+        </div>
+        <div class="sd-stat">
+          <div class="sd-stat__icon-wrap" style="color: #a5b4fc">
+            <LucideIcon name="check-circle" :size="16" />
+          </div>
+          <div class="sd-stat__body">
+            <span class="sd-stat__value" style="color: #a5b4fc">{{ submittedCount }}</span>
+            <span class="sd-stat__label">Đã nộp</span>
+          </div>
+        </div>
+        <div class="sd-stat">
+          <div class="sd-stat__icon-wrap" :style="{ color: attemptStatusColor }">
+            <LucideIcon :name="attemptStatusIcon" :size="16" />
+          </div>
+          <div class="sd-stat__body">
+            <span class="sd-stat__value" :style="{ color: attemptStatusColor }">{{ maxSeverity }}</span>
+            <span class="sd-stat__label">{{ attemptStatusLabel }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sd-grid">
+        <!-- Left column -->
+        <div class="sd-grid__left">
+
+          <!-- Recommendation -->
+          <div v-if="riskData.reviewRequired || riskData.recommendedAction || (riskData.reasons && riskData.reasons.length)" class="sd-card">
+            <div class="sd-card__header">
+              <LucideIcon name="lightbulb" :size="16" />
+              <span class="sd-card__title">Đề xuất xử lý</span>
+            </div>
+            <div class="sd-card__body">
+              <div class="sd-rec__action">
+                <span class="sd-rec__badge" :style="{ background: riskBg, color: riskColor }">{{ recommendedActionLabel }}</span>
               </div>
-            </template>
-            <div class="space-y-3">
-              <div class="flex flex-wrap items-center gap-3">
-                <StatusChip :status="riskData.reviewRequired ? 'warning' : 'success'" :label="riskData.reviewRequired ? 'Cần giám thị review' : 'Đã ổn định'" />
-                <span
-                  class="rounded-full px-3 py-1 text-xs font-bold"
-                  style="background-color: var(--ds-primary-soft); color: var(--ds-primary)"
-                >
-                  {{ recommendedActionLabel }}
-                </span>
-              </div>
-              <div v-if="riskData.reasons?.length" class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em]" style="color: var(--ds-text-muted)">Lý do chính</p>
-                <div class="flex flex-wrap gap-2">
+              <div v-if="riskData.reasons && riskData.reasons.length" class="sd-rec__reasons">
+                <p class="sd-rec__label">Lý do chính</p>
+                <div class="sd-rec__chips">
                   <span
                     v-for="reason in riskData.reasons"
                     :key="reason"
-                    class="rounded-full px-3 py-1 text-xs font-semibold"
-                    style="background-color: var(--ds-warning-soft); color: var(--ds-warning)"
-                  >
-                    {{ reason }}
-                  </span>
+                    class="sd-chip"
+                    :style="{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }"
+                  >{{ reason }}</span>
                 </div>
               </div>
-              <div v-if="riskData.evidenceSummary?.length" class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em]" style="color: var(--ds-text-muted)">Bằng chứng tóm tắt</p>
-                <ul class="space-y-2">
-                  <li
-                    v-for="item in riskData.evidenceSummary"
-                    :key="item"
-                    class="rounded-lg border px-3 py-2 text-sm"
-                    style="border-color: var(--ds-border); color: var(--ds-text-secondary)"
-                  >
+              <div v-if="riskData.evidenceSummary && riskData.evidenceSummary.length" class="sd-rec__evidence">
+                <p class="sd-rec__label">Bằng chứng tóm tắt</p>
+                <ul class="sd-rec__list">
+                  <li v-for="(item, i) in riskData.evidenceSummary" :key="i" class="sd-rec__item">
+                    <LucideIcon name="circle-dot" :size="10" class="sd-rec__item-dot" />
                     {{ item }}
                   </li>
                 </ul>
               </div>
             </div>
-          </DsCard>
-        </div>
+          </div>
 
-        <!-- Session Summary -->
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ds-animate-fade-up" style="animation-delay: 0.2s">
-          <DsStatCard
-            :label="'Thời gian tham gia'"
-            :value="sessionSummary.timeJoined"
-            :icon="'schedule'"
-            :sub="'Bắt đầu lúc ' + sessionSummary.startTime"
-          />
-          <DsStatCard
-            :label="'Số lần chuyển tab'"
-            :value="sessionSummary.tabSwitches"
-            :icon="'tab'"
-            :badge="'Cảnh báo'"
-            :badge-variant="sessionSummary.tabSwitches > 3 ? 'warning' : 'info'"
-          />
-          <DsStatCard
-            :label="'Số vi phạm'"
-            :value="sessionSummary.totalViolations"
-            :icon="'flag'"
-            :sub="'Mức nghiêm trọng: ' + sessionSummary.severity"
-          />
-          <DsStatCard
-            :label="'Trạng thái'"
-            :value="sessionSummary.status"
-            :icon="'info'"
-            :badge="sessionSummary.statusBadge"
-            :badge-variant="sessionSummary.statusVariant"
-          />
-        </div>
-
-        <!-- Violation Events Timeline -->
-        <div class="mb-6 ds-animate-fade-up" style="animation-delay: 0.25s">
-          <DsCard padding="none">
-            <template #header>
-              <div class="flex items-center justify-between px-5 pt-5">
-                <div class="flex items-center gap-2">
-                  <LucideIcon name="timeline" />
-                  <h3 class="text-lg font-bold" style="color: var(--ds-text)">Dòng thời gian vi phạm</h3>
-                </div>
-                <span
-                  class="rounded-full px-3 py-1 text-xs font-bold"
-                  style="background-color: var(--ds-danger-bg); color: var(--ds-danger)"
-                >
-                  {{ violationEvents.length }} sự kiện
-                </span>
-              </div>
-            </template>
-            <div v-if="violationEvents.length === 0" class="py-10 text-center" style="color: var(--ds-text-muted)">
-              <LucideIcon name="check_circle" size="32" class="mx-auto mb-2" style="color: var(--ds-success)" />
-              <p>Không có vi phạm nào được ghi nhận</p>
+          <!-- Timeline -->
+          <div class="sd-card">
+            <div class="sd-card__header">
+              <LucideIcon name="activity" :size="16" />
+              <span class="sd-card__title">Dòng thời gian vi phạm</span>
+              <span class="sd-card__badge">{{ timelineEvents.length }}</span>
             </div>
-            <DataTable
-              v-else
-              :columns="violationColumns"
-              :data="violationEvents"
-              :row-key="'id'"
-            >
-              <template #cell-at="{ value }">
-                <span class="text-sm" style="color: var(--ds-text)">
-                  {{ formatTimestamp(value) }}
-                </span>
-              </template>
-              <template #cell-eventType="{ value }">
-                <div class="flex items-center gap-2">
-                  <LucideIcon :name="getViolationIcon(value)" size="20" :style="{ color: getViolationColor(value) }" />
-                  <span class="text-sm font-medium" style="color: var(--ds-text)">{{ getViolationLabel(value) }}</span>
-                </div>
-              </template>
-              <template #cell-severity="{ value }">
-                <StatusChip :status="getSeverityStatus(value)" :label="getSeverityLabel(value)" />
-              </template>
-              <template #cell-details="{ value }">
-                <p class="text-sm" style="color: var(--ds-text-secondary)">{{ value }}</p>
-              </template>
-            </DataTable>
-          </DsCard>
-        </div>
-
-        <!-- Risk Breakdown -->
-        <div v-if="riskData.breakdown && Object.keys(riskData.breakdown).length > 0" class="mb-6 ds-animate-fade-up" style="animation-delay: 0.28s">
-          <DsCard padding="lg">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <LucideIcon name="analytics" />
-                <h3 class="text-lg font-bold" style="color: var(--ds-text)">Phân tích điểm rủi ro</h3>
+            <div class="sd-card__body sd-card__body--flush">
+              <div v-if="timelineEvents.length === 0" class="sd-empty">
+                <LucideIcon name="check-circle" :size="32" class="sd-empty__icon" />
+                <p>Không có vi phạm nào được ghi nhận</p>
               </div>
-            </template>
-            <div class="space-y-3">
-              <div
-                v-for="(score, signalType) in riskData.breakdown"
-                :key="signalType"
-                class="flex items-center justify-between rounded-lg border p-3"
-                :style="{ borderColor: 'var(--ds-border)' }"
-              >
-                <div class="flex items-center gap-2">
-                  <LucideIcon
-                    :name="getViolationIcon(signalType)"
-                    size="18"
-                    :style="{ color: signalScoreColor(score) }"
-                  />
-                  <span class="text-sm font-medium" style="color: var(--ds-text)">{{ getViolationLabel(signalType) }}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <div class="h-2 w-24 overflow-hidden rounded-full" style="background-color: var(--ds-gray-100)">
-                    <div
-                      class="h-full rounded-full"
-                      :style="{ width: Math.min(score, 100) + '%', backgroundColor: signalScoreColor(score) }"
-                    />
+              <div v-else class="sd-timeline">
+                <div v-for="event in timelineEvents" :key="event.key" class="sd-tl-item">
+                  <div class="sd-tl-item__dot" :style="{ background: getVColor(event.eventType) }">
+                    <LucideIcon :name="getVIcon(event.eventType)" :size="10" style="color: white" />
                   </div>
-                  <span class="text-sm font-bold" :style="{ color: signalScoreColor(score) }">{{ score }}</span>
+                  <div class="sd-tl-item__content">
+                    <div class="sd-tl-item__header">
+                      <span class="sd-tl-item__type" :style="{ color: getVColor(event.eventType) }">{{ getVLabel(event.eventType) }}</span>
+                      <span class="sd-tl-item__time">{{ formatTime(event.at) }}</span>
+                    </div>
+                    <p v-if="event.details" class="sd-tl-item__details">{{ event.details }}</p>
+                    <span class="sd-tl-item__severity" :class="`sd-tl-item__severity--${getSeverityStatus(event.severity)}`">
+                      {{ getSeverityLabel(event.severity) }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </DsCard>
+          </div>
+
         </div>
 
-        <!-- Suspicious Patterns (from signals) -->
-        <div v-if="suspiciousPatterns.length > 0" class="mb-6 ds-animate-fade-up" style="animation-delay: 0.3s">
-          <DsCard padding="lg">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <LucideIcon name="psychology" />
-                <h3 class="text-lg font-bold" style="color: var(--ds-text)">Mẫu hành vi đáng ngờ</h3>
+        <!-- Right column -->
+        <div class="sd-grid__right">
+
+          <!-- Risk breakdown -->
+          <div v-if="hasBreakdown" class="sd-card">
+            <div class="sd-card__header">
+              <LucideIcon name="bar-chart-2" :size="16" />
+              <span class="sd-card__title">Phân tích điểm rủi ro</span>
+            </div>
+            <div class="sd-card__body">
+              <div v-for="(score, key) in riskData.breakdown" :key="key" class="sd-breakdown">
+                <span class="sd-breakdown__label">{{ getVLabel(key) }}</span>
+                <div class="sd-breakdown__bar">
+                  <div class="sd-breakdown__fill" :style="{ width: Math.min(score, 100) + '%', background: sColor(score) }" />
+                </div>
+                <span class="sd-breakdown__score" :style="{ color: sColor(score) }">{{ score }}</span>
               </div>
-            </template>
-            <div class="space-y-3">
+            </div>
+          </div>
+
+          <!-- Suspicious patterns -->
+          <div v-if="suspiciousPatterns.length > 0" class="sd-card">
+            <div class="sd-card__header">
+              <LucideIcon name="brain" :size="16" />
+              <span class="sd-card__title">Mẫu hành vi đáng ngờ</span>
+              <span class="sd-card__badge sd-card__badge--danger">{{ suspiciousPatterns.length }}</span>
+            </div>
+            <div class="sd-card__body">
               <div
-                v-for="pattern in suspiciousPatterns"
-                :key="pattern.id"
-                class="flex items-start gap-3 rounded-lg border p-3"
-                :style="{
-                  borderColor: pattern.level === 'high' ? 'var(--ds-danger)' : pattern.level === 'medium' ? 'var(--ds-warning)' : 'var(--ds-info)',
-                  backgroundColor: pattern.level === 'high' ? 'var(--ds-danger-soft)' : pattern.level === 'medium' ? 'var(--ds-warning-soft)' : 'var(--ds-info-soft)'
-                }"
+                v-for="p in suspiciousPatterns"
+                :key="p.id"
+                class="sd-pattern"
+                :style="{ background: pBg(p.level), borderColor: pBorder(p.level) }"
               >
-                <LucideIcon
-                  :name="pattern.icon"
-                  size="20"
-                  class="shrink-0 mt-0.5"
-                  :style="{ color: pattern.level === 'high' ? 'var(--ds-danger)' : pattern.level === 'medium' ? 'var(--ds-warning)' : 'var(--ds-info)' }"
-                />
-                <div class="flex-1">
-                  <p class="text-sm font-semibold" style="color: var(--ds-text)">{{ pattern.title }}</p>
-                  <p class="mt-0.5 text-xs" style="color: var(--ds-text-secondary)">{{ pattern.description }}</p>
+                <div class="sd-pattern__head">
+                  <LucideIcon name="alert-triangle" :size="13" :style="{ color: pColor(p.level) }" />
+                  <span class="sd-pattern__title">{{ p.title }}</span>
+                  <span class="sd-pattern__level" :style="{ background: pColor(p.level) }">{{ p.level }}</span>
                 </div>
-                <span
-                  class="rounded px-2 py-0.5 text-[10px] font-bold uppercase"
-                  :style="{
-                    backgroundColor: pattern.level === 'high' ? 'var(--ds-danger)' : pattern.level === 'medium' ? 'var(--ds-warning)' : 'var(--ds-info)',
-                    color: 'white'
-                  }"
-                >
-                  {{ pattern.level }}
-                </span>
+                <p class="sd-pattern__desc">{{ p.description }}</p>
               </div>
             </div>
-          </DsCard>
-        </div>
+          </div>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap justify-end gap-3 ds-animate-fade-up" style="animation-delay: 0.35s">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5"
-            style="background-color: var(--ds-surface); color: var(--ds-warning); border: 1px solid var(--ds-warning); box-shadow: var(--ds-shadow-sm)"
-            :disabled="actionLoading === 'warning'"
-            @click="issueWarning"
-          >
-            <LucideIcon name="warning" size="18" />
-            <span>{{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}</span>
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5"
-            style="background-color: var(--ds-surface); color: var(--ds-danger); border: 1px solid var(--ds-danger); box-shadow: var(--ds-shadow-sm)"
-            :disabled="actionLoading === 'invalidate'"
-            @click="suspendExam"
-          >
-            <LucideIcon name="block" size="18" />
-            <span>{{ actionLoading === 'invalidate' ? 'Đang xử lý...' : 'Tạm dừng thi' }}</span>
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5"
-            style="background-color: var(--ds-primary); color: white; box-shadow: var(--ds-shadow-sm)"
-            @click="viewFullReport"
-          >
-            <LucideIcon name="description" size="18" />
-            <span>Xem báo cáo đầy đủ</span>
-          </button>
-        </div>
-
-        <!-- Warning Dialog -->
-        <div v-if="showWarningDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div class="w-full max-w-md rounded-xl p-6" style="background-color: var(--ds-surface)">
-            <h3 class="mb-4 text-lg font-bold" style="color: var(--ds-text)">Gửi cảnh báo đến học sinh</h3>
-            <textarea
-              v-model="warningMessage"
-              class="w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: var(--ds-border); background-color: var(--ds-bg); color: var(--ds-text)"
-              rows="3"
-              placeholder="Nhập nội dung cảnh báo (để trống = cảnh báo mặc định)"
-            />
-            <div class="mt-4 flex justify-end gap-3">
-              <button
-                class="rounded-lg px-4 py-2 text-sm font-bold"
-                style="background-color: var(--ds-bg); color: var(--ds-text); border: 1px solid var(--ds-border)"
-                @click="showWarningDialog = false"
-              >
-                Hủy
-              </button>
-              <button
-                class="rounded-lg px-4 py-2 text-sm font-bold"
-                style="background-color: var(--ds-warning); color: white"
-                @click="confirmSendWarning"
-              >
-                Gửi
-              </button>
+          <!-- Latest signals -->
+          <div v-if="latestSignals.length > 0" class="sd-card">
+            <div class="sd-card__header">
+              <LucideIcon name="zap" :size="16" />
+              <span class="sd-card__title">Tín hiệu gần đây</span>
+            </div>
+            <div class="sd-card__body">
+              <div v-for="sig in latestSignals" :key="sig.signalType + sig.createdAt" class="sd-signal">
+                <div class="sd-signal__icon" :style="{ background: sigColor(sig.severity) }">
+                  <LucideIcon name="alert-circle" :size="12" :style="{ color: sigColor(sig.severity) }" />
+                </div>
+                <div class="sd-signal__body">
+                  <p class="sd-signal__type">{{ getVLabel(sig.signalType) }}</p>
+                  <p class="sd-signal__evidence">{{ sig.evidence || '—' }}</p>
+                </div>
+                <div class="sd-signal__meta">
+                  <span class="sd-signal__conf">{{ Math.round((sig.confidence || 0) * 100) }}%</span>
+                  <span class="sd-signal__sev" :class="`sd-signal__sev--${sig.severity?.toLowerCase()}`">{{ sig.severity }}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Invalidate Dialog -->
-        <div v-if="showInvalidateDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div class="w-full max-w-md rounded-xl p-6" style="background-color: var(--ds-surface)">
-            <h3 class="mb-2 text-lg font-bold" style="color: var(--ds-danger)">Xác nhận dừng thi</h3>
-            <p class="mb-4 text-sm" style="color: var(--ds-text-muted)">
-              Hành động này sẽ dừng bài thi của học sinh. Học sinh sẽ không thể tiếp tục làm bài.
-            </p>
-            <textarea
-              v-model="invalidateReason"
-              class="w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: var(--ds-border); background-color: var(--ds-bg); color: var(--ds-text)"
-              rows="2"
-              placeholder="Lý do dừng thi (để trống = lý do mặc định)"
-            />
-            <div class="mt-4 flex justify-end gap-3">
-              <button
-                class="rounded-lg px-4 py-2 text-sm font-bold"
-                style="background-color: var(--ds-bg); color: var(--ds-text); border: 1px solid var(--ds-border)"
-                @click="showInvalidateDialog = false"
-              >
-                Hủy
-              </button>
-              <button
-                class="rounded-lg px-4 py-2 text-sm font-bold"
-                style="background-color: var(--ds-danger); color: white"
-                @click="confirmInvalidate"
-              >
-                Dừng thi
-              </button>
-            </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="sd-actions">
+        <button class="sd-action sd-action--warn" :disabled="actionLoading === 'warning'" @click="issueWarning">
+          <LucideIcon name="alert-triangle" :size="16" />
+          <span>{{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}</span>
+        </button>
+        <button class="sd-action sd-action--danger" :disabled="actionLoading === 'invalidate'" @click="suspendExam">
+          <LucideIcon name="x-circle" :size="16" />
+          <span>{{ actionLoading === 'invalidate' ? 'Đang xử lý...' : 'Tạm dừng thi' }}</span>
+        </button>
+        <button class="sd-action sd-action--outline" @click="viewFullReport">
+          <LucideIcon name="file-text" :size="16" />
+          <span>Báo cáo đầy đủ</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Warning dialog -->
+    <Teleport to="body">
+      <div v-if="showWarningDialog" class="sd-overlay" @click.self="showWarningDialog = false">
+        <div class="sd-dialog">
+          <div class="sd-dialog__head">
+            <LucideIcon name="alert-triangle" :size="20" />
+            <h3 class="sd-dialog__title">Gửi cảnh báo</h3>
+          </div>
+          <div class="sd-dialog__body">
+            <p class="sd-dialog__desc">Gửi cảnh báo tới <strong>{{ studentName }}</strong>.</p>
+            <textarea v-model="warningMessage" class="sd-dialog__textarea" rows="3" placeholder="Nhập nội dung cảnh báo (để trống = cảnh báo mặc định)" />
+          </div>
+          <div class="sd-dialog__foot">
+            <button class="sd-btn sd-btn--secondary" @click="showWarningDialog = false">Hủy</button>
+            <button class="sd-btn sd-btn--warn" @click="confirmSendWarning">Gửi cảnh báo</button>
           </div>
         </div>
+      </div>
+    </Teleport>
 
-      </template>
-    </div>
+    <!-- Invalidate dialog -->
+    <Teleport to="body">
+      <div v-if="showInvalidateDialog" class="sd-overlay" @click.self="showInvalidateDialog = false">
+        <div class="sd-dialog">
+          <div class="sd-dialog__head sd-dialog__head--danger">
+            <LucideIcon name="shield-alert" :size="20" />
+            <h3 class="sd-dialog__title">Xác nhận dừng thi</h3>
+          </div>
+          <div class="sd-dialog__body">
+            <p class="sd-dialog__desc sd-dialog__desc--danger">Hành động này sẽ <strong>dừng bài thi</strong>. Không thể hoàn tác.</p>
+            <textarea v-model="invalidateReason" class="sd-dialog__textarea" rows="2" placeholder="Lý do dừng thi (để trống = lý do mặc định)" />
+          </div>
+          <div class="sd-dialog__foot">
+            <button class="sd-btn sd-btn--secondary" @click="showInvalidateDialog = false">Hủy</button>
+            <button class="sd-btn sd-btn--danger" @click="confirmInvalidate">Xác nhận dừng thi</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from '../../composables/useToast'
-import PageHeader from '../ui/PageHeader.vue'
-import DsCard from '../ui/DsCard.vue'
-import DsStatCard from '../ui/DsStatCard.vue'
-import DataTable from '../ui/DataTable.vue'
-import StatusChip from '../ui/StatusChip.vue'
+import { useProctorDashboardStore } from '../../stores/proctorDashboardStore'
 import {
   fetchAttemptRisk,
   listMonitoringTimeline,
@@ -447,14 +366,16 @@ import {
   sendTeacherWarning,
   invalidateAttempt
 } from '../../services/monitoringService'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const store = useProctorDashboardStore()
+const { cards: attempts } = storeToRefs(store)
 
 const attemptId = computed(() => route.query.attemptId || '')
 const examId = computed(() => route.query.examId || '')
-const studentId = computed(() => route.query.studentId || '')
 
 const loading = ref(false)
 const error = ref('')
@@ -468,67 +389,111 @@ const riskData = ref({})
 const timeline = ref([])
 const auditLog = ref([])
 
-const violationColumns = [
-  { key: 'at', label: 'Thời gian', width: '160px' },
-  { key: 'eventType', label: 'Loại vi phạm' },
-  { key: 'details', label: 'Mô tả' },
-  { key: 'severity', label: 'Mức độ', width: '100px' }
-]
-
-const studentInfo = computed(() => {
-  const student = riskData.value.student
-  if (!student) return { name: '', studentId: '', email: '' }
-  return {
-    name: student.name || student.fullName || student.username || '—',
-    studentId: student.studentCode || student.studentId || student.id || '—',
-    email: student.email || '—'
-  }
+// ── Student info ──────────────────────────────────────────────────────────────
+const studentName = computed(() => {
+  const s = riskData.value.student
+  if (!s) return '—'
+  return s.name || s.username || '—'
 })
-
+const studentCode = computed(() => {
+  const s = riskData.value.student
+  if (!s) return '—'
+  return s.studentCode || String(s.id || '—')
+})
+const studentEmail = computed(() => {
+  const s = riskData.value.student
+  return s?.email || ''
+})
 const studentInitials = computed(() => {
-  const name = studentInfo.value.name
+  const name = studentName.value
   if (!name || name === '—') return '?'
-  const parts = name.split(' ')
-  return parts[parts.length - 1].charAt(0).toUpperCase() + parts[0].charAt(0).toUpperCase()
+  const parts = name.trim().split(' ')
+  const last = parts[parts.length - 1]
+  const first = parts[0]
+  return (last.charAt(0) + (parts.length > 1 ? first.charAt(0) : '')).toUpperCase()
 })
 
-const riskLevelBadge = computed(() => {
-  const level = riskData.value.level
-  return level === 'HIGH_RISK' || level === 'CRITICAL' ? 'error'
-    : level === 'SUSPICIOUS' ? 'warning'
-    : 'success'
+// ── Attempt ───────────────────────────────────────────────────────────────────
+const attemptStatusLabel = computed(() => {
+  const s = String(riskData.value.status || riskData.value.attempt?.status || '').toUpperCase()
+  if (/SUBMITTED/.test(s)) return 'Đã nộp'
+  if (/STOPPED/.test(s)) return 'Đã dừng'
+  if (/PAUSED/.test(s)) return 'Tạm dừng'
+  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'Đang thi'
+  return s || '—'
+})
+const attemptStatusColor = computed(() => {
+  const s = String(riskData.value.status || riskData.value.attempt?.status || '').toUpperCase()
+  if (/SUBMITTED/.test(s)) return '#4ade80'
+  if (/STOPPED/.test(s)) return '#f87171'
+  if (/PAUSED/.test(s)) return '#fbbf24'
+  if (/ACTIVE|IN_PROGRESS/.test(s)) return '#a5b4fc'
+  return '#94a3b8'
+})
+const attemptStatusBg = computed(() => {
+  const s = String(riskData.value.status || riskData.value.attempt?.status || '').toUpperCase()
+  if (/SUBMITTED/.test(s)) return 'rgba(74,222,128,0.12)'
+  if (/STOPPED/.test(s)) return 'rgba(248,113,113,0.12)'
+  if (/PAUSED/.test(s)) return 'rgba(251,191,36,0.12)'
+  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'rgba(165,180,252,0.12)'
+  return 'rgba(148,163,184,0.08)'
+})
+const attemptStatusIcon = computed(() => {
+  const s = String(riskData.value.status || riskData.value.attempt?.status || '').toUpperCase()
+  if (/SUBMITTED/.test(s)) return 'check-circle'
+  if (/STOPPED/.test(s)) return 'x-circle'
+  if (/PAUSED/.test(s)) return 'pause-circle'
+  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'play-circle'
+  return 'help-circle'
+})
+const startTime = computed(() => {
+  const ts = riskData.value.attempt?.startedAt
+  if (!ts) return '—'
+  return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+})
+const sessionTime = computed(() => {
+  const ts = riskData.value.attempt?.startedAt
+  if (!ts) return '—'
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000)
+  if (diff < 1) return '<1 phút'
+  if (diff < 60) return `${diff} phút`
+  return `${Math.floor(diff / 60)}h ${diff % 60}p`
 })
 
+// ── Stats for session ─────────────────────────────────────────────────────
+const onlineCount = computed(() => attempts.value.filter(a => /^(ACTIVE|IN_PROGRESS)$/i.test(a.status || '')).length)
+const alertCount = computed(() => attempts.value.filter(a => Number(a.riskScore || 0) > 30).length)
+const submittedCount = computed(() => attempts.value.filter(a => /SUBMITTED/i.test(a.status || '')).length)
+
+// ── Risk ──────────────────────────────────────────────────────────────────────
+const riskBand = computed(() => {
+  if (riskScore.value >= 60) return 'danger'
+  if (riskScore.value >= 30) return 'warn'
+  return 'clean'
+})
+const riskScore = computed(() => Number(riskData.value.score ?? 0))
 const riskLevelLabel = computed(() => {
-  const level = riskData.value.level
-  return level === 'CRITICAL' ? 'Nguy cơ cao'
-    : level === 'HIGH_RISK' ? 'Rủi ro cao'
-    : level === 'SUSPICIOUS' ? 'Đáng ngờ'
-    : 'Bình thường'
+  const map = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao', SUSPICIOUS: 'Đáng ngờ', CLEAN: 'Bình thường' }
+  return map[riskData.value.level] || riskData.value.level || '—'
 })
-
 const riskDescription = computed(() => {
-  const score = riskData.value.score ?? 0
-  return score >= 80 ? 'Nguy cơ cao — hành vi gian lận rõ ràng'
-    : score >= 60 ? 'Rủi ro cao — cần giám sát kỹ lưỡng'
-    : score >= 30 ? 'Đáng ngờ — có một số hành vi bất thường'
-    : 'Bình thường — không có dấu hiệu bất thường'
+  const s = riskScore.value
+  return s >= 80 ? 'Hành vi gian lận rõ ràng — cần xử lý ngay'
+    : s >= 60 ? 'Rủi ro cao — cần giám sát kỹ lưỡng'
+    : s >= 30 ? 'Đáng ngờ — có hành vi bất thường'
+    : 'Không có dấu hiệu bất thường'
 })
-
-const riskColor = computed(() => {
-  const score = riskData.value.score ?? 0
-  return score >= 60 ? 'var(--ds-danger)'
-    : score >= 30 ? 'var(--ds-warning)'
-    : 'var(--ds-success)'
-})
-
-const riskBgColor = computed(() => {
-  const score = riskData.value.score ?? 0
-  return score >= 60 ? 'var(--ds-danger-soft)'
-    : score >= 30 ? 'var(--ds-warning-soft)'
-    : 'var(--ds-success-soft)'
-})
-
+const riskColor = computed(() =>
+  riskScore.value >= 60 ? '#f87171'
+    : riskScore.value >= 30 ? '#fbbf24'
+    : '#4ade80'
+)
+const riskBg = computed(() =>
+  riskScore.value >= 60 ? 'rgba(248,113,113,0.15)'
+    : riskScore.value >= 30 ? 'rgba(251,191,36,0.15)'
+    : 'rgba(74,222,128,0.15)'
+)
+const avatarBg = computed(() => riskBg.value)
 const recommendedActionLabel = computed(() => {
   const map = {
     PAUSE_AND_REVIEW: 'Tạm dừng và kiểm tra ngay',
@@ -538,210 +503,154 @@ const recommendedActionLabel = computed(() => {
   }
   return map[riskData.value.recommendedAction] || 'Tiếp tục giám sát'
 })
+const hasBreakdown = computed(() =>
+  riskData.value.breakdown && Object.keys(riskData.value.breakdown).length > 0
+)
 
-const sessionSummary = computed(() => {
-  const attempt = riskData.value.attempt
-  const startedAt = attempt?.startedAt
-  let timeJoined = '—'
-  let startTime = '—'
-  if (startedAt) {
-    startTime = new Date(startedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    const diff = Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000)
-    if (diff < 60) timeJoined = diff + ' phút'
-    else timeJoined = Math.floor(diff / 60) + 'h ' + (diff % 60) + 'p'
-  }
-  const status = attempt?.status || 'UNKNOWN'
-  const statusMap = {
-    IN_PROGRESS: { label: 'Đang thi', badge: 'Đang thi', variant: 'warning' },
-    PAUSED: { label: 'Tạm dừng', badge: 'Tạm dừng', variant: 'warning' },
-    SUBMITTED: { label: 'Đã nộp', badge: 'Đã nộp', variant: 'success' },
-    AUTO_SUBMITTED: { label: 'Tự động nộp', badge: 'Tự động nộp', variant: 'info' },
-    STOPPED: { label: 'Đã dừng', badge: 'Đã dừng', variant: 'error' }
-  }
-  const s = statusMap[status] || { label: status, badge: status, variant: 'info' }
-  const tabCount = violationEvents.value.filter(e =>
-    e.eventType === 'TAB_SWITCH' || e.eventType === 'CHUYỂN TAB'
-  ).length
-  const severityCounts = { HIGH: 0, MEDIUM: 0, LOW: 0 }
-  violationEvents.value.forEach(e => {
-    if (e.severity) severityCounts[e.severity] = (severityCounts[e.severity] || 0) + 1
-  })
-  const maxSeverity = severityCounts.HIGH > 0 ? 'Nghiêm trọng'
-    : severityCounts.MEDIUM > 0 ? 'Trung bình'
-    : severityCounts.LOW > 0 ? 'Thấp'
-    : '—'
-  return {
-    timeJoined,
-    startTime,
-    tabSwitches: tabCount,
-    totalViolations: violationEvents.value.length,
-    severity: maxSeverity,
-    status: s.label,
-    statusBadge: s.badge,
-    statusVariant: s.variant
-  }
+// ── Gauge SVG ────────────────────────────────────────────────────────────────
+const gaugeArc = computed(() => {
+  const circ = 2 * Math.PI * 52
+  return `${(riskScore.value / 100) * circ} ${circ}`
 })
 
-const violationEvents = computed(() => {
-  const events = []
-  const eventMap = new Map()
-  timeline.value.forEach(item => {
-    if (item.id) return
+// ── Timeline events ───────────────────────────────────────────────────────────
+const timelineEvents = computed(() => {
+  const evts = []
+  const seen = new Set()
+  for (const item of timeline.value) {
     const key = `${item.eventType}-${item.at}`
-    if (!eventMap.has(key)) {
-      eventMap.set(key, true)
-      events.push({
-        id: `${item.eventType}-${item.at}`,
-        at: item.at,
-        eventType: item.eventType,
-        details: item.details || item.eventType,
-        severity: item.severity || mapSeverity(item.eventType, item.confidence)
-      })
-    }
-  })
-  return events
+    if (seen.has(key)) continue
+    seen.add(key)
+    evts.push({
+      key,
+      at: item.at,
+      eventType: item.eventType || item.signalType || '',
+      details: item.details || item.evidence || '',
+      severity: item.severity || mapSeverity(item.eventType, item.confidence)
+    })
+  }
+  return evts
 })
 
+const violationCount = computed(() => timelineEvents.value.length)
+
+const tabSwitchCount = computed(() =>
+  timelineEvents.value.filter(e => /TAB_SWITCH/i.test(e.eventType || '')).length
+)
+
+const maxSeverity = computed(() => {
+  const counts = { HIGH: 0, MEDIUM: 0, LOW: 0 }
+  timelineEvents.value.forEach(e => { if (e.severity) counts[e.severity] = (counts[e.severity] || 0) + 1 })
+  return counts.HIGH > 0 ? 'Nghiêm trọng' : counts.MEDIUM > 0 ? 'Trung bình' : counts.LOW > 0 ? 'Thấp' : '—'
+})
+
+// ── Latest signals ───────────────────────────────────────────────────────────
+const latestSignals = computed(() => riskData.value.latestSignals || [])
+
+// ── Suspicious patterns ────────────────────────────────────────────────────────
 const suspiciousPatterns = computed(() => {
   const patterns = []
-  const tabCount = violationEvents.value.filter(e =>
-    e.eventType === 'TAB_SWITCH' || e.eventType === 'CHUYỂN TAB'
-  ).length
-  if (tabCount > 3) {
-    patterns.push({
-      id: 'tab-switch',
-      icon: 'tab',
-      title: 'Chuyển tab nhiều lần',
-      description: `Đã chuyển tab ${tabCount} lần, vượt ngưỡng bình thường (3 lần)`,
-      level: tabCount > 5 ? 'high' : 'medium'
-    })
-  }
-  const copyCount = violationEvents.value.filter(e =>
-    e.eventType === 'COPY_PASTE' || e.eventType === 'COPY'
-  ).length
-  if (copyCount > 0) {
-    patterns.push({
-      id: 'copy-paste',
-      icon: 'content_copy',
-      title: 'Cố gắng copy nội dung',
-      description: `Phát hiện ${copyCount} lần sao chép dữ liệu từ đề thi`,
-      level: 'medium'
-    })
-  }
-  const fsCount = violationEvents.value.filter(e =>
-    e.eventType === 'EXIT_FULLSCREEN' || e.eventType === 'THOÁT TOÀN MÀN HÌNH'
-  ).length
-  if (fsCount > 0) {
-    patterns.push({
-      id: 'exit-fullscreen',
-      icon: 'fullscreen_exit',
-      title: 'Thoát khỏi chế độ toàn màn hình',
-      description: `Đã thoát toàn màn hình ${fsCount} lần`,
-      level: fsCount > 2 ? 'high' : 'medium'
-    })
-  }
-  const devtoolsCount = violationEvents.value.filter(e =>
-    e.eventType === 'DEVTOOLS_OPEN'
-  ).length
-  if (devtoolsCount > 0) {
-    patterns.push({
-      id: 'devtools',
-      icon: 'code',
-      title: 'Mở công cụ phát triển',
-      description: `Phát hiện mở DevTools ${devtoolsCount} lần`,
-      level: 'high'
-    })
-  }
-  const answerSimilarityCount = violationEvents.value.filter(e =>
-    e.eventType === 'ANSWER_SIMILARITY'
-  ).length
-  if (answerSimilarityCount > 0) {
-    patterns.push({
-      id: 'answer-similarity',
-      icon: 'group_work',
-      title: 'Độ tương đồng đáp án cao',
-      description: `Phát hiện ${answerSimilarityCount} tín hiệu tương đồng đáp án cần đối chiếu`,
-      level: 'high'
-    })
-  }
-  const syncBehaviorCount = violationEvents.value.filter(e =>
-    e.eventType === 'SYNC_BEHAVIOR'
-  ).length
-  if (syncBehaviorCount > 0) {
-    patterns.push({
-      id: 'sync-behavior',
-      icon: 'hub',
-      title: 'Hành vi đồng bộ',
-      description: `Có ${syncBehaviorCount} tín hiệu cho thấy nhiều thí sinh thao tác đồng thời`,
-      level: 'high'
-    })
-  }
-  const graphCount = violationEvents.value.filter(e =>
-    e.eventType === 'IP_FINGERPRINT_GRAPH'
-  ).length
-  if (graphCount > 0) {
-    patterns.push({
-      id: 'ip-fingerprint-graph',
-      icon: 'fingerprint',
-      title: 'Quan hệ IP hoặc fingerprint đáng ngờ',
-      description: `Phát hiện ${graphCount} tín hiệu liên kết IP/fingerprint cần xác minh`,
-      level: 'high'
-    })
-  }
-  const duplicateIpCount = violationEvents.value.filter(e =>
-    e.eventType === 'DUPLICATE_IP'
-  ).length
-  if (duplicateIpCount > 0) {
-    patterns.push({
-      id: 'duplicate-ip',
-      icon: 'language',
-      title: 'Phát hiện IP trùng lặp',
-      description: `Có ${duplicateIpCount} thiết bị khác cùng IP đang thi`,
-      level: 'high'
-    })
-  }
+  const tab = tabSwitchCount.value
+  if (tab > 3) patterns.push({ id: 'tab', title: 'Chuyển tab nhiều lần', description: `${tab} lần chuyển tab, vượt ngưỡng bình thường (3 lần)`, level: tab > 5 ? 'high' : 'medium' })
+  const copy = timelineEvents.value.filter(e => /COPY/i.test(e.eventType || '')).length
+  if (copy > 0) patterns.push({ id: 'copy', title: 'Cố gắng copy nội dung', description: `${copy} lần sao chép dữ liệu từ đề thi`, level: 'medium' })
+  const fs = timelineEvents.value.filter(e => /EXIT_FULLSCREEN/i.test(e.eventType || '')).length
+  if (fs > 0) patterns.push({ id: 'fs', title: 'Thoát chế độ toàn màn hình', description: `${fs} lần thoát toàn màn hình`, level: fs > 2 ? 'high' : 'medium' })
+  const dev = timelineEvents.value.filter(e => /DEVTOOLS/i.test(e.eventType || '')).length
+  if (dev > 0) patterns.push({ id: 'dev', title: 'Mở công cụ phát triển', description: `${dev} lần mở DevTools`, level: 'high' })
+  const dup = timelineEvents.value.filter(e => /DUPLICATE_IP/i.test(e.eventType || '')).length
+  if (dup > 0) patterns.push({ id: 'dup', title: 'Phát hiện IP trùng lặp', description: `${dup} thiết bị khác cùng IP đang thi`, level: 'high' })
+  const sync = timelineEvents.value.filter(e => /SYNC/i.test(e.eventType || '')).length
+  if (sync > 0) patterns.push({ id: 'sync', title: 'Hành vi đồng bộ', description: `${sync} tín hiệu nhiều thí sinh thao tác đồng thời`, level: 'high' })
   return patterns
 })
 
-function mapSeverity(eventType, confidence) {
-  const typeMap = {
-    TAB_SWITCH: 'LOW',
-    WINDOW_BLUR: 'LOW',
-    IDLE_TIME: 'LOW',
-    RIGHT_CLICK: 'LOW',
-    EXIT_FULLSCREEN: 'MEDIUM',
-    COPY_PASTE: 'MEDIUM',
-    RAPID_QUESTION_SWITCH: 'MEDIUM',
-    DUPLICATE_IP: 'MEDIUM',
-    HEARTBEAT_STALE: 'MEDIUM',
-    DEVTOOLS_OPEN: 'HIGH',
-    PRINT_SCREEN: 'HIGH',
-    MULTI_MONITOR: 'HIGH',
-    DEVICE_FINGERPRINT_CHANGED: 'HIGH',
-    TIME_ANOMALY: 'MEDIUM',
-    FULLSCREEN_EVASION: 'MEDIUM',
-    QUESTION_TIMING_ANOMALY: 'MEDIUM',
-    ANSWER_CHANGE_BURST: 'HIGH',
-    NETWORK_INSTABILITY: 'MEDIUM',
-    SESSION_RECOVERY: 'MEDIUM',
-    SYNC_BEHAVIOR: 'HIGH',
-    IP_FINGERPRINT_GRAPH: 'HIGH',
-    ANSWER_SIMILARITY: 'HIGH',
-    AI_MULTIPLE_FACES: 'HIGH',
-    AI_FACE_MISSING: 'MEDIUM',
-    AI_PHONE_DETECTED: 'HIGH',
-    AI_LOOKING_AWAY: 'MEDIUM',
-    AI_SPEAKING_DETECTED: 'MEDIUM'
-  }
-  return typeMap[eventType] || (confidence >= 0.8 ? 'HIGH' : confidence >= 0.5 ? 'MEDIUM' : 'LOW')
+function pColor(l) { return l === 'high' ? '#f87171' : l === 'medium' ? '#fbbf24' : '#38bdf8' }
+function pBg(l) { return l === 'high' ? 'rgba(248,113,113,0.08)' : l === 'medium' ? 'rgba(251,191,36,0.08)' : 'rgba(56,189,248,0.08)' }
+function pBorder(l) { return l === 'high' ? 'rgba(248,113,113,0.2)' : l === 'medium' ? 'rgba(251,191,36,0.2)' : 'rgba(56,189,248,0.2)' }
+function sColor(score) { return score >= 60 ? '#f87171' : score >= 30 ? '#fbbf24' : '#38bdf8' }
+function sigColor(sev) {
+  return sev === 'HIGH' ? 'rgba(248,113,113,0.15)' : sev === 'MEDIUM' ? 'rgba(251,191,36,0.15)' : 'rgba(56,189,248,0.15)'
 }
 
-async function loadData() {
-  if (!attemptId.value) {
-    error.value = 'Không có thông tin attempt'
-    toast.error(error.value)
-    return
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function mapSeverity(type, confidence) {
+  const map = {
+    TAB_SWITCH: 'LOW', WINDOW_BLUR: 'LOW', IDLE_TIME: 'LOW', RIGHT_CLICK: 'LOW',
+    EXIT_FULLSCREEN: 'MEDIUM', COPY_PASTE: 'MEDIUM', RAPID_QUESTION_SWITCH: 'MEDIUM',
+    DUPLICATE_IP: 'MEDIUM', HEARTBEAT_STALE: 'MEDIUM',
+    DEVTOOLS_OPEN: 'HIGH', PRINT_SCREEN: 'HIGH', MULTI_MONITOR: 'HIGH',
+    DEVICE_FINGERPRINT_CHANGED: 'HIGH', SYNC_BEHAVIOR: 'HIGH',
+    IP_FINGERPRINT_GRAPH: 'HIGH', ANSWER_SIMILARITY: 'HIGH',
+    AI_MULTIPLE_FACES: 'HIGH', AI_PHONE_DETECTED: 'HIGH'
   }
+  return map[type] || (confidence >= 0.8 ? 'HIGH' : confidence >= 0.5 ? 'MEDIUM' : 'LOW')
+}
+
+function getVColor(type) {
+  const map = {
+    TAB_SWITCH: '#fbbf24', COPY_PASTE: '#f87171',
+    DEVTOOLS_OPEN: '#f87171', EXIT_FULLSCREEN: '#fbbf24',
+    MULTI_MONITOR: '#f87171', DUPLICATE_IP: '#f87171',
+    PRINT_SCREEN: '#f87171', WINDOW_BLUR: '#fbbf24',
+    IDLE_TIME: '#38bdf8', RIGHT_CLICK: '#38bdf8',
+    HEARTBEAT_STALE: '#fbbf24', RAPID_QUESTION_SWITCH: '#fbbf24',
+    DEVICE_FINGERPRINT_CHANGED: '#f87171', SYNC_BEHAVIOR: '#f87171',
+    IP_FINGERPRINT_GRAPH: '#f87171', ANSWER_SIMILARITY: '#f87171',
+    AI_MULTIPLE_FACES: '#f87171', AI_PHONE_DETECTED: '#f87171',
+    AI_LOOKING_AWAY: '#fbbf24'
+  }
+  return map[type] || '#94a3b8'
+}
+
+function getVIcon(type) {
+  const map = {
+    TAB_SWITCH: 'layers', WINDOW_BLUR: 'layers', IDLE_TIME: 'clock',
+    RIGHT_CLICK: 'mouse-pointer-2', EXIT_FULLSCREEN: 'minimize', COPY_PASTE: 'copy',
+    DEVTOOLS_OPEN: 'code', PRINT_SCREEN: 'code', MULTI_MONITOR: 'monitor',
+    DUPLICATE_IP: 'globe', RAPID_QUESTION_SWITCH: 'monitor', HEARTBEAT_STALE: 'wifi-off',
+    DEVICE_FINGERPRINT_CHANGED: 'code', SYNC_BEHAVIOR: 'monitor',
+    IP_FINGERPRINT_GRAPH: 'globe', ANSWER_SIMILARITY: 'copy',
+    AI_MULTIPLE_FACES: 'monitor', AI_PHONE_DETECTED: 'monitor',
+    AI_LOOKING_AWAY: 'wifi-off'
+  }
+  return map[type] || 'alert-circle'
+}
+
+function getVLabel(type) {
+  const map = {
+    TAB_SWITCH: 'Chuyển tab', WINDOW_BLUR: 'Mất tiêu điểm cửa sổ',
+    IDLE_TIME: 'Không hoạt động', RIGHT_CLICK: 'Click chuột phải',
+    EXIT_FULLSCREEN: 'Thoát toàn màn hình', COPY_PASTE: 'Sao chép nội dung',
+    DEVTOOLS_OPEN: 'Mở DevTools', PRINT_SCREEN: 'Chụp màn hình',
+    MULTI_MONITOR: 'Nhiều màn hình', DUPLICATE_IP: 'IP trùng lặp',
+    RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh', HEARTBEAT_STALE: 'Mất kết nối',
+    DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
+    SYNC_BEHAVIOR: 'Hành vi đồng bộ', IP_FINGERPRINT_GRAPH: 'Liên kết IP/fingerprint',
+    ANSWER_SIMILARITY: 'Tương đồng đáp án', AI_MULTIPLE_FACES: 'Nhiều khuôn mặt',
+    AI_PHONE_DETECTED: 'Phát hiện điện thoại', AI_LOOKING_AWAY: 'Nhìn lệch hướng'
+  }
+  return map[type] || type || '—'
+}
+
+function getSeverityLabel(s) {
+  const map = { HIGH: 'Nghiêm trọng', MEDIUM: 'Trung bình', LOW: 'Thấp', CRITICAL: 'Nghiêm trọng' }
+  return map[s] || s || '—'
+}
+function getSeverityStatus(s) {
+  return s === 'HIGH' || s === 'CRITICAL' ? 'high'
+    : s === 'MEDIUM' ? 'medium'
+    : 'low'
+}
+
+function formatTime(ts) {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function loadData() {
+  if (!attemptId.value) { error.value = 'Không có thông tin attempt'; return }
   loading.value = true
   error.value = ''
   try {
@@ -761,13 +670,9 @@ async function loadData() {
   }
 }
 
-function goBack() {
-  router.back()
-}
-
-async function issueWarning() {
-  showWarningDialog.value = true
-}
+function goBack() { router.back() }
+function issueWarning() { showWarningDialog.value = true }
+function suspendExam() { showInvalidateDialog.value = true }
 
 async function confirmSendWarning() {
   actionLoading.value = 'warning'
@@ -776,15 +681,8 @@ async function confirmSendWarning() {
     await sendTeacherWarning(attemptId.value, warningMessage.value)
     toast.success('Đã gửi cảnh báo tới học sinh.')
     warningMessage.value = ''
-  } catch (err) {
-    toast.error('Gửi cảnh báo thất bại. Vui lòng thử lại.')
-  } finally {
-    actionLoading.value = ''
-  }
-}
-
-async function suspendExam() {
-  showInvalidateDialog.value = true
+  } catch { toast.error('Gửi cảnh báo thất bại.') }
+  finally { actionLoading.value = '' }
 }
 
 async function confirmInvalidate() {
@@ -794,189 +692,197 @@ async function confirmInvalidate() {
     await invalidateAttempt(attemptId.value, invalidateReason.value)
     invalidateReason.value = ''
     await loadData()
-  } catch (err) {
-    toast.error('Dừng thi thất bại. Vui lòng thử lại.')
-  } finally {
-    actionLoading.value = ''
-  }
+    toast.success('Đã dừng bài thi.')
+  } catch { toast.error('Dừng thi thất bại.') }
+  finally { actionLoading.value = '' }
 }
 
 function viewFullReport() {
-  router.push({
-    path: '/teacher/exams/review/incidents',
-    query: { examId: examId.value }
-  })
-}
-
-const signalScoreColor = (score) => {
-  if (score >= 60) return 'var(--ds-danger)'
-  if (score >= 30) return 'var(--ds-warning)'
-  return 'var(--ds-success)'
-}
-
-const getRiskColor = (score) => {
-  if (score >= 60) return 'var(--ds-danger)'
-  if (score >= 30) return 'var(--ds-warning)'
-  return 'var(--ds-success)'
-}
-
-const getRiskBgColor = (score) => {
-  if (score >= 60) return 'var(--ds-danger-soft)'
-  if (score >= 30) return 'var(--ds-warning-soft)'
-  return 'var(--ds-success-soft)'
-}
-
-const getViolationColor = (type) => {
-  const colors = {
-    TAB_SWITCH: 'var(--ds-warning)',
-    WINDOW_BLUR: 'var(--ds-warning)',
-    IDLE_TIME: 'var(--ds-info)',
-    RIGHT_CLICK: 'var(--ds-info)',
-    EXIT_FULLSCREEN: 'var(--ds-warning)',
-    COPY_PASTE: 'var(--ds-danger)',
-    DEVTOOLS_OPEN: 'var(--ds-danger)',
-    PRINT_SCREEN: 'var(--ds-danger)',
-    MULTI_MONITOR: 'var(--ds-danger)',
-    DUPLICATE_IP: 'var(--ds-danger)',
-    RAPID_QUESTION_SWITCH: 'var(--ds-warning)',
-    HEARTBEAT_STALE: 'var(--ds-warning)',
-    DEVICE_FINGERPRINT_CHANGED: 'var(--ds-danger)',
-    TIME_ANOMALY: 'var(--ds-warning)',
-    FULLSCREEN_EVASION: 'var(--ds-warning)',
-    QUESTION_TIMING_ANOMALY: 'var(--ds-warning)',
-    ANSWER_CHANGE_BURST: 'var(--ds-danger)',
-    NETWORK_INSTABILITY: 'var(--ds-warning)',
-    SESSION_RECOVERY: 'var(--ds-warning)',
-    SYNC_BEHAVIOR: 'var(--ds-danger)',
-    IP_FINGERPRINT_GRAPH: 'var(--ds-danger)',
-    ANSWER_SIMILARITY: 'var(--ds-danger)',
-    AI_MULTIPLE_FACES: 'var(--ds-danger)',
-    AI_FACE_MISSING: 'var(--ds-warning)',
-    AI_PHONE_DETECTED: 'var(--ds-danger)',
-    AI_LOOKING_AWAY: 'var(--ds-warning)',
-    AI_SPEAKING_DETECTED: 'var(--ds-warning)'
-  }
-  return colors[type] || 'var(--ds-text-muted)'
-}
-
-const getViolationIcon = (type) => {
-  const icons = {
-    TAB_SWITCH: 'tab',
-    WINDOW_BLUR: 'tab',
-    IDLE_TIME: 'schedule',
-    RIGHT_CLICK: 'mouse_right_button',
-    EXIT_FULLSCREEN: 'fullscreen_exit',
-    COPY_PASTE: 'content_copy',
-    DEVTOOLS_OPEN: 'code',
-    PRINT_SCREEN: 'screenshot',
-    MULTI_MONITOR: 'desktop_windows',
-    DUPLICATE_IP: 'language',
-    RAPID_QUESTION_SWITCH: 'flip_to_front',
-    HEARTBEAT_STALE: 'favorite',
-    DEVICE_FINGERPRINT_CHANGED: 'fingerprint',
-    TIME_ANOMALY: 'schedule',
-    FULLSCREEN_EVASION: 'fullscreen_exit',
-    QUESTION_TIMING_ANOMALY: 'schedule',
-    ANSWER_CHANGE_BURST: 'sync_problem',
-    NETWORK_INSTABILITY: 'wifi_off',
-    SESSION_RECOVERY: 'restore',
-    SYNC_BEHAVIOR: 'hub',
-    IP_FINGERPRINT_GRAPH: 'fingerprint',
-    ANSWER_SIMILARITY: 'group_work',
-    AI_MULTIPLE_FACES: 'groups',
-    AI_FACE_MISSING: 'person_off',
-    AI_PHONE_DETECTED: 'smartphone',
-    AI_LOOKING_AWAY: 'visibility_off',
-    AI_SPEAKING_DETECTED: 'record_voice_over',
-    FRAUD_SIGNAL: 'psychology'
-  }
-  return icons[type] || 'warning'
-}
-
-const getViolationLabel = (type) => {
-  const labels = {
-    TAB_SWITCH: 'Chuyển tab',
-    WINDOW_BLUR: 'Mất tiêu điểm cửa sổ',
-    IDLE_TIME: 'Không hoạt động',
-    RIGHT_CLICK: 'Click chuột phải',
-    EXIT_FULLSCREEN: 'Thoát toàn màn hình',
-    COPY_PASTE: 'Sao chép nội dung',
-    DEVTOOLS_OPEN: 'Mở DevTools',
-    PRINT_SCREEN: 'Chụp màn hình',
-    MULTI_MONITOR: 'Nhiều màn hình',
-    DUPLICATE_IP: 'IP trùng lặp',
-    RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh',
-    HEARTBEAT_STALE: 'Mất kết nối',
-    DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
-    TIME_ANOMALY: 'Bất thường thời gian',
-    FULLSCREEN_EVASION: 'Né tránh toàn màn hình',
-    QUESTION_TIMING_ANOMALY: 'Bất thường thời gian câu hỏi',
-    ANSWER_CHANGE_BURST: 'Đổi đáp án dồn dập',
-    NETWORK_INSTABILITY: 'Mạng không ổn định',
-    SESSION_RECOVERY: 'Khôi phục phiên bất thường',
-    SYNC_BEHAVIOR: 'Hành vi đồng bộ',
-    IP_FINGERPRINT_GRAPH: 'Liên kết IP/fingerprint',
-    ANSWER_SIMILARITY: 'Tương đồng đáp án',
-    AI_MULTIPLE_FACES: 'AI phát hiện nhiều khuôn mặt',
-    AI_FACE_MISSING: 'AI phát hiện mất mặt',
-    AI_PHONE_DETECTED: 'AI phát hiện điện thoại',
-    AI_LOOKING_AWAY: 'AI phát hiện nhìn lệch hướng',
-    AI_SPEAKING_DETECTED: 'AI phát hiện nói chuyện',
-    RISK_SCORE: 'Cập nhật rủi ro',
-    WARNING: 'Cảnh báo GV',
-    FRAUD_SIGNAL: 'Tín hiệu gian lận',
-    MONITORING_EVENT: 'Sự kiện giám sát',
-    EXAM_EVENT: 'Sự kiện thi'
-  }
-  return labels[type] || type || '—'
-}
-
-const getSeverityLabel = (status) => {
-  const labels = {
-    HIGH: 'Nghiêm trọng',
-    MEDIUM: 'Trung bình',
-    LOW: 'Thấp',
-    CRITICAL: 'Nghiêm trọng',
-    WARNING: 'Cảnh báo',
-    ERROR: 'Nghiêm trọng',
-    INFO: 'Thông tin'
-  }
-  return labels[status] || status || '—'
-}
-
-const getSeverityStatus = (status) => {
-  return status === 'HIGH' || status === 'CRITICAL' ? 'error'
-    : status === 'MEDIUM' || status === 'WARNING' ? 'warning'
-    : status === 'LOW' ? 'info'
-    : 'info'
-}
-
-const formatTimestamp = (timestamp) => {
-  if (!timestamp) return '—'
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
+  router.push({ path: '/teacher/exams/review/incidents', query: { examId: examId.value } })
 }
 
 onMounted(loadData)
 </script>
 
 <style scoped>
-.ds-animate-fade-up {
-  animation: fadeUp 0.5s ease-out;
-}
+/* ── Root ─────────────────────────────────────────────────────────────── */
+.sd-root { min-height: 100vh; background: #0f172a; scroll-behavior: smooth; }
 
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* ── Loading ──────────────────────────────────────────────────────────── */
+.sd-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.875rem; height: 60vh; }
+.sd-loading__spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #6366f1; border-radius: 50%; animation: sd-spin 0.7s linear infinite; }
+.sd-loading__text { color: rgba(255,255,255,0.4); font-size: 0.875rem; }
+@keyframes sd-spin { to { transform: rotate(360deg); } }
+
+/* ── Error ──────────────────────────────────────────────────────────── */
+.sd-error { display: flex; align-items: center; justify-content: center; height: 60vh; }
+.sd-error__card { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 2.5rem; border: 1px solid rgba(248,113,113,0.3); border-radius: var(--ds-radius-xl); background: rgba(248,113,113,0.06); max-width: 360px; text-align: center; }
+.sd-error__icon { color: #f87171; }
+.sd-error__msg { color: #f87171; font-size: 0.875rem; font-weight: 600; }
+
+/* ── Top bar ────────────────────────────────────────────────────────── */
+.sd-topbar { display: flex; align-items: center; justify-content: space-between; padding: 0.625rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); background: rgba(30,41,59,0.9); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; gap: 1rem; }
+.sd-topbar__left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.sd-topbar__back { display: flex; align-items: center; gap: 0.375rem; padding: 0.3rem 0.75rem; border-radius: var(--ds-radius); border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); font-size: 0.775rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
+.sd-topbar__back:hover { background: rgba(255,255,255,0.1); color: white; }
+.sd-topbar__sep { width: 1px; height: 20px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+.sd-topbar__crumbs { display: flex; align-items: center; gap: 0.375rem; font-size: 0.775rem; min-width: 0; overflow: hidden; }
+.sd-topbar__crumb { color: rgba(255,255,255,0.4); text-decoration: none; white-space: nowrap; transition: color 0.15s; }
+.sd-topbar__crumb:hover { color: #a5b4fc; }
+.sd-topbar__crumb-sep { color: rgba(255,255,255,0.2); flex-shrink: 0; }
+.sd-topbar__crumb--active { color: rgba(255,255,255,0.9); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.sd-topbar__id { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.625rem; border-radius: 9999px; background: rgba(165,180,252,0.12); color: #a5b4fc; white-space: nowrap; flex-shrink: 0; }
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
+.sd-hero { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 1.5rem; background: rgba(30,41,59,0.7); backdrop-filter: blur(12px); border-radius: var(--ds-radius-xl); flex-wrap: wrap; margin: 1.25rem 1.5rem 0; border: 1px solid rgba(255,255,255,0.07); }
+.sd-hero--danger { border-top: 3px solid rgba(248,113,113,0.6); }
+.sd-hero--warn { border-top: 3px solid rgba(251,191,36,0.6); }
+.sd-hero--clean { border-top: 3px solid rgba(74,222,128,0.4); }
+
+.sd-hero__left { display: flex; align-items: center; gap: 1rem; min-width: 0; flex: 1; }
+.sd-hero__avatar-wrap { flex-shrink: 0; }
+.sd-hero__avatar { position: relative; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.sd-hero__initials { font-size: 1.125rem; font-weight: 900; }
+.sd-hero__status-ring { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid; }
+.sd-hero__info { min-width: 0; }
+.sd-hero__name-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.sd-hero__name { font-size: 1rem; font-weight: 900; color: white; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-hero__status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+.sd-hero__meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+.sd-hero__meta-sep { opacity: 0.4; }
+.sd-hero__badges { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.sd-hero__right { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+
+/* Gauge */
+.sd-gauge { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+.sd-gauge__svg { transform: rotate(-90deg); }
+.sd-gauge__track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 8; }
+.sd-gauge__fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; will-change: stroke-dasharray; }
+.sd-gauge__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.sd-gauge__score { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+.sd-gauge__label { font-size: 0.55rem; color: rgba(255,255,255,0.4); font-weight: 600; margin-top: 1px; }
+.sd-hero__gauge-desc { min-width: 180px; }
+.sd-gauge-desc__text { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin: 0 0 0.5rem; }
+.sd-gauge-desc__track { height: 5px; border-radius: 9999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.sd-gauge-desc__fill { height: 100%; border-radius: 9999px; transition: width 0.6s ease; will-change: width; }
+
+/* ── Stats ──────────────────────────────────────────────────────── */
+.sd-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin: 1.25rem 1.5rem 0; }
+.sd-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; background: rgba(30,41,59,0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--ds-radius-lg); transition: border-color 0.15s; }
+.sd-stat:hover { border-color: rgba(99,102,241,0.3); }
+.sd-stat__icon-wrap { width: 34px; height: 34px; border-radius: var(--ds-radius); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+.sd-stat__body { display: flex; flex-direction: column; min-width: 0; }
+.sd-stat__value { font-size: 1.25rem; font-weight: 900; color: white; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sd-stat__label { font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 2px; font-weight: 600; }
+
+/* ── Grid ──────────────────────────────────────────────────────── */
+.sd-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; margin: 1.25rem 1.5rem 0; align-items: start; }
+@media (max-width: 1024px) { .sd-grid { grid-template-columns: 1fr; } .sd-stats { grid-template-columns: repeat(3, 1fr); } .sd-hero { flex-direction: column; align-items: flex-start; } }
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.sd-card { background: rgba(30,41,59,0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--ds-radius-xl); overflow: hidden; }
+.sd-card__header { display: flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+.sd-card__title { font-size: 0.8rem; font-weight: 800; color: white; flex: 1; }
+.sd-card__badge { font-size: 0.68rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 9999px; background: rgba(165,180,252,0.15); color: #a5b4fc; }
+.sd-card__badge--danger { background: rgba(248,113,113,0.15); color: #f87171; }
+.sd-card__body { padding: 1.25rem; }
+.sd-card__body--flush { padding: 0; }
+
+/* ── Recommendation ──────────────────────────────────────────────── */
+.sd-rec__action { margin-bottom: 0.875rem; }
+.sd-rec__badge { display: inline-flex; padding: 0.3rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; }
+.sd-rec__label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); margin: 0 0 0.5rem; }
+.sd-rec__chips { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.875rem; }
+.sd-chip { display: inline-flex; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.sd-rec__list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.375rem; }
+.sd-rec__item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+.sd-rec__item-dot { color: rgba(255,255,255,0.3); margin-top: 4px; flex-shrink: 0; }
+
+/* ── Timeline ──────────────────────────────────────────────────────── */
+.sd-timeline { display: flex; flex-direction: column; }
+.sd-tl-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.875rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+.sd-tl-item:last-child { border-bottom: none; }
+.sd-tl-item:hover { background: rgba(255,255,255,0.02); }
+.sd-tl-item__dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sd-tl-item__content { flex: 1; min-width: 0; }
+.sd-tl-item__header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.25rem; }
+.sd-tl-item__type { font-size: 0.8rem; font-weight: 700; }
+.sd-tl-item__time { font-size: 0.72rem; color: rgba(255,255,255,0.3); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+.sd-tl-item__details { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin: 0 0 0.3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-tl-item__severity { display: inline-flex; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 700; }
+.sd-tl-item__severity--high { background: rgba(248,113,113,0.15); color: #f87171; }
+.sd-tl-item__severity--medium { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.sd-tl-item__severity--low { background: rgba(56,189,248,0.15); color: #38bdf8; }
+
+/* ── Breakdown ──────────────────────────────────────────────────── */
+.sd-breakdown { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.sd-breakdown:last-child { margin-bottom: 0; }
+.sd-breakdown__label { font-size: 0.78rem; color: rgba(255,255,255,0.7); min-width: 130px; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-breakdown__bar { flex: 1; height: 6px; border-radius: 9999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.sd-breakdown__fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; will-change: width; }
+.sd-breakdown__score { font-size: 0.78rem; font-weight: 800; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Pattern ────────────────────────────────────────────────────── */
+.sd-pattern { padding: 0.75rem 1rem; border: 1px solid; border-radius: var(--ds-radius-lg); margin-bottom: 0.625rem; }
+.sd-pattern:last-child { margin-bottom: 0; }
+.sd-pattern__head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.sd-pattern__title { font-size: 0.8rem; font-weight: 700; color: white; flex: 1; }
+.sd-pattern__level { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.15rem 0.4rem; border-radius: 9999px; color: white; }
+.sd-pattern__desc { font-size: 0.73rem; color: rgba(255,255,255,0.5); padding-left: 1.5rem; margin: 0; }
+
+/* ── Signal ─────────────────────────────────────────────────────── */
+.sd-signal { display: flex; align-items: flex-start; gap: 0.625rem; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.sd-signal:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.sd-signal__icon { width: 28px; height: 28px; border-radius: var(--ds-radius); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sd-signal__body { flex: 1; min-width: 0; }
+.sd-signal__type { font-size: 0.775rem; font-weight: 700; color: white; margin: 0 0 0.15rem; }
+.sd-signal__evidence { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-signal__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; }
+.sd-signal__conf { font-size: 0.78rem; font-weight: 800; color: white; font-variant-numeric: tabular-nums; }
+.sd-signal__sev { font-size: 0.6rem; font-weight: 800; padding: 0.1rem 0.4rem; border-radius: 9999px; }
+.sd-signal__sev--high { background: rgba(248,113,113,0.15); color: #f87171; }
+.sd-signal__sev--medium { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.sd-signal__sev--low { background: rgba(56,189,248,0.15); color: #38bdf8; }
+
+/* ── Empty ─────────────────────────────────────────────────────── */
+.sd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 3rem; color: rgba(255,255,255,0.3); font-size: 0.85rem; }
+.sd-empty__icon { color: #4ade80; }
+
+/* ── Actions ────────────────────────────────────────────────────── */
+.sd-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap; margin: 1.5rem 1.5rem 2rem; }
+.sd-action { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: var(--ds-radius); font-size: 0.825rem; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
+.sd-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.sd-action--warn { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: rgba(251,191,36,0.25); }
+.sd-action--warn:hover:not(:disabled) { background: rgba(251,191,36,0.2); }
+.sd-action--danger { background: rgba(248,113,113,0.12); color: #f87171; border-color: rgba(248,113,113,0.25); }
+.sd-action--danger:hover:not(:disabled) { background: rgba(248,113,113,0.2); }
+.sd-action--outline { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.1); }
+.sd-action--outline:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.2); }
+
+/* ── Dialog ─────────────────────────────────────────────────────── */
+.sd-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.sd-dialog { width: 100%; max-width: 440px; margin: 1rem; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--ds-radius-xl); box-shadow: 0 24px 56px rgba(0,0,0,0.5); overflow: hidden; }
+.sd-dialog__head { display: flex; align-items: center; gap: 0.625rem; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.07); color: #fbbf24; }
+.sd-dialog__head--danger { color: #f87171; }
+.sd-dialog__title { font-size: 1rem; font-weight: 800; color: white; margin: 0; }
+.sd-dialog__body { padding: 1.25rem 1.5rem; }
+.sd-dialog__desc { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin: 0 0 0.875rem; }
+.sd-dialog__desc--danger { color: #f87171; }
+.sd-dialog__textarea { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--ds-radius); background: rgba(255,255,255,0.04); color: white; font-size: 0.825rem; resize: vertical; outline: none; transition: border-color 0.15s; font-family: inherit; }
+.sd-dialog__textarea:focus { border-color: rgba(99,102,241,0.5); }
+.sd-dialog__foot { display: flex; align-items: center; justify-content: flex-end; gap: 0.625rem; padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.07); }
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.sd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: var(--ds-radius); font-size: 0.825rem; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
+.sd-btn--secondary { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.1); }
+.sd-btn--secondary:hover { background: rgba(255,255,255,0.08); color: white; }
+.sd-btn--warn { background: #d97706; color: white; }
+.sd-btn--warn:hover { filter: brightness(1.08); }
+.sd-btn--danger { background: #dc2626; color: white; }
+.sd-btn--danger:hover { filter: brightness(1.08); }
+
+/* ── Badges ─────────────────────────────────────────────────────── */
+.sd-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 9999px; border: 1px solid transparent; font-size: 0.7rem; font-weight: 700; }
+.sd-badge--warn { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: rgba(251,191,36,0.2); }
+.sd-badge--neutral { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.1); }
 </style>

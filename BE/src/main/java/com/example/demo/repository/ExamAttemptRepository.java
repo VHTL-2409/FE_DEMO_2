@@ -137,4 +137,32 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     @Query("SELECT ea.exam.id, COUNT(DISTINCT ea.student.id) FROM ExamAttempt ea WHERE ea.exam.id IN :ids GROUP BY ea.exam.id")
     List<Object[]> countDistinctStudentsGroupedByExamIds(@Param("ids") List<Long> ids);
+
+    /**
+     * Count students with active attempts (IN_PROGRESS or PAUSED) within a session window.
+     * Always uses the session boundaries (no filtering by null).
+     */
+    @Query(value = """
+            SELECT COUNT(DISTINCT ea.student_id)
+            FROM exam_attempts ea
+            WHERE ea.exam_id = :examId
+              AND ea.status IN ('IN_PROGRESS', 'PAUSED')
+              AND ea.started_at >= :sessionStart
+              AND ea.started_at <= :sessionEnd
+            """, nativeQuery = true)
+    Long countActiveStudentsInSession(
+            @Param("examId") Long examId,
+            @Param("sessionStart") LocalDateTime sessionStart,
+            @Param("sessionEnd") LocalDateTime sessionEnd);
+
+    /**
+     * Check if an exam has any active attempts (IN_PROGRESS or PAUSED).
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(ea) > 0 THEN true ELSE false END
+            FROM ExamAttempt ea
+            WHERE ea.exam.id = :examId
+              AND ea.status IN ('IN_PROGRESS', 'PAUSED')
+            """)
+    boolean hasActiveAttempts(@Param("examId") Long examId);
 }

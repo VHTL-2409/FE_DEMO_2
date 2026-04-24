@@ -55,7 +55,7 @@ public class MonitoringService {
 
     @Transactional
     public MonitoringEventResponse addEvent(Long attemptId, MonitoringEventRequest request, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         ensureCanAccessAttempt(attempt, actor);
@@ -90,7 +90,7 @@ public class MonitoringService {
 
     @Transactional
     public MonitoringEventResponse sendWarning(Long attemptId, String message, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         ensureCanManageAttempt(attempt, actor);
@@ -108,7 +108,7 @@ public class MonitoringService {
 
     @Transactional
     public MonitoringEventResponse invalidateAttempt(Long attemptId, String reason, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         ensureCanManageAttempt(attempt, actor);
@@ -138,8 +138,32 @@ public class MonitoringService {
     }
 
     @Transactional
+    public MonitoringEventResponse resumeAttempt(Long attemptId, String message, User actor) {
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+
+        ensureCanManageAttempt(attempt, actor);
+
+        if (attempt.getStatus() != AttemptStatus.PAUSED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ có thể khôi phục bài thi đang bị tạm dừng");
+        }
+
+        attempt.setStatus(AttemptStatus.IN_PROGRESS);
+        examAttemptRepository.save(attempt);
+
+        String resumeMessage = (message == null || message.isBlank())
+                ? "Bài thi đã được giám thị khôi phục. Vui lòng tiếp tục làm bài."
+                : message.trim();
+
+        auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_RESUMED] " + resumeMessage);
+        realtimeNotificationService.notifyAttemptResumed(attempt, resumeMessage);
+        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
+        return toMonitoringEventResponse(attempt, riskResponse, resumeMessage);
+    }
+
+    @Transactional
     public MonitoringEventResponse pauseAttempt(Long attemptId, String reason, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         ensureCanManageAttempt(attempt, actor);
@@ -162,7 +186,7 @@ public class MonitoringService {
     }
 
     public List<MonitoringTimelineItem> timeline(Long attemptId, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         ensureCanAccessAttempt(attempt, actor);
@@ -206,7 +230,7 @@ public class MonitoringService {
 
     @Transactional
     public void updateDeviceStatus(Long attemptId, Boolean cameraOn, Boolean micOn, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         ensureCanAccessAttempt(attempt, actor);
         if (!attempt.getStudent().getId().equals(actor.getId())) {
@@ -224,7 +248,7 @@ public class MonitoringService {
     }
 
     public List<AuditLogItem> auditLog(Long attemptId, User actor) {
-        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         ensureCanAccessAttempt(attempt, actor);
         return auditLogRepository.findByAttemptIdOrderByCreatedAtDesc(attemptId)

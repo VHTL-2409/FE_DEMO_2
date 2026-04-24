@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
@@ -52,4 +53,22 @@ public class ExamResponse {
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;
     private Boolean showScoreAfterSubmit;
+    /**
+     * Monitoring-specific: "LIVE" (in session now) | "UPCOMING" (session starts later today)
+     * | "ENDED" (session ended) | "NO_SESSION" (no session created).
+     * Null when exam has no startTime/endTime set.
+     */
+    @Setter
+    private String monitoringStatus;
+    /**
+     * Number of students with attempts started in the current/last session
+     * (attempts within [exam.startTime, exam.endTime] if those are set).
+     */
+    @Setter
+    private Long currentSessionParticipants;
+    /**
+     * Seconds remaining in the current session. Null if no active session.
+     */
+    @Setter
+    private Long remainingSeconds;
 }

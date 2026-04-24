@@ -1019,7 +1019,10 @@ const loadExam = async () => {
   try {
     const data = await listExamQuestions(examId.value)
     questionList = Array.isArray(data) ? data : (data?.questions || [])
-    questions.value = questionList.map(parseQuestionOptions)
+    questions.value = questionList.map(q => ({
+      ...q,
+      options: parseQuestionOptions(q.options)
+    }))
     examSurfaceReady.value = true
     if (attemptId.value) void restoreSession()
   } catch {

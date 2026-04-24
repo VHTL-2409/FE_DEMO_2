@@ -157,6 +157,93 @@ public class ExamService {
                 .toList();
     }
 
+    /**
+     * Lists all exams created by the teacher with monitoring-specific metadata:
+     * - monitoringStatus: "LIVE" | "UPCOMING" | "ENDED" | "NO_SESSION"
+     * - currentSessionParticipants: number of students with active attempts in session window
+     * - remainingSeconds: seconds until session ends (for LIVE exams)
+     */
+    @Transactional(readOnly = true)
+    public List<ExamResponse> listExamsForMonitoring(User teacher) {
+        currentUserService.requireTeacherOrAdmin(teacher);
+        List<Exam> exams = examRepository.findByCreatedById(teacher.getId());
+        if (exams.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDateTime now = LocalDateTime.now(VietNamTime.zone());
+        List<Long> examIds = exams.stream().map(Exam::getId).toList();
+        Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
+        Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
+
+        return exams.stream().map(exam -> {
+            long participantCount = participantByExam.getOrDefault(exam.getId(), 0L);
+            long questionCount = questionCountByExam.getOrDefault(exam.getId(), 0L);
+
+            // Calculate monitoring status
+            String monitoringStatus = determineMonitoringStatus(exam, now);
+            Long currentSessionParticipants = null;
+            Long remainingSeconds = null;
+
+            if (monitoringStatus.equals("LIVE") || monitoringStatus.equals("ENDED")) {
+                // Count active attempts in session window (only if session times are set)
+                LocalDateTime sessionStart = exam.getStartTime();
+                LocalDateTime sessionEnd = exam.getEndTime();
+                if (sessionStart != null && sessionEnd != null) {
+                    Long activeCount = examAttemptRepository.countActiveStudentsInSession(
+                            exam.getId(),
+                            sessionStart,
+                            sessionEnd
+                    );
+                    currentSessionParticipants = activeCount != null ? activeCount : 0L;
+                } else {
+                    currentSessionParticipants = 0L;
+                }
+
+                // Calculate remaining seconds
+                if (monitoringStatus.equals("LIVE") && exam.getEndTime() != null) {
+                    long seconds = java.time.Duration.between(now, exam.getEndTime()).getSeconds();
+                    remainingSeconds = Math.max(0, seconds);
+                }
+            }
+
+            ExamResponse response = toResponse(exam, participantCount, questionCount);
+            response.setMonitoringStatus(monitoringStatus);
+            response.setCurrentSessionParticipants(currentSessionParticipants);
+            response.setRemainingSeconds(remainingSeconds);
+            return response;
+        }).toList();
+    }
+
+    /**
+     * Determines the monitoring status for an exam based on current time and session times.
+     */
+    private String determineMonitoringStatus(Exam exam, LocalDateTime now) {
+        // No session time set
+        if (exam.getStartTime() == null || exam.getEndTime() == null) {
+            return "NO_SESSION";
+        }
+
+        // Session hasn't started yet
+        if (now.isBefore(exam.getStartTime())) {
+            // Check if starting within today (within 24 hours)
+            LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
+            LocalDateTime endOfToday = startOfToday.plusDays(1);
+            if (exam.getStartTime().isBefore(endOfToday)) {
+                return "UPCOMING";
+            }
+            return "NO_SESSION";
+        }
+
+        // Session is in progress
+        if (!now.isAfter(exam.getEndTime())) {
+            return "LIVE";
+        }
+
+        // Session ended
+        return "ENDED";
+    }
+
     @Transactional(readOnly = true)
     public List<ExamResponse> listPublishedExamsByTeacher(User teacher) {
         if (teacher == null) return List.of();
@@ -747,7 +834,7 @@ public class ExamService {
     }
 
     public Exam requireExam(Long examId) {
-        return examRepository.findById(examId)
+        return examRepository.findByIdWithCreatedBy(examId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found"));
     }
 

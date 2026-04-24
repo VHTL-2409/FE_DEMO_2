@@ -81,7 +81,7 @@
       <button
         type="button"
         class="ds-btn-monitor inline-flex w-full items-center justify-center gap-2 rounded-[var(--ds-radius-lg)] bg-[var(--ds-accent)] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-        @click="$emit('go-monitoring')"
+        @click="$emit('go-monitoring-exam', liveExam)"
       >
         <LucideIcon name="monitoring" size="18" />
         Giám sát ngay
@@ -103,7 +103,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['go-monitoring'])
+defineEmits(['go-monitoring', 'go-monitoring-exam'])
 
 const hasLive = computed(() => props.liveExam && props.liveExam.isLive)
 

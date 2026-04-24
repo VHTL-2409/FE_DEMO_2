@@ -15,7 +15,7 @@
           <LucideIcon name="wifi" td-monitor__connection-icon />
           <span>Real-time</span>
         </div>
-        <button type="button" class="td-monitor__manage-btn" @click="$emit('go-monitoring')">
+        <button type="button" class="td-monitor__manage-btn" @click="$emit('go-monitoring-exam', liveExam)">
           <LucideIcon name="open_in_new" />
           Quản lý Proctoring
         </button>
@@ -103,7 +103,7 @@
         <span class="td-monitor__alert-banner-title">Có {{ liveExam.alertCount }} cảnh báo proctor cần xử lý</span>
         <span class="td-monitor__alert-banner-sub">Vào phòng giám sát để xem chi tiết và hành động</span>
       </div>
-      <button type="button" class="td-monitor__alert-banner-cta" @click="$emit('go-monitoring')">
+      <button type="button" class="td-monitor__alert-banner-cta" @click="$emit('go-monitoring-exam', liveExam)">
         Xử lý ngay
         <LucideIcon name="arrow_forward" />
       </button>
@@ -122,7 +122,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['go-monitoring'])
+defineEmits(['go-monitoring', 'go-monitoring-exam'])
 
 const progressPercent = computed(() => {
   const total = Number(props.liveExam.questionCount || 0)

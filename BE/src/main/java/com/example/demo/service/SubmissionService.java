@@ -111,7 +111,7 @@ public class SubmissionService {
 
     @Transactional
     public SubmitAttemptResponse submitAttempt(Long attemptId, User student, SubmitAttemptRequest request) {
-        ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.AUTO_SUBMITTED) {
@@ -161,7 +161,7 @@ public class SubmissionService {
 
     @Transactional
     public DraftSaveResponse saveDraftAnswers(Long attemptId, User student, String clientIp, List<AnswerInput> answers) {
-        ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
 
         if (attempt.getStatus() == AttemptStatus.PAUSED) {
@@ -209,7 +209,7 @@ public class SubmissionService {
 
     @Transactional(readOnly = true)
     public DraftAnswersResponse getDraftAnswers(Long attemptId, User student) {
-        ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         List<com.example.demo.domain.entity.Question> orderedQuestions =
                 questionService.orderQuestionsForAttempt(attempt.getExam(), attempt.getId());
@@ -244,7 +244,7 @@ public class SubmissionService {
      */
     @Transactional(readOnly = true)
     public List<QuestionResponse> listQuestionsForStudentAttempt(Long attemptId, User student) {
-        ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, student)
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         return questionService.listByExam(attempt.getExam(), false, student, attemptId);
     }

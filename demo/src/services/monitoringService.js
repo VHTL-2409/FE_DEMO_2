@@ -64,6 +64,14 @@ export const pauseAttempt = async (attemptId, reason = '') => {
   return unwrapApiData(payload)
 }
 
+export const resumeAttempt = async (attemptId, message = '') => {
+  const query = message ? `?message=${encodeURIComponent(message)}` : ''
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/resume${query}`, {
+    method: 'POST'
+  })
+  return unwrapApiData(payload)
+}
+
 export const invalidateAttempt = async (attemptId, reason = '') => {
   const query = reason ? `?reason=${encodeURIComponent(reason)}` : ''
   const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/invalidate${query}`, {

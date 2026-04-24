@@ -67,7 +67,6 @@
             <th class="smt__th smt__th--center">Điểm</th>
             <th class="smt__th smt__th--center">Vi phạm</th>
             <th class="smt__th">Rủi ro</th>
-            <th class="smt__th">Review</th>
             <th class="smt__th">Trạng thái</th>
             <th class="smt__th smt__th--actions">Hành động</th>
           </tr>
@@ -208,14 +207,6 @@
                 </div>
               </td>
 
-              <!-- Status -->
-              <td class="smt__td">
-                <span class="smt__status-chip" :class="`smt__status-chip--${statusColor(student)}`">
-                  <LucideIcon :name="statusIcon(student)" />
-                  {{ statusLabel(student) }}
-                </span>
-              </td>
-
               <!-- Actions -->
               <td class="smt__td smt__td--actions">
                 <div class="smt__actions">
@@ -254,7 +245,7 @@
               v-if="expandedIds.includes(student.id || student.attemptId)"
               class="smt__expand-row"
             >
-              <td colspan="9">
+              <td colspan="8">
                 <div class="smt__expand-content">
                   <div class="smt__expand-section">
                     <h5 class="smt__expand-title">Thông tin thiết bị</h5>
@@ -324,9 +315,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRiskLevel } from '../../../composables/useRiskLevel'
+import { useProctorDashboardStore } from '../../../stores/proctorDashboardStore'
 
 const { clampScore, resolveLevel, label } = useRiskLevel()
+const store = useProctorDashboardStore()
+const { filters } = storeToRefs(store)
 
 const props = defineProps({
   students: { type: Array, default: () => [] },
@@ -390,20 +385,20 @@ const toggleExpand = (id) => {
   }
 }
 
-// Debounce search
-let searchTimer = null
-const debouncedSearch = () => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {}, 300)
-}
-
 // Risk helpers
 const riskScore = (student) => clampScore(student.riskScore || student.risk || 0)
 
 const riskLevel = (student) => resolveLevel(riskScore(student))
 
 const riskPercent = (student) => riskScore(student)
-const hasSearch = computed(() => false)
+const hasSearch = computed(() =>
+  Boolean(
+    filters.value.search ||
+    filters.value.riskBand !== 'ALL' ||
+    filters.value.status !== 'ALL' ||
+    filters.value.reviewOnly
+  )
+)
 
 const reviewActionLabel = (action) => {
   const map = {
@@ -489,67 +484,6 @@ const formatTime = (ts) => {
   flex-wrap: wrap;
 }
 
-.smt__search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 180px;
-  max-width: 280px;
-  padding: 0.5rem 0.875rem;
-  background: var(--ds-surface);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.dark .smt__search {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-}
-
-.smt__search:focus-within {
-  border-color: var(--ds-primary);
-  box-shadow: 0 0 0 3px var(--ds-primary-ring);
-}
-
-.smt__search-icon {
-  font-size: 1.125rem;
-  color: var(--ds-text-muted);
-  flex-shrink: 0;
-}
-
-.smt__search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.875rem;
-  color: var(--ds-text);
-  min-width: 0;
-}
-
-.dark .smt__search-input { color: #f1f5f9; }
-.smt__search-input::placeholder { color: var(--ds-text-muted); }
-
-.smt__search-clear {
-  width: 1.5rem;
-  height: 1.5rem;
-  border: none;
-  border-radius: 50%;
-  background: var(--ds-gray-100);
-  color: var(--ds-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.dark .smt__search-clear { background: var(--ds-gray-700); }
-.smt__search-clear:hover { background: var(--ds-gray-200); color: var(--ds-text); }
-.dark .smt__search-clear:hover { background: var(--ds-gray-600); }
-
 .smt__result-count {
   font-size: 0.8rem;
   color: var(--ds-text-muted);
@@ -563,7 +497,7 @@ const formatTime = (ts) => {
   top: 0;
   z-index: 10;
   padding: 0.5rem 1rem;
-  background: rgba(79, 70, 229, 0.08);
+  background: rgba(255, 255, 255, 0.96);
   border: 1.5px solid var(--ds-primary-border);
   border-radius: var(--ds-radius-xl);
   background: rgba(255, 255, 255, 0.96);
@@ -825,7 +759,10 @@ const formatTime = (ts) => {
   color: var(--ds-gray-400);
 }
 
-.dark .smt__device-icon--off { background: var(--ds-gray-700); }
+.dark .smt__device-icon--off {
+  background: var(--ds-gray-700);
+  color: var(--ds-gray-500);
+}
 
 
 .smt__device-badge {
@@ -840,6 +777,14 @@ const formatTime = (ts) => {
 .smt__device-badge--warn {
   background: var(--ds-danger-soft);
   color: var(--ds-danger);
+}
+
+.dark .smt__device-badge {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.dark .smt__device-badge--warn {
+  background: rgba(220, 38, 38, 0.12);
 }
 
 /* Score */

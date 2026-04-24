@@ -195,6 +195,8 @@ import {
   BookmarkPlus,
   BookmarkCheck,
   MonitorSmartphone,
+  BellRing,
+  CircleDot,
 } from 'lucide-vue-next'
 
 // Icon name to component mapping - only includes icons that are used
@@ -441,7 +443,6 @@ const ICON_MAP = {
   wb_sunny: Sun,
   eco: Sparkles,
   speed: Gauge,
-  tab: Square,
   skip_next: SkipForward,
   skip_previous: SkipBack,
   radio: Radio,
@@ -589,6 +590,33 @@ const ICON_MAP = {
   key: Key,
   file: FileText,
   devices: MonitorSmartphone,
+
+  // Missing name variants used in teacher UI
+  wifi: Wifi,
+  'wifi-off': WifiOff,
+  'bell-ring': BellRing,
+  bell_ring: BellRing,
+  layout: LayoutGrid,
+  'refresh-cw': RefreshCw,
+  refresh_cw: RefreshCw,
+  'check-square': CheckSquare,
+  check_square: CheckSquare,
+  minimize: Minimize,
+  maximize: Maximize,
+  ban: Ban,
+  send: Send,
+  square: Square,
+  play: Play,
+  tab: Layers,
+  layers: Layers,
+  'shield-alert': ShieldAlert,
+  shield_alert: ShieldAlert,
+  'mouse-pointer-2': MousePointer2,
+  mouse_pointer_2: MousePointer2,
+  'bar-chart-2': BarChart2,
+  bar_chart_2: BarChart2,
+  'circle-dot': CircleDot,
+  circle_dot: CircleDot,
 
   // Proctoring violation icon names (getViolationIcon)
   mouse_right_button: MousePointer2,

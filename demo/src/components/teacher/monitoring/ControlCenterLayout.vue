@@ -84,6 +84,7 @@ watch(
 
 <style scoped>
 .ccl {
+  --ds-monitoring-sidebar-w: 360px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -130,7 +131,7 @@ watch(
 
 /* Sidebar */
 .ccl__sidebar {
-  width: 380px;
+  width: var(--ds-monitoring-sidebar-w, 360px);
   flex-shrink: 0;
   display: flex;
   flex-direction: row;

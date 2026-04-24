@@ -64,6 +64,7 @@
           <MonitoringCard
             :live-exam="liveExam"
             @go-monitoring="goToMonitoring"
+            @go-monitoring-exam="goToLiveMonitoringSession"
           />
         </div>
 
@@ -207,7 +208,7 @@ const liveExam = computed(() => {
   return {
     ...started,
     isLive: true,
-    studentCount: 0,
+    studentCount: started.participantCount || 0,
     answeredCount: 0,
     questionCount: started.questionCount || 0,
     alertCount: 0
@@ -258,6 +259,16 @@ const scheduleSeries = computed(() => {
 const teacherName = ref('Giáo viên')
 
 const goToMonitoring = () => router.push('/teacher/live-monitoring')
+const goToLiveMonitoringSession = (exam) => {
+  if (!exam?.id) return
+  router.push({
+    path: '/teacher/live-monitoring/session',
+    query: {
+      examId: String(exam.id),
+      title: exam.title || ''
+    }
+  })
+}
 const goToCreate = () => router.push('/teacher/exams/create')
 
 const loadExams = async () => {

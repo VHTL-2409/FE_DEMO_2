@@ -40,6 +40,8 @@ services:
         condition: service_healthy
       ai-service:
         condition: service_healthy
+      python-parser:
+        condition: service_healthy
     ports:
       - "8082:8082"
     mem_limit: 1g
@@ -55,6 +57,26 @@ services:
       - app-network
     volumes:
       - ./BE/.env:/app/.env:ro
+
+  python-parser:
+    build:
+      context: ./python_parser
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - python-parser-temp:/tmp
+    mem_limit: 512m
+    mem_reservation: 256m
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   ai-service:
     build:
@@ -107,3 +129,4 @@ networks:
 
 volumes:
   pgdata:
+  python-parser-temp:

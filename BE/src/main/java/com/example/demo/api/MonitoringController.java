@@ -93,6 +93,13 @@ public class MonitoringController {
         return monitoringService.pauseAttempt(attemptId, reason, currentUserService.requireCurrentUser());
     }
 
+    @PostMapping("/resume")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public MonitoringEventResponse resume(@PathVariable Long attemptId,
+                                          @RequestParam(required = false) String message) {
+        return monitoringService.resumeAttempt(attemptId, message, currentUserService.requireCurrentUser());
+    }
+
     @PostMapping("/invalidate")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public MonitoringEventResponse invalidate(@PathVariable Long attemptId,

@@ -299,6 +299,8 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 .mch__stat-icon-wrap--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
 .mch__stat-icon-wrap--muted { background: var(--ds-gray-100); color: var(--ds-text-muted); }
 .dark .mch__stat-icon-wrap--muted { background: var(--ds-gray-700); }
+.dark .mch__stat-icon-wrap--success { background: rgba(16, 185, 129, 0.12); }
+.dark .mch__stat-icon-wrap--danger { background: rgba(239, 68, 68, 0.12); }
 
 .mch__stat-body { display: flex; flex-direction: column; min-width: 0; }
 
