@@ -121,7 +121,7 @@ public class ExamService {
 
     @Transactional(readOnly = true)
     public List<ExamResponse> listExams(User currentUser) {
-        boolean isTeacher = currentUser.getRoles().stream().anyMatch(r -> r.getName() == RoleName.TEACHER || r.getName() == RoleName.ADMIN);
+        boolean isTeacher = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals(RoleName.TEACHER) || r.getName().equals(RoleName.ADMIN));
 
         if (isTeacher) {
             List<Exam> exams = examRepository.findByCreatedById(currentUser.getId());
@@ -759,11 +759,11 @@ public class ExamService {
     @Transactional(readOnly = true)
     public Exam requireManageableExam(Long examId, User actor) {
         Exam exam = requireExam(examId);
-        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN));
         if (isAdmin) {
             return exam;
         }
-        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.TEACHER));
         if (isTeacher) {
             if (!exam.getCreatedBy().getId().equals(actor.getId())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this exam");
@@ -792,12 +792,12 @@ public class ExamService {
     @Transactional(readOnly = true)
     public Exam requireAccessibleExam(Long examId, User actor) {
         Exam exam = requireExam(examId);
-        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN));
         if (isAdmin) {
             return exam;
         }
 
-        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.TEACHER));
         if (isTeacher) {
             if (!exam.getCreatedBy().getId().equals(actor.getId())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this exam");
@@ -811,7 +811,7 @@ public class ExamService {
         }
 
         boolean creatorIsTeacher = exam.getCreatedBy().getRoles().stream()
-                .anyMatch(role -> role.getName() == RoleName.TEACHER || role.getName() == RoleName.ADMIN);
+                .anyMatch(role -> role.getName().equals(RoleName.TEACHER) || role.getName().equals(RoleName.ADMIN));
         if (!creatorIsTeacher) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this exam");
         }

@@ -531,8 +531,8 @@ public class ExamEventService {
     }
 
     private void ensureCanAccessAttempt(ExamAttempt attempt, User actor) {
-        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
-        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN));
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.TEACHER));
         boolean isOwnerStudent = attempt.getStudent().getId().equals(actor.getId());
         boolean isExamTeacher = attempt.getExam().getCreatedBy().getId().equals(actor.getId());
         if (!(isAdmin || isOwnerStudent || (isTeacher && isExamTeacher))) {

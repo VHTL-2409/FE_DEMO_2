@@ -188,7 +188,7 @@ public class QuestionService {
     }
 
     private void ensureCanManageQuestion(Question question, User actor) {
-        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN));
         if (isAdmin) {
             return;
         }

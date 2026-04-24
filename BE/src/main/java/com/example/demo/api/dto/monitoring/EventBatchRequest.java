@@ -1,6 +1,5 @@
 package com.example.demo.api.dto.monitoring;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -64,7 +63,7 @@ public class EventBatchRequest {
         @Size(max = 1000)
         private String details;
 
-        private JsonNode payload;
+        private Object payload;
 
         private Double confidence;
 

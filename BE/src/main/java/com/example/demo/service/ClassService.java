@@ -168,7 +168,7 @@ public class ClassService {
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh với ID: " + studentId));
 
             boolean isStudent = student.getRoles().stream()
-                    .anyMatch(r -> r.getName() == RoleName.STUDENT);
+                    .anyMatch(r -> r.getName().equals(RoleName.STUDENT));
             if (!isStudent) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Người dùng " + student.getUsername() + " không phải là học sinh");
             }
@@ -316,7 +316,7 @@ public class ClassService {
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh với ID: " + studentId));
 
             boolean isStudent = student.getRoles().stream()
-                    .anyMatch(r -> r.getName() == RoleName.STUDENT);
+                    .anyMatch(r -> r.getName().equals(RoleName.STUDENT));
             if (!isStudent) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Người dùng " + student.getUsername() + " không phải là học sinh");
             }
@@ -406,9 +406,9 @@ public class ClassService {
 
         if (existingUser.isPresent()) {
             student = existingUser.get();
-            boolean alreadyStudent = student.getRoles().stream().anyMatch(role -> role.getName() == RoleName.STUDENT);
+            boolean alreadyStudent = student.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.STUDENT));
             boolean hasRestrictedRole = student.getRoles().stream()
-                    .anyMatch(role -> role.getName() == RoleName.TEACHER || role.getName() == RoleName.ADMIN);
+                    .anyMatch(role -> role.getName().equals(RoleName.TEACHER) || role.getName().equals(RoleName.ADMIN));
             if (hasRestrictedRole && !alreadyStudent) {
                 throw new ApiException(HttpStatus.BAD_REQUEST,
                         "Username " + item.getUsername() + " đang thuộc tài khoản giáo viên hoặc quản trị, không thể import như học sinh");
@@ -458,7 +458,7 @@ public class ClassService {
             student = userRepository.save(student);
         }
 
-        if (student.getRoles().stream().noneMatch(role -> role.getName() == RoleName.STUDENT)) {
+        if (student.getRoles().stream().noneMatch(role -> role.getName().equals(RoleName.STUDENT))) {
             student.getRoles().add(requireStudentRole());
             student = userRepository.save(student);
         }
@@ -494,7 +494,7 @@ public class ClassService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp học"));
 
         boolean isAdmin = teacher.getRoles().stream()
-                .anyMatch(role -> role.getName() == RoleName.ADMIN);
+                .anyMatch(role -> role.getName().equals(RoleName.ADMIN));
 
         if (!isAdmin && !classEntity.getTeacher().getId().equals(teacher.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền quản lý lớp học này");

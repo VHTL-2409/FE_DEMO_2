@@ -340,7 +340,7 @@ public class ImportJobService {
         ImportJob job = importJobRepository.findById(jobId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Import job không tồn tại"));
         boolean isOwner = job.getOwner().getId().equals(actor.getId());
-        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN));
         if (!isOwner && !isAdmin) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập import job này");
         }
