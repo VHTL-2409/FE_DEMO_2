@@ -58,6 +58,7 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8082,http://localhost:8082,https://localhost:443,https://test1.nexquoteapp.com,https://test1.nexquoteapp.com:444}
       APP_AI_SERVICE_ENABLED: ${APP_AI_SERVICE_ENABLED:-true}
       APP_AI_SERVICE_BASE_URL: ${APP_AI_SERVICE_BASE_URL:-http://ai-service:8090}
+      EXAM_IMPORT_PYTHON_LEGACY_URL: ${EXAM_IMPORT_PYTHON_LEGACY_URL:-http://python-parser:8000}
       SPRING_JPA_SHOW_SQL: "false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]

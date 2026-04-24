@@ -6,23 +6,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * REST client gọi Python FastAPI service tại {@code python_parser/} (PDF và DOCX).
+ * REST client goi Python FastAPI service tai {@code python_parser/} (PDF va DOCX).
  *
- * Mặc định: http://localhost:8000
- * Timeout: 120s cho text, 240s cho OCR-heavy PDFs.
- * Fallback: nếu service không khả dụng → trả {@link #fallbackResponse(String)}.
+ * Mac dinh: http://python-parser:8000 (Docker network)
+ * Timeout: 120s connect, 120s read.
  */
 @Component
 @Slf4j
@@ -34,11 +31,20 @@ public class PythonParserClient {
 
     public PythonParserClient(
             ObjectMapper objectMapper,
-            @Value("${exam-import.python-parser-legacy-url:http://localhost:8000}") String serviceBaseUrl
+            @Value("${exam-import.python-parser-legacy-url:http://python-parser:8000}") String serviceBaseUrl,
+            @Value("${exam-import.python-parser-connect-timeout-ms:120000}") int connectTimeoutMs,
+            @Value("${exam-import.python-parser-read-timeout-ms:120000}") int readTimeoutMs
     ) {
         this.objectMapper = objectMapper;
         this.serviceBaseUrl = serviceBaseUrl;
-        this.restTemplate = new RestTemplate();
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(connectTimeoutMs);
+        factory.setReadTimeout(readTimeoutMs);
+        this.restTemplate = new RestTemplate(factory);
+
+        log.info("[PythonParserClient] Init with baseUrl={}, connectTimeout={}ms, readTimeout={}ms",
+                serviceBaseUrl, connectTimeoutMs, readTimeoutMs);
     }
 
     /**
