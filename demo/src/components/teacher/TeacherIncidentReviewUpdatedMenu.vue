@@ -43,9 +43,22 @@
           <RouterLink :to="summaryTabLink" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors" style="color: var(--ds-text-secondary)">
             Tổng quan điểm &amp; báo cáo
           </RouterLink>
-          <RouterLink :to="incidentTabLink" class="px-4 py-2 rounded-lg text-sm font-bold" style="background-color: var(--ds-primary); color: white">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+            :style="activeMainTab === 'incidents' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { color: 'var(--ds-text-secondary)' }"
+            @click="activeMainTab = 'incidents'"
+          >
             Tổng quan hành vi gian lận
-          </RouterLink>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+            :style="activeMainTab === 'advanced' ? { backgroundColor: 'var(--ds-primary)', color: 'white' } : { color: 'var(--ds-text-secondary)' }"
+            @click="activeMainTab = 'advanced'"
+          >
+            Phân tích nâng cao
+          </button>
         </div>
       </div>
 
@@ -129,6 +142,11 @@
           fill
           @action="goToSummaryReview"
         />
+      </div>
+
+      <!-- Advanced Fraud Analysis Tab -->
+      <div v-else-if="activeMainTab === 'advanced'" class="ds-animate-fade-up-delay">
+        <GradingAndFraudPanel :initial-exam-id="examId" />
       </div>
 
       <div v-else-if="!isLoading && filteredIncidents.length === 0" class="mb-6 ds-animate-fade-up-delay">
@@ -318,6 +336,7 @@ import DsStatCard from '../ui/DsStatCard.vue'
 import DataTable from '../ui/DataTable.vue'
 import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
+import GradingAndFraudPanel from './fraud/GradingAndFraudPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -332,6 +351,7 @@ const isLoadingSimilarity = ref(false)
 const periodFilter = ref('30d')
 const violationFilter = ref('all')
 const searchQuery = ref('')
+const activeMainTab = ref('incidents')
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const selectedExamTitle = computed(() => route.query.title || 'Đề thi đã chọn')

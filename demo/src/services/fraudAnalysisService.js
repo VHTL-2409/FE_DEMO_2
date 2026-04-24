@@ -21,6 +21,11 @@ export async function runTimingAnalysis(attemptId) {
   return response.data.data
 }
 
+export async function runExamTimingAnalysis(examId) {
+  const response = await apiClient.post(`${BASE}/timing/exam/${examId}`)
+  return response.data.data
+}
+
 export async function runStatisticalAnalysis(examId) {
   const response = await apiClient.post(`${BASE}/statistical/exam/${examId}`)
   return response.data.data
@@ -33,6 +38,11 @@ export async function runStudentStatisticalAnalysis(attemptId) {
 
 export async function runBiometricsAnalysis(attemptId) {
   const response = await apiClient.post(`${BASE}/biometrics/attempts/${attemptId}`)
+  return response.data.data
+}
+
+export async function runExamBiometricsAnalysis(examId) {
+  const response = await apiClient.post(`${BASE}/biometrics/exam/${examId}`)
   return response.data.data
 }
 

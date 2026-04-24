@@ -125,6 +125,16 @@
           {{ proctorLabels[rule] || rule }}
         </span>
       </div>
+      <button
+        v-if="exam?.participantCount > 0"
+        type="button"
+        class="esp__live-monitor-btn"
+        @click="goToLiveMonitoring"
+      >
+        <LucideIcon name="monitor" />
+        Giám sát trực tiếp
+        <span v-if="exam?.participantCount" class="esp__live-count">{{ exam.participantCount }} HS</span>
+      </button>
     </div>
 
     <!-- Warnings -->
@@ -177,6 +187,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import ExamStatusTimeline from './ExamStatusTimeline.vue'
 
 const props = defineProps({
@@ -184,6 +195,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['tab-click'])
+const router = useRouter()
 
 const isProctoringEnabled = computed(() => {
   if (!props.exam) return false
@@ -308,6 +320,17 @@ const formatDateTime = (d) => {
       hour: '2-digit', minute: '2-digit'
     })
   } catch { return '—' }
+}
+
+const goToLiveMonitoring = () => {
+  if (!props.exam?.id) return
+  router.push({
+    path: '/teacher/live-monitoring/session',
+    query: {
+      examId: String(props.exam.id),
+      title: props.exam.title || ''
+    }
+  })
 }
 </script>
 
@@ -557,6 +580,38 @@ const formatDateTime = (d) => {
 }
 
 .dark .esp__rule-tag { background: var(--ds-gray-700); }
+
+.esp__live-monitor-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1.5px solid var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  width: 100%;
+  justify-content: center;
+}
+.esp__live-monitor-btn:hover {
+  background: var(--ds-primary);
+  color: white;
+}
+.esp__live-count {
+  margin-left: auto;
+  padding: 0.125rem 0.5rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--ds-radius-full);
+  font-size: 0.7rem;
+}
+.esp__live-monitor-btn:hover .esp__live-count {
+  background: rgba(255,255,255,0.25);
+}
 
 
 /* Warnings */

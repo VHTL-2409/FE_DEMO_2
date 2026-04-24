@@ -368,19 +368,25 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { fetchExamList } from '../../services/examService'
 import {
   runPlagiarismAnalysis,
-  runTimingAnalysis,
+  runExamTimingAnalysis,
   runStatisticalAnalysis,
-  runBiometricsAnalysis,
+  runExamBiometricsAnalysis,
   runIpReputationAnalysis,
-  runComprehensiveAnalysis
 } from '../../services/fraudAnalysisService'
 import { gradeAttempt } from '../../services/gradingService'
 
-const selectedExamId = ref('')
+const props = defineProps({
+  initialExamId: {
+    type: [Number, String],
+    default: null
+  }
+})
+
+const selectedExamId = ref(props.initialExamId ? String(props.initialExamId) : '')
 const activeTab = ref('plagiarism')
 const loading = ref(false)
 const loadingMessage = ref('')
@@ -420,9 +426,9 @@ const gradeCircleClass = computed(() => {
   return 'gf__grade-circle--red'
 })
 
-async function loadExam() {
+onMounted(async () => {
   exams.value = await fetchExamList()
-}
+})
 
 async function runFullAnalysis() {
   if (!selectedExamId.value) return
@@ -436,20 +442,19 @@ async function runFullAnalysis() {
 
   try {
     loadingMessage.value = 'Đang phân tích đạo văn...'
-    const plagiarism = await runPlagiarismAnalysis(selectedExamId.value)
-    plagiarismResults.value = plagiarism || []
+    plagiarismResults.value = await runPlagiarismAnalysis(selectedExamId.value)
 
     loadingMessage.value = 'Đang phân tích thời gian...'
-    const timing = await runTimingAnalysis(selectedExamId.value)
-    timingResults.value = timing || []
+    timingResults.value = await runExamTimingAnalysis(selectedExamId.value)
 
     loadingMessage.value = 'Đang phân tích thống kê...'
-    const statistical = await runStatisticalAnalysis(selectedExamId.value)
-    statisticalResults.value = statistical || []
+    statisticalResults.value = await runStatisticalAnalysis(selectedExamId.value)
+
+    loadingMessage.value = 'Đang phân tích sinh trắc...'
+    biometricsResults.value = await runExamBiometricsAnalysis(selectedExamId.value)
 
     loadingMessage.value = 'Đang phân tích IP...'
-    const ip = await runIpReputationAnalysis(selectedExamId.value)
-    ipResults.value = ip || []
+    ipResults.value = await runIpReputationAnalysis(selectedExamId.value)
 
     loadingMessage.value = 'Hoàn thành!'
   } catch (error) {
