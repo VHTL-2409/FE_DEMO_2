@@ -34,7 +34,7 @@
       <span
         v-if="violationCount > 0"
         class="sr-row__violation-badge"
-        :style="{ color: violationCount > 3 ? '#f87171' : '#fbbf24', background: violationCount > 3 ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)' }"
+        :class="violationCount > 3 ? 'sr-row__violation-badge--danger' : 'sr-row__violation-badge--warn'"
       >
         {{ violationCount }}
       </span>
@@ -69,7 +69,21 @@
       <button class="sr-row__action" title="Gửi cảnh báo" @click="$emit('warn')">
         <LucideIcon name="alert-triangle" :size="13" />
       </button>
-      <button class="sr-row__action" title="Tạm dừng" @click="$emit('pause')">
+      <button
+        v-if="isPaused"
+        class="sr-row__action sr-row__action--resume"
+        title="Cho phép tiếp tục thi"
+        @click="$emit('resume')"
+      >
+        <LucideIcon name="play" :size="13" />
+      </button>
+      <button
+        v-else
+        class="sr-row__action"
+        :disabled="isTerminal"
+        :title="isTerminal ? 'Bài thi đã kết thúc' : 'Tạm dừng'"
+        @click="$emit('pause')"
+      >
         <LucideIcon name="pause" :size="13" />
       </button>
       <button class="sr-row__action sr-row__action--primary" title="Xem chi tiết" @click="$emit('view-detail')">
@@ -81,79 +95,54 @@
 
 <script setup>
 import { computed } from 'vue'
+import {
+  getAttemptStatusMeta,
+  getInitialsFromName,
+  getRiskBandVisual,
+  isAttemptPaused,
+  isAttemptTerminal,
+  resolveRiskBand
+} from '../../utils/proctorStatusMeta'
 
-const props = defineProps({
-  student: { type: Object, required: true },
-  selected: { type: Boolean, default: false }
-})
-defineEmits(['toggle-select', 'view-detail', 'warn', 'pause'])
-
-const studentName = computed(() =>
-  props.student.student || props.student.name || props.student.userName || '—'
-)
-const initials = computed(() => {
-  const name = studentName.value
-  if (!name || name === '—') return '?'
-  const parts = name.split(' ')
-  return (parts[parts.length - 1].charAt(0) + parts[0].charAt(0)).toUpperCase()
-})
-
-const riskScore = computed(() => Math.round(Number(props.student.riskScore || 0)))
-const riskBand = computed(() => {
-  if (riskScore.value >= 60) return 'danger'
-  if (riskScore.value >= 30) return 'warn'
-  return 'clean'
-})
-const riskColor = computed(() =>
-  riskScore.value >= 60 ? '#f87171'
-    : riskScore.value >= 30 ? '#fbbf24'
-    : '#4ade80'
-)
-const avatarBg = computed(() =>
-  riskScore.value >= 60 ? 'rgba(248,113,113,0.12)'
-    : riskScore.value >= 30 ? 'rgba(251,191,36,0.12)'
-    : 'rgba(74,222,128,0.12)'
-)
-const avatarColor = computed(() => riskColor.value)
-
-const statusLabel = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED/.test(s)) return 'Đã nộp'
-  if (/STOPPED/.test(s)) return 'Đã dừng'
-  if (/PAUSED/.test(s)) return 'Tạm dừng'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'Đang thi'
-  return props.student.status || '—'
-})
-const statusIcon = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED/.test(s)) return 'check-circle'
-  if (/STOPPED/.test(s)) return 'x-circle'
-  if (/PAUSED/.test(s)) return 'pause-circle'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'play-circle'
-  return 'help-circle'
-})
-const statusColor = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED/.test(s)) return '#4ade80'
-  if (/STOPPED/.test(s)) return '#f87171'
-  if (/PAUSED/.test(s)) return '#fbbf24'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return '#a5b4fc'
-  return '#94a3b8'
-})
-
-const violationCount = computed(() => (props.student.reasons || []).length)
-const violationMap = {
+const VIOLATION_MAP = {
   TAB_SWITCH: { icon: 'layers', tagClass: 'sr-row__tag--warn' },
   COPY_PASTE: { icon: 'copy', tagClass: 'sr-row__tag--danger' },
   DEVTOOLS_OPEN: { icon: 'code', tagClass: 'sr-row__tag--danger' },
   EXIT_FULLSCREEN: { icon: 'minimize', tagClass: 'sr-row__tag--warn' },
   DUPLICATE_IP: { icon: 'globe', tagClass: 'sr-row__tag--danger' },
-  MULTI_MONITOR: { icon: 'monitor', tagClass: 'sr-row__tag--danger' },
+  MULTI_MONITOR: { icon: 'monitor', tagClass: 'sr-row__tag--danger' }
 }
+
+const props = defineProps({
+  student: { type: Object, required: true },
+  selected: { type: Boolean, default: false }
+})
+defineEmits(['toggle-select', 'view-detail', 'warn', 'pause', 'resume'])
+
+const studentName = computed(() =>
+  props.student.student || props.student.name || props.student.userName || '—'
+)
+const initials = computed(() => getInitialsFromName(studentName.value))
+
+const riskScore = computed(() => Math.round(Number(props.student.riskScore || 0)))
+const riskBand = computed(() => resolveRiskBand(riskScore.value))
+const riskVisual = computed(() => getRiskBandVisual(riskScore.value))
+const riskColor = computed(() => riskVisual.value.color)
+const avatarBg = computed(() => riskVisual.value.bg)
+const avatarColor = computed(() => riskColor.value)
+
+const statusMeta = computed(() => getAttemptStatusMeta(props.student.status))
+const statusLabel = computed(() => statusMeta.value.label)
+const statusIcon = computed(() => statusMeta.value.icon)
+const statusColor = computed(() => statusMeta.value.color)
+const isPaused = computed(() => isAttemptPaused(props.student.status))
+const isTerminal = computed(() => isAttemptTerminal(props.student.status))
+
+const violationCount = computed(() => (props.student.reasons || []).length)
 const topViolations = computed(() =>
   (props.student.reasons || []).slice(0, 3).map(r => ({
     type: r,
-    ...(violationMap[r] || { icon: 'alert-circle', tagClass: 'sr-row__tag--neutral' })
+    ...(VIOLATION_MAP[r] || { icon: 'alert-circle', tagClass: 'sr-row__tag--neutral' })
   }))
 )
 </script>
@@ -163,22 +152,23 @@ const topViolations = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 0.625rem 0.875rem;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255,255,255,0.06);
+  padding: 0.7rem 0.875rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: all 0.15s;
   border-left: 3px solid transparent;
+  box-shadow: var(--ds-shadow-xs);
 }
-.sr-row:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(99,102,241,0.3); }
-.sr-row--selected { border-color: rgba(99,102,241,0.5); box-shadow: 0 0 0 1px rgba(99,102,241,0.2); }
-.sr-row--danger { border-left-color: rgba(248,113,113,0.6); }
-.sr-row--warn { border-left-color: rgba(251,191,36,0.6); }
-.sr-row--clean { border-left-color: rgba(74,222,128,0.4); }
+.sr-row:hover { background: var(--ds-surface-muted); border-color: var(--ds-primary-border); transform: translateY(-1px); box-shadow: var(--ds-shadow-sm); }
+.sr-row--selected { border-color: var(--ds-primary); box-shadow: var(--ds-shadow-focus); }
+.sr-row--danger { border-left-color: var(--ds-danger); }
+.sr-row--warn { border-left-color: var(--ds-warning); }
+.sr-row--clean { border-left-color: var(--ds-success); }
 
 .sr-row__check { flex-shrink: 0; }
-.sr-row__checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: #6366f1; }
+.sr-row__checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ds-primary); }
 
 .sr-row__identity {
   display: flex; align-items: center; gap: 0.625rem;
@@ -186,61 +176,66 @@ const topViolations = computed(() =>
 }
 .sr-row__avatar {
   position: relative;
-  width: 34px; height: 34px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.sr-row__avatar-text { font-size: 0.75rem; font-weight: 900; }
+.sr-row__avatar-text { font-size: 0.78rem; font-weight: 800; }
 .sr-row__status-dot {
   position: absolute; bottom: 0; right: 0;
   width: 9px; height: 9px; border-radius: 50%;
-  border: 2px solid rgba(30,41,59,0.8);
+  border: 2px solid var(--ds-surface);
 }
 .sr-row__name-group { min-width: 0; }
 .sr-row__name {
-  font-size: 0.8rem; font-weight: 700; color: white;
+  font-size: 0.82rem; font-weight: 700; color: var(--ds-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
 }
 .sr-row__status {
-  display: flex; align-items: center; gap: 0.25rem;
-  font-size: 0.65rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.68rem; font-weight: 600;
 }
 
 .sr-row__cell { display: flex; align-items: center; gap: 0.375rem; }
 .sr-row__cell--violations { min-width: 48px; justify-content: center; }
 .sr-row__cell--risk { flex: 1; min-width: 120px; gap: 0.5rem; }
-.sr-row__cell--tags { min-width: 80px; gap: 0.2rem; }
-.sr-row__cell--actions { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; margin-left: auto; }
+.sr-row__cell--tags { min-width: 80px; gap: 0.25rem; }
+.sr-row__cell--actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; margin-left: auto; }
 
 .sr-row__violation-badge {
-  font-size: 0.75rem; font-weight: 900;
-  padding: 0.15rem 0.5rem; border-radius: 9999px;
+  font-size: 0.75rem; font-weight: 800;
+  padding: 0.18rem 0.55rem; border-radius: 9999px;
   font-variant-numeric: tabular-nums;
 }
-.sr-row__muted { font-size: 0.75rem; color: rgba(255,255,255,0.3); }
+.sr-row__violation-badge--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
+.sr-row__violation-badge--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
+.sr-row__muted { font-size: 0.78rem; color: var(--ds-text-muted); }
 
-.sr-row__risk-bar { flex: 1; height: 4px; border-radius: 9999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.sr-row__risk-bar { flex: 1; height: 5px; border-radius: 9999px; background: var(--ds-gray-100); overflow: hidden; }
 .sr-row__risk-fill { height: 100%; border-radius: 9999px; transition: width 0.4s ease; will-change: width; }
-.sr-row__risk-score { font-size: 0.8rem; font-weight: 900; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+.sr-row__risk-score { font-size: 0.82rem; font-weight: 800; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .sr-row__tag {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: var(--ds-radius);
+  width: 22px; height: 22px; border-radius: var(--ds-radius-md);
 }
-.sr-row__tag--danger { color: #f87171; background: rgba(248,113,113,0.1); }
-.sr-row__tag--warn { color: #fbbf24; background: rgba(251,191,36,0.1); }
-.sr-row__tag--neutral { color: #94a3b8; background: rgba(148,163,184,0.08); }
+.sr-row__tag--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
+.sr-row__tag--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
+.sr-row__tag--neutral { color: var(--ds-text-secondary); background: var(--ds-surface-muted); }
 
 .sr-row__action {
-  width: 28px; height: 28px;
+  width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: var(--ds-radius);
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.5);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
   cursor: pointer; transition: all 0.15s;
 }
-.sr-row__action:hover { background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); }
-.sr-row__action--primary { color: #a5b4fc; border-color: rgba(99,102,241,0.2); }
-.sr-row__action--primary:hover { background: rgba(165,180,252,0.12); border-color: rgba(165,180,252,0.3); color: #a5b4fc; }
+.sr-row__action:hover:not(:disabled) { background: var(--ds-surface-muted); color: var(--ds-text); border-color: var(--ds-primary-border); }
+.sr-row__action:disabled { opacity: 0.4; cursor: not-allowed; }
+.sr-row__action--primary { color: var(--ds-primary); border-color: var(--ds-primary-border); background: var(--ds-primary-soft); }
+.sr-row__action--primary:hover:not(:disabled) { background: var(--ds-primary); color: #fff; border-color: var(--ds-primary); }
+.sr-row__action--resume { color: var(--ds-success); background: var(--ds-success-bg); border-color: var(--ds-success-soft); }
+.sr-row__action--resume:hover:not(:disabled) { background: var(--ds-success); color: #fff; border-color: var(--ds-success); }
 </style>

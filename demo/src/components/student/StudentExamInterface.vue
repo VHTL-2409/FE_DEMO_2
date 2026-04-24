@@ -683,6 +683,9 @@ const handleProctorActions = (actions = [], payload = {}) => {
   if (normalized.includes('PAUSE_ATTEMPT') || normalized.includes('ATTEMPT_PAUSED')) {
     applyAttemptStatus(payload.status || 'PAUSED', payload.message || 'Phiên thi đang được giám thị kiểm tra.')
   }
+  if (normalized.includes('RESUME_ATTEMPT') || normalized.includes('ATTEMPT_RESUMED')) {
+    void resumeFromPause(payload.message)
+  }
   if (normalized.includes('SHOW_WARNING') || normalized.includes('WARNING_SENT')) {
     showModal({
       type: 'warning',
@@ -727,6 +730,7 @@ const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDO
 }
 
 const applyAttemptStatus = (status, message = '') => {
+  const previous = attemptStatus.value
   const normalized = String(status || '').toUpperCase() || 'IN_PROGRESS'
   attemptStatus.value = normalized
   examSessionStore.setRiskState({ status: normalized })
@@ -738,7 +742,37 @@ const applyAttemptStatus = (status, message = '') => {
     stopMediaStream()
     return
   }
+  // Active again — re-engage proctoring resources only if we just left a paused state
+  if (previous === 'PAUSED' && (normalized === 'ACTIVE' || normalized === 'IN_PROGRESS')) {
+    void resumeFromPause(message)
+    return
+  }
   isSuspended.value = false
+  suspensionMessage.value = ''
+}
+
+const resumeFromPause = async (message = '') => {
+  isSuspended.value = false
+  suspensionMessage.value = ''
+  attemptStatus.value = 'IN_PROGRESS'
+  examSessionStore.setRiskState({ status: 'IN_PROGRESS' })
+
+  // Re-init camera/mic stopped during pause so monitoring keeps working
+  if (!isPracticeExam.value && shouldCheckDevices.value && !mediaStreamRef.value) {
+    await checkDevices()
+  }
+  // Restart heartbeat (was stopped via stopMediaStream chain when paused)
+  startHeartbeat()
+  await syncAttemptStatus()
+
+  showModal({
+    type: 'info',
+    title: 'Bạn được phép tiếp tục thi',
+    subtitle: 'Giám thị đã hoàn tất kiểm tra.',
+    message: message || 'Bạn có thể tiếp tục làm bài. Vui lòng tuân thủ quy định phòng thi.',
+    confirmLabel: 'Tiếp tục thi'
+  })
+  toast.success('Giám thị đã cho phép bạn tiếp tục bài thi.')
 }
 
 const enforceDeviceAccess = async () => {
@@ -795,6 +829,9 @@ const connectProctorRealtime = async () => {
         }
         if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
           applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'), payload.message || 'Bài thi đã bị đình chỉ.')
+        }
+        if (type === 'ATTEMPT_RESUMED') {
+          void resumeFromPause(payload.message)
         }
         if (type === 'RISK_UPDATE') {
           syncRiskState({ riskScore: payload.riskScore, riskLevel: payload.riskLevel, status: payload.status })

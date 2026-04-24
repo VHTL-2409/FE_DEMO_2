@@ -69,7 +69,21 @@
         <button class="sc-card__action-btn sc-card__action-btn--warn" @click="$emit('warn')" title="Gửi cảnh báo">
           <LucideIcon name="alert-triangle" :size="12" />
         </button>
-        <button class="sc-card__action-btn sc-card__action-btn--pause" @click="$emit('pause')" title="Tạm dừng">
+        <button
+          v-if="isPaused"
+          class="sc-card__action-btn sc-card__action-btn--resume"
+          @click="$emit('resume')"
+          title="Cho phép tiếp tục thi"
+        >
+          <LucideIcon name="play" :size="12" />
+        </button>
+        <button
+          v-else
+          class="sc-card__action-btn sc-card__action-btn--pause"
+          :disabled="isTerminal"
+          @click="$emit('pause')"
+          :title="isTerminal ? 'Bài thi đã kết thúc' : 'Tạm dừng'"
+        >
           <LucideIcon name="pause" :size="12" />
         </button>
         <button class="sc-card__action-btn sc-card__action-btn--detail" @click="$emit('view-detail')" title="Xem chi tiết">
@@ -82,80 +96,54 @@
 
 <script setup>
 import { computed } from 'vue'
+import {
+  getAttemptStatusMeta,
+  getInitialsFromName,
+  getRiskBandVisual,
+  isAttemptPaused,
+  isAttemptTerminal,
+  resolveRiskBand
+} from '../../utils/proctorStatusMeta'
 
-const props = defineProps({
-  student: { type: Object, required: true },
-  selected: { type: Boolean, default: false }
-})
-defineEmits(['toggle-select', 'view-detail', 'warn', 'pause'])
-
-const studentName = computed(() =>
-  props.student.student || props.student.name || props.student.userName || '—'
-)
-const initials = computed(() => {
-  const name = studentName.value
-  if (!name || name === '—') return '?'
-  const parts = name.split(' ')
-  return (parts[parts.length - 1].charAt(0) + parts[0].charAt(0)).toUpperCase()
-})
-
-const riskScore = computed(() => Math.round(Number(props.student.riskScore || 0)))
-const riskBand = computed(() => {
-  if (riskScore.value >= 60) return 'danger'
-  if (riskScore.value >= 30) return 'warn'
-  return 'clean'
-})
-const riskColor = computed(() =>
-  riskScore.value >= 60 ? '#f87171'
-    : riskScore.value >= 30 ? '#fbbf24'
-    : '#4ade80'
-)
-const avatarBg = computed(() =>
-  riskScore.value >= 60 ? 'rgba(248,113,113,0.12)'
-    : riskScore.value >= 30 ? 'rgba(251,191,36,0.12)'
-    : 'rgba(74,222,128,0.12)'
-)
-const avatarColor = computed(() => riskColor.value)
-
-const statusLabel = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED|AUTO_SUBMITTED/.test(s)) return 'Đã nộp'
-  if (/STOPPED/.test(s)) return 'Đã dừng'
-  if (/PAUSED/.test(s)) return 'Tạm dừng'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'Đang thi'
-  return props.student.status || '—'
-})
-const statusIcon = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED/.test(s)) return 'check-circle'
-  if (/STOPPED/.test(s)) return 'x-circle'
-  if (/PAUSED/.test(s)) return 'pause-circle'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'play-circle'
-  return 'help-circle'
-})
-const statusColor = computed(() => {
-  const s = String(props.student.status || '').toUpperCase()
-  if (/SUBMITTED/.test(s)) return '#4ade80'
-  if (/STOPPED/.test(s)) return '#f87171'
-  if (/PAUSED/.test(s)) return '#fbbf24'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return '#a5b4fc'
-  return '#94a3b8'
-})
-
-const violationCount = computed(() => (props.student.reasons || []).length)
-
-const violationMap = {
+const VIOLATION_MAP = {
   TAB_SWITCH: { label: 'Tab', icon: 'layers', tagClass: 'sc-card__violation-tag--warn' },
   COPY_PASTE: { label: 'Copy', icon: 'copy', tagClass: 'sc-card__violation-tag--danger' },
   DEVTOOLS_OPEN: { label: 'DevTools', icon: 'code', tagClass: 'sc-card__violation-tag--danger' },
   EXIT_FULLSCREEN: { label: 'Fullscreen', icon: 'minimize', tagClass: 'sc-card__violation-tag--warn' },
   DUPLICATE_IP: { label: 'IP trùng', icon: 'globe', tagClass: 'sc-card__violation-tag--danger' },
-  MULTI_MONITOR: { label: 'Multi', icon: 'monitor', tagClass: 'sc-card__violation-tag--danger' },
+  MULTI_MONITOR: { label: 'Multi', icon: 'monitor', tagClass: 'sc-card__violation-tag--danger' }
 }
+
+const props = defineProps({
+  student: { type: Object, required: true },
+  selected: { type: Boolean, default: false }
+})
+defineEmits(['toggle-select', 'view-detail', 'warn', 'pause', 'resume'])
+
+const studentName = computed(() =>
+  props.student.student || props.student.name || props.student.userName || '—'
+)
+const initials = computed(() => getInitialsFromName(studentName.value))
+
+const riskScore = computed(() => Math.round(Number(props.student.riskScore || 0)))
+const riskBand = computed(() => resolveRiskBand(riskScore.value))
+const riskVisual = computed(() => getRiskBandVisual(riskScore.value))
+const riskColor = computed(() => riskVisual.value.color)
+const avatarBg = computed(() => riskVisual.value.bg)
+const avatarColor = computed(() => riskColor.value)
+
+const statusMeta = computed(() => getAttemptStatusMeta(props.student.status))
+const statusLabel = computed(() => statusMeta.value.label)
+const statusIcon = computed(() => statusMeta.value.icon)
+const statusColor = computed(() => statusMeta.value.color)
+const isPaused = computed(() => isAttemptPaused(props.student.status))
+const isTerminal = computed(() => isAttemptTerminal(props.student.status))
+
+const violationCount = computed(() => (props.student.reasons || []).length)
 const topViolations = computed(() =>
   (props.student.reasons || []).slice(0, 3).map(r => ({
     type: r,
-    ...(violationMap[r] || { label: r, icon: 'alert-circle', tagClass: 'sc-card__violation-tag--neutral' })
+    ...(VIOLATION_MAP[r] || { label: r, icon: 'alert-circle', tagClass: 'sc-card__violation-tag--neutral' })
   }))
 )
 </script>
@@ -163,26 +151,26 @@ const topViolations = computed(() =>
 <style scoped>
 .sc-card {
   position: relative;
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-xl);
   overflow: hidden;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  box-shadow: var(--ds-shadow-xs);
 }
 .sc-card:hover {
-  border-color: rgba(99,102,241,0.4);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.2), 0 8px 24px rgba(0,0,0,0.3);
+  border-color: var(--ds-primary-border);
+  box-shadow: var(--ds-shadow-md);
   transform: translateY(-1px);
 }
 .sc-card--selected {
-  border-color: rgba(99,102,241,0.6);
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+  border-color: var(--ds-primary);
+  box-shadow: var(--ds-shadow-focus);
 }
-.sc-card--danger { border-top: 2px solid rgba(248,113,113,0.6); }
-.sc-card--warn { border-top: 2px solid rgba(251,191,36,0.6); }
-.sc-card--clean { border-top: 2px solid rgba(74,222,128,0.4); }
+.sc-card--danger { border-top: 2px solid var(--ds-danger); }
+.sc-card--warn { border-top: 2px solid var(--ds-warning); }
+.sc-card--clean { border-top: 2px solid var(--ds-success); }
 
 .sc-card__strip { display: none; }
 
@@ -194,30 +182,30 @@ const topViolations = computed(() =>
 }
 .sc-card__avatar {
   position: relative;
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.sc-card__avatar-text { font-size: 0.8rem; font-weight: 900; }
+.sc-card__avatar-text { font-size: 0.82rem; font-weight: 800; }
 .sc-card__status-dot {
   position: absolute; bottom: 0; right: 0;
   width: 10px; height: 10px; border-radius: 50%;
-  border: 2px solid rgba(30,41,59,0.8);
+  border: 2px solid var(--ds-surface);
 }
 .sc-card__identity { flex: 1; min-width: 0; }
 .sc-card__name {
-  font-size: 0.8rem; font-weight: 800; color: white;
+  font-size: 0.825rem; font-weight: 700; color: var(--ds-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 0.2rem;
 }
 .sc-card__status {
-  display: flex; align-items: center; gap: 0.25rem;
-  font-size: 0.68rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.7rem; font-weight: 600;
 }
 
 .sc-card__check-wrap { flex-shrink: 0; }
 .sc-card__check {
   width: 15px; height: 15px; cursor: pointer;
-  accent-color: #6366f1;
+  accent-color: var(--ds-primary);
 }
 
 .sc-card__risk {
@@ -226,56 +214,60 @@ const topViolations = computed(() =>
 }
 .sc-card__risk-bar-wrap { flex: 1; }
 .sc-card__risk-bar {
-  height: 4px; border-radius: 9999px;
-  background: rgba(255,255,255,0.08); overflow: hidden;
+  height: 5px; border-radius: 9999px;
+  background: var(--ds-gray-100); overflow: hidden;
 }
 .sc-card__risk-fill {
   height: 100%; border-radius: 9999px;
   transition: width 0.4s ease; will-change: width;
 }
 .sc-card__risk-score {
-  font-size: 0.8rem; font-weight: 900;
-  min-width: 24px; text-align: right;
+  font-size: 0.82rem; font-weight: 800;
+  min-width: 26px; text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .sc-card__violations {
-  display: flex; gap: 0.25rem; flex-wrap: wrap;
+  display: flex; gap: 0.3rem; flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
 .sc-card__violation-tag {
-  display: inline-flex; align-items: center; gap: 0.2rem;
-  padding: 0.15rem 0.5rem;
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 9999px;
-  font-size: 0.62rem; font-weight: 700;
+  font-size: 0.65rem; font-weight: 700;
 }
-.sc-card__violation-tag--danger { color: #f87171; background: rgba(248,113,113,0.12); }
-.sc-card__violation-tag--warn { color: #fbbf24; background: rgba(251,191,36,0.12); }
-.sc-card__violation-tag--neutral { color: #94a3b8; background: rgba(148,163,184,0.1); }
+.sc-card__violation-tag--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
+.sc-card__violation-tag--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
+.sc-card__violation-tag--neutral { color: var(--ds-text-secondary); background: var(--ds-surface-muted); }
 .sc-card__violation-more {
-  font-size: 0.62rem; color: #94a3b8;
-  padding: 0.15rem 0.4rem;
-  background: rgba(148,163,184,0.08);
-  border-radius: 9999px;
+  font-size: 0.65rem; color: var(--ds-text-muted);
+  padding: 0.18rem 0.5rem;
+  background: var(--ds-surface-muted);
+  border-radius: 9999px; font-weight: 700;
 }
 
 .sc-card__actions {
   display: flex; gap: 0.375rem;
   padding-top: 0.625rem;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--ds-border);
 }
 .sc-card__action-btn {
-  flex: 1; height: 28px;
+  flex: 1; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: var(--ds-radius);
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
   cursor: pointer; transition: all 0.15s;
 }
-.sc-card__action-btn--warn { color: #fbbf24; }
-.sc-card__action-btn--warn:hover { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.3); }
-.sc-card__action-btn--pause { color: #a5b4fc; }
-.sc-card__action-btn--pause:hover { background: rgba(165,180,252,0.12); border-color: rgba(165,180,252,0.3); }
-.sc-card__action-btn--detail { color: #94a3b8; }
-.sc-card__action-btn--detail:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); color: white; }
+.sc-card__action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sc-card__action-btn--warn { color: var(--ds-warning); }
+.sc-card__action-btn--warn:hover:not(:disabled) { background: var(--ds-warning-bg); border-color: var(--ds-warning-soft); }
+.sc-card__action-btn--pause { color: var(--ds-primary); }
+.sc-card__action-btn--pause:hover:not(:disabled) { background: var(--ds-primary-soft); border-color: var(--ds-primary-border); }
+.sc-card__action-btn--resume { color: var(--ds-success); background: var(--ds-success-bg); border-color: var(--ds-success-soft); }
+.sc-card__action-btn--resume:hover:not(:disabled) { background: var(--ds-success); color: #fff; border-color: var(--ds-success); }
+.sc-card__action-btn--detail { color: var(--ds-text-secondary); }
+.sc-card__action-btn--detail:hover:not(:disabled) { background: var(--ds-surface-muted); border-color: var(--ds-primary-border); color: var(--ds-text); }
 </style>

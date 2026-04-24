@@ -67,7 +67,7 @@ const props = defineProps({
   confirmLabel: { type: String, default: 'Xác nhận' },
   cancelLabel: { type: String, default: 'Hủy' },
   loadingLabel: { type: String, default: 'Đang xử lý...' },
-  variant: { type: String, default: 'primary', validator: (v) => ['primary', 'danger', 'warning'].includes(v) },
+  variant: { type: String, default: 'primary', validator: (v) => ['primary', 'danger', 'warning', 'success'].includes(v) },
   icon: { type: String, default: 'help' },
   persistent: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
@@ -95,7 +95,8 @@ const confirmClass = computed(() => {
   const map = {
     primary: 'bg-[var(--ds-primary)] hover:bg-[var(--ds-primary-hover)]',
     danger: 'bg-[var(--ds-danger)] hover:bg-[var(--ds-danger)]/90',
-    warning: 'bg-[var(--ds-accent)] hover:bg-[var(--ds-accent)]/90'
+    warning: 'bg-[var(--ds-accent)] hover:bg-[var(--ds-accent)]/90',
+    success: 'bg-[var(--ds-success)] hover:bg-[var(--ds-success)]/90'
   }
   return map[props.variant] || map.primary
 })
@@ -104,7 +105,8 @@ const iconBgClass = computed(() => {
   const map = {
     primary: 'bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]',
     danger: 'bg-[var(--ds-danger-bg)] text-[var(--ds-danger)]',
-    warning: 'bg-[var(--ds-accent-bg)] text-[var(--ds-accent)]'
+    warning: 'bg-[var(--ds-accent-bg)] text-[var(--ds-accent)]',
+    success: 'bg-[var(--ds-success-soft)] text-[var(--ds-success)]'
   }
   return map[props.variant] || map.primary
 })
@@ -113,7 +115,8 @@ const iconColorClass = computed(() => {
   const map = {
     primary: 'text-[var(--ds-primary)]',
     danger: 'text-[var(--ds-danger)]',
-    warning: 'text-[var(--ds-accent)]'
+    warning: 'text-[var(--ds-accent)]',
+    success: 'text-[var(--ds-success)]'
   }
   return map[props.variant] || map.primary
 })
