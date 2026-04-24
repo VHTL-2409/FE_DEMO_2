@@ -369,15 +369,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchExamList } from '../../services/examService'
+import { fetchExamList } from '../../../services/examService'
 import {
   runPlagiarismAnalysis,
   runExamTimingAnalysis,
   runStatisticalAnalysis,
   runExamBiometricsAnalysis,
   runIpReputationAnalysis,
-} from '../../services/fraudAnalysisService'
-import { gradeAttempt } from '../../services/gradingService'
+} from '../../../services/fraudAnalysisService'
+import { gradeAttempt } from '../../../services/gradingService'
 
 const props = defineProps({
   initialExamId: {
