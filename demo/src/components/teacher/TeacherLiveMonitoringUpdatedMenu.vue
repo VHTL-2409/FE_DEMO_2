@@ -600,13 +600,15 @@ const openWarningModal = (student) => openActionModal(student, 'warn')
 const openPauseModal = (student) => openActionModal(student, 'pause')
 const openResumeModal = (student) => openActionModal(student, 'resume')
 const openStudentDetail = (student) => {
+  const studentId = student.userId || student.studentId || student.id
   router.push({
     path: '/teacher/live-monitoring/student-detail',
     query: {
-      attemptId: String(student.id),
+      attemptId: String(student.id || student.attemptId),
       examId: examId.value ? String(examId.value) : '',
-      student: student.student || student.email || '—',
-      studentId: String(student.id)
+      student: student.student || student.name || student.userName || '—',
+      studentId: studentId != null ? String(studentId) : '',
+      studentEmail: student.email || ''
     }
   })
 }
@@ -714,15 +716,33 @@ const eventTypeColor = (type) => ({ ALERT: 'warn', WARN: 'warn', PAUSE: 'info', 
 
 // ── Watchers ────────────────────────────────────────────────────────────
 watch(() => route.path === '/teacher/live-monitoring/session' ? { ...route.query } : null, (q) => { if (q?.examId) writeMonitoringSessionQuery(q) }, { deep: true, immediate: true })
+
+// Khi examId đổi (hoặc store còn dính exam cũ): reset state ngay trước khi fetch
+const resetSessionState = () => {
+  store.setCards([])
+  store.clearSelection()
+  liveAlerts.value = []
+  recentEvents.value = []
+  selectedIds.value = []
+}
+
 watch(examId, async (newId, oldId) => {
   if (!newId || newId === oldId) return
-  await loadAttempts()
+  resetSessionState()
   disconnectRealtime()
+  await loadAttempts()
   await connectRealtime()
 })
 
 // ── Lifecycle ───────────────────────────────────────────────────────────
 onMounted(async () => {
+  // Nếu store còn cards của exam khác, dọn trước để tránh hiển thị stale data
+  if (store.selectedExamId && store.selectedExamId !== examId.value) {
+    resetSessionState()
+  }
+  if (examId.value) {
+    store.setSelectedExam(examId.value)
+  }
   await loadAttempts()
   await connectRealtime()
   // Polling fallback chỉ chạy khi mất WS, giảm tần suất khi WS ổn định

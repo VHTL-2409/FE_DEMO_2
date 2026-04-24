@@ -329,7 +329,7 @@
                 </div>
                 <div class="sd-signal__body">
                   <p class="sd-signal__type">{{ getVLabel(sig.signalType) }}</p>
-                  <p class="sd-signal__evidence">{{ sig.evidence || '—' }}</p>
+                  <p class="sd-signal__evidence">{{ extractDetailsText(sig.evidence) || '—' }}</p>
                 </div>
                 <div class="sd-signal__meta">
                   <span class="sd-signal__conf">{{ Math.round((sig.confidence || 0) * 100) }}%</span>
@@ -583,16 +583,23 @@ const realtimeFeed = ref([])
 let refreshTimer = null
 
 // ── Student info ──────────────────────────────────────────────────────────────
+// Fallback chuỗi: riskData (API response) → store cards (đã fetch ở list view) →
+// route.query (deep-link). Tránh khoảnh khắc placeholder "—" hoặc dính tên thí sinh trước đó.
 const studentName = computed(() => {
   const s = riskData.value.student
-  return s?.name || s?.username || '—'
+  if (s?.name || s?.username) return s.name || s.username
+  if (storeCard.value?.student || storeCard.value?.name) return storeCard.value.student || storeCard.value.name
+  return route.query.student || route.query.studentName || '—'
 })
 const studentCode = computed(() => {
   const s = riskData.value.student
-  if (!s) return '—'
-  return s.studentCode || String(s.id || '—')
+  if (s) return s.studentCode || String(s.id || '—')
+  if (storeCard.value?.studentCode) return storeCard.value.studentCode
+  return route.query.studentId ? String(route.query.studentId) : '—'
 })
-const studentEmail = computed(() => riskData.value.student?.email || '')
+const studentEmail = computed(() =>
+  riskData.value.student?.email || storeCard.value?.email || route.query.studentEmail || ''
+)
 const studentInitials = computed(() => {
   const name = studentName.value
   if (!name || name === '—') return '?'
@@ -603,8 +610,18 @@ const studentInitials = computed(() => {
 })
 
 // ── Attempt status ────────────────────────────────────────────────────────────
+// Fallback xuống store cards: cho phép giáo viên click resume ngay khi vào URL
+// trực tiếp, không phải đợi /risk endpoint trả response
+const storeCard = computed(() => {
+  if (!attemptId.value) return null
+  const id = Number(attemptId.value)
+  return attempts.value.find(c => (c.id || c.attemptId) === id || String(c.id || c.attemptId) === String(attemptId.value)) || null
+})
+const resolvedStatus = computed(() =>
+  riskData.value.status || riskData.value.attempt?.status || storeCard.value?.status || ''
+)
 const attemptStatusToken = computed(() => {
-  const s = String(riskData.value.status || riskData.value.attempt?.status || '').toUpperCase()
+  const s = String(resolvedStatus.value).toUpperCase()
   if (/SUBMITTED/.test(s)) return 'SUBMITTED'
   if (/STOPPED/.test(s)) return 'STOPPED'
   if (/PAUSED/.test(s)) return 'PAUSED'
@@ -616,8 +633,8 @@ const attemptStatusLabel = computed(() => attemptStatusMeta.value.label)
 const attemptStatusColor = computed(() => attemptStatusMeta.value.color)
 const attemptStatusBg = computed(() => attemptStatusMeta.value.bg)
 const attemptStatusIcon = computed(() => attemptStatusMeta.value.icon)
-const isStudentPaused = computed(() => isAttemptPaused(riskData.value.status || riskData.value.attempt?.status))
-const isStudentTerminal = computed(() => isAttemptTerminal(riskData.value.status || riskData.value.attempt?.status))
+const isStudentPaused = computed(() => isAttemptPaused(resolvedStatus.value))
+const isStudentTerminal = computed(() => isAttemptTerminal(resolvedStatus.value))
 const sessionTime = computed(() => {
   const ts = riskData.value.attempt?.startedAt
   if (!ts) return '—'
@@ -633,7 +650,9 @@ const alertCount = computed(() => attempts.value.filter(a => Number(a.riskScore 
 const submittedCount = computed(() => attempts.value.filter(a => /SUBMITTED/i.test(a.status || '')).length)
 
 // ── Risk ──────────────────────────────────────────────────────────────────────
-const riskScore = computed(() => Number(riskData.value.score ?? 0))
+const riskScore = computed(() =>
+  Number(riskData.value.score ?? storeCard.value?.riskScore ?? 0)
+)
 const riskBand = computed(() => {
   const s = riskScore.value
   if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'danger'
@@ -678,6 +697,30 @@ const gaugeArc = computed(() => {
   return `${ratio * circ} ${circ}`
 })
 
+// BE đôi khi serialize toàn bộ payload xuống cột `details` dưới dạng JSON
+// chuỗi → cần parse và rút field `details` text để hiện đẹp.
+function extractDetailsText(raw) {
+  if (raw == null) return ''
+  if (typeof raw !== 'string') {
+    if (typeof raw === 'object') return raw.details || raw.message || raw.evidence || ''
+    return String(raw)
+  }
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  // Heuristic: chỉ thử parse khi trông như JSON object/array
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed && typeof parsed === 'object') {
+        return parsed.details || parsed.message || parsed.evidence || parsed.reason || ''
+      }
+    } catch {
+      // ignore: fall through to raw
+    }
+  }
+  return raw
+}
+
 // ── Timeline events ───────────────────────────────────────────────────────────
 const timelineEvents = computed(() => {
   const evts = []
@@ -692,7 +735,7 @@ const timelineEvents = computed(() => {
       key,
       at,
       eventType,
-      details: item.details || item.evidence || '',
+      details: extractDetailsText(item.details) || extractDetailsText(item.evidence) || '',
       severity: item.severity || mapSeverity(eventType, item.confidence)
     })
   }
@@ -954,10 +997,19 @@ function handleEscape(e) {
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
+function resetAttemptState() {
+  riskData.value = {}
+  timeline.value = []
+  realtimeFeed.value = []
+  error.value = ''
+  lastUpdatedAt.value = null
+}
+
 watch(attemptId, async (next, prev) => {
   if (!next || next === prev) return
+  // Reset trước khi disconnect để UI không kẹt vào data thí sinh trước
+  resetAttemptState()
   realtime.disconnect()
-  realtimeFeed.value = []
   await loadData()
   await connectRealtime()
 })
