@@ -9,10 +9,14 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+
 public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> {
     List<FraudSignal> findByAttemptOrderByCreatedAtAsc(ExamAttempt attempt);
 
     List<FraudSignal> findTop20ByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
+
+    List<FraudSignal> findTopNByAttemptOrderByCreatedAtDesc(ExamAttempt attempt, PageRequest pageRequest);
 
     long countByAttempt(ExamAttempt attempt);
 

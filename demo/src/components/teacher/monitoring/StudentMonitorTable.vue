@@ -36,6 +36,10 @@
             <LucideIcon name="pause" />
             Tạm dừng
           </button>
+          <button v-if="hasPausedSelected" type="button" class="smt__batch-btn smt__batch-btn--resume" @click="handleBatchResume">
+            <LucideIcon name="play_arrow" />
+            Khôi phục ({{ pausedSelectedCount }})
+          </button>
           <button type="button" class="smt__batch-btn smt__batch-btn--danger" @click="handleBatchInvalidate">
             <LucideIcon name="do_not_disturb_on" />
             Đình chỉ
@@ -219,10 +223,20 @@
                   >
                     <LucideIcon name="warning" />
                   </button>
+                  <!-- Context-aware pause / resume button -->
                   <button
+                    v-if="statusColor(student) === 'paused'"
                     type="button"
-                    class="smt__action-btn"
-                    :class="{ 'smt__action-btn--danger': student.status !== 'PAUSED' }"
+                    class="smt__action-btn smt__action-btn--resume"
+                    title="Cho phép tiếp tục"
+                    @click="$emit('resume', student)"
+                  >
+                    <LucideIcon name="play_arrow" />
+                  </button>
+                  <button
+                    v-else-if="statusColor(student) !== 'submitted'"
+                    type="button"
+                    class="smt__action-btn smt__action-btn--danger"
                     title="Tạm dừng"
                     @click="$emit('pause', student)"
                   >
@@ -330,7 +344,7 @@ const props = defineProps({
   sortBy: { type: String, default: 'risk' }
 })
 
-const emit = defineEmits(['warn', 'pause', 'view-detail', 'batch-warn', 'batch-pause', 'batch-invalidate'])
+const emit = defineEmits(['warn', 'pause', 'resume', 'view-detail', 'batch-warn', 'batch-pause', 'batch-resume', 'batch-invalidate'])
 
 const selectedIds = ref([])
 const expandedIds = ref([])
@@ -452,6 +466,29 @@ const handleBatchPause = () => {
   clearSelection()
 }
 
+const hasPausedSelected = computed(() =>
+  selectedIds.value.some(id => {
+    const s = props.students.find(st => (st.id || st.attemptId) === id)
+    return s && statusColor(s) === 'paused'
+  })
+)
+const pausedSelectedCount = computed(() =>
+  selectedIds.value.filter(id => {
+    const s = props.students.find(st => (st.id || st.attemptId) === id)
+    return s && statusColor(s) === 'paused'
+  }).length
+)
+const handleBatchResume = () => {
+  const pausedIds = selectedIds.value.filter(id => {
+    const s = props.students.find(st => (st.id || st.attemptId) === id)
+    return s && statusColor(s) === 'paused'
+  })
+  if (pausedIds.length > 0) {
+    emit('batch-resume', pausedIds)
+    clearSelection()
+  }
+}
+
 const handleBatchInvalidate = () => {
   emit('batch-invalidate', selectedIds.value)
   clearSelection()
@@ -563,6 +600,8 @@ const formatTime = (ts) => {
 .smt__batch-btn--danger:hover { background: var(--ds-danger-soft); border-color: var(--ds-danger); }
 .dark .smt__batch-btn--danger { color: #ef4444; }
 .dark .smt__batch-btn--danger:hover { background: rgba(220, 38, 38, 0.1); }
+.smt__batch-btn--resume { border-color: rgba(34, 197, 94, 0.3); color: var(--ds-success); }
+.smt__batch-btn--resume:hover { background: rgba(34, 197, 94, 0.1); border-color: var(--ds-success); }
 
 /* Sort */
 .smt__sort-group {
@@ -963,6 +1002,14 @@ const formatTime = (ts) => {
   background: rgba(234, 179, 8, 0.1);
   color: #d97706;
   border-color: rgba(234, 179, 8, 0.3);
+}
+.smt__action-btn--resume {
+  color: var(--ds-success);
+  border-color: transparent;
+}
+.smt__action-btn--resume:hover {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
 }
 
 .dark .smt__action-btn--warn:hover,

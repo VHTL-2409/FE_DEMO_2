@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
+import com.example.demo.domain.entity.AutoPausedBy;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
 import com.example.demo.domain.entity.RiskActionType;
@@ -153,6 +154,10 @@ public class RiskScoringService {
     @Value("${demo.risk.recency.half-life-minutes:15}")
     private long recencyHalfLifeMinutes;
 
+    /** Opt-in auto-resume when risk drops from CRITICAL. Default false (teacher must manually resume). */
+    @Value("${demo.risk.auto-resume.enabled:false}")
+    private boolean autoResumeEnabled;
+
     @Transactional
     public RiskScoreResponse recomputeRisk(ExamAttempt attempt) {
         LocalDateTime now = VietNamTime.now();
@@ -218,9 +223,16 @@ public class RiskScoringService {
         return resolveLevel(riskScore).isSuspicious();
     }
 
+    /**
+     * Apply automated action based on risk level.
+     * Only auto-pauses if the attempt is currently IN_PROGRESS.
+     * Sets autoPausedBy = SYSTEM so auto-resume can distinguish from manual pause.
+     */
     private RiskActionType applyAutomatedAction(ExamAttempt attempt, RiskLevel level, RiskLevel previousLevel) {
         if (level == RiskLevel.CRITICAL && attempt.getStatus() == AttemptStatus.IN_PROGRESS) {
             attempt.setStatus(AttemptStatus.PAUSED);
+            attempt.setAutoPausedBy(AutoPausedBy.SYSTEM);
+            attempt.setPausedAt(VietNamTime.now());
             auditLogService.logSystemAttemptPaused(attempt, "Risk score reached critical threshold");
             realtimeNotificationService.notifyAttemptPaused(attempt,
                     "Phiên thi đang được tạm dừng để giám thị kiểm tra.");
@@ -242,11 +254,20 @@ public class RiskScoringService {
     }
 
     /**
-     * Tự động khôi phục attempt từ PAUSED → IN_PROGRESS khi risk giảm từ CRITICAL.
-     * Chỉ resume nếu attempt đang ở trạng thái PAUSED và risk level đã giảm khỏi CRITICAL.
+     * Auto-resume only when:
+     * - Attempt is PAUSED
+     * - It was auto-paused by SYSTEM (not manually paused by teacher)
+     * - Risk has dropped below CRITICAL
+     * - Auto-resume is enabled via config (default: false)
      */
     private RiskActionType applyAutomatedResume(ExamAttempt attempt, RiskLevel level, RiskLevel previousLevel) {
+        if (!autoResumeEnabled) {
+            return RiskActionType.NONE;
+        }
         if (attempt.getStatus() != AttemptStatus.PAUSED) {
+            return RiskActionType.NONE;
+        }
+        if (attempt.getAutoPausedBy() != AutoPausedBy.SYSTEM) {
             return RiskActionType.NONE;
         }
         if (previousLevel != RiskLevel.CRITICAL) {
@@ -256,7 +277,7 @@ public class RiskScoringService {
             return RiskActionType.NONE;
         }
         attempt.setStatus(AttemptStatus.IN_PROGRESS);
-        examAttemptRepository.save(attempt);
+        attempt.setAutoPausedBy(AutoPausedBy.NONE);
         auditLogService.logSystemAttemptResumed(attempt, "Risk score dropped from CRITICAL to " + level.name());
         realtimeNotificationService.notifyAttemptResumed(attempt,
                 "Rủi ro đã giảm. Phiên thi đã được khôi phục. Vui lòng tiếp tục làm bài.");
@@ -426,7 +447,7 @@ public class RiskScoringService {
                 .limit(3)
                 .forEach(entry -> {
                     reasons.add(reasonLabel(entry.getKey()));
-                    evidence.add(reasonLabel(entry.getKey()) + ": " + entry.getValue() + " điểm");
+                    evidence.add(reasonLabel(entry.getKey()) + ": " + entry.getValue() + " diem");
                 });
 
         String recommendedAction = switch (level) {
@@ -441,47 +462,47 @@ public class RiskScoringService {
 
     private String reasonLabel(String key) {
         return switch (key) {
-            case "TAB_SWITCH" -> "Chuyển tab bất thường";
-            case "WINDOW_BLUR" -> "Mất tiêu điểm cửa sổ";
-            case "EXIT_FULLSCREEN", "FULLSCREEN_EVASION" -> "Thoát hoặc né tránh toàn màn hình";
-            case "COPY_PASTE", "CLIPBOARD_BURST" -> "Hoạt động clipboard bất thường";
-            case "DEVTOOLS_OPEN" -> "Mở DevTools";
-            case "QUESTION_TIMING_ANOMALY" -> "Thời gian làm câu hỏi bất thường";
-            case "ANSWER_CHANGE_BURST" -> "Thay đổi đáp án dồn dập";
-            case "SYNC_BEHAVIOR" -> "Nhiều thí sinh có hành vi đồng bộ";
-            case "DUPLICATE_IP", "IP_FINGERPRINT_GRAPH" -> "Liên hệ IP hoặc fingerprint đáng ngờ";
-            case "NETWORK_INSTABILITY", "SESSION_RECOVERY" -> "Kết nối hoặc khôi phục phiên bất thường";
-            case "DEVICE_FINGERPRINT_CHANGED" -> "Thiết bị thay đổi trong lúc thi";
-            case "VPN_DETECTED" -> "Phát hiện sử dụng VPN";
-            case "PROXY_DETECTED" -> "Phát hiện sử dụng Proxy";
-            case "TOR_EXIT_NODE" -> "Phát hiện sử dụng Tor";
-            case "GEO_ANOMALY" -> "Vị trí địa lý bất thường";
-            case "SUBNET_SUSPICION" -> "Nhiều thí sinh cùng subnet";
-            case "IMPOSSIBLE_SPEED", "IMPOSSIBLE_EXAM_SPEED" -> "Tốc độ làm bài không thể";
-            case "FAST_ANSWER" -> "Làm bài quá nhanh";
-            case "SUSPICIOUS_BURST" -> "Làm nhiều câu trong thời gian ngắn";
-            case "PERFECT_TIMING_PATTERN" -> "Thời gian làm bài quá chính xác";
-            case "PACING_INCONSISTENCY" -> "Tốc độ làm bài không đều";
-            case "TIMING_OUTLIER" -> "Thời gian bất thường về mặt thống kê";
-            case "EXACT_ANSWER_MATCH" -> "Trùng lặp đáp án chính xác";
-            case "COLLABORATION_SIGNAL" -> "Dấu hiệu hợp tác gian lận";
-            case "ANSWER_TEMPLATE" -> "Chung một biểu mẫu đáp án";
-            case "PERFORMANCE_OUTLIER" -> "Điểm bất thường so với lớp";
-            case "SCORE_CLUSTER_ANOMALY" -> "Phân bố điểm tập trung bất thường";
-            case "HISTORICAL_ANOMALY" -> "Thay đổi điểm bất thường so với lịch sử";
-            case "TYPING_PATTERN_MISMATCH" -> "Mẫu gõ bàn phím khác với hồ sơ";
-            case "MOUSE_SIGNATURE_ANOMALY" -> "Hướng dẫn chuột bất thường";
-            case "AUTOMATED_INPUT_DETECTED" -> "Phát hiện input tự động hóa";
-            case "INTERRUPTION_PATTERN" -> "Mẫu ngắt quãng bất thường";
-            case "RHYTHM_ANOMALY" -> "Chu kỳ gõ bất thường";
-            case "ANSWER_SIMILARITY" -> "Độ tương đồng đáp án cao";
-            case "AI_MULTIPLE_FACES" -> "AI phát hiện nhiều khuôn mặt";
-            case "AI_FACE_MISSING" -> "AI phát hiện mất mặt";
-            case "AI_PHONE_DETECTED" -> "AI phát hiện điện thoại";
-            case "AI_LOOKING_AWAY" -> "AI phát hiện nhìn lệch hướng";
-            case "AI_SPEAKING_DETECTED" -> "AI phát hiện nói chuyện";
-            case "TIME_ANOMALY" -> "Thời gian nộp bất thường";
-            case "HEARTBEAT_STALE" -> "Heartbeat gián đoạn";
+            case "TAB_SWITCH" -> "Chuyen tab bat thuong";
+            case "WINDOW_BLUR" -> "Mat tieu diem cua so";
+            case "EXIT_FULLSCREEN", "FULLSCREEN_EVASION" -> "Thoat hoac ne tran toan man hinh";
+            case "COPY_PASTE", "CLIPBOARD_BURST" -> "Hoat dong clipboard bat thuong";
+            case "DEVTOOLS_OPEN" -> "Mo DevTools";
+            case "QUESTION_TIMING_ANOMALY" -> "Thoi gian lam cau hoi bat thuong";
+            case "ANSWER_CHANGE_BURST" -> "Thay doi dap an don dap";
+            case "SYNC_BEHAVIOR" -> "Nhieu thi sinh co hanh vi dong bo";
+            case "DUPLICATE_IP", "IP_FINGERPRINT_GRAPH" -> "Lien he IP hoac fingerprint dang ngo";
+            case "NETWORK_INSTABILITY", "SESSION_RECOVERY" -> "Ket noi hoac khoi phuc phien bat thuong";
+            case "DEVICE_FINGERPRINT_CHANGED" -> "Thiet bi thay doi trong luc thi";
+            case "VPN_DETECTED" -> "Phat hien su dung VPN";
+            case "PROXY_DETECTED" -> "Phat hien su dung Proxy";
+            case "TOR_EXIT_NODE" -> "Phat hien su dung Tor";
+            case "GEO_ANOMALY" -> "Vi tri dia ly bat thuong";
+            case "SUBNET_SUSPICION" -> "Nhieu thi sinh cung subnet";
+            case "IMPOSSIBLE_SPEED", "IMPOSSIBLE_EXAM_SPEED" -> "Toc do lam bai khong the";
+            case "FAST_ANSWER" -> "Lam bai qua nhanh";
+            case "SUSPICIOUS_BURST" -> "Lam nhieu cau trong thoi gian ngan";
+            case "PERFECT_TIMING_PATTERN" -> "Thoi gian lam bai qua chinh xac";
+            case "PACING_INCONSISTENCY" -> "Toc do lam bai khong deu";
+            case "TIMING_OUTLIER" -> "Thoi gian bat thuong ve mat thong ke";
+            case "EXACT_ANSWER_MATCH" -> "Trung lap dap an chinh xac";
+            case "COLLABORATION_SIGNAL" -> "Dau hieu hop tac gian lan";
+            case "ANSWER_TEMPLATE" -> "Chung mot bieu mau dap an";
+            case "PERFORMANCE_OUTLIER" -> "Diem bat thuong so voi lop";
+            case "SCORE_CLUSTER_ANOMALY" -> "Phan bo diem tap trung bat thuong";
+            case "HISTORICAL_ANOMALY" -> "Thay doi diem bat thuong so voi lich su";
+            case "TYPING_PATTERN_MISMATCH" -> "Mau go ban phim khac voi ho so";
+            case "MOUSE_SIGNATURE_ANOMALY" -> "Huong dan chuot bat thuong";
+            case "AUTOMATED_INPUT_DETECTED" -> "Phat hien input tu dong hoa";
+            case "INTERRUPTION_PATTERN" -> "Mau ngat quang bat thuong";
+            case "RHYTHM_ANOMALY" -> "Chu ky go bat thuong";
+            case "ANSWER_SIMILARITY" -> "Do tuong dong dap an cao";
+            case "AI_MULTIPLE_FACES" -> "AI phat hien nhieu khuon mat";
+            case "AI_FACE_MISSING" -> "AI phat hien mat mat";
+            case "AI_PHONE_DETECTED" -> "AI phat hien dien thoai";
+            case "AI_LOOKING_AWAY" -> "AI phat hien nhin lech huong";
+            case "AI_SPEAKING_DETECTED" -> "AI phat hien noi chuyen";
+            case "TIME_ANOMALY" -> "Thoi gian nop bat thuong";
+            case "HEARTBEAT_STALE" -> "Heartbeat gian doan";
             default -> key;
         };
     }

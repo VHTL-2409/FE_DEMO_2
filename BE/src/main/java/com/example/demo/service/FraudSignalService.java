@@ -11,6 +11,7 @@ import com.example.demo.repository.FraudSignalRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,12 +81,8 @@ public class FraudSignalService {
     }
 
     public List<FraudSignal> latestSignals(ExamAttempt attempt, int limit) {
-        List<FraudSignal> latest = fraudSignalRepository.findTop20ByAttemptOrderByCreatedAtDesc(attempt);
-        int safeLimit = Math.max(limit, 0);
-        if (safeLimit >= latest.size()) {
-            return latest;
-        }
-        return latest.subList(0, safeLimit);
+        int safeLimit = Math.max(limit, 1);
+        return fraudSignalRepository.findTopNByAttemptOrderByCreatedAtDesc(attempt, PageRequest.of(0, safeLimit));
     }
 
     public SignalDescriptor descriptorFor(String eventType) {

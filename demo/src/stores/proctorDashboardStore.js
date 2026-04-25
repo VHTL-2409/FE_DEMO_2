@@ -32,6 +32,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const selectedAttemptIds = ref([])
   const connectionMode = ref('polling')
   const lastUpdatedAt = ref(null)
+  // Tracks previous risk scores for delta computation
+  const previousRiskScores = ref({})
   const filters = ref({
     search: '',
     riskBand: 'ALL',
@@ -43,10 +45,15 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const cardsWithMeta = computed(() => cards.value.map((card) => {
     const riskBand = resolveRiskBand(card.riskScore)
     const statusToken = resolveStatusToken(card)
+    const prevScore = previousRiskScores.value[card.attemptId || card.id]
+    const riskDelta = prevScore != null && card.riskScore != null
+      ? card.riskScore - prevScore
+      : null
     return {
       ...card,
       _riskBand: riskBand,
-      _statusToken: statusToken
+      _statusToken: statusToken,
+      _riskDelta: riskDelta
     }
   }))
 
@@ -67,8 +74,26 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   }
 
   const setCards = (nextCards) => {
+    // Save current scores before replacing cards
+    for (const card of cards.value) {
+      const id = card.attemptId || card.id
+      const newCard = Array.isArray(nextCards) ? nextCards.find(c => (c.attemptId || c.id) === id) : null
+      if (newCard && card.riskScore != null) {
+        previousRiskScores.value[id] = card.riskScore
+      }
+    }
     cards.value = Array.isArray(nextCards) ? nextCards : []
     lastUpdatedAt.value = Date.now()
+  }
+
+  /**
+   * Update previous risk score for a specific card (e.g. when receiving realtime update).
+   */
+  const trackRiskDelta = (attemptId, newScore) => {
+    const id = String(attemptId)
+    if (previousRiskScores.value[id] == null) {
+      previousRiskScores.value[id] = newScore
+    }
   }
 
   const upsertCard = (card) => {
@@ -152,6 +177,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     selectedAttemptIds.value = []
     connectionMode.value = 'polling'
     lastUpdatedAt.value = null
+    previousRiskScores.value = {}
     filters.value = {
       search: '',
       riskBand: 'ALL',
@@ -200,6 +226,51 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     return { flagged, critical }
   })
 
+  // ── Alert & event deduplication ──────────────────────────────────────────
+  const recentAlertKeys = new Map() // key → timestamp
+  const ALERT_DEDUPE_WINDOW_MS = 10_000
+
+  /**
+   * Add a fraud signal alert with deduplication.
+   * Returns true if the alert was added, false if it was suppressed as a duplicate.
+   * Dedupe key = `${attemptId}|${signalType}|${severity}`
+   */
+  const addAlert = (alert) => {
+    const key = `${alert.attemptId || ''}|${alert.signalType || ''}|${alert.severity || ''}`
+    const now = Date.now()
+    const lastSeen = recentAlertKeys.get(key)
+    if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) {
+      return false // duplicate, skip
+    }
+    recentAlertKeys.set(key, now)
+    liveAlerts.value = [
+      { ...alert, id: `alert-${++alertIdCounter}`, ts: now },
+      ...liveAlerts.value
+    ].slice(0, 200) // keep last 200
+    // Prune old entries every 50 adds
+    if (alertIdCounter % 50 === 0) {
+      for (const [k, t] of recentAlertKeys) {
+        if (now - t > ALERT_DEDUPE_WINDOW_MS) recentAlertKeys.delete(k)
+      }
+    }
+    return true
+  }
+
+  /**
+   * Add a system/proctoring event (warning, pause, resume, etc.) without deduplication.
+   */
+  const addEvent = (event) => {
+    liveEvents.value = [
+      { ...event, id: `event-${++eventIdCounter}`, ts: Date.now() },
+      ...liveEvents.value
+    ].slice(0, 200)
+  }
+
+  let alertIdCounter = 0
+  let eventIdCounter = 0
+  const liveAlerts = ref([])
+  const liveEvents = ref([])
+
   return {
     selectedExamId,
     cards,
@@ -207,6 +278,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     selectedAttemptIds,
     connectionMode,
     lastUpdatedAt,
+    previousRiskScores,
     filters,
     cardsWithMeta,
     visibleCards,
@@ -214,6 +286,10 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     alertsBySeverity,
     connectionHealth,
     flagStats,
+    liveAlerts,
+    liveEvents,
+    addAlert,
+    addEvent,
     setSelectedExam,
     setCards,
     upsertCard,
@@ -223,6 +299,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     clearSelection,
     setConnectionMode,
     sortCards,
+    trackRiskDelta,
     reset,
     resolveRiskBand
   }

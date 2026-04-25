@@ -93,3 +93,19 @@ export async function runComprehensiveExamAnalysis(examId) {
   })
   return unwrapApiData(payload)
 }
+
+export async function runGradingByExam(examId) {
+  const payload = await apiRequest(`${BASE}/grading/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
+export async function runGradingByAttempt(attemptId) {
+  const payload = await apiRequest(`${BASE}/grading/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}

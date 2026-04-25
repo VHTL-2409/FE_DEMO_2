@@ -293,8 +293,8 @@ public class ExamEventService {
             );
         }
         if (Boolean.TRUE.equals(attempt.getExam().getMonitorQuestionTimingAnomaly())
-                && (positiveLong(telemetry.getQuestionDwellMs()) >= 0 && positiveLong(telemetry.getQuestionDwellMs()) <= 2_000L
-                || positiveLong(telemetry.getQuestionSwitchSpanMs()) <= 1_500L && positiveLong(telemetry.getQuestionSwitchSpanMs()) > 0)) {
+                && (positiveLong(telemetry.getQuestionDwellMs()) <= 2_000L
+                || (positiveLong(telemetry.getQuestionSwitchSpanMs()) > 0 && positiveLong(telemetry.getQuestionSwitchSpanMs()) <= 1_500L))) {
             fraudSignalService.recordServerSignal(
                     attempt,
                     "QUESTION_TIMING_ANOMALY",

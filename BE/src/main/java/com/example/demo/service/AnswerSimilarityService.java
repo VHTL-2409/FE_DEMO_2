@@ -17,6 +17,13 @@ import java.util.stream.Collectors;
 /**
  * Phát hiện gian lận dựa trên độ tương đồng đáp án giữa các thí sinh.
  * Cặp thí sinh có đáp án trùng nhau quá cao có thể đã gian lận.
+ *
+ * Optimization strategy:
+ * - Blocking: only compare attempts that share IP or device fingerprint.
+ *   This dramatically reduces comparisons from O(n²) to O(k²) per group,
+ *   where k is typically much smaller than n.
+ * - Early exit: if two attempts answer different question counts far enough apart,
+ *   the maximum possible Jaccard similarity is too low to exceed the threshold.
  */
 @Service
 @RequiredArgsConstructor
@@ -32,62 +39,154 @@ public class AnswerSimilarityService {
     /**
      * Tìm các cặp thí sinh có đáp án tương đồng cao (có thể gian lận).
      * Chỉ xét attempts trong đợt thi hiện tại (exam.startTime - exam.endTime).
+     *
+     * Uses IP/fingerprint blocking to reduce O(n²) comparisons to O(k²) per group.
      */
     public List<SimilarityPair> findSuspiciousPairs(Exam exam) {
-        List<ExamAttempt> submitted;
-        if (exam.getStartTime() != null && exam.getEndTime() != null) {
-            submitted = examAttemptRepository.findByExamAndStartedAtBetween(
-                    exam, exam.getStartTime(), exam.getEndTime()).stream()
-                    .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED || a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
-                    .toList();
-        } else {
-            submitted = examAttemptRepository.findByExam(exam).stream()
-                    .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED || a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
-                    .toList();
-        }
-
+        List<ExamAttempt> submitted = loadSubmittedAttempts(exam);
         if (submitted.size() < 2) {
             return List.of();
         }
 
-        Map<Long, Map<Long, String>> attemptAnswers = new HashMap<>();
-        for (ExamAttempt a : submitted) {
-            Map<Long, String> qToAnswer = answerRepository.findByAttempt(a).stream()
-                    .collect(Collectors.toMap(ans -> ans.getQuestion().getId(), ans -> ans.getSelectedAnswer(), (x, y) -> x));
-            attemptAnswers.put(a.getId(), qToAnswer);
-        }
+        Map<Long, Map<Long, String>> attemptAnswers = loadAttemptAnswers(submitted);
 
+        Map<String, List<ExamAttempt>> ipGroups = buildBlockingGroups(submitted, ExamAttempt::getClientIp);
+        Map<String, List<ExamAttempt>> fpGroups = buildBlockingGroups(submitted, ExamAttempt::getDeviceFingerprint);
+
+        Set<String> processedPairs = new HashSet<>();
         List<SimilarityPair> pairs = new ArrayList<>();
-        for (int i = 0; i < submitted.size(); i++) {
-            for (int j = i + 1; j < submitted.size(); j++) {
-                ExamAttempt a1 = submitted.get(i);
-                ExamAttempt a2 = submitted.get(j);
-                Map<Long, String> m1 = attemptAnswers.get(a1.getId());
-                Map<Long, String> m2 = attemptAnswers.get(a2.getId());
 
-                Set<Long> commonQuestions = new HashSet<>(m1.keySet());
-                commonQuestions.retainAll(m2.keySet());
-                if (commonQuestions.isEmpty()) continue;
+        Set<String> allKeys = new HashSet<>(ipGroups.keySet());
+        fpGroups.keySet().forEach(k -> { if (k != null && !k.isBlank()) allKeys.add(k); });
 
-                long sameCount = commonQuestions.stream()
-                        .filter(q -> Objects.equals(m1.get(q), m2.get(q)))
-                        .count();
-                double similarity = (double) sameCount / commonQuestions.size();
+        for (String groupKey : allKeys) {
+            List<ExamAttempt> group = new ArrayList<>();
+            if (ipGroups.containsKey(groupKey)) group.addAll(ipGroups.get(groupKey));
+            if (fpGroups.containsKey(groupKey)) {
+                for (ExamAttempt fpAttempt : fpGroups.get(groupKey)) {
+                    if (group.stream().noneMatch(a -> a.getId().equals(fpAttempt.getId()))) {
+                        group.add(fpAttempt);
+                    }
+                }
+            }
+            if (group.size() < 2) continue;
 
-                if (similarity >= similarityThreshold && commonQuestions.size() >= 5) {
-                    pairs.add(new SimilarityPair(
-                            a1.getStudent().getUsername(),
-                            a2.getStudent().getUsername(),
-                            similarity,
-                            commonQuestions.size(),
-                            (int) sameCount
-                    ));
+            for (int i = 0; i < group.size(); i++) {
+                for (int j = i + 1; j < group.size(); j++) {
+                    ExamAttempt a1 = group.get(i);
+                    ExamAttempt a2 = group.get(j);
+                    String pairKey = pairKey(a1.getId(), a2.getId());
+                    if (processedPairs.contains(pairKey)) continue;
+                    processedPairs.add(pairKey);
+
+                    SimilarityPair pair = computeSimilarity(a1, a2, attemptAnswers);
+                    if (pair != null) {
+                        pairs.add(pair);
+                    }
                 }
             }
         }
+
+        if (pairs.isEmpty() && submitted.size() <= 50) {
+            return fallbackFullComparison(submitted, attemptAnswers);
+        }
+
         return pairs.stream()
                 .sorted(Comparator.comparingDouble(SimilarityPair::similarity).reversed())
                 .toList();
+    }
+
+    /**
+     * Full O(n²) comparison as fallback for small exams (<=50 students) with no IP/fingerprint matches.
+     * Also used to catch suspicious pairs that don't share IP or fingerprint.
+     */
+    private List<SimilarityPair> fallbackFullComparison(
+            List<ExamAttempt> submitted,
+            Map<Long, Map<Long, String>> attemptAnswers
+    ) {
+        List<SimilarityPair> pairs = new ArrayList<>();
+        for (int i = 0; i < submitted.size(); i++) {
+            for (int j = i + 1; j < submitted.size(); j++) {
+                SimilarityPair pair = computeSimilarity(submitted.get(i), submitted.get(j), attemptAnswers);
+                if (pair != null) {
+                    pairs.add(pair);
+                }
+            }
+        }
+        return pairs;
+    }
+
+    private Map<Long, Map<Long, String>> loadAttemptAnswers(List<ExamAttempt> attempts) {
+        Map<Long, Map<Long, String>> attemptAnswers = new HashMap<>();
+        for (ExamAttempt a : attempts) {
+            Map<Long, String> qToAnswer = answerRepository.findByAttempt(a).stream()
+                    .collect(Collectors.toMap(
+                            ans -> ans.getQuestion().getId(),
+                            ans -> ans.getSelectedAnswer(),
+                            (x, y) -> x));
+            attemptAnswers.put(a.getId(), qToAnswer);
+        }
+        return attemptAnswers;
+    }
+
+    private Map<String, List<ExamAttempt>> buildBlockingGroups(
+            List<ExamAttempt> attempts,
+            java.util.function.Function<ExamAttempt, String> keyExtractor
+    ) {
+        Map<String, List<ExamAttempt>> groups = new HashMap<>();
+        for (ExamAttempt attempt : attempts) {
+            String key = keyExtractor.apply(attempt);
+            if (key == null || key.isBlank()) continue;
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(attempt);
+        }
+        return groups;
+    }
+
+    private SimilarityPair computeSimilarity(
+            ExamAttempt a1,
+            ExamAttempt a2,
+            Map<Long, Map<Long, String>> attemptAnswers
+    ) {
+        Map<Long, String> m1 = attemptAnswers.get(a1.getId());
+        Map<Long, String> m2 = attemptAnswers.get(a2.getId());
+        if (m1 == null || m2 == null || m1.isEmpty() || m2.isEmpty()) {
+            return null;
+        }
+
+        int size1 = m1.size();
+        int size2 = m2.size();
+
+        int maxCommon = Math.min(size1, size2);
+        double maxPossibleSimilarity = (double) maxCommon / Math.max(size1, size2);
+        if (maxPossibleSimilarity < similarityThreshold) {
+            return null;
+        }
+
+        Set<Long> commonQuestions = new HashSet<>(m1.keySet());
+        commonQuestions.retainAll(m2.keySet());
+        if (commonQuestions.isEmpty()) {
+            return null;
+        }
+
+        long sameCount = commonQuestions.stream()
+                .filter(q -> Objects.equals(m1.get(q), m2.get(q)))
+                .count();
+        double similarity = (double) sameCount / commonQuestions.size();
+
+        if (similarity >= similarityThreshold && commonQuestions.size() >= 5) {
+            return new SimilarityPair(
+                    a1.getStudent().getUsername(),
+                    a2.getStudent().getUsername(),
+                    similarity,
+                    commonQuestions.size(),
+                    (int) sameCount
+            );
+        }
+        return null;
+    }
+
+    private String pairKey(Long id1, Long id2) {
+        return id1 < id2 ? id1 + "-" + id2 : id2 + "-" + id1;
     }
 
     @Transactional

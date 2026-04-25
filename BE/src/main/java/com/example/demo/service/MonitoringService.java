@@ -8,6 +8,7 @@ import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.AttemptStatus;
+import com.example.demo.domain.entity.AutoPausedBy;
 import com.example.demo.domain.entity.ExamEvent;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
@@ -121,12 +122,13 @@ public class MonitoringService {
                 ? "Bài thi đã bị đình chỉ bởi giám thị."
                 : reason.trim();
 
+        boolean wasPaused = attempt.getStatus() == AttemptStatus.PAUSED;
         if (attempt.getStatus() != AttemptStatus.STOPPED) {
             attempt.setStatus(AttemptStatus.STOPPED);
             examAttemptRepository.save(attempt);
         }
 
-        if (attempt.getStatus() == AttemptStatus.PAUSED) {
+        if (wasPaused) {
             auditLogService.logTeacherInvalidate(attempt, actor,
                     "[PROCTOR_STOPPED_AFTER_PAUSE] " + invalidateMessage);
         } else {
@@ -149,10 +151,11 @@ public class MonitoringService {
         }
 
         attempt.setStatus(AttemptStatus.IN_PROGRESS);
+        attempt.setAutoPausedBy(AutoPausedBy.NONE);
         examAttemptRepository.save(attempt);
 
         String resumeMessage = (message == null || message.isBlank())
-                ? "Bài thi đã được giám thị khôi phục. Vui lòng tiếp tục làm bài."
+                ? "Bai thi da duoc giam thi khoi phuc. Vui long tiep tuc lam bai."
                 : message.trim();
 
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_RESUMED] " + resumeMessage);
@@ -173,11 +176,12 @@ public class MonitoringService {
         }
         if (attempt.getStatus() != AttemptStatus.PAUSED) {
             attempt.setStatus(AttemptStatus.PAUSED);
+            attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
             examAttemptRepository.save(attempt);
         }
 
         String pauseMessage = (reason == null || reason.isBlank())
-                ? "Bài thi đang được tạm dừng để giám thị kiểm tra."
+                ? "Bai thi dang duoc tam dung de giam thi kiem tra."
                 : reason.trim();
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_PAUSED] " + pauseMessage);
         realtimeNotificationService.notifyAttemptPaused(attempt, pauseMessage);

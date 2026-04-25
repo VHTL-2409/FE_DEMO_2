@@ -1,24 +1,32 @@
 <template>
   <div
     class="sr-row"
-    :class="[`sr-row--${riskBand}`, { 'sr-row--selected': selected }]"
+    :class="[`sr-row--${riskBand}`, { 'sr-row--selected': selected, 'sr-row--paused': isPaused }]"
     @click="$emit('view-detail')"
   >
+    <!-- Left accent -->
+    <div class="sr-row__accent" />
+
     <!-- Checkbox -->
-    <div class="sr-row__check" @click.stop>
+    <label class="sr-row__check" @click.stop>
       <input
         type="checkbox"
         class="sr-row__checkbox"
         :checked="selected"
         @change="$emit('toggle-select')"
       />
-    </div>
+      <div class="sr-row__check-visual" :class="{ 'sr-row__check-visual--checked': selected }">
+        <LucideIcon v-if="selected" name="check" :size="10" />
+      </div>
+    </label>
 
-    <!-- Avatar + name -->
+    <!-- Avatar + Name -->
     <div class="sr-row__identity">
-      <div class="sr-row__avatar" :style="{ background: avatarBg }">
-        <span class="sr-row__avatar-text" :style="{ color: avatarColor }">{{ initials }}</span>
-        <div class="sr-row__status-dot" :style="{ background: statusColor }" />
+      <div class="sr-row__avatar-wrap">
+        <div class="sr-row__avatar" :style="{ background: avatarBg }">
+          <span class="sr-row__initials" :style="{ color: avatarColor }">{{ initials }}</span>
+          <div class="sr-row__status-ring" :style="{ borderColor: statusColor }" />
+        </div>
       </div>
       <div class="sr-row__name-group">
         <h4 class="sr-row__name">{{ studentName }}</h4>
@@ -29,19 +37,21 @@
       </div>
     </div>
 
-    <!-- Violations -->
+    <!-- Violation Count -->
     <div class="sr-row__cell sr-row__cell--violations">
       <span
         v-if="violationCount > 0"
-        class="sr-row__violation-badge"
-        :class="violationCount > 3 ? 'sr-row__violation-badge--danger' : 'sr-row__violation-badge--warn'"
+        class="sr-row__viol-badge"
+        :class="violationCount > 3 ? 'sr-row__viol-badge--danger' : 'sr-row__viol-badge--warn'"
       >
         {{ violationCount }}
       </span>
-      <span v-else class="sr-row__muted">—</span>
+      <span v-else class="sr-row__muted">
+        <LucideIcon name="check-circle" :size="12" class="sr-row__clean-icon" />
+      </span>
     </div>
 
-    <!-- Risk -->
+    <!-- Risk Bar -->
     <div class="sr-row__cell sr-row__cell--risk">
       <div class="sr-row__risk-bar">
         <div
@@ -52,13 +62,14 @@
       <span class="sr-row__risk-score" :style="{ color: riskColor }">{{ riskScore }}</span>
     </div>
 
-    <!-- Violation tags (collapsed) -->
+    <!-- Violation Tags -->
     <div class="sr-row__cell sr-row__cell--tags">
       <span
         v-for="v in topViolations"
         :key="v.type"
         class="sr-row__tag"
         :class="v.tagClass"
+        :title="v.label"
       >
         <LucideIcon :name="v.icon" :size="9" />
       </span>
@@ -66,27 +77,27 @@
 
     <!-- Actions -->
     <div class="sr-row__cell sr-row__cell--actions" @click.stop>
-      <button class="sr-row__action" title="Gửi cảnh báo" @click="$emit('warn')">
+      <button class="sr-action sr-action--warn" @click="$emit('warn')" title="Cảnh báo">
         <LucideIcon name="alert-triangle" :size="13" />
       </button>
       <button
         v-if="isPaused"
-        class="sr-row__action sr-row__action--resume"
-        title="Cho phép tiếp tục thi"
+        class="sr-action sr-action--resume"
         @click="$emit('resume')"
+        title="Cho phép tiếp tục"
       >
         <LucideIcon name="play" :size="13" />
       </button>
       <button
         v-else
-        class="sr-row__action"
+        class="sr-action sr-action--pause"
         :disabled="isTerminal"
-        :title="isTerminal ? 'Bài thi đã kết thúc' : 'Tạm dừng'"
         @click="$emit('pause')"
+        :title="isTerminal ? 'Đã kết thúc' : 'Tạm dừng'"
       >
         <LucideIcon name="pause" :size="13" />
       </button>
-      <button class="sr-row__action sr-row__action--primary" title="Xem chi tiết" @click="$emit('view-detail')">
+      <button class="sr-action sr-action--detail" @click="$emit('view-detail')" title="Xem chi tiết">
         <LucideIcon name="eye" :size="13" />
       </button>
     </div>
@@ -152,90 +163,190 @@ const topViolations = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 0.7rem 0.875rem;
+  padding: 0.7rem 1rem;
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   cursor: pointer;
   transition: all 0.15s;
-  border-left: 3px solid transparent;
-  box-shadow: var(--ds-shadow-xs);
+  position: relative;
+  overflow: hidden;
 }
-.sr-row:hover { background: var(--ds-surface-muted); border-color: var(--ds-primary-border); transform: translateY(-1px); box-shadow: var(--ds-shadow-sm); }
-.sr-row--selected { border-color: var(--ds-primary); box-shadow: var(--ds-shadow-focus); }
-.sr-row--danger { border-left-color: var(--ds-danger); }
-.sr-row--warn { border-left-color: var(--ds-warning); }
-.sr-row--clean { border-left-color: var(--ds-success); }
+.sr-row:hover {
+  background: var(--ds-surface-muted);
+  border-color: var(--ds-primary-border);
+  box-shadow: var(--ds-shadow-sm);
+  transform: translateY(-1px);
+}
+.sr-row--selected {
+  border-color: var(--ds-primary);
+  box-shadow: var(--ds-shadow-focus);
+}
+.sr-row--paused { opacity: 0.85; }
 
-.sr-row__check { flex-shrink: 0; }
-.sr-row__checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ds-primary); }
+/* Left accent */
+.sr-row__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.sr-row--clean .sr-row__accent { background: var(--ds-success); }
+.sr-row--suspicious .sr-row__accent { background: var(--ds-warning); }
+.sr-row--high .sr-row__accent { background: #f97316; }
+.sr-row--critical .sr-row__accent { background: var(--ds-danger); }
 
+/* Checkbox */
+.sr-row__check {
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+}
+.sr-row__checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.sr-row__check-visual {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--ds-border);
+  background: var(--ds-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  color: white;
+}
+.sr-row__check-visual--checked {
+  background: var(--ds-primary);
+  border-color: var(--ds-primary);
+}
+
+/* Identity */
 .sr-row__identity {
-  display: flex; align-items: center; gap: 0.625rem;
-  min-width: 160px; max-width: 200px; flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 160px;
+  max-width: 200px;
+  flex: 0 0 auto;
 }
+.sr-row__avatar-wrap { flex-shrink: 0; }
 .sr-row__avatar {
   position: relative;
-  width: 36px; height: 36px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.sr-row__avatar-text { font-size: 0.78rem; font-weight: 800; }
-.sr-row__status-dot {
-  position: absolute; bottom: 0; right: 0;
-  width: 9px; height: 9px; border-radius: 50%;
-  border: 2px solid var(--ds-surface);
+.sr-row__initials { font-size: 0.8rem; font-weight: 900; }
+.sr-row__status-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid;
 }
 .sr-row__name-group { min-width: 0; }
 .sr-row__name {
-  font-size: 0.82rem; font-weight: 700; color: var(--ds-text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
+  font-size: 0.825rem;
+  font-weight: 800;
+  color: var(--ds-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
 }
 .sr-row__status {
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  font-size: 0.68rem; font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
 }
 
+/* Cells */
 .sr-row__cell { display: flex; align-items: center; gap: 0.375rem; }
-.sr-row__cell--violations { min-width: 48px; justify-content: center; }
+.sr-row__cell--violations { min-width: 52px; justify-content: center; }
 .sr-row__cell--risk { flex: 1; min-width: 120px; gap: 0.5rem; }
 .sr-row__cell--tags { min-width: 80px; gap: 0.25rem; }
 .sr-row__cell--actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; margin-left: auto; }
 
-.sr-row__violation-badge {
-  font-size: 0.75rem; font-weight: 800;
-  padding: 0.18rem 0.55rem; border-radius: 9999px;
+/* Violation badge */
+.sr-row__viol-badge {
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
   font-variant-numeric: tabular-nums;
 }
-.sr-row__violation-badge--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
-.sr-row__violation-badge--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
-.sr-row__muted { font-size: 0.78rem; color: var(--ds-text-muted); }
+.sr-row__viol-badge--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
+.sr-row__viol-badge--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
+.sr-row__muted { display: flex; align-items: center; justify-content: center; }
+.sr-row__clean-icon { color: var(--ds-success); }
 
-.sr-row__risk-bar { flex: 1; height: 5px; border-radius: 9999px; background: var(--ds-gray-100); overflow: hidden; }
-.sr-row__risk-fill { height: 100%; border-radius: 9999px; transition: width 0.4s ease; will-change: width; }
-.sr-row__risk-score { font-size: 0.82rem; font-weight: 800; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Risk bar */
+.sr-row__risk-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ds-gray-100);
+  overflow: hidden;
+}
+.sr-row__risk-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+  will-change: width;
+}
+.sr-row__risk-score {
+  font-size: 0.875rem;
+  font-weight: 900;
+  min-width: 26px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
+/* Tags */
 .sr-row__tag {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: var(--ds-radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-radius-md);
 }
 .sr-row__tag--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
 .sr-row__tag--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
 .sr-row__tag--neutral { color: var(--ds-text-secondary); background: var(--ds-surface-muted); }
 
-.sr-row__action {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
+/* Actions */
+.sr-action {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--ds-radius-md);
   border: 1px solid var(--ds-border);
   background: var(--ds-surface);
   color: var(--ds-text-secondary);
-  cursor: pointer; transition: all 0.15s;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.sr-row__action:hover:not(:disabled) { background: var(--ds-surface-muted); color: var(--ds-text); border-color: var(--ds-primary-border); }
-.sr-row__action:disabled { opacity: 0.4; cursor: not-allowed; }
-.sr-row__action--primary { color: var(--ds-primary); border-color: var(--ds-primary-border); background: var(--ds-primary-soft); }
-.sr-row__action--primary:hover:not(:disabled) { background: var(--ds-primary); color: #fff; border-color: var(--ds-primary); }
-.sr-row__action--resume { color: var(--ds-success); background: var(--ds-success-bg); border-color: var(--ds-success-soft); }
-.sr-row__action--resume:hover:not(:disabled) { background: var(--ds-success); color: #fff; border-color: var(--ds-success); }
+.sr-action:disabled { opacity: 0.4; cursor: not-allowed; }
+.sr-action--warn { color: var(--ds-warning); }
+.sr-action--warn:hover:not(:disabled) { background: var(--ds-warning-bg); border-color: var(--ds-warning-soft); }
+.sr-action--pause { color: var(--ds-primary); }
+.sr-action--pause:hover:not(:disabled) { background: var(--ds-primary-soft); border-color: var(--ds-primary-border); }
+.sr-action--resume { color: var(--ds-success); background: var(--ds-success-bg); border-color: var(--ds-success-soft); }
+.sr-action--resume:hover:not(:disabled) { background: var(--ds-success); color: #fff; border-color: var(--ds-success); }
+.sr-action--detail { color: var(--ds-text-secondary); }
+.sr-action--detail:hover:not(:disabled) { background: var(--ds-surface-muted); border-color: var(--ds-primary-border); color: var(--ds-text); }
 </style>

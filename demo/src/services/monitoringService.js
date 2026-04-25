@@ -81,3 +81,36 @@ export const invalidateAttempt = async (attemptId, reason = '') => {
   })
   return unwrapApiData(payload)
 }
+
+// ── Batch Actions ────────────────────────────────────────────────────────────
+export const batchWarn = async (attemptIds, reason = '') => {
+  const payload = await apiRequest('/api/v1/proctor/batch/warn', {
+    method: 'POST',
+    body: JSON.stringify({ attemptIds, reason })
+  })
+  return unwrapApiData(payload)
+}
+
+export const batchPause = async (attemptIds, reason = '') => {
+  const payload = await apiRequest('/api/v1/proctor/batch/pause', {
+    method: 'POST',
+    body: JSON.stringify({ attemptIds, reason })
+  })
+  return unwrapApiData(payload)
+}
+
+export const batchResume = async (attemptIds, reason = '') => {
+  const payload = await apiRequest('/api/v1/proctor/batch/resume', {
+    method: 'POST',
+    body: JSON.stringify({ attemptIds, reason })
+  })
+  return unwrapApiData(payload)
+}
+
+export const batchInvalidate = async (attemptIds, reason = '') => {
+  const payload = await apiRequest('/api/v1/proctor/batch/invalidate', {
+    method: 'POST',
+    body: JSON.stringify({ attemptIds, reason })
+  })
+  return unwrapApiData(payload)
+}
