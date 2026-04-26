@@ -142,7 +142,7 @@
       <div class="mt-8 ds-animate-fade-up" style="animation-delay: 0.15s">
         <!-- Giám sát - quan trọng nhất -->
         <RouterLink
-          :to="`/teacher/live-monitoring/session?examId=${examId}`"
+          :to="`/teacher/exams/${examId}/monitoring`"
           class="flex items-center gap-4 p-4 mb-4 rounded-xl transition-all hover:scale-[1.01] cursor-pointer"
           style="background: linear-gradient(135deg, var(--ds-primary) 0%, #6366f1 100%); color: white; box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3); text-decoration: none;"
         >

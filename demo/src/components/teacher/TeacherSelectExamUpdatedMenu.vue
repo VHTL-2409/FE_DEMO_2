@@ -466,14 +466,7 @@ function formatDate(iso) {
 }
 
 function goToMonitoring(exam) {
-  router.push({
-    path: '/teacher/live-monitoring/session',
-    query: {
-      examId: String(exam.id),
-      title: exam.title || '',
-      code: exam.code || ''
-    }
-  })
+  router.push(`/teacher/exams/${exam.id}/monitoring`)
 }
 
 function goToSchedule(exam) {

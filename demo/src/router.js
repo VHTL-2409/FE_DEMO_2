@@ -117,14 +117,24 @@ const router = createRouter({
     { path: '/teacher/live_monitoring', redirect: '/teacher/live-monitoring' },
     {
       path: '/teacher/live_monitoring/session',
-      redirect: to => ({ path: '/teacher/live-monitoring/session', query: to.query, hash: to.hash })
+      redirect: to => ({ path: '/teacher/exams/' + (to.query?.examId || '') + '/monitoring', query: to.query?.examId ? {} : undefined })
     },
     {
       path: '/teacher/live_monitoring/student-detail',
-      redirect: to => ({ path: '/teacher/live-monitoring/student-detail', query: to.query, hash: to.hash })
+      redirect: to => ({ path: '/teacher/live-monitoring/student-detail', query: to.query })
+    },
+    {
+      path: '/teacher/exams/:examId/monitoring',
+      component: () => import('./components/teacher/exam/monitoring/ExamMonitoringPage.vue'),
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
+    },
+    {
+      path: '/teacher/exams/:examId/monitoring/student/:attemptId',
+      component: () => import('./components/teacher/exam/monitoring/StudentMonitoringDetail.vue'),
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
     },
     { path: '/teacher/live-monitoring', component: () => import('./components/teacher/TeacherSelectExamUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
-    { path: '/teacher/live-monitoring/session', component: () => import('./components/teacher/TeacherLiveMonitoringUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    { path: '/teacher/live-monitoring/session', redirect: to => { if (to.query?.examId) return { path: `/teacher/exams/${to.query.examId}/monitoring` }; return '/teacher/live-monitoring' } },
     { path: '/teacher/live-monitoring/student-detail', component: () => import('./components/teacher/StudentViolationDetailMonitoring.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/profile', component: () => import('./components/teacher/TeacherProfile.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     {

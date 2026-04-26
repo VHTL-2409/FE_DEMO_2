@@ -90,10 +90,9 @@ public class FraudSignalService {
         return switch (normalized) {
             case "TAB_SWITCH" -> new SignalDescriptor("TAB_SWITCH", SignalSeverity.LOW, 0.7);
             case "BLUR" -> new SignalDescriptor("WINDOW_BLUR", SignalSeverity.LOW, 0.65);
-            case "EXIT_FULLSCREEN" -> new SignalDescriptor("EXIT_FULLSCREEN", SignalSeverity.MEDIUM, 0.85);
-            case "FULLSCREEN_EVASION" -> new SignalDescriptor("FULLSCREEN_EVASION", SignalSeverity.MEDIUM, 0.9);
-            case "COPY_PASTE" -> new SignalDescriptor("COPY_PASTE", SignalSeverity.MEDIUM, 0.9);
-            case "CLIPBOARD_BURST" -> new SignalDescriptor("CLIPBOARD_BURST", SignalSeverity.HIGH, 0.9);
+            case "EXIT_FULLSCREEN", "FULLSCREEN_EVASION" -> new SignalDescriptor("FULLSCREEN_VIOLATION", SignalSeverity.MEDIUM, 0.9);
+            case "COPY_PASTE" -> new SignalDescriptor("CLIPBOARD_ABUSE", SignalSeverity.MEDIUM, 0.9);
+            case "CLIPBOARD_BURST" -> new SignalDescriptor("CLIPBOARD_ABUSE", SignalSeverity.HIGH, 0.9);
             case "IDLE_TIME" -> new SignalDescriptor("IDLE_TIME", SignalSeverity.LOW, 0.55);
             case "DEVTOOLS_OPEN" -> new SignalDescriptor("DEVTOOLS_OPEN", SignalSeverity.HIGH, 0.95);
             case "RIGHT_CLICK" -> new SignalDescriptor("RIGHT_CLICK", SignalSeverity.LOW, 0.7);
@@ -103,9 +102,9 @@ public class FraudSignalService {
             case "ANSWER_CHANGE_BURST" -> new SignalDescriptor("ANSWER_CHANGE_BURST", SignalSeverity.HIGH, 0.88);
             case "SYNC_BEHAVIOR" -> new SignalDescriptor("SYNC_BEHAVIOR", SignalSeverity.HIGH, 0.84);
             case "MULTI_MONITOR" -> new SignalDescriptor("MULTI_MONITOR", SignalSeverity.HIGH, 0.8);
-            case "DUPLICATE_IP" -> new SignalDescriptor("DUPLICATE_IP", SignalSeverity.MEDIUM, 0.8);
-            case "IP_FINGERPRINT_GRAPH" -> new SignalDescriptor("IP_FINGERPRINT_GRAPH", SignalSeverity.HIGH, 0.92);
-            case "FAST_SUBMIT" -> new SignalDescriptor("TIME_ANOMALY", SignalSeverity.MEDIUM, 0.75);
+            case "DUPLICATE_IP", "IP_FINGERPRINT_GRAPH" -> new SignalDescriptor("IP_ANOMALY", SignalSeverity.HIGH, 0.92);
+            case "FAST_SUBMIT", "IMPOSSIBLE_SPEED", "IMPOSSIBLE_EXAM_SPEED", "FAST_ANSWER" ->
+                new SignalDescriptor("TIMING_ANOMALY", SignalSeverity.MEDIUM, 0.75);
             case "HEARTBEAT_STALE" -> new SignalDescriptor("HEARTBEAT_STALE", SignalSeverity.MEDIUM, 0.7);
             case "NETWORK_INSTABILITY" -> new SignalDescriptor("NETWORK_INSTABILITY", SignalSeverity.MEDIUM, 0.78);
             case "SESSION_RECOVERY" -> new SignalDescriptor("SESSION_RECOVERY", SignalSeverity.MEDIUM, 0.8);

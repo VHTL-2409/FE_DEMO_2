@@ -476,10 +476,10 @@ const formatScheduleTime = (isoString) => {
   })
 }
 
-const goToMonitoring = () => {
+  const goToMonitoring = () => {
   const examId = getExamId()
   if (examId) {
-    router.push(`/teacher/live-monitoring/session?examId=${examId}`)
+    router.push(`/teacher/exams/${examId}/monitoring`)
   } else {
     router.push('/teacher/live-monitoring')
   }

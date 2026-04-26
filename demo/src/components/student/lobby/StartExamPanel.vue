@@ -49,6 +49,9 @@ const props = defineProps({
   isEnded: { type: Boolean, default: false },
   isBeforeStart: { type: Boolean, default: false },
   devicesReady: { type: Boolean, default: true },
+  /** True once the camera check has run and passed. Used to distinguish
+   *  "not yet verified" from "not required" in the button label. */
+  devicesVerified: { type: Boolean, default: false },
   requireCameraMic: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
   joinLabel: { type: String, default: 'Bắt đầu làm bài' }
@@ -56,9 +59,15 @@ const props = defineProps({
 
 defineEmits(['start'])
 
+// Show camera prompt when the exam requires camera but it hasn't been verified yet
+const needsCameraPrompt = computed(() =>
+  props.requireCameraMic && !props.devicesVerified
+)
+
 const buttonLabel = computed(() => {
   if (props.isEnded) return 'Bài thi đã kết thúc'
   if (props.isBeforeStart) return 'Chưa đến giờ thi'
+  if (needsCameraPrompt.value) return 'Bật camera để vào thi'
   if (!props.devicesReady && props.requireCameraMic) return 'Kiểm tra thiết bị'
   return props.joinLabel
 })
@@ -66,6 +75,7 @@ const buttonLabel = computed(() => {
 const reasonText = computed(() => {
   if (props.isEnded) return 'Bài thi đã kết thúc và không còn nhận bài.'
   if (props.isBeforeStart) return 'Vui lòng đợi đến giờ bắt đầu bài thi.'
+  if (needsCameraPrompt.value) return 'Bạn cần bật camera và microphone để vào phòng thi.'
   if (!props.devicesReady && props.requireCameraMic) return 'Bạn cần cấp quyền camera và microphone.'
   return 'Điều kiện chưa đủ để bắt đầu.'
 })
@@ -73,6 +83,7 @@ const reasonText = computed(() => {
 const reasonIcon = computed(() => {
   if (props.isEnded) return 'event_busy'
   if (props.isBeforeStart) return 'schedule'
+  if (needsCameraPrompt.value) return 'videocam_off'
   if (!props.devicesReady && props.requireCameraMic) return 'videocam_off'
   return 'lock'
 })
@@ -80,6 +91,7 @@ const reasonIcon = computed(() => {
 const reasonClass = computed(() => {
   if (props.isEnded) return 'sep__reason--ended'
   if (props.isBeforeStart) return 'sep__reason--waiting'
+  if (needsCameraPrompt.value) return 'sep__reason--cam'
   if (!props.devicesReady && props.requireCameraMic) return 'sep__reason--cam'
   return 'sep__reason--locked'
 })

@@ -685,16 +685,7 @@ const openPauseModal = (student) => openActionModal(student, 'pause')
 const openResumeModal = (student) => openActionModal(student, 'resume')
 const openStudentDetail = (student) => {
   const studentId = student.userId || student.studentId || student.id
-  router.push({
-    path: '/teacher/live-monitoring/student-detail',
-    query: {
-      attemptId: String(student.id || student.attemptId),
-      examId: examId.value ? String(examId.value) : '',
-      student: student.student || student.name || student.userName || '—',
-      studentId: studentId != null ? String(studentId) : '',
-      studentEmail: student.email || ''
-    }
-  })
+  router.push(`/teacher/exams/${examId.value}/monitoring/student/${student.id || student.attemptId}`)
 }
 const ACTION_HANDLERS = {
   warn: { call: sendTeacherWarning, success: 'Đã gửi cảnh báo tới', error: 'Không gửi được cảnh báo.' },
@@ -799,7 +790,7 @@ const eventTypeIcon = (type) => ({ ALERT: 'alert-triangle', WARN: 'alert-circle'
 const eventTypeColor = (type) => ({ ALERT: 'warn', WARN: 'warn', PAUSE: 'info', RESUME: 'success', INVALIDATE: 'danger', REFRESH: 'neutral' }[type] || 'neutral')
 
 // ── Watchers ────────────────────────────────────────────────────────────
-watch(() => route.path === '/teacher/live-monitoring/session' ? { ...route.query } : null, (q) => { if (q?.examId) writeMonitoringSessionQuery(q) }, { deep: true, immediate: true })
+watch(() => (route.path === '/teacher/live-monitoring/session' || route.path.startsWith('/teacher/exams/')) ? { ...route.query } : null, (q) => { if (q?.examId) writeMonitoringSessionQuery(q) }, { deep: true, immediate: true })
 
 const resetSessionState = () => {
   store.setCards([])

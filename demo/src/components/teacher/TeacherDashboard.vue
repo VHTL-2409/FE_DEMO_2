@@ -261,13 +261,7 @@ const teacherName = ref('Giáo viên')
 const goToMonitoring = () => router.push('/teacher/live-monitoring')
 const goToLiveMonitoringSession = (exam) => {
   if (!exam?.id) return
-  router.push({
-    path: '/teacher/live-monitoring/session',
-    query: {
-      examId: String(exam.id),
-      title: exam.title || ''
-    }
-  })
+  router.push(`/teacher/exams/${exam.id}/monitoring`)
 }
 const goToCreate = () => router.push('/teacher/exams/create')
 

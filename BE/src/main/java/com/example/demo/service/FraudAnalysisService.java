@@ -411,7 +411,7 @@ public class FraudAnalysisService {
         double stdDev = Math.sqrt(variance);
         if (mean == 0) return 0.70;
         double cv = stdDev / mean;
-        return Math.round(Math.max(0, Math.min(1, 1.0 / (1.0 + cv)) * 1000.0) / 1000.0;
+        return Math.round(Math.max(0, Math.min(1, 1.0 / (1.0 + cv)) * 1000.0) / 1000.0);
     }
 
     private Map<String, Object> parseEvidence(String evidenceJson) {
@@ -605,18 +605,18 @@ public class FraudAnalysisService {
 
             addPatternIf(patterns, attempt, "TAB_SWITCH", "Chuyen tab nhieu lan",
                     typeCounts.getOrDefault("TAB_SWITCH", 0L), 3L, 5L);
-            addPatternIf(patterns, attempt, "COPY_PASTE", "Co gang copy noi dung de thi",
-                    typeCounts.getOrDefault("COPY_PASTE", 0L) + typeCounts.getOrDefault("CLIPBOARD_BURST", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "EXIT_FULLSCREEN", "Thoat che do toan man hinh",
-                    typeCounts.getOrDefault("EXIT_FULLSCREEN", 0L) + typeCounts.getOrDefault("FULLSCREEN_EVASION", 0L), 1L, 3L);
+            addPatternIf(patterns, attempt, "CLIPBOARD_ABUSE", "Co gang copy noi dung de thi",
+                    typeCounts.getOrDefault("CLIPBOARD_ABUSE", 0L), 1L, 2L);
+            addPatternIf(patterns, attempt, "FULLSCREEN_VIOLATION", "Thoat che do toan man hinh",
+                    typeCounts.getOrDefault("FULLSCREEN_VIOLATION", 0L), 1L, 3L);
             addPatternIf(patterns, attempt, "DEVTOOLS_OPEN", "Mo cong cu phat trien",
                     typeCounts.getOrDefault("DEVTOOLS_OPEN", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "DUPLICATE_IP", "Phat hien IP trung lap",
-                    typeCounts.getOrDefault("DUPLICATE_IP", 0L) + typeCounts.getOrDefault("IP_FINGERPRINT_GRAPH", 0L), 1L, 2L);
+            addPatternIf(patterns, attempt, "IP_ANOMALY", "Phat hien IP trung lap",
+                    typeCounts.getOrDefault("IP_ANOMALY", 0L), 1L, 2L);
             addPatternIf(patterns, attempt, "SYNC_BEHAVIOR", "Hanh vi dong bo voi thi sinh khac",
                     typeCounts.getOrDefault("SYNC_BEHAVIOR", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "FAST_ANSWER", "Lam bai qua nhanh",
-                    typeCounts.getOrDefault("FAST_ANSWER", 0L) + typeCounts.getOrDefault("IMPOSSIBLE_SPEED", 0L), 1L, 2L);
+            addPatternIf(patterns, attempt, "TIMING_ANOMALY", "Lam bai qua nhanh",
+                    typeCounts.getOrDefault("TIMING_ANOMALY", 0L), 1L, 2L);
             addPatternIf(patterns, attempt, "ANSWER_SIMILARITY", "Tuong dong dap an cao voi thi sinh khac",
                     typeCounts.getOrDefault("ANSWER_SIMILARITY", 0L) + typeCounts.getOrDefault("EXACT_ANSWER_MATCH", 0L), 1L, 2L);
         }

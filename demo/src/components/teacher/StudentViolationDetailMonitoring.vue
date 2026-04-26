@@ -1,228 +1,286 @@
 <template>
-  <div class="sd-root">
+  <div class="mon-root">
 
-    <!-- ── Loading State ───────────────────────────────────────── -->
-    <div v-if="loading" class="sd-loading">
-      <div class="sd-loading__spinner" />
-      <span class="sd-loading__text">Đang tải dữ liệu giám sát...</span>
+    <!-- Loading -->
+    <div v-if="loading" class="mon-loading">
+      <div class="mon-loading__spinner" />
+      <span>Đang tải dữ liệu...</span>
     </div>
 
-    <!-- ── Error State ────────────────────────────────────────── -->
-    <div v-else-if="error" class="sd-error">
-      <div class="sd-error__card">
-        <LucideIcon name="alert-circle" :size="32" class="sd-error__icon" />
-        <h3 class="sd-error__title">Không thể tải dữ liệu</h3>
-        <p class="sd-error__msg">{{ error }}</p>
-        <button class="sd-btn sd-btn--ghost" @click="loadData()">
-          <LucideIcon name="refresh-cw" :size="14" />
-          Thử lại
-        </button>
-      </div>
+    <!-- Error -->
+    <div v-else-if="error" class="mon-error">
+      <LucideIcon name="alert-circle" :size="28" />
+      <p>{{ error }}</p>
+      <button class="mon-error__retry" @click="loadData()">Thử lại</button>
     </div>
 
     <template v-else>
 
-      <!-- ── Top Command Bar ──────────────────────────────────── -->
-      <header class="sd-topbar">
-        <div class="sd-topbar__left">
-          <button class="sd-back-btn" @click="goBack">
+      <!-- ── Page Header ─────────────────────────────────────────── -->
+      <header class="mon-header">
+        <div class="mon-header__left">
+          <RouterLink :to="sessionLink" class="mon-icon-btn">
             <LucideIcon name="arrow-left" :size="16" />
-            <span>Quay lại</span>
-          </button>
-          <div class="sd-topbar__divider" />
-          <nav class="sd-breadcrumb" aria-label="breadcrumb">
-            <RouterLink to="/teacher/live-monitoring" class="sd-breadcrumb__link">Giám sát</RouterLink>
-            <LucideIcon name="chevron-right" :size="12" class="sd-breadcrumb__sep" />
-            <RouterLink :to="sessionLink" class="sd-breadcrumb__link">Phiên thi</RouterLink>
-            <LucideIcon name="chevron-right" :size="12" class="sd-breadcrumb__sep" />
-            <span class="sd-breadcrumb__current">{{ studentName }}</span>
-          </nav>
-        </div>
-        <div class="sd-topbar__right">
-          <!-- Connection -->
-          <div class="sd-conn-badge" :class="isRealtimeConnected ? 'sd-conn-badge--live' : 'sd-conn-badge--off'">
-            <span class="sd-conn-badge__dot" />
-            {{ isRealtimeConnected ? 'LIVE' : 'OFFLINE' }}
+          </RouterLink>
+          <div class="smd-header__exam-info">
+            <span class="smd-header__exam-name">{{ selectedExamTitle }}</span>
+            <span class="smd-header__exam-code">{{ selectedExamCode }}</span>
           </div>
-          <!-- Last updated -->
-          <span class="sd-topbar__updated">{{ lastUpdatedLabel }}</span>
-          <!-- Refresh -->
-          <button class="sd-topbar__refresh" @click="loadData(true)" :disabled="isRefreshing">
-            <LucideIcon name="refresh-cw" :size="14" :class="{ 'sd-spin': isRefreshing }" />
-            <span>Làm mới</span>
-          </button>
-          <!-- Attempt ID -->
-          <div v-if="attemptId" class="sd-attempt-id">
-            <LucideIcon name="hash" :size="12" />
-            <span>{{ attemptId }}</span>
-            <button class="sd-copy-btn" @click="copyAttemptId" title="Sao chép mã bài làm">
-              <LucideIcon name="copy" :size="12" />
-            </button>
+        </div>
+
+        <div class="mon-header__center">
+          <!-- Student avatar + name -->
+          <div class="smd-header__student">
+            <div class="smd-avatar" :style="{ background: riskBg }">
+              <span :style="{ color: riskColor }">{{ studentInitials }}</span>
+              <div class="smd-avatar__ring" :style="{ borderColor: statusColor }" />
+            </div>
+            <div class="smd-header__student-info">
+              <h1 class="smd-header__student-name">{{ studentName }}</h1>
+              <div class="smd-header__student-meta">
+                <span v-if="studentCode" class="smd-meta-tag">
+                  <LucideIcon name="hash" :size="11" />{{ studentCode }}
+                </span>
+                <span class="smd-meta-tag">
+                  <LucideIcon name="clock" :size="11" />{{ sessionTime }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mon-header__right">
+          <!-- Risk gauge -->
+          <div class="smd-gauge">
+            <svg class="smd-gauge__svg" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="44" class="smd-gauge__track" />
+              <circle cx="50" cy="50" r="44" class="smd-gauge__fill"
+                :stroke="riskColor"
+                :stroke-dasharray="gaugeArc" />
+            </svg>
+            <div class="smd-gauge__center">
+              <span class="smd-gauge__score" :style="{ color: riskColor }">{{ riskScore }}</span>
+              <span class="smd-gauge__label">điểm</span>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="smd-badges">
+            <span class="mon-badge" :style="{ color: riskColor, background: riskBg, borderColor: riskBg }">
+              <LucideIcon name="shield-alert" :size="11" />
+              {{ riskLevelLabel }}
+            </span>
+            <span class="mon-badge mon-badge--status" :style="{ color: statusColor }">
+              {{ statusLabel }}
+            </span>
           </div>
         </div>
       </header>
 
-      <!-- ── Hero: Student Profile + Risk ──────────────────────── -->
-      <div class="sd-hero" :class="`sd-hero--${riskBand}`">
-        <div class="sd-hero__left">
-          <!-- Avatar -->
-          <div class="sd-avatar-wrap">
-            <div class="sd-avatar" :style="{ background: avatarBg }">
-              <span class="sd-avatar__initials" :style="{ color: riskColor }">{{ studentInitials }}</span>
-            </div>
-            <div class="sd-avatar__ring" :style="{ borderColor: attemptStatusColor }" />
-            <div class="sd-avatar__risk-dot" :style="{ background: riskColor }" />
-          </div>
-
-          <!-- Info -->
-          <div class="sd-hero__info">
-            <div class="sd-hero__name-row">
-              <h1 class="sd-hero__name">{{ studentName }}</h1>
-              <span class="sd-status-badge" :style="{ color: attemptStatusColor, background: attemptStatusBg }">
-                <LucideIcon :name="attemptStatusIcon" :size="11" />
-                {{ attemptStatusLabel }}
-              </span>
-            </div>
-            <div class="sd-hero__meta">
-              <span v-if="studentCode" class="sd-hero__meta-item">
-                <LucideIcon name="hash" :size="12" />
-                {{ studentCode }}
-              </span>
-              <span v-if="studentEmail" class="sd-hero__meta-item">
-                <LucideIcon name="mail" :size="12" />
-                {{ studentEmail }}
-              </span>
-              <span class="sd-hero__meta-item">
-                <LucideIcon name="clock" :size="12" />
-                {{ sessionTime }}
-              </span>
-            </div>
-            <div class="sd-hero__badges">
-              <span class="sd-badge sd-badge--risk" :style="{ color: riskColor, background: riskBg, borderColor: riskColor + '30' }">
-                <LucideIcon name="shield-alert" :size="11" />
-                {{ riskLevelLabel }}
-              </span>
-              <span v-if="riskData.reviewRequired" class="sd-badge sd-badge--warn">
-                <LucideIcon name="eye" :size="11" />
-                Cần review
-              </span>
-              <span class="sd-badge sd-badge--neutral">
-                <LucideIcon name="bar-chart-2" :size="11" />
-                {{ violationCount }} vi phạm
-              </span>
-            </div>
-          </div>
+      <!-- ── Recommendation Banner ──────────────────────────────── -->
+      <div v-if="riskData.reviewRequired || riskData.reasons?.length" class="mon-rec-card">
+        <div class="mon-rec-card__icon">
+          <LucideIcon name="lightbulb" :size="16" />
         </div>
-
-        <!-- Risk Gauge -->
-        <div class="sd-hero__right">
-          <div class="sd-gauge-wrap">
-            <svg class="sd-gauge-svg" viewBox="0 0 120 120">
-              <circle class="sd-gauge-track" cx="60" cy="60" r="50" />
-              <circle
-                class="sd-gauge-fill"
-                cx="60" cy="60" r="50"
-                :stroke="riskColor"
-                :stroke-dasharray="gaugeArc"
-              />
-              <circle class="sd-gauge-glow" cx="60" cy="60" r="50" :stroke="riskColor" opacity="0.15" stroke-dasharray="314" :stroke-dashoffset="gaugeDashOffset" />
-            </svg>
-            <div class="sd-gauge-center">
-              <span class="sd-gauge-score" :style="{ color: riskColor }">{{ riskScore }}</span>
-              <span class="sd-gauge-unit">điểm</span>
-            </div>
-          </div>
-          <div class="sd-gauge-info">
-            <p class="sd-gauge-desc">{{ riskDescription }}</p>
-            <div class="sd-gauge-bar-track">
-              <div class="sd-gauge-bar-fill" :style="{ width: riskScore + '%', background: riskColor }" />
-            </div>
+        <div class="mon-rec-card__body">
+          <span class="mon-rec-card__action" :style="{ color: riskColor }">
+            {{ recommendedActionLabel }}
+          </span>
+          <div v-if="riskData.reasons?.length" class="mon-rec-card__reasons">
+            <span v-for="reason in riskData.reasons.slice(0, 4)" :key="reason" class="mon-reason-tag">{{ reason }}</span>
           </div>
         </div>
       </div>
 
-      <!-- ── Stats Strip ──────────────────────────────────────── -->
-      <div class="sd-stats-strip">
-        <div class="sd-stat-tile" v-for="tile in statsTiles" :key="tile.label" :class="tile.cls">
-          <div class="sd-stat-tile__icon">
-            <LucideIcon :name="tile.icon" :size="16" />
-          </div>
-          <div class="sd-stat-tile__body">
-            <span class="sd-stat-tile__value" :style="tile.valueStyle">{{ tile.value }}</span>
-            <span class="sd-stat-tile__label">{{ tile.label }}</span>
-          </div>
-        </div>
+      <!-- ── Tabs ─────────────────────────────────────────────── -->
+      <div class="smd-tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="smd-tab"
+          :class="{ 'smd-tab--active': activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          <LucideIcon :name="tab.icon" :size="14" />
+          {{ tab.label }}
+          <span v-if="tab.count !== undefined" class="smd-tab__count">{{ tab.count }}</span>
+        </button>
       </div>
 
-      <!-- ── Main Content Grid ────────────────────────────────── -->
-      <div class="sd-grid">
+      <!-- ── Content ─────────────────────────────────────────── -->
+      <div class="smd-content">
 
-        <!-- ── Left Column ── -->
-        <div class="sd-col sd-col--main">
+        <!-- Tab: Overview -->
+        <div v-if="activeTab === 'overview'" class="smd-tab-pane">
+          <div class="smd-overview-grid">
 
-          <!-- Recommendation Card -->
-          <div v-if="riskData.reviewRequired || riskData.recommendedAction || (riskData.reasons && riskData.reasons.length)" class="sd-card sd-card--action">
-            <div class="sd-card__header">
-              <LucideIcon name="lightbulb" :size="16" />
-              <span class="sd-card__title">Đề xuất xử lý</span>
-              <span class="sd-badge sd-badge--rec" :style="{ color: riskColor, background: riskBg, borderColor: riskColor + '30' }">
-                {{ recommendedActionLabel }}
-              </span>
+            <!-- Risk breakdown -->
+            <div class="smd-panel">
+              <div class="smd-panel__header">
+                <LucideIcon name="bar-chart-2" :size="14" />
+                <span>Phân tích điểm rủi ro</span>
+              </div>
+              <div class="smd-panel__body">
+                <div v-if="!hasBreakdown" class="smd-empty">Không có dữ liệu phân tích</div>
+                <div v-else class="smd-breakdown-list">
+                  <div v-for="(score, key) in riskData.breakdown" :key="key" class="smd-breakdown-row">
+                    <span class="smd-breakdown-row__label">{{ getVLabel(key) }}</span>
+                    <div class="smd-breakdown-row__bar">
+                      <div class="smd-breakdown-row__fill" :style="{ width: Math.min(score, 100) + '%', background: sColor(score) }" />
+                    </div>
+                    <span class="smd-breakdown-row__score" :style="{ color: sColor(score) }">{{ score }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="sd-card__body">
-              <div v-if="riskData.reasons && riskData.reasons.length" class="sd-reason-block">
-                <p class="sd-section-label">Lý do chính</p>
-                <div class="sd-reason-chips">
-                  <span
-                    v-for="reason in riskData.reasons"
-                    :key="reason"
-                    class="sd-reason-chip"
-                    :style="{ color: '#fbbf24', background: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.25)' }"
-                  >
-                    <LucideIcon name="alert-triangle" :size="10" />
-                    {{ reason }}
+
+            <!-- Progress -->
+            <div class="smd-panel">
+              <div class="smd-panel__header">
+                <LucideIcon name="list-checks" :size="14" />
+                <span>Tiến độ bài thi</span>
+              </div>
+              <div class="smd-panel__body">
+                <div class="smd-progress-block">
+                  <span class="smd-progress-block__val">{{ attemptData.answeredCount || 0 }}/{{ attemptData.totalQuestions || 0 }}</span>
+                  <span class="smd-progress-block__label">câu đã trả lời</span>
+                </div>
+                <div class="smd-progress-bar">
+                  <div class="smd-progress-fill" :style="{ width: progressPercent + '%', background: riskColor }" />
+                </div>
+                <div class="smd-progress-row">
+                  <span>{{ progressPercent }}% hoàn thành</span>
+                  <span v-if="attemptData.remainingSeconds" class="smd-remaining">
+                    <LucideIcon name="clock" :size="12" />
+                    {{ formatRemaining(attemptData.remainingSeconds) }}
                   </span>
                 </div>
               </div>
-              <div v-if="riskData.evidenceSummary && riskData.evidenceSummary.length" class="sd-evidence-block">
-                <p class="sd-section-label">Bằng chứng</p>
-                <ul class="sd-evidence-list">
-                  <li v-for="(item, i) in riskData.evidenceSummary" :key="i" class="sd-evidence-item">
-                    <LucideIcon name="circle-dot" :size="10" class="sd-evidence-dot" />
-                    {{ item }}
-                  </li>
-                </ul>
-              </div>
             </div>
-          </div>
 
-          <!-- Violation Timeline -->
-          <div class="sd-card">
-            <div class="sd-card__header">
-              <LucideIcon name="activity" :size="16" />
-              <span class="sd-card__title">Dòng thời gian vi phạm</span>
-              <span class="sd-card__badge">{{ timelineEvents.length }}</span>
-            </div>
-            <div class="sd-card__body--flush">
-              <div v-if="timelineEvents.length === 0" class="sd-empty-state">
-                <LucideIcon name="check-circle" :size="36" class="sd-empty-state__icon sd-empty-state__icon--success" />
-                <p class="sd-empty-state__title">Không có vi phạm</p>
-                <p class="sd-empty-state__sub">Học sinh không có hành vi đáng ngờ trong suốt phiên thi.</p>
+            <!-- Device info -->
+            <div class="smd-panel">
+              <div class="smd-panel__header">
+                <LucideIcon name="monitor" :size="14" />
+                <span>Thông tin thiết bị</span>
               </div>
-              <div v-else class="sd-timeline">
-                <div v-for="(event, index) in timelineEvents" :key="event.key" class="sd-tl-item">
-                  <div class="sd-tl-item__connector" v-if="index < timelineEvents.length - 1" />
-                  <div class="sd-tl-item__dot" :style="{ background: getVColor(event.eventType) }">
-                    <LucideIcon :name="getVIcon(event.eventType)" :size="10" style="color: white" />
+              <div class="smd-panel__body smd-panel__body--tight">
+                <div class="smd-device-row">
+                  <LucideIcon name="laptop" :size="13" />
+                  <span class="smd-device-row__label">Thiết bị</span>
+                  <span class="smd-device-row__val">{{ deviceInfo.device || '—' }}</span>
+                </div>
+                <div class="smd-device-row">
+                  <LucideIcon name="globe" :size="13" />
+                  <span class="smd-device-row__label">Trình duyệt</span>
+                  <span class="smd-device-row__val">{{ deviceInfo.browser || '—' }}</span>
+                </div>
+                <div class="smd-device-row">
+                  <LucideIcon name="cpu" :size="13" />
+                  <span class="smd-device-row__label">Hệ điều hành</span>
+                  <span class="smd-device-row__val">{{ deviceInfo.os || '—' }}</span>
+                </div>
+                <div class="smd-device-row">
+                  <LucideIcon name="map-pin" :size="13" />
+                  <span class="smd-device-row__label">Địa chỉ IP</span>
+                  <span class="smd-device-row__val">{{ attemptData.clientIp || '—' }}</span>
+                </div>
+                <div class="smd-device-row">
+                  <LucideIcon name="fingerprint" :size="13" />
+                  <span class="smd-device-row__label">Fingerprint</span>
+                  <span class="smd-device-row__val">{{ attemptData.deviceFingerprint || '—' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Suspicious patterns -->
+            <div v-if="suspiciousPatterns.length > 0" class="smd-panel smd-panel--warn">
+              <div class="smd-panel__header">
+                <LucideIcon name="brain" :size="14" />
+                <span>Mẫu hành vi đáng ngờ</span>
+                <span class="smd-panel__badge smd-panel__badge--warn">{{ suspiciousPatterns.length }}</span>
+              </div>
+              <div class="smd-panel__body">
+                <div v-for="p in suspiciousPatterns" :key="p.id" class="smd-pattern">
+                  <div class="smd-pattern__head">
+                    <LucideIcon name="alert-triangle" :size="12" :style="{ color: pColor(p.level) }" />
+                    <span class="smd-pattern__title">{{ p.title }}</span>
+                    <span class="smd-pattern__level" :style="{ background: pColor(p.level) }">{{ p.level }}</span>
                   </div>
-                  <div class="sd-tl-item__content">
-                    <div class="sd-tl-item__header">
-                      <span class="sd-tl-item__type" :style="{ color: getVColor(event.eventType) }">{{ getVLabel(event.eventType) }}</span>
-                      <span class="sd-tl-item__time">{{ formatTime(event.at) }}</span>
+                  <p class="smd-pattern__desc">{{ p.description }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick actions -->
+            <div class="smd-panel">
+              <div class="smd-panel__header">
+                <LucideIcon name="settings" :size="14" />
+                <span>Điều khiển nhanh</span>
+              </div>
+              <div class="smd-panel__body smd-panel__body--controls">
+                <button class="mon-action-btn mon-action-btn--warn" @click="showWarningDialog = true">
+                  <LucideIcon name="alert-triangle" :size="14" />
+                  Gửi cảnh báo
+                </button>
+                <button v-if="isStudentPaused" class="mon-action-btn mon-action-btn--success" @click="showResumeDialog = true">
+                  <LucideIcon name="play" :size="14" />
+                  Cho phép tiếp tục
+                </button>
+                <button v-else class="mon-action-btn mon-action-btn--pause" :disabled="isStudentTerminal" @click="showPauseDialog = true">
+                  <LucideIcon name="pause" :size="14" />
+                  Tạm dừng thi
+                </button>
+                <button class="mon-action-btn mon-action-btn--danger" :disabled="isStudentTerminal" @click="showStopDialog = true">
+                  <LucideIcon name="x-circle" :size="14" />
+                  Buộc nộp bài
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Tab: Timeline -->
+        <div v-if="activeTab === 'timeline'" class="smd-tab-pane">
+          <div class="smd-panel">
+            <div class="smd-panel__header">
+              <LucideIcon name="activity" :size="14" />
+              <span>Dòng thời gian vi phạm</span>
+              <span class="smd-panel__badge">{{ filteredTimeline.length }}</span>
+              <select v-model="timelineFilter" class="smd-panel__filter">
+                <option value="">Tất cả loại</option>
+                <option value="TAB_SWITCH">Chuyển tab</option>
+                <option value="COPY_PASTE">Sao chép</option>
+                <option value="EXIT_FULLSCREEN">Thoát toàn màn hình</option>
+                <option value="DEVTOOLS">DevTools</option>
+                <option value="DUPLICATE_IP">IP trùng</option>
+                <option value="WARNING_SENT">Cảnh báo</option>
+                <option value="NOTE">Ghi chú</option>
+              </select>
+            </div>
+            <div class="smd-panel__body">
+              <div v-if="filteredTimeline.length === 0" class="smd-empty">
+                <LucideIcon name="check-circle" :size="24" />
+                <p>Không có vi phạm nào</p>
+              </div>
+              <div v-else class="smd-timeline">
+                <div v-for="(evt, idx) in filteredTimeline" :key="evt.key" class="smd-tl-item">
+                  <div class="smd-tl-item__line" v-if="idx < filteredTimeline.length - 1" />
+                  <div class="smd-tl-item__dot"
+                    :style="{ background: getVColor(evt.eventType), boxShadow: `0 0 0 4px ${getVColor(evt.eventType)}22` }">
+                    <LucideIcon :name="getVIcon(evt.eventType)" :size="10" style="color: white" />
+                  </div>
+                  <div class="smd-tl-item__content">
+                    <div class="smd-tl-item__row">
+                      <span class="smd-tl-item__type" :style="{ color: getVColor(evt.eventType) }">
+                        {{ getVLabel(evt.eventType) }}
+                      </span>
+                      <span class="smd-tl-item__time">{{ formatTime(evt.at) }}</span>
                     </div>
-                    <p v-if="event.details" class="sd-tl-item__details">{{ event.details }}</p>
-                    <span class="sd-tl-item__severity" :class="`sd-tl-item__severity--${getSeverityStatus(event.severity)}`">
-                      {{ getSeverityLabel(event.severity) }}
+                    <p v-if="evt.details" class="smd-tl-item__details">{{ evt.details }}</p>
+                    <span class="smd-tl-item__sev" :class="`smd-tl-item__sev--${getSeverityStatus(evt.severity)}`">
+                      {{ getSeverityLabel(evt.severity) }}
                     </span>
                   </div>
                 </div>
@@ -230,599 +288,252 @@
             </div>
           </div>
 
-        </div>
-
-        <!-- ── Right Column ── -->
-        <div class="sd-col sd-col--side">
-
-          <!-- Risk Breakdown -->
-          <div v-if="hasBreakdown" class="sd-card">
-            <div class="sd-card__header">
-              <LucideIcon name="bar-chart-2" :size="16" />
-              <span class="sd-card__title">Phân tích điểm rủi ro</span>
+          <!-- Realtime events -->
+          <div class="smd-panel">
+            <div class="smd-panel__header">
+              <LucideIcon name="zap" :size="14" />
+              <span>Sự kiện realtime</span>
+              <div class="smd-live-dot" :class="isConnected ? 'smd-live-dot--on' : 'smd-live-dot--off'" />
+              <span v-if="realtimeFeed.length" class="smd-panel__badge">{{ realtimeFeed.length }}</span>
             </div>
-            <div class="sd-card__body">
-              <div v-for="(score, key) in riskData.breakdown" :key="key" class="sd-breakdown-row">
-                <span class="sd-breakdown-label">{{ getVLabel(key) }}</span>
-                <div class="sd-breakdown-bar-wrap">
-                  <div class="sd-breakdown-bar">
-                    <div class="sd-breakdown-fill" :style="{ width: Math.min(score, 100) + '%', background: sColor(score) }" />
-                  </div>
-                </div>
-                <span class="sd-breakdown-score" :style="{ color: sColor(score) }">{{ score }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Suspicious Patterns -->
-          <div v-if="suspiciousPatterns.length > 0" class="sd-card sd-card--warn">
-            <div class="sd-card__header">
-              <LucideIcon name="brain" :size="16" />
-              <span class="sd-card__title">Mẫu hành vi đáng ngờ</span>
-              <span class="sd-card__badge sd-card__badge--danger">{{ suspiciousPatterns.length }}</span>
-            </div>
-            <div class="sd-card__body--flush">
-              <div
-                v-for="p in suspiciousPatterns"
-                :key="p.id"
-                class="sd-pattern-card"
-                :style="{ background: pBg(p.level), borderColor: pBorder(p.level) }"
-              >
-                <div class="sd-pattern-card__head">
-                  <LucideIcon name="alert-triangle" :size="13" :style="{ color: pColor(p.level) }" />
-                  <span class="sd-pattern-card__title">{{ p.title }}</span>
-                  <span class="sd-pattern-card__level" :style="{ background: pColor(p.level) }">{{ p.level }}</span>
-                </div>
-                <p class="sd-pattern-card__desc">{{ p.description }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Realtime Feed -->
-          <div class="sd-card">
-            <div class="sd-card__header">
-              <LucideIcon name="zap" :size="16" />
-              <span class="sd-card__title">Sự kiện realtime</span>
-              <span v-if="realtimeFeed.length" class="sd-card__badge">{{ realtimeFeed.length }}</span>
-              <div class="sd-live-dot" :class="isRealtimeConnected ? 'sd-live-dot--on' : 'sd-live-dot--off'" :title="isRealtimeConnected ? 'Đang kết nối' : 'Đang chờ'" />
-            </div>
-            <div class="sd-card__body--flush">
-              <div v-if="realtimeFeed.length === 0" class="sd-empty-compact">
+            <div class="smd-panel__body">
+              <div v-if="realtimeFeed.length === 0" class="smd-empty">
                 <LucideIcon name="inbox" :size="22" />
                 <p>Chưa có sự kiện realtime</p>
               </div>
-              <TransitionGroup v-else name="sd-feed" tag="div" class="sd-realtime-list">
-                <div v-for="evt in realtimeFeed" :key="evt.id" class="sd-realtime-item" :class="`sd-realtime-item--${evt.tone}`">
-                  <div class="sd-realtime-item__icon">
+              <div v-else class="smd-realtime-list">
+                <div v-for="evt in realtimeFeed" :key="evt.id" class="smd-realtime-item" :class="`smd-realtime-item--${evt.tone}`">
+                  <div class="smd-realtime-item__icon">
                     <LucideIcon :name="evt.icon" :size="13" />
                   </div>
-                  <div class="sd-realtime-item__body">
-                    <p class="sd-realtime-item__label">
-                      {{ evt.label }}
-                      <span v-if="evt.riskScore != null" class="sd-realtime-item__score">{{ evt.riskScore }}đ</span>
-                    </p>
-                    <p v-if="evt.message" class="sd-realtime-item__msg">{{ evt.message }}</p>
+                  <div class="smd-realtime-item__body">
+                    <span class="smd-realtime-item__label">{{ evt.label }}</span>
+                    <span v-if="evt.riskScore != null" class="smd-realtime-item__score">{{ evt.riskScore }}</span>
+                    <p v-if="evt.message" class="smd-realtime-item__msg">{{ evt.message }}</p>
                   </div>
-                  <span class="sd-realtime-item__time">{{ formatTime(evt.timestamp) }}</span>
-                </div>
-              </TransitionGroup>
-            </div>
-          </div>
-
-          <!-- Latest Signals -->
-          <div v-if="latestSignals.length > 0" class="sd-card">
-            <div class="sd-card__header">
-              <LucideIcon name="radio" :size="16" />
-              <span class="sd-card__title">Tín hiệu gần đây</span>
-            </div>
-            <div class="sd-card__body--flush">
-              <div v-for="sig in latestSignals" :key="sig.signalType + sig.createdAt" class="sd-signal-row">
-                <div class="sd-signal-icon" :style="{ background: sigBg(sig.severity) }">
-                  <LucideIcon name="alert-circle" :size="12" :style="{ color: sigFg(sig.severity) }" />
-                </div>
-                <div class="sd-signal-body">
-                  <p class="sd-signal-type">{{ getVLabel(sig.signalType) }}</p>
-                  <p class="sd-signal-evidence">{{ extractDetailsText(sig.evidence) || '—' }}</p>
-                </div>
-                <div class="sd-signal-meta">
-                  <span class="sd-signal-conf">{{ Math.round((sig.confidence || 0) * 100) }}%</span>
-                  <span class="sd-signal-sev" :class="`sd-signal-sev--${sig.severity?.toLowerCase()}`">{{ sig.severity }}</span>
+                  <span class="smd-realtime-item__time">{{ formatTime(evt.timestamp) }}</span>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
-      </div>
 
-      <!-- ── Action Bar ───────────────────────────────────────── -->
-      <div class="sd-action-bar">
-        <button class="sd-action-btn sd-action-btn--warn" :disabled="actionLoading === 'warning'" @click="issueWarning">
-          <LucideIcon name="alert-triangle" :size="16" />
-          <span>{{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}</span>
-        </button>
-
-        <button
-          v-if="isStudentPaused"
-          class="sd-action-btn sd-action-btn--resume"
-          :disabled="actionLoading === 'resume'"
-          @click="allowResume"
-        >
-          <LucideIcon name="play-circle" :size="16" />
-          <span>{{ actionLoading === 'resume' ? 'Đang xử lý...' : 'Cho phép tiếp tục thi' }}</span>
-        </button>
-
-        <button
-          v-else
-          class="sd-action-btn sd-action-btn--danger"
-          :disabled="actionLoading === 'invalidate' || isStudentTerminal"
-          @click="suspendExam"
-        >
-          <LucideIcon name="x-circle" :size="16" />
-          <span>{{ actionLoading === 'invalidate' ? 'Đang xử lý...' : 'Tạm dừng thi' }}</span>
-        </button>
-
-        <button class="sd-action-btn sd-action-btn--outline" @click="viewFullReport">
-          <LucideIcon name="file-text" :size="16" />
-          <span>Báo cáo đầy đủ</span>
-        </button>
-
-        <div class="sd-action-sep" />
-
-        <div class="sd-action-meta">
-          <span class="sd-action-meta__item">
-            <LucideIcon name="user" :size="12" />
-            {{ store.cards.length }} thí sinh
-          </span>
-          <span class="sd-action-meta__item sd-action-meta__item--success">
-            <LucideIcon name="wifi" :size="12" />
-            {{ onlineCount }} online
-          </span>
-          <span class="sd-action-meta__item sd-action-meta__item--warn">
-            <LucideIcon name="alert-triangle" :size="12" />
-            {{ alertCount }} nghi ngờ
-          </span>
+        <!-- Tab: Actions -->
+        <div v-if="activeTab === 'actions'" class="smd-tab-pane">
+          <div class="smd-panel">
+            <div class="smd-panel__header">
+              <LucideIcon name="list" :size="14" />
+              <span>Hành động đã thực hiện</span>
+            </div>
+            <div class="smd-panel__body">
+              <div v-if="actionHistory.length === 0" class="smd-empty">Chưa có hành động nào</div>
+              <div v-else class="smd-action-list">
+                <div v-for="a in actionHistory" :key="a.key" class="smd-action-item">
+                  <div class="smd-action-item__icon" :class="`smd-action-item__icon--${a.tone}`">
+                    <LucideIcon :name="a.icon" :size="13" />
+                  </div>
+                  <div class="smd-action-item__body">
+                    <span class="smd-action-item__label">{{ a.label }}</span>
+                    <p v-if="a.message" class="smd-action-item__msg">{{ a.message }}</p>
+                  </div>
+                  <span class="smd-action-item__time">{{ formatTime(a.at || a.timestamp) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
+        <!-- Tab: Notes -->
+        <div v-if="activeTab === 'notes'" class="smd-tab-pane">
+          <div class="smd-panel">
+            <div class="smd-panel__header">
+              <LucideIcon name="sticky-note" :size="14" />
+              <span>Thêm ghi chú</span>
+            </div>
+            <div class="smd-panel__body">
+              <textarea v-model="newNote" class="mon-note-input"
+                rows="3" placeholder="Nhập ghi chú về hành vi của học sinh..." />
+              <button class="mon-note-submit" :disabled="!newNote.trim() || noteLoading" @click="addNote">
+                <LucideIcon name="plus" :size="14" />
+                Thêm ghi chú
+              </button>
+            </div>
+          </div>
+
+          <div class="smd-panel">
+            <div class="smd-panel__header">
+              <LucideIcon name="list" :size="14" />
+              <span>Lịch sử ghi chú</span>
+              <span class="smd-panel__badge">{{ notes.length }}</span>
+            </div>
+            <div class="smd-panel__body">
+              <div v-if="notes.length === 0" class="smd-empty">Chưa có ghi chú nào</div>
+              <div v-else class="smd-notes-list">
+                <div v-for="note in notes" :key="note.key" class="smd-note-item">
+                  <div class="smd-note-item__body">{{ note.details || note.note || note.content }}</div>
+                  <div class="smd-note-item__meta">
+                    <span class="smd-note-item__author">Giám thị</span>
+                    <span class="smd-note-item__time">{{ formatTime(note.at || note.timestamp) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </template>
 
-    <!-- ── ConfirmDialog: Warning ── -->
-    <ConfirmDialog
-      v-model="showWarningDialog"
-      variant="warning"
-      title="Gửi cảnh báo"
-      :message="`Gửi cảnh báo tới ${studentName}?`"
-      confirm-label="Gửi cảnh báo"
-      icon="alert-triangle"
-      :show-reason="true"
-      reason-label="Nội dung cảnh báo"
-      :reason-placeholder="'Nhập nội dung cảnh báo (để trống = cảnh báo mặc định)'"
-      :loading="actionLoading === 'warning'"
-      @confirm="(reason) => handleWarningConfirm(reason)"
-    />
+    <!-- ── Dialogs ─────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <!-- Warning -->
+      <div v-if="showWarningDialog" class="mon-overlay" @click.self="showWarningDialog = false">
+        <div class="mon-dialog">
+          <div class="mon-dialog__head mon-dialog__head--warn">
+            <LucideIcon name="alert-triangle" :size="18" />
+            <h3>Gửi cảnh báo tới {{ studentName }}</h3>
+          </div>
+          <div class="mon-dialog__body">
+            <p>Gửi cảnh báo tới <strong>{{ studentName }}</strong></p>
+            <textarea v-model="warningMessage" class="mon-dialog__textarea" rows="3"
+              placeholder="Nội dung cảnh báo (để trống = mặc định)" />
+          </div>
+          <div class="mon-dialog__foot">
+            <button class="mon-dialog__cancel" @click="showWarningDialog = false">Hủy</button>
+            <button class="mon-dialog__confirm mon-dialog__confirm--warn"
+              :disabled="actionLoading === 'warning'" @click="confirmSendWarning">
+              {{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <!-- ── ConfirmDialog: Invalidate ── -->
-    <ConfirmDialog
-      v-model="showInvalidateDialog"
-      variant="danger"
-      title="Xác nhận dừng thi"
-      message="Hành động này sẽ dừng bài thi. Không thể hoàn tác."
-      confirm-label="Xác nhận dừng thi"
-      icon="shield-alert"
-      :show-reason="true"
-      reason-label="Lý do dừng thi"
-      :reason-placeholder="'Nhập lý do...'"
-      :loading="actionLoading === 'invalidate'"
-      @confirm="(reason) => handleInvalidateConfirm(reason)"
-    />
+      <!-- Pause -->
+      <div v-if="showPauseDialog" class="mon-overlay" @click.self="showPauseDialog = false">
+        <div class="mon-dialog">
+          <div class="mon-dialog__head mon-dialog__head--pause">
+            <LucideIcon name="pause-circle" :size="18" />
+            <h3>Tạm dừng thi</h3>
+          </div>
+          <div class="mon-dialog__body">
+            <p>Tạm dừng bài thi của <strong>{{ studentName }}</strong>? Học sinh sẽ không thể tiếp tục cho đến khi được cho phép.</p>
+            <textarea v-model="pauseReason" class="mon-dialog__textarea" rows="2" placeholder="Lý do (tùy chọn)" />
+          </div>
+          <div class="mon-dialog__foot">
+            <button class="mon-dialog__cancel" @click="showPauseDialog = false">Hủy</button>
+            <button class="mon-dialog__confirm mon-dialog__confirm--pause"
+              :disabled="actionLoading === 'pause'" @click="confirmPauseAction">
+              {{ actionLoading === 'pause' ? 'Đang xử lý...' : 'Xác nhận' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <!-- ── ConfirmDialog: Resume ── -->
-    <ConfirmDialog
-      v-model="showResumeDialog"
-      variant="success"
-      title="Cho phép tiếp tục thi"
-      :message="`Học sinh ${studentName} sẽ được khôi phục bài thi và tiếp tục làm bài.`"
-      confirm-label="Cho phép tiếp tục"
-      icon="play-circle"
-      :show-reason="true"
-      reason-label="Lời nhắn"
-      :reason-placeholder="'Lời nhắn tùy chọn...'"
-      :loading="actionLoading === 'resume'"
-      @confirm="(msg) => handleResumeConfirm(msg)"
-    />
+      <!-- Resume -->
+      <div v-if="showResumeDialog" class="mon-overlay" @click.self="showResumeDialog = false">
+        <div class="mon-dialog">
+          <div class="mon-dialog__head mon-dialog__head--success">
+            <LucideIcon name="play-circle" :size="18" />
+            <h3>Cho phép tiếp tục thi</h3>
+          </div>
+          <div class="mon-dialog__body">
+            <p>Học sinh <strong>{{ studentName }}</strong> sẽ được khôi phục bài thi.</p>
+            <textarea v-model="resumeMessage" class="mon-dialog__textarea" rows="2" placeholder="Lời nhắn (tùy chọn)" />
+          </div>
+          <div class="mon-dialog__foot">
+            <button class="mon-dialog__cancel" @click="showResumeDialog = false">Hủy</button>
+            <button class="mon-dialog__confirm mon-dialog__confirm--success"
+              :disabled="actionLoading === 'resume'" @click="confirmResumeAction">
+              {{ actionLoading === 'resume' ? 'Đang xử lý...' : 'Cho phép tiếp tục' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stop -->
+      <div v-if="showStopDialog" class="mon-overlay" @click.self="showStopDialog = false">
+        <div class="mon-dialog">
+          <div class="mon-dialog__head mon-dialog__head--danger">
+            <LucideIcon name="shield-alert" :size="18" />
+            <h3>Xác nhận dừng thi</h3>
+          </div>
+          <div class="mon-dialog__body">
+            <p>Hành động này sẽ <strong>dừng bài thi</strong> của {{ studentName }}. Không thể hoàn tác.</p>
+            <textarea v-model="stopReason" class="mon-dialog__textarea" rows="2"
+              placeholder="Lý do dừng thi (để trống = mặc định)" />
+          </div>
+          <div class="mon-dialog__foot">
+            <button class="mon-dialog__cancel" @click="showStopDialog = false">Hủy</button>
+            <button class="mon-dialog__confirm mon-dialog__confirm--danger"
+              :disabled="actionLoading === 'invalidate'" @click="confirmStop">
+              {{ actionLoading === 'invalidate' ? 'Đang xử lý...' : 'Xác nhận dừng thi' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { RouterLink, useRouter, useRoute } from 'vue-router'
-import { storeToRefs } from 'pinia'
+import { RouterLink, useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
-import { useProctorDashboardStore } from '../../stores/proctorDashboardStore'
-import { listExamAttempts } from '../../services/attemptService'
+import { useExamMonitoring } from '../../composables/useExamMonitoring'
 import {
+  fetchAttemptDetail,
   fetchAttemptRisk,
-  listMonitoringTimeline,
+  addMonitoringNote,
   sendTeacherWarning,
-  invalidateAttempt,
-  resumeAttempt
-} from '../../services/monitoringService'
+  pauseAttempt,
+  resumeAttempt,
+  invalidateAttempt
+} from '../../services/examMonitoringService'
 import { isAttemptPaused, isAttemptTerminal } from '../../utils/proctorStatusMeta'
-import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
-import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
-const REFRESH_INTERVAL_MS = 15000
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
-
-const ATTEMPT_STATUS_META = {
-  SUBMITTED: { label: 'Đã nộp', color: '#4ade80', bg: 'rgba(74,222,128,0.12)', icon: 'check-circle' },
-  STOPPED: { label: 'Đã dừng', color: '#f87171', bg: 'rgba(248,113,113,0.12)', icon: 'x-circle' },
-  PAUSED: { label: 'Tạm dừng', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', icon: 'pause-circle' },
-  ACTIVE: { label: 'Đang thi', color: '#818cf8', bg: 'rgba(129,140,248,0.12)', icon: 'play-circle' },
-  UNKNOWN: { label: '—', color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', icon: 'help-circle' }
+const RISK_LEVEL_LABELS = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao', SUSPICIOUS: 'Đáng ngờ', CLEAN: 'Bình thường' }
+const RECOMMENDED_ACTION_LABELS = {
+  PAUSE_AND_REVIEW: 'Tạm dừng và kiểm tra ngay',
+  WARN_AND_ESCALATE: 'Cảnh báo và tăng cường giám sát',
+  REVIEW_ATTEMPT: 'Mở hồ sơ để review thủ công',
+  CONTINUE_MONITORING: 'Tiếp tục giám sát'
 }
-
-const SEVERITY_MAP = {
-  TAB_SWITCH: 'LOW', WINDOW_BLUR: 'LOW', IDLE_TIME: 'LOW', RIGHT_CLICK: 'LOW',
-  EXIT_FULLSCREEN: 'MEDIUM', COPY_PASTE: 'MEDIUM', RAPID_QUESTION_SWITCH: 'MEDIUM',
-  DUPLICATE_IP: 'MEDIUM', HEARTBEAT_STALE: 'MEDIUM',
-  DEVTOOLS_OPEN: 'HIGH', PRINT_SCREEN: 'HIGH', MULTI_MONITOR: 'HIGH',
-  DEVICE_FINGERPRINT_CHANGED: 'HIGH', SYNC_BEHAVIOR: 'HIGH',
-  IP_FINGERPRINT_GRAPH: 'HIGH', ANSWER_SIMILARITY: 'HIGH',
-  AI_MULTIPLE_FACES: 'HIGH', AI_PHONE_DETECTED: 'HIGH'
+const SEVERITY_LABELS = { HIGH: 'Nghiêm trọng', MEDIUM: 'Trung bình', LOW: 'Thấp', CRITICAL: 'Nghiêm trọng' }
+const V_COLORS = {
+  TAB_SWITCH: '#f59e0b', COPY_PASTE: '#dc2626', DEVTOOLS_OPEN: '#dc2626', EXIT_FULLSCREEN: '#f59e0b',
+  MULTI_MONITOR: '#dc2626', DUPLICATE_IP: '#dc2626', PRINT_SCREEN: '#dc2626', WINDOW_BLUR: '#f59e0b',
+  IDLE_TIME: '#0ea5e9', RIGHT_CLICK: '#0ea5e9', HEARTBEAT_STALE: '#f59e0b', RAPID_QUESTION_SWITCH: '#f59e0b',
+  DEVICE_FINGERPRINT_CHANGED: '#dc2626', SYNC_BEHAVIOR: '#dc2626', IP_FINGERPRINT_GRAPH: '#dc2626',
+  ANSWER_SIMILARITY: '#dc2626', AI_MULTIPLE_FACES: '#dc2626', AI_PHONE_DETECTED: '#dc2626',
+  AI_LOOKING_AWAY: '#0ea5e9', WARNING_SENT: '#818cf8', NOTE: '#94a3b8'
 }
-
-const VIOLATION_COLOR_MAP = {
-  TAB_SWITCH: '#fbbf24', COPY_PASTE: '#f87171', DEVTOOLS_OPEN: '#f87171', EXIT_FULLSCREEN: '#fbbf24',
-  MULTI_MONITOR: '#f87171', DUPLICATE_IP: '#f87171', PRINT_SCREEN: '#f87171', WINDOW_BLUR: '#fbbf24',
-  IDLE_TIME: '#38bdf8', RIGHT_CLICK: '#38bdf8', HEARTBEAT_STALE: '#fbbf24', RAPID_QUESTION_SWITCH: '#fbbf24',
-  DEVICE_FINGERPRINT_CHANGED: '#f87171', SYNC_BEHAVIOR: '#f87171', IP_FINGERPRINT_GRAPH: '#f87171',
-  ANSWER_SIMILARITY: '#f87171', AI_MULTIPLE_FACES: '#f87171', AI_PHONE_DETECTED: '#f87171', AI_LOOKING_AWAY: '#fbbf24'
-}
-
-const VIOLATION_ICON_MAP = {
+const V_ICONS = {
   TAB_SWITCH: 'layers', WINDOW_BLUR: 'layers', IDLE_TIME: 'clock', RIGHT_CLICK: 'mouse-pointer-2',
   EXIT_FULLSCREEN: 'minimize', COPY_PASTE: 'copy', DEVTOOLS_OPEN: 'code', PRINT_SCREEN: 'code',
   MULTI_MONITOR: 'monitor', DUPLICATE_IP: 'globe', RAPID_QUESTION_SWITCH: 'monitor', HEARTBEAT_STALE: 'wifi-off',
   DEVICE_FINGERPRINT_CHANGED: 'code', SYNC_BEHAVIOR: 'monitor', IP_FINGERPRINT_GRAPH: 'globe',
-  ANSWER_SIMILARITY: 'copy', AI_MULTIPLE_FACES: 'monitor', AI_PHONE_DETECTED: 'monitor', AI_LOOKING_AWAY: 'wifi-off'
+  ANSWER_SIMILARITY: 'copy', AI_MULTIPLE_FACES: 'monitor', AI_PHONE_DETECTED: 'monitor', AI_LOOKING_AWAY: 'wifi-off',
+  WARNING_SENT: 'alert-triangle', NOTE: 'sticky-note'
 }
-
-const VIOLATION_LABEL_MAP = {
-  TAB_SWITCH: 'Chuyển tab', WINDOW_BLUR: 'Mất tiêu điểm cửa sổ', IDLE_TIME: 'Không hoạt động',
+const V_LABELS = {
+  TAB_SWITCH: 'Chuyển tab', WINDOW_BLUR: 'Mất tiêu điểm', IDLE_TIME: 'Không hoạt động',
   RIGHT_CLICK: 'Click chuột phải', EXIT_FULLSCREEN: 'Thoát toàn màn hình', COPY_PASTE: 'Sao chép nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools', PRINT_SCREEN: 'Chụp màn hình', MULTI_MONITOR: 'Nhiều màn hình',
   DUPLICATE_IP: 'IP trùng lặp', RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh', HEARTBEAT_STALE: 'Mất kết nối',
   DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị', SYNC_BEHAVIOR: 'Hành vi đồng bộ',
-  IP_FINGERPRINT_GRAPH: 'Liên kết IP/fingerprint', ANSWER_SIMILARITY: 'Tương đồng đáp án',
-  AI_MULTIPLE_FACES: 'Nhiều khuôn mặt', AI_PHONE_DETECTED: 'Phát hiện điện thoại', AI_LOOKING_AWAY: 'Nhìn lệch hướng'
+  IP_FINGERPRINT_GRAPH: 'Liên kết IP', ANSWER_SIMILARITY: 'Tương đồng đáp án',
+  AI_MULTIPLE_FACES: 'Nhiều khuôn mặt', AI_PHONE_DETECTED: 'Phát hiện điện thoại', AI_LOOKING_AWAY: 'Nhìn lệch hướng',
+  WARNING_SENT: 'Cảnh báo đã gửi', NOTE: 'Ghi chú'
 }
-
-const SEVERITY_LABEL_MAP = { HIGH: 'Nghiêm trọng', MEDIUM: 'Trung bình', LOW: 'Thấp', CRITICAL: 'Nghiêm trọng' }
-const RISK_LEVEL_LABEL_MAP = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao', SUSPICIOUS: 'Đáng ngờ', CLEAN: 'Bình thường' }
-const RECOMMENDED_ACTION_MAP = {
-  PAUSE_AND_REVIEW: 'Tạm dừng và kiểm tra ngay', WARN_AND_ESCALATE: 'Cảnh báo và tăng cường giám sát',
-  REVIEW_ATTEMPT: 'Mở hồ sơ để review thủ công', CONTINUE_MONITORING: 'Tiếp tục giám sát'
-}
-
 const PATTERN_RULES = [
-  { id: 'tab', key: 'TAB_SWITCH', threshold: 3, build: (n) => ({ title: 'Chuyển tab nhiều lần', description: `${n} lần chuyển tab, vượt ngưỡng bình thường (3 lần)`, level: n > 5 ? 'high' : 'medium' }) },
-  { id: 'copy', key: 'COPY', threshold: 1, build: (n) => ({ title: 'Cố gắng copy nội dung', description: `${n} lần sao chép dữ liệu từ đề thi`, level: 'medium' }) },
-  { id: 'fs', key: 'EXIT_FULLSCREEN', threshold: 1, build: (n) => ({ title: 'Thoát chế độ toàn màn hình', description: `${n} lần thoát toàn màn hình`, level: n > 2 ? 'high' : 'medium' }) },
+  { id: 'tab', key: 'TAB_SWITCH', threshold: 3, build: (n) => ({ title: 'Chuyển tab nhiều lần', description: `${n} lần chuyển tab (ngưỡng: 3)`, level: n > 5 ? 'high' : 'medium' }) },
+  { id: 'copy', key: 'COPY', threshold: 1, build: (n) => ({ title: 'Cố gắng copy nội dung', description: `${n} lần sao chép dữ liệu`, level: 'medium' }) },
   { id: 'dev', key: 'DEVTOOLS', threshold: 1, build: (n) => ({ title: 'Mở công cụ phát triển', description: `${n} lần mở DevTools`, level: 'high' }) },
-  { id: 'dup', key: 'DUPLICATE_IP', threshold: 1, build: (n) => ({ title: 'Phát hiện IP trùng lặp', description: `${n} thiết bị khác cùng IP đang thi`, level: 'high' }) },
-  { id: 'sync', key: 'SYNC', threshold: 1, build: (n) => ({ title: 'Hành vi đồng bộ', description: `${n} tín hiệu nhiều thí sinh thao tác đồng thời`, level: 'high' }) }
+  { id: 'dup', key: 'DUPLICATE_IP', threshold: 1, build: (n) => ({ title: 'Phát hiện IP trùng lặp', description: `${n} thiết bị khác cùng IP`, level: 'high' }) }
 ]
-
-const mapSeverity = (type, confidence) =>
-  SEVERITY_MAP[type] || ((confidence ?? 0) >= 0.8 ? 'HIGH' : (confidence ?? 0) >= 0.5 ? 'MEDIUM' : 'LOW')
-const getVColor = (type) => VIOLATION_COLOR_MAP[type] || '#94a3b8'
-const getVIcon = (type) => VIOLATION_ICON_MAP[type] || 'alert-circle'
-const getVLabel = (type) => VIOLATION_LABEL_MAP[type] || type || '—'
-const getSeverityLabel = (s) => SEVERITY_LABEL_MAP[s] || s || '—'
-const getSeverityStatus = (s) =>
-  s === 'HIGH' || s === 'CRITICAL' ? 'high' : s === 'MEDIUM' ? 'medium' : 'low'
-const pColor = (l) => l === 'high' ? '#f87171' : l === 'medium' ? '#fbbf24' : '#38bdf8'
-const pBg = (l) => l === 'high' ? 'rgba(248,113,113,0.08)' : l === 'medium' ? 'rgba(251,191,36,0.08)' : 'rgba(56,189,248,0.08)'
-const pBorder = (l) => l === 'high' ? 'rgba(248,113,113,0.2)' : l === 'medium' ? 'rgba(251,191,36,0.2)' : 'rgba(56,189,248,0.2)'
-const sColor = (score) => score >= 60 ? '#f87171' : score >= 30 ? '#fbbf24' : '#38bdf8'
-const sigBg = (sev) => sev === 'HIGH' ? 'rgba(248,113,113,0.15)' : sev === 'MEDIUM' ? 'rgba(251,191,36,0.15)' : 'rgba(56,189,248,0.15)'
-const sigFg = (sev) => sev === 'HIGH' ? '#f87171' : sev === 'MEDIUM' ? '#fbbf24' : '#38bdf8'
-
-const formatTime = (ts) => {
-  if (!ts) return '—'
-  return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
-const router = useRouter()
-const route = useRoute()
-const toast = useToast()
-const store = useProctorDashboardStore()
-const { cards: attempts } = storeToRefs(store)
-const realtime = useRealtimeChannel()
-const isRealtimeConnected = realtime.isConnected
-
-const attemptId = computed(() => route.query.attemptId || '')
-const examId = computed(() => route.query.examId || '')
-const sessionLink = computed(() => ({
-  path: '/teacher/live-monitoring/session',
-  query: examId.value ? { examId: examId.value } : {}
-}))
-
-const loading = ref(false)
-const isRefreshing = ref(false)
-const error = ref('')
-const lastUpdatedAt = ref(null)
-const actionLoading = ref('')
-const showWarningDialog = ref(false)
-const showInvalidateDialog = ref(false)
-const showResumeDialog = ref(false)
-const warningMessage = ref('')
-const invalidateReason = ref('')
-const resumeMessage = ref('')
-
-const riskData = ref({})
-const timeline = ref([])
-const realtimeFeed = ref([])
-
-let refreshTimer = null
-
-// ── Student info ──────────────────────────────────────────────────────────────
-const cleanName = (raw) => (raw == null ? '' : String(raw).trim())
-const studentName = computed(() => {
-  const s = riskData.value.student
-  const fromRisk = cleanName(s?.name || s?.username)
-  if (fromRisk) return fromRisk
-  const fromStore = cleanName(storeCard.value?.student || storeCard.value?.name)
-  if (fromStore) return fromStore
-  return cleanName(route.query.student || route.query.studentName) || '—'
-})
-const studentCode = computed(() => {
-  const s = riskData.value.student
-  if (s) return s.studentCode || String(s.id || '—')
-  if (storeCard.value?.studentCode) return storeCard.value.studentCode
-  return route.query.studentId ? String(route.query.studentId) : '—'
-})
-const studentEmail = computed(() =>
-  riskData.value.student?.email || storeCard.value?.email || route.query.studentEmail || ''
-)
-const studentInitials = computed(() => {
-  const name = studentName.value
-  if (!name || name === '—') return '?'
-  const parts = name.trim().split(/\s+/)
-  const last = parts[parts.length - 1] || ''
-  const first = parts[0] || ''
-  return (last.charAt(0) + (parts.length > 1 ? first.charAt(0) : '')).toUpperCase()
-})
-
-// ── Attempt status ────────────────────────────────────────────────────────────
-const storeCard = computed(() => {
-  if (!attemptId.value) return null
-  const id = Number(attemptId.value)
-  return attempts.value.find(c => (c.id || c.attemptId) === id || String(c.id || c.attemptId) === String(attemptId.value)) || null
-})
-const resolvedStatus = computed(() =>
-  riskData.value.status || riskData.value.attempt?.status || storeCard.value?.status || ''
-)
-const attemptStatusToken = computed(() => {
-  const s = String(resolvedStatus.value).toUpperCase()
-  if (/SUBMITTED/.test(s)) return 'SUBMITTED'
-  if (/STOPPED/.test(s)) return 'STOPPED'
-  if (/PAUSED/.test(s)) return 'PAUSED'
-  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'ACTIVE'
-  return 'UNKNOWN'
-})
-const attemptStatusMeta = computed(() => ATTEMPT_STATUS_META[attemptStatusToken.value])
-const attemptStatusLabel = computed(() => attemptStatusMeta.value.label)
-const attemptStatusColor = computed(() => attemptStatusMeta.value.color)
-const attemptStatusBg = computed(() => attemptStatusMeta.value.bg)
-const attemptStatusIcon = computed(() => attemptStatusMeta.value.icon)
-const isStudentPaused = computed(() => isAttemptPaused(resolvedStatus.value))
-const isStudentTerminal = computed(() => isAttemptTerminal(resolvedStatus.value))
-const sessionTime = computed(() => {
-  const ts = riskData.value.attempt?.startedAt
-  if (!ts) return '—'
-  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000)
-  if (diff < 1) return '<1 phút'
-  if (diff < 60) return `${diff} phút`
-  return `${Math.floor(diff / 60)}h ${diff % 60}p`
-})
-
-// ── Session stats ─────────────────────────────────────────────────────────────
-const onlineCount = computed(() => attempts.value.filter(a => /^(ACTIVE|IN_PROGRESS)$/i.test(a.status || '')).length)
-const alertCount = computed(() => attempts.value.filter(a => Number(a.riskScore || 0) > 30 || Boolean(a.reviewRequired)).length)
-const submittedCount = computed(() => attempts.value.filter(a => /SUBMITTED/i.test(a.status || '')).length)
-
-// ── Stats tiles ───────────────────────────────────────────────────────────────
-const statsTiles = computed(() => [
-  { icon: 'users', label: 'Tổng thí sinh', value: store.cards.length, valueStyle: { color: 'var(--ds-text)' }, cls: '' },
-  { icon: 'wifi', label: 'Đang thi', value: onlineCount.value, valueStyle: { color: '#4ade80' }, cls: 'sd-stat-tile--success' },
-  { icon: 'alert-triangle', label: 'Nghi ngờ', value: alertCount.value, valueStyle: { color: '#fbbf24' }, cls: 'sd-stat-tile--warn' },
-  { icon: 'check-circle', label: 'Đã nộp', value: submittedCount.value, valueStyle: { color: '#818cf8' }, cls: 'sd-stat-tile--info' },
-  { icon: 'shield-alert', label: 'Vi phạm', value: violationCount.value, valueStyle: { color: violationCount.value > 0 ? '#f87171' : 'var(--ds-text-muted)' }, cls: 'sd-stat-tile--danger' }
-])
-
-// ── Risk ──────────────────────────────────────────────────────────────────────
-const riskScore = computed(() => Number(riskData.value.score ?? storeCard.value?.riskScore ?? 0))
-const riskBand = computed(() => {
-  const s = riskScore.value
-  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'danger'
-  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'warn'
-  return 'clean'
-})
-const riskLevelLabel = computed(() => RISK_LEVEL_LABEL_MAP[riskData.value.level] || riskData.value.level || '—')
-const riskDescription = computed(() => {
-  const s = riskScore.value
-  if (s >= RISK_BAND_THRESHOLDS.CRITICAL) return 'Hành vi gian lận rõ ràng — cần xử lý ngay'
-  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'Rủi ro cao — cần giám sát kỹ lưỡng'
-  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'Đáng ngờ — có hành vi bất thường'
-  return 'Không có dấu hiệu bất thường'
-})
-const riskColor = computed(() => {
-  const s = riskScore.value
-  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return '#f87171'
-  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return '#fbbf24'
-  return '#4ade80'
-})
-const riskBg = computed(() => {
-  const s = riskScore.value
-  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'rgba(248,113,113,0.12)'
-  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'rgba(251,191,36,0.12)'
-  return 'rgba(74,222,128,0.12)'
-})
-const avatarBg = computed(() => riskBg.value)
-const recommendedActionLabel = computed(() => RECOMMENDED_ACTION_MAP[riskData.value.recommendedAction] || 'Tiếp tục giám sát')
-const hasBreakdown = computed(() => {
-  const b = riskData.value.breakdown
-  return b && Object.keys(b).length > 0
-})
-
-// ── Gauge SVG ─────────────────────────────────────────────────────────────────
-const gaugeArc = computed(() => {
-  const circ = 2 * Math.PI * 50
-  const ratio = Math.max(0, Math.min(100, riskScore.value)) / 100
-  return `${ratio * circ} ${circ}`
-})
-const gaugeDashOffset = computed(() => {
-  const circ = 2 * Math.PI * 50
-  return circ - (Math.max(0, Math.min(100, riskScore.value)) / 100) * circ
-})
-
-// ── Details extraction ─────────────────────────────────────────────────────────
-function extractDetailsText(raw) {
-  if (raw == null) return ''
-  if (typeof raw !== 'string') {
-    if (typeof raw === 'object') return raw.details || raw.message || raw.evidence || ''
-    return String(raw)
-  }
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(trimmed)
-      if (parsed && typeof parsed === 'object') return parsed.details || parsed.message || parsed.evidence || parsed.reason || ''
-    } catch { /* ignore */ }
-  }
-  return raw
-}
-
-// ── Timeline events ───────────────────────────────────────────────────────────
-// Count only actual fraud signals (not system events or exam events) as violations
-const timelineEvents = computed(() => {
-  const evts = []
-  const seen = new Set()
-  for (const item of timeline.value) {
-    const at = item.at || item.createdAt || item.timestamp
-    const eventType = item.eventType || item.signalType || ''
-    const key = `${eventType}-${at}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    // Skip non-fraud-signal items for the timeline display
-    const isFraudSignal = eventType === 'FRAUD_SIGNAL' || item.type === 'FRAUD_SIGNAL'
-    evts.push({
-      key,
-      at,
-      eventType,
-      details: extractDetailsText(item.details) || extractDetailsText(item.evidence) || '',
-      severity: item.severity || mapSeverity(eventType, item.confidence),
-      isViolation: isFraudSignal
-    })
-  }
-  return evts
-})
-
-const eventStats = computed(() => {
-  const counts = { severity: { HIGH: 0, MEDIUM: 0, LOW: 0 }, pattern: { TAB_SWITCH: 0, COPY: 0, EXIT_FULLSCREEN: 0, DEVTOOLS: 0, DUPLICATE_IP: 0, SYNC: 0 } }
-  for (const e of timelineEvents.value) {
-    if (counts.severity[e.severity] != null) counts.severity[e.severity]++
-    const t = e.eventType || ''
-    if (/TAB_SWITCH/i.test(t)) counts.pattern.TAB_SWITCH++
-    if (/COPY/i.test(t)) counts.pattern.COPY++
-    if (/EXIT_FULLSCREEN/i.test(t)) counts.pattern.EXIT_FULLSCREEN++
-    if (/DEVTOOLS/i.test(t)) counts.pattern.DEVTOOLS++
-    if (/DUPLICATE_IP/i.test(t)) counts.pattern.DUPLICATE_IP++
-    if (/SYNC/i.test(t)) counts.pattern.SYNC++
-  }
-  return counts
-})
-
-// Only actual fraud signals count as violations (not system/monitoring events)
-const violationCount = computed(() => timelineEvents.value.filter(e => e.isViolation).length)
-const maxSeverity = computed(() => {
-  const { HIGH, MEDIUM, LOW } = eventStats.value.severity
-  if (HIGH > 0) return 'Nghiêm trọng'
-  if (MEDIUM > 0) return 'Trung bình'
-  if (LOW > 0) return 'Thấp'
-  return '—'
-})
-const latestSignals = computed(() => riskData.value.latestSignals || [])
-const suspiciousPatterns = computed(() =>
-  PATTERN_RULES.filter(rule => eventStats.value.pattern[rule.key] >= rule.threshold)
-    .map(rule => ({ id: rule.id, ...rule.build(eventStats.value.pattern[rule.key]) }))
-)
-const lastUpdatedLabel = computed(() => {
-  if (!lastUpdatedAt.value) return 'Chưa cập nhật'
-  return `Cập nhật ${new Date(lastUpdatedAt.value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-})
-
-// ── Data loading ──────────────────────────────────────────────────────────────
-function resolveLoadErrorMessage(err) {
-  const status = err?.status
-  if (status === 404) return 'Không tìm thấy bài làm này.'
-  if (status === 403) return 'Bạn không có quyền xem chi tiết bài làm này.'
-  if (status === 401) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-  if (status === 0) return 'Không thể kết nối tới máy chủ.'
-  const msg = err?.message
-  if (msg && /^(Attempt|User|Exam) not found/i.test(msg)) return 'Không tìm thấy bài làm này.'
-  return msg || 'Không thể tải dữ liệu giám sát.'
-}
-
-async function loadData(silent = false) {
-  if (!attemptId.value) { error.value = 'Thiếu mã bài làm.'; return }
-  if (silent) isRefreshing.value = true
-  else { loading.value = true; error.value = '' }
-  try {
-    const [riskRes, timelineRes] = await Promise.allSettled([
-      fetchAttemptRisk(attemptId.value),
-      listMonitoringTimeline(attemptId.value)
-    ])
-    if (riskRes.status === 'fulfilled') riskData.value = riskRes.value || {}
-    else if (!silent && Object.keys(riskData.value).length === 0) throw riskRes.reason
-    if (timelineRes.status === 'fulfilled') timeline.value = timelineRes.value || []
-    lastUpdatedAt.value = Date.now()
-  } catch (err) {
-    error.value = resolveLoadErrorMessage(err)
-    if (!silent) toast.error(error.value)
-  } finally {
-    loading.value = false
-    isRefreshing.value = false
-  }
-}
-
-async function ensureSessionContext() {
-  if (!examId.value) return
-  if (attempts.value.length > 0) return
-  try {
-    const fetched = await listExamAttempts(examId.value)
-    if (Array.isArray(fetched) && fetched.length > 0) store.setCards(fetched)
-  } catch { /* silent */ }
-}
-
-function startAutoRefresh() {
-  stopAutoRefresh()
-  refreshTimer = window.setInterval(() => {
-    if (document.hidden || loading.value || isRefreshing.value) return
-    void loadData(true)
-  }, REFRESH_INTERVAL_MS)
-}
-function stopAutoRefresh() {
-  if (refreshTimer) { window.clearInterval(refreshTimer); refreshTimer = null }
-}
-
-// ── Realtime ─────────────────────────────────────────────────────────────────
-const REALTIME_TYPE_META = {
+const REALTIME_META = {
   RISK_UPDATED: { icon: 'trending-up', tone: 'warn', label: 'Cập nhật rủi ro' },
   SUSPICIOUS: { icon: 'alert-triangle', tone: 'warn', label: 'Hành vi đáng ngờ' },
   WARNING_SENT: { icon: 'alert-circle', tone: 'warn', label: 'Đã gửi cảnh báo' },
@@ -831,958 +542,811 @@ const REALTIME_TYPE_META = {
   ATTEMPT_STOPPED: { icon: 'x-circle', tone: 'danger', label: 'Đình chỉ' }
 }
 
+const route = useRoute()
+const toast = useToast()
+const { isConnected, subscribeToAttempt, unsubscribeFromAttempt } = useExamMonitoring()
+
+const attemptId = computed(() => route.query.attemptId || '')
+const examId = computed(() => route.query.examId || '')
+const selectedExamTitle = computed(() => route.query.title || 'Kỳ thi')
+const selectedExamCode = computed(() => route.query.code || '')
+const sessionLink = computed(() => ({ path: `/teacher/exams/${examId.value}/monitoring` }))
+
+const loading = ref(true)
+const error = ref('')
+const attemptData = ref({})
+const riskData = ref({})
+const timeline = ref([])
+const realtimeFeed = ref([])
+const activeTab = ref('overview')
+const timelineFilter = ref('')
+const newNote = ref('')
+const noteLoading = ref(false)
+
+const showWarningDialog = ref(false)
+const showStopDialog = ref(false)
+const showPauseDialog = ref(false)
+const showResumeDialog = ref(false)
+const warningMessage = ref('')
+const stopReason = ref('')
+const pauseReason = ref('')
+const resumeMessage = ref('')
+const actionLoading = ref('')
+let refreshTimer = null
+
+const tabs = computed(() => [
+  { id: 'overview', label: 'Tổng quan', icon: 'layout-dashboard' },
+  { id: 'timeline', label: 'Timeline', icon: 'activity', count: filteredTimeline.value.length },
+  { id: 'actions', label: 'Hành động', icon: 'settings', count: actionHistory.value.length },
+  { id: 'notes', label: 'Ghi chú', icon: 'sticky-note', count: notes.value.length }
+])
+
+// ── Student info ──────────────────────────────────────────────────────────────
+const studentName = computed(() => {
+  const s = riskData.value.student
+  if (s) return s.name || s.username || '—'
+  const a = attemptData.value
+  if (a && a.student) return a.student
+  return '—'
+})
+
+const studentCode = computed(() => {
+  const s = riskData.value.student
+  if (s) return s.studentCode || '—'
+  return '—'
+})
+
+const studentInitials = computed(() => {
+  const name = studentName.value
+  if (!name || name === '—') return '?'
+  const parts = name.trim().split(/\s+/)
+  return (parts[parts.length - 1].charAt(0) + (parts.length > 1 ? parts[0].charAt(0) : '')).toUpperCase()
+})
+
+// ── Status ───────────────────────────────────────────────────────────────────
+const attemptStatusToken = computed(() => {
+  const s = String(riskData.value.status || attemptData.value.status || '').toUpperCase()
+  if (/SUBMITTED/.test(s)) return 'SUBMITTED'
+  if (/STOPPED/.test(s)) return 'STOPPED'
+  if (/PAUSED/.test(s)) return 'PAUSED'
+  if (/ACTIVE|IN_PROGRESS/.test(s)) return 'ACTIVE'
+  return 'UNKNOWN'
+})
+
+const STATUS_META = {
+  SUBMITTED: { label: 'Đã nộp', color: 'var(--mon-success)', bg: 'var(--mon-success-soft)' },
+  STOPPED: { label: 'Đã dừng', color: 'var(--mon-danger)', bg: 'var(--mon-danger-soft)' },
+  PAUSED: { label: 'Tạm dừng', color: 'var(--mon-warning)', bg: 'var(--mon-warning-soft)' },
+  ACTIVE: { label: 'Đang thi', color: 'var(--mon-primary)', bg: 'var(--mon-primary-soft)' },
+  UNKNOWN: { label: '—', color: 'var(--mon-text-muted)', bg: 'var(--mon-surface-2)' }
+}
+const statusMeta = computed(() => STATUS_META[attemptStatusToken.value] || STATUS_META.UNKNOWN)
+const statusLabel = computed(() => statusMeta.value.label)
+const statusColor = computed(() => statusMeta.value.color)
+const isStudentPaused = computed(() => isAttemptPaused(riskData.value.status || attemptData.value.status))
+const isStudentTerminal = computed(() => isAttemptTerminal(riskData.value.status || attemptData.value.status))
+
+const sessionTime = computed(() => {
+  const ts = attemptData.value.startedAt
+  if (!ts) return '—'
+  const diff = Math.floor((Date.now() - new Date(ts).getTime() / 60000))
+  if (diff < 1) return '<1 phút'
+  if (diff < 60) return `${diff} phút`
+  return `${Math.floor(diff / 60)}h ${diff % 60}p`
+})
+
+// ── Risk ─────────────────────────────────────────────────────────────────────
+const riskScore = computed(() => Math.round(Number(riskData.value.score ?? attemptData.value.riskScore ?? 0)))
+const riskBand = computed(() => {
+  const s = riskScore.value
+  if (s >= RISK_BAND_THRESHOLDS.CRITICAL) return 'CRITICAL'
+  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'HIGH_RISK'
+  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'SUSPICIOUS'
+  return 'CLEAN'
+})
+const riskLevelLabel = computed(() => RISK_LEVEL_LABELS[riskBand.value] || riskBand.value)
+const riskColor = computed(() => {
+  const s = riskScore.value
+  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'var(--mon-danger)'
+  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'var(--mon-warning)'
+  return 'var(--mon-success)'
+})
+const riskBg = computed(() => {
+  const s = riskScore.value
+  if (s >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'var(--mon-danger-soft)'
+  if (s >= RISK_BAND_THRESHOLDS.SUSPICIOUS) return 'var(--mon-warning-soft)'
+  return 'var(--mon-success-soft)'
+})
+const recommendedActionLabel = computed(() => RECOMMENDED_ACTION_LABELS[riskData.value.recommendedAction] || 'Tiếp tục giám sát')
+const hasBreakdown = computed(() => { const b = riskData.value.breakdown; return b && Object.keys(b).length > 0 })
+
+const gaugeArc = computed(() => {
+  const circ = 2 * Math.PI * 44
+  const ratio = Math.max(0, Math.min(100, riskScore.value)) / 100
+  return `${ratio * circ} ${circ}`
+})
+
+const progressPercent = computed(() => {
+  const total = attemptData.value.totalQuestions || 0
+  if (!total) return 0
+  return Math.round(((attemptData.value.answeredCount || 0) / total) * 100)
+})
+
+const deviceInfo = computed(() => ({
+  device: attemptData.value.deviceFingerprint ? 'Desktop' : '—',
+  browser: '—',
+  os: '—'
+}))
+
+// ── Timeline ─────────────────────────────────────────────────────────────────
+function extractDetails(raw) {
+  if (!raw) return ''
+  if (typeof raw === 'string') {
+    const t = raw.trim()
+    if (!t) return ''
+    if (t.startsWith('{') || t.startsWith('[')) {
+      try {
+        const p = JSON.parse(t)
+        return p.details || p.message || p.evidence || ''
+      } catch { return raw }
+    }
+    return raw
+  }
+  if (typeof raw === 'object') return raw.details || raw.message || raw.evidence || ''
+  return String(raw)
+}
+
+const timelineEvents = computed(() => {
+  const seen = new Set()
+  return (timeline.value || []).map(item => {
+    const at = item.at || item.createdAt || item.timestamp
+    const eventType = item.eventType || item.type || ''
+    const key = `${eventType}-${at}`
+    if (seen.has(key)) return null
+    seen.add(key)
+    return {
+      key,
+      at,
+      eventType,
+      details: extractDetails(item.details || item.evidence || ''),
+      severity: item.severity || 'MEDIUM'
+    }
+  }).filter(Boolean)
+})
+
+const filteredTimeline = computed(() => {
+  if (!timelineFilter.value) return timelineEvents.value
+  return timelineEvents.value.filter(e => (e.eventType || '').includes(timelineFilter.value))
+})
+
+const eventStats = computed(() => {
+  const c = { TAB_SWITCH: 0, COPY: 0, DEVTOOLS: 0, DUPLICATE_IP: 0 }
+  for (const e of timelineEvents.value) {
+    const t = e.eventType || ''
+    if (/TAB_SWITCH/.test(t)) c.TAB_SWITCH++
+    if (/COPY/.test(t)) c.COPY++
+    if (/DEVTOOLS/.test(t)) c.DEVTOOLS++
+    if (/DUPLICATE_IP/.test(t)) c.DUPLICATE_IP++
+  }
+  return c
+})
+
+const suspiciousPatterns = computed(() =>
+  PATTERN_RULES.filter(r => eventStats.value[r.key] >= r.threshold)
+    .map(r => ({ id: r.id, ...r.build(eventStats.value[r.key]) }))
+)
+
+// ── Notes & Actions ───────────────────────────────────────────────────────────
+const notes = computed(() =>
+  [...(timeline.value.filter(t => t.eventType === 'NOTE') || [])].reverse()
+    .map(n => ({ ...n, key: n.key || `${n.eventType}-${n.at}` }))
+)
+
+const actionHistory = computed(() => {
+  const actions = []
+  for (const item of timeline.value) {
+    const type = String(item.eventType || item.type || '').toUpperCase()
+    const isAction = ['WARNING_SENT', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED', 'NOTE'].includes(type)
+    if (!isAction) continue
+    const TONE_MAP = {
+      WARNING_SENT: 'warn', ATTEMPT_STOPPED: 'danger',
+      ATTEMPT_RESUMED: 'success', NOTE: 'neutral'
+    }
+    const ICON_MAP = {
+      WARNING_SENT: 'alert-triangle', ATTEMPT_PAUSED: 'pause',
+      ATTEMPT_RESUMED: 'play', ATTEMPT_STOPPED: 'x-circle', NOTE: 'sticky-note'
+    }
+    const LABEL_MAP = {
+      WARNING_SENT: 'Gửi cảnh báo', ATTEMPT_PAUSED: 'Tạm dừng',
+      ATTEMPT_RESUMED: 'Cho phép tiếp tục', ATTEMPT_STOPPED: 'Buộc nộp', NOTE: 'Ghi chú'
+    }
+    actions.push({
+      ...item,
+      key: item.key || `${type}-${item.at}`,
+      label: LABEL_MAP[type] || type,
+      icon: ICON_MAP[type] || 'activity',
+      tone: TONE_MAP[type] || 'neutral'
+    })
+  }
+  return actions
+})
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const getVColor = (type) => V_COLORS[type] || 'var(--mon-text-muted)'
+const getVIcon = (type) => V_ICONS[type] || 'alert-circle'
+const getVLabel = (type) => V_LABELS[type] || type || '—'
+const getSeverityLabel = (s) => SEVERITY_LABELS[s] || s || '—'
+const getSeverityStatus = (s) => s === 'HIGH' || s === 'CRITICAL' ? 'high' : s === 'MEDIUM' ? 'medium' : 'low'
+const pColor = (l) => l === 'high' ? 'var(--mon-danger)' : l === 'medium' ? 'var(--mon-warning)' : '#0ea5e9'
+const sColor = (score) => score >= 60 ? 'var(--mon-danger)' : score >= 30 ? 'var(--mon-warning)' : '#0ea5e9'
+
+const formatTime = (ts) => {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+const formatRemaining = (seconds) => {
+  if (!seconds) return '—'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}p`
+  return `${m} phút`
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadData(silent = false) {
+  if (!attemptId.value) { error.value = 'Thiếu mã bài làm.'; return }
+  if (!silent) { loading.value = true; error.value = '' }
+  try {
+    const [detailRes, riskRes, timelineRes] = await Promise.allSettled([
+      fetchAttemptDetail(attemptId.value),
+      fetchAttemptRisk(attemptId.value),
+      listMonitoringTimeline(attemptId.value)
+    ])
+    if (detailRes.status === 'fulfilled') attemptData.value = detailRes.value || {}
+    if (riskRes.status === 'fulfilled') riskData.value = riskRes.value || {}
+    if (timelineRes.status === 'fulfilled') timeline.value = timelineRes.value || []
+  } catch (err) {
+    error.value = err?.message || 'Không thể tải dữ liệu.'
+    if (!silent) toast.error(error.value)
+  } finally {
+    loading.value = false
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh()
+  refreshTimer = setInterval(() => {
+    if (!document.hidden && !loading.value) void loadData(true)
+  }, 15000)
+}
+
+function stopAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null }
+}
+
+// ── Realtime ─────────────────────────────────────────────────────────────────
 function pushRealtimeEvent(payload = {}) {
   const type = String(payload.type || '').toUpperCase()
-  const meta = REALTIME_TYPE_META[type] || { icon: 'activity', tone: 'neutral', label: type || 'Sự kiện' }
-  const entry = {
+  const meta = REALTIME_META[type] || { icon: 'activity', tone: 'neutral', label: type || 'Sự kiện' }
+  realtimeFeed.value = [{
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    type,
-    icon: meta.icon,
-    tone: meta.tone,
-    label: meta.label,
+    type, icon: meta.icon, tone: meta.tone, label: meta.label,
     message: payload.message || '',
     riskScore: payload.riskScore ?? null,
     timestamp: payload.timestamp || new Date().toISOString()
-  }
-  realtimeFeed.value = [entry, ...realtimeFeed.value].slice(0, 30)
+  }, ...realtimeFeed.value].slice(0, 30)
 }
 
 function handleRealtimePayload(payload) {
   if (!payload || typeof payload !== 'object') return
   const type = String(payload.type || '').toUpperCase()
   if (type === 'RISK_UPDATED' || type === 'SUSPICIOUS') {
-    riskData.value = { ...riskData.value, score: payload.riskScore ?? riskData.value.score, level: payload.riskLevel || riskData.value.level, reasons: payload.reasons || riskData.value.reasons, recommendedAction: payload.recommendedAction || riskData.value.recommendedAction, reviewRequired: payload.reviewRequired ?? riskData.value.reviewRequired }
-    lastUpdatedAt.value = Date.now()
+    riskData.value = { ...riskData.value, score: payload.riskScore ?? riskData.value.score, level: payload.riskLevel, reasons: payload.reasons || riskData.value.reasons }
+    void loadData(true)
   }
-  if (type === 'ATTEMPT_PAUSED' || type === 'ATTEMPT_RESUMED' || type === 'ATTEMPT_STOPPED') {
-    riskData.value = { ...riskData.value, status: payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : type === 'ATTEMPT_STOPPED' ? 'STOPPED' : 'IN_PROGRESS') }
+  if (['ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED'].includes(type)) {
+    riskData.value = { ...riskData.value, status: type === 'ATTEMPT_PAUSED' ? 'PAUSED' : type === 'ATTEMPT_STOPPED' ? 'STOPPED' : 'IN_PROGRESS' }
     void loadData(true)
   }
   pushRealtimeEvent(payload)
 }
 
-async function connectRealtime() {
-  if (!attemptId.value) return
-  await realtime.connect({
-    reconnectDelay: 5000,
-    topics: [{ destination: `/topic/attempts/${attemptId.value}/proctor-actions`, handler: handleRealtimePayload }]
-  })
-}
-
 // ── Actions ───────────────────────────────────────────────────────────────────
-function goBack() { router.back() }
-function issueWarning() { warningMessage.value = ''; showWarningDialog.value = true }
-function suspendExam() { invalidateReason.value = ''; showInvalidateDialog.value = true }
-function allowResume() { resumeMessage.value = ''; showResumeDialog.value = true }
-
-async function runAttemptAction({ key, call, payload, successMsg, errorMsg, closeDialog }) {
+async function runAction({ key, call, payload, successMsg, errorMsg, closeDialog }) {
   if (!attemptId.value) return
   actionLoading.value = key
-  closeDialog()
+  if (closeDialog) closeDialog()
   try {
     await call(attemptId.value, payload)
     toast.success(successMsg)
     await loadData(true)
   } catch (err) {
-    toast.error(resolveLoadErrorMessage(err) || errorMsg)
+    toast.error(err?.message || errorMsg)
   } finally {
     actionLoading.value = ''
   }
 }
 
 async function confirmSendWarning() {
-  await runAttemptAction({ key: 'warning', call: sendTeacherWarning, payload: warningMessage.value, successMsg: 'Đã gửi cảnh báo tới học sinh.', errorMsg: 'Gửi cảnh báo thất bại.', closeDialog: () => { showWarningDialog.value = false; warningMessage.value = '' } })
-}
-async function confirmInvalidate() {
-  await runAttemptAction({ key: 'invalidate', call: invalidateAttempt, payload: invalidateReason.value, successMsg: 'Đã dừng bài thi.', errorMsg: 'Dừng thi thất bại.', closeDialog: () => { showInvalidateDialog.value = false; invalidateReason.value = '' } })
-}
-async function confirmResume() {
-  await runAttemptAction({ key: 'resume', call: resumeAttempt, payload: resumeMessage.value, successMsg: 'Đã cho phép học sinh tiếp tục bài thi.', errorMsg: 'Khôi phục bài thi thất bại.', closeDialog: () => { showResumeDialog.value = false; resumeMessage.value = '' } })
+  showWarningDialog.value = false
+  await runAction({ key: 'warning', call: sendTeacherWarning, payload: warningMessage.value, successMsg: 'Đã gửi cảnh báo.', errorMsg: 'Gửi cảnh báo thất bại.' })
 }
 
-// ConfirmDialog-compatible handlers (receive reason from the dialog)
-async function handleWarningConfirm(reason) {
-  await runAttemptAction({ key: 'warning', call: sendTeacherWarning, payload: reason, successMsg: 'Đã gửi cảnh báo tới học sinh.', errorMsg: 'Gửi cảnh báo thất bại.', closeDialog: () => { showWarningDialog.value = false; warningMessage.value = '' } })
-}
-async function handleInvalidateConfirm(reason) {
-  await runAttemptAction({ key: 'invalidate', call: invalidateAttempt, payload: reason, successMsg: 'Đã dừng bài thi.', errorMsg: 'Dừng thi thất bại.', closeDialog: () => { showInvalidateDialog.value = false; invalidateReason.value = '' } })
-}
-async function handleResumeConfirm(msg) {
-  await runAttemptAction({ key: 'resume', call: resumeAttempt, payload: msg, successMsg: 'Đã cho phép học sinh tiếp tục bài thi.', errorMsg: 'Khôi phục bài thi thất bại.', closeDialog: () => { showResumeDialog.value = false; resumeMessage.value = '' } })
+async function confirmStop() {
+  showStopDialog.value = false
+  await runAction({ key: 'invalidate', call: invalidateAttempt, payload: stopReason.value, successMsg: 'Đã dừng bài thi.', errorMsg: 'Dừng thi thất bại.' })
 }
 
-function copyAttemptId() {
-  if (!attemptId.value) return
-  navigator.clipboard.writeText(String(attemptId.value)).then(() => {
-    toast.success('Đã sao chép mã bài làm')
-  }).catch(() => {
-    toast.error('Không thể sao chép')
-  })
+async function confirmPauseAction() {
+  showPauseDialog.value = false
+  await runAction({ key: 'pause', call: pauseAttempt, payload: pauseReason.value, successMsg: 'Đã tạm dừng bài thi.', errorMsg: 'Tạm dừng thất bại.' })
 }
 
-function viewFullReport() {
-  router.push({ path: '/teacher/exams/review/incidents', query: examId.value ? { examId: examId.value } : {} })
+async function confirmResumeAction() {
+  showResumeDialog.value = false
+  await runAction({ key: 'resume', call: resumeAttempt, payload: resumeMessage.value, successMsg: 'Đã cho phép tiếp tục bài thi.', errorMsg: 'Khôi phục thất bại.' })
+}
+
+async function addNote() {
+  if (!newNote.value.trim()) return
+  noteLoading.value = true
+  try {
+    await addMonitoringNote(attemptId.value, newNote.value.trim())
+    toast.success('Đã thêm ghi chú.')
+    newNote.value = ''
+    await loadData(true)
+  } catch (err) {
+    toast.error(err?.message || 'Thêm ghi chú thất bại.')
+  } finally {
+    noteLoading.value = false
+  }
 }
 
 function handleEscape(e) {
   if (e.key !== 'Escape') return
   if (showWarningDialog.value) showWarningDialog.value = false
-  else if (showInvalidateDialog.value) showInvalidateDialog.value = false
+  else if (showStopDialog.value) showStopDialog.value = false
+  else if (showPauseDialog.value) showPauseDialog.value = false
   else if (showResumeDialog.value) showResumeDialog.value = false
 }
 
-function resetAttemptState() {
-  riskData.value = {}; timeline.value = []; realtimeFeed.value = []; error.value = ''; lastUpdatedAt.value = null
-}
-
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
 watch(attemptId, async (next, prev) => {
   if (!next || next === prev) return
-  resetAttemptState()
-  realtime.disconnect()
+  if (prev) unsubscribeFromAttempt(prev)
   await loadData()
-  await connectRealtime()
+  if (next) subscribeToAttempt(next)
 })
 
 onMounted(async () => {
   window.addEventListener('keydown', handleEscape)
-  await Promise.allSettled([loadData(), ensureSessionContext()])
-  await connectRealtime()
+  await loadData()
+  if (attemptId.value) subscribeToAttempt(attemptId.value)
   startAutoRefresh()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEscape)
   stopAutoRefresh()
-  realtime.disconnect()
+  if (attemptId.value) unsubscribeFromAttempt(attemptId.value)
 })
 </script>
 
 <style scoped>
-/* ── Root ──────────────────────────────────────────────────────────── */
-.sd-root {
-  --sd-tone-danger: var(--ds-danger);
-  --sd-tone-danger-bg: var(--ds-danger-bg);
-  --sd-tone-warn: var(--ds-warning);
-  --sd-tone-warn-bg: var(--ds-warning-bg);
-  --sd-tone-success: var(--ds-success);
-  --sd-tone-success-bg: var(--ds-success-bg);
-  --sd-tone-info: var(--ds-info);
-  --sd-tone-info-bg: var(--ds-info-bg);
-  --sd-tone-neutral: var(--ds-text-muted);
-  --sd-tone-neutral-bg: var(--ds-surface-muted);
+@import '../../styles/monitoring.css';
+
+.mon-root {
+  background: var(--mon-bg);
   min-height: 100vh;
-  background: var(--ds-bg);
-  color: var(--ds-text);
-  scroll-behavior: smooth;
 }
 
-/* ── Loading ─────────────────────────────────────────────────────── */
-.sd-loading {
+/* ── Student header ──────────────────────────────────────────── */
+.smd-header__student {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  height: 60vh;
+  gap: 0.75rem;
 }
-.sd-loading__spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--ds-border);
-  border-top-color: var(--ds-primary);
+.smd-avatar {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  animation: sd-spin 0.7s linear infinite;
-}
-.sd-loading__text { color: var(--ds-text-secondary); font-size: 0.875rem; }
-@keyframes sd-spin { to { transform: rotate(360deg); } }
-
-/* ── Error ──────────────────────────────────────────────────────── */
-.sd-error {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60vh;
-}
-.sd-error__card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 2.5rem;
-  border: 1px solid var(--ds-danger-soft);
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-danger-bg);
-  max-width: 380px;
-  text-align: center;
-}
-.sd-error__icon { color: var(--ds-danger); }
-.sd-error__title { font-size: 1rem; font-weight: 800; color: var(--ds-danger); margin: 0; }
-.sd-error__msg { font-size: 0.825rem; color: var(--ds-danger); margin: 0; }
-
-/* ── Top Command Bar ────────────────────────────────────────────── */
-.sd-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.625rem 1.5rem;
-  border-bottom: 1px solid var(--ds-border);
-  background: var(--ds-surface);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  gap: 1rem;
-  box-shadow: var(--ds-shadow-xs);
-}
-.sd-topbar__left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-.sd-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.35rem 0.875rem;
-  border-radius: var(--ds-radius-md);
-  border: 1px solid var(--ds-border);
-  background: var(--ds-surface);
-  color: var(--ds-text-secondary);
-  font-size: 0.775rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-.sd-back-btn:hover { background: var(--ds-primary-soft); border-color: var(--ds-primary-border); color: var(--ds-primary); }
-.sd-topbar__divider { width: 1px; height: 20px; background: var(--ds-border); flex-shrink: 0; }
-.sd-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.775rem;
-  min-width: 0;
-  overflow: hidden;
-}
-.sd-breadcrumb__link {
-  color: var(--ds-text-secondary);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 0.15s;
-  flex-shrink: 0;
-}
-.sd-breadcrumb__link:hover { color: var(--ds-primary); }
-.sd-breadcrumb__sep { color: var(--ds-text-muted); flex-shrink: 0; }
-.sd-breadcrumb__current {
-  color: var(--ds-text);
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sd-topbar__right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.sd-conn-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.62rem;
+  font-size: 0.9rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
-  border: 1px solid transparent;
-}
-.sd-conn-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.sd-conn-badge--live { background: rgba(22,163,74,0.1); color: var(--ds-success); border-color: rgba(22,163,74,0.2); }
-.sd-conn-badge--live .sd-conn-badge__dot { animation: sd-pulse 1.4s ease-in-out infinite; }
-.sd-conn-badge--off { background: var(--ds-surface-muted); color: var(--ds-text-muted); border-color: var(--ds-border); }
-@keyframes sd-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
-.sd-topbar__updated { font-size: 0.72rem; color: var(--ds-text-muted); white-space: nowrap; }
-.sd-topbar__refresh {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.35rem 0.875rem;
-  border-radius: var(--ds-radius-md);
-  border: 1px solid var(--ds-primary-border);
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-  font-size: 0.745rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-.sd-topbar__refresh:hover:not(:disabled) { background: var(--ds-primary); color: #fff; }
-.sd-topbar__refresh:disabled { opacity: 0.5; cursor: not-allowed; }
-.sd-spin { animation: sd-spin 0.8s linear infinite; }
-.sd-attempt-id {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.625rem;
-  border-radius: 9999px;
-  background: var(--ds-surface-muted);
-  color: var(--ds-text-muted);
-  white-space: nowrap;
-}
-.sd-copy-btn {
-  display: inline-flex;
-  align-items: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  color: var(--ds-text-muted);
-  transition: color 0.15s;
-}
-.sd-copy-btn:hover { color: var(--ds-primary); }
-
-/* ── Hero ───────────────────────────────────────────────────────── */
-.sd-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.5rem 2rem;
-  background: var(--ds-surface);
-  border-radius: 0 0 var(--ds-radius-xl) var(--ds-radius-xl);
-  margin: 0 1.5rem;
-  border: 1px solid var(--ds-border);
-  border-top: 4px solid;
-  box-shadow: var(--ds-shadow-sm);
-  flex-wrap: wrap;
-}
-.sd-hero--danger { border-top-color: var(--ds-danger); }
-.sd-hero--warn { border-top-color: var(--ds-warning); }
-.sd-hero--clean { border-top-color: var(--ds-success); }
-
-.sd-hero__left {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  min-width: 0;
-  flex: 1;
-}
-
-/* Avatar */
-.sd-avatar-wrap {
   position: relative;
   flex-shrink: 0;
 }
-.sd-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.sd-avatar__initials { font-size: 1.375rem; font-weight: 900; }
-.sd-avatar__ring {
+.smd-avatar__ring {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
   border: 3px solid;
 }
-.sd-avatar__risk-dot {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2.5px solid var(--ds-surface);
+.smd-header__student-info { min-width: 0; }
+.smd-header__student-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--mon-text);
+  margin: 0 0 0.2rem;
 }
-
-/* Hero info */
-.sd-hero__info { min-width: 0; }
-.sd-hero__name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 0.375rem;
-  flex-wrap: wrap;
-}
-.sd-hero__name {
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--ds-text);
-  margin: 0;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320px;
-}
-.sd-status-badge {
+.smd-header__student-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.smd-meta-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.2rem 0.625rem;
-  border-radius: 9999px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
+  color: var(--mon-text-secondary);
+  font-weight: 500;
+}
+.smd-badges { display: flex; gap: 0.375rem; }
+
+/* Exam info */
+.smd-header__exam-info { display: flex; flex-direction: column; }
+.smd-header__exam-name {
+  font-size: 0.825rem;
   font-weight: 700;
+  color: var(--mon-text);
   white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
-.sd-hero__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  margin-bottom: 0.625rem;
-  flex-wrap: wrap;
-}
-.sd-hero__meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  color: var(--ds-text-secondary);
-  font-weight: 600;
-}
-.sd-hero__badges {
-  display: flex;
-  gap: 0.375rem;
-  flex-wrap: wrap;
+.smd-header__exam-code {
+  font-size: 0.68rem;
+  color: var(--mon-text-muted);
+  font-family: monospace;
 }
 
-/* Risk Gauge */
-.sd-hero__right {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-shrink: 0;
-}
-.sd-gauge-wrap {
+/* Gauge */
+.smd-gauge {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
 }
-.sd-gauge-svg {
-  transform: rotate(-90deg);
-  width: 100%;
-  height: 100%;
+.smd-gauge__svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.smd-gauge__track { fill: none; stroke: var(--mon-border); stroke-width: 8; }
+.smd-gauge__fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
 }
-.sd-gauge-track { fill: none; stroke: var(--ds-gray-100); stroke-width: 8; }
-.sd-gauge-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
-.sd-gauge-glow { fill: none; stroke-width: 10; stroke-linecap: round; filter: blur(4px); }
-.sd-gauge-center {
+.smd-gauge__center {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
 }
-.sd-gauge-score { font-size: 1.75rem; font-weight: 900; line-height: 1; }
-.sd-gauge-unit { font-size: 0.6rem; color: var(--ds-text-muted); font-weight: 600; }
-.sd-gauge-info { min-width: 180px; }
-.sd-gauge-desc { font-size: 0.8rem; color: var(--ds-text-secondary); margin: 0 0 0.5rem; }
-.sd-gauge-bar-track { height: 5px; border-radius: 9999px; background: var(--ds-gray-100); overflow: hidden; }
-.sd-gauge-bar-fill { height: 100%; border-radius: 9999px; transition: width 0.6s ease; }
+.smd-gauge__score { font-size: 1.1rem; font-weight: 900; line-height: 1; }
+.smd-gauge__label { font-size: 0.5rem; color: var(--mon-text-muted); font-weight: 600; margin-top: 1px; }
 
-/* ── Stats Strip ─────────────────────────────────────────────────── */
-.sd-stats-strip {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
-  margin: 1.25rem 1.5rem 0;
-}
-.sd-stat-tile {
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.smd-tabs {
   display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 1rem 1.125rem;
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  box-shadow: var(--ds-shadow-xs);
-  transition: all 0.15s;
+  gap: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--mon-surface);
+  border-bottom: 1px solid var(--mon-border);
 }
-.sd-stat-tile:hover { box-shadow: var(--ds-shadow-sm); transform: translateY(-1px); border-color: var(--ds-primary-border); }
-.sd-stat-tile__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--ds-radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ds-surface-muted);
-  color: var(--ds-text-muted);
-  flex-shrink: 0;
-}
-.sd-stat-tile--success .sd-stat-tile__icon { background: rgba(74,222,128,0.12); color: #4ade80; }
-.sd-stat-tile--warn .sd-stat-tile__icon { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.sd-stat-tile--info .sd-stat-tile__icon { background: rgba(129,140,248,0.12); color: #818cf8; }
-.sd-stat-tile--danger .sd-stat-tile__icon { background: rgba(248,113,113,0.1); color: #f87171; }
-.sd-stat-tile__body { display: flex; flex-direction: column; min-width: 0; }
-.sd-stat-tile__value { font-size: 1.375rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.sd-stat-tile__label { font-size: 0.65rem; color: var(--ds-text-muted); margin-top: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-
-/* ── Grid ──────────────────────────────────────────────────────── */
-.sd-grid {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1.25rem;
-  margin: 1.25rem 1.5rem 0;
-  align-items: start;
-}
-.sd-col { display: flex; flex-direction: column; gap: 1.25rem; }
-
-/* ── Cards ─────────────────────────────────────────────────────── */
-.sd-card {
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  overflow: hidden;
-  box-shadow: var(--ds-shadow-xs);
-}
-.sd-card--warn { border-top: 3px solid var(--ds-warning); }
-.sd-card--action { border-top: 3px solid var(--ds-primary); }
-.sd-card__header {
+.smd-tab {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.875rem 1.25rem;
-  border-bottom: 1px solid var(--ds-border);
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface-muted);
+  padding: 0.5rem 1rem;
+  border-radius: var(--mon-radius-sm);
+  border: 1.5px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mon-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--mon-transition);
+  font-family: var(--mon-font);
 }
-.sd-card__title {
-  font-size: 0.825rem;
-  font-weight: 800;
-  color: var(--ds-text);
-  flex: 1;
+.smd-tab:hover { background: var(--mon-surface-2); color: var(--mon-text); }
+.smd-tab--active {
+  background: var(--mon-surface-2);
+  border-color: var(--mon-border);
+  color: var(--mon-primary);
 }
-.sd-card__badge {
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 0.15rem 0.5rem;
+.smd-tab__count {
+  min-width: 18px;
+  height: 18px;
   border-radius: 9999px;
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-}
-.sd-card__badge--danger { background: var(--ds-danger-bg); color: var(--ds-danger); }
-.sd-card__body { padding: 1.25rem; }
-.sd-card__body--flush { padding: 0; }
-
-/* ── Badges ─────────────────────────────────────────────────────── */
-.sd-badge {
-  display: inline-flex;
+  background: var(--mon-surface-2);
+  color: var(--mon-text-secondary);
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.625rem;
-  border-radius: 9999px;
-  border: 1px solid transparent;
-  font-size: 0.7rem;
+  justify-content: center;
+  padding: 0 4px;
+}
+.smd-tab--active .smd-tab__count { background: var(--mon-primary); color: #fff; }
+
+/* ── Content ─────────────────────────────────────────────────── */
+.smd-content { padding: 1.25rem 1.5rem; }
+.smd-tab-pane { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Overview Grid ────────────────────────────────────────────── */
+.smd-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Panel ───────────────────────────────────────────────────── */
+.smd-panel {
+  background: var(--mon-surface);
+  border: 1.5px solid var(--mon-border);
+  border-radius: var(--mon-radius-lg);
+  overflow: hidden;
+}
+.smd-panel--warn { border-top: 2px solid var(--mon-warning); }
+.smd-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--mon-border);
+  color: var(--mon-text-secondary);
+  font-size: 0.8rem;
   font-weight: 700;
+  background: var(--mon-surface-2);
 }
-.sd-badge--risk {}
-.sd-badge--warn { color: var(--ds-warning); background: var(--ds-warning-bg); border-color: var(--ds-warning-soft); }
-.sd-badge--neutral { color: var(--ds-text-muted); background: var(--ds-surface-muted); border-color: var(--ds-border); }
-.sd-badge--rec {}
-
-/* ── Section Label ──────────────────────────────────────────────── */
-.sd-section-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ds-text-muted);
-  margin: 0 0 0.625rem;
-}
-
-/* ── Reason Block ──────────────────────────────────────────────── */
-.sd-reason-block { margin-bottom: 1rem; }
-.sd-reason-chips { display: flex; gap: 0.375rem; flex-wrap: wrap; }
-.sd-reason-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.625rem;
+.smd-panel__badge {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
   border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: var(--mon-primary-soft);
+  color: var(--mon-primary);
+}
+.smd-panel__badge--warn { background: var(--mon-warning-soft); color: var(--mon-warning); }
+.smd-panel__filter {
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--mon-border);
+  border-radius: var(--mon-radius-xs);
   font-size: 0.72rem;
-  font-weight: 700;
-  border: 1px solid;
+  color: var(--mon-text-secondary);
+  background: var(--mon-surface);
+  outline: none;
+  cursor: pointer;
+  font-family: var(--mon-font);
 }
-.sd-evidence-block {}
-.sd-evidence-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.375rem; }
-.sd-evidence-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; color: var(--ds-text-secondary); }
-.sd-evidence-dot { color: var(--ds-text-muted); margin-top: 4px; flex-shrink: 0; }
+.smd-panel__body { padding: 1rem; }
+.smd-panel__body--tight { padding: 0.75rem 1rem; }
+.smd-panel__body--controls { display: flex; flex-direction: column; gap: 0.5rem; }
 
-/* ── Timeline ─────────────────────────────────────────────────── */
-.sd-empty-state {
+/* Live dot */
+.smd-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 0.25rem;
+}
+.smd-live-dot--on { background: var(--mon-success); animation: mon-pulse 1.5s ease-in-out infinite; }
+.smd-live-dot--off { background: var(--mon-text-secondary); }
+
+/* Empty */
+.smd-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  padding: 3rem;
-  color: var(--ds-text-muted);
+  padding: 1.5rem;
+  color: var(--mon-text-secondary);
+  font-size: 0.825rem;
   text-align: center;
 }
-.sd-empty-state__icon { margin-bottom: 0.25rem; }
-.sd-empty-state__icon--success { color: var(--ds-success); }
-.sd-empty-state__title { font-size: 0.9rem; font-weight: 800; color: var(--ds-text); margin: 0; }
-.sd-empty-state__sub { font-size: 0.8rem; margin: 0; }
 
-.sd-timeline { display: flex; flex-direction: column; }
-.sd-tl-item {
+/* Breakdown */
+.smd-breakdown-list { display: flex; flex-direction: column; gap: 0.625rem; }
+.smd-breakdown-row { display: flex; align-items: center; gap: 0.625rem; }
+.smd-breakdown-row__label {
+  font-size: 0.72rem;
+  color: var(--mon-text-secondary);
+  min-width: 120px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.smd-breakdown-row__bar { flex: 1; height: 5px; background: var(--mon-border); border-radius: 9999px; overflow: hidden; }
+.smd-breakdown-row__fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
+.smd-breakdown-row__score { font-size: 0.78rem; font-weight: 800; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Progress */
+.smd-progress-block { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.625rem; }
+.smd-progress-block__val { font-size: 1.5rem; font-weight: 900; color: var(--mon-text); }
+.smd-progress-block__label { font-size: 0.8rem; color: var(--mon-text-secondary); }
+.smd-progress-bar { height: 6px; background: var(--mon-border); border-radius: 9999px; overflow: hidden; margin-bottom: 0.5rem; }
+.smd-progress-fill { height: 100%; border-radius: 9999px; transition: width 0.4s ease; }
+.smd-progress-row { display: flex; justify-content: space-between; font-size: 0.775rem; color: var(--mon-text-secondary); }
+.smd-remaining { display: flex; align-items: center; gap: 0.25rem; color: var(--mon-warning); font-weight: 600; }
+
+/* Device rows */
+.smd-device-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mon-border);
+  font-size: 0.775rem;
+  color: var(--mon-text-secondary);
+}
+.smd-device-row:last-child { border-bottom: none; }
+.smd-device-row__label { min-width: 90px; font-weight: 600; }
+.smd-device-row__val { flex: 1; font-weight: 600; color: var(--mon-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Pattern */
+.smd-pattern {
+  padding: 0.75rem;
+  border-radius: var(--mon-radius-md);
+  background: rgba(245,158,11,0.05);
+  border: 1px solid rgba(245,158,11,0.12);
+  margin-bottom: 0.5rem;
+}
+.smd-pattern:last-child { margin-bottom: 0; }
+.smd-pattern__head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.smd-pattern__title { flex: 1; font-size: 0.8rem; font-weight: 700; color: var(--mon-text); }
+.smd-pattern__level {
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  color: white;
+}
+.smd-pattern__desc { font-size: 0.72rem; color: var(--mon-text-secondary); margin: 0; }
+
+/* Timeline */
+.smd-timeline { display: flex; flex-direction: column; }
+.smd-tl-item {
   display: flex;
   align-items: flex-start;
   gap: 0;
   position: relative;
-  padding: 0 1.25rem;
+  padding-bottom: 0.875rem;
 }
-.sd-tl-item__connector {
+.smd-tl-item__line {
   position: absolute;
-  left: calc(1.25rem + 13px);
-  top: 28px;
-  width: 2px;
+  left: 11px;
+  top: 24px;
   bottom: 0;
-  background: var(--ds-border);
+  width: 2px;
+  background: var(--mon-border);
 }
-.sd-tl-item__dot {
-  width: 28px;
-  height: 28px;
+.smd-tl-item__dot {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 0.875rem;
   margin-right: 0.875rem;
   position: relative;
   z-index: 1;
-  box-shadow: 0 0 0 3px var(--ds-surface);
 }
-.sd-tl-item__content {
-  flex: 1;
-  min-width: 0;
-  padding: 0.875rem 0;
-  border-bottom: 1px solid var(--ds-border);
-}
-.sd-tl-item:last-child .sd-tl-item__content { border-bottom: none; }
-.sd-tl-item__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-.sd-tl-item__type { font-size: 0.825rem; font-weight: 800; }
-.sd-tl-item__time { font-size: 0.72rem; color: var(--ds-text-muted); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.sd-tl-item__details { font-size: 0.78rem; color: var(--ds-text-secondary); margin: 0 0 0.375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sd-tl-item__severity {
+.smd-tl-item__content { flex: 1; min-width: 0; padding-bottom: 0.75rem; border-bottom: 1px solid var(--mon-border); }
+.smd-tl-item:last-child .smd-tl-item__content { border-bottom: none; padding-bottom: 0; }
+.smd-tl-item__row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.2rem; }
+.smd-tl-item__type { font-size: 0.8rem; font-weight: 700; }
+.smd-tl-item__time { font-size: 0.7rem; color: var(--mon-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+.smd-tl-item__details { font-size: 0.75rem; color: var(--mon-text-secondary); margin: 0 0 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.smd-tl-item__sev {
   display: inline-flex;
-  padding: 0.15rem 0.5rem;
+  padding: 0.1rem 0.5rem;
   border-radius: 9999px;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
-.sd-tl-item__severity--high { background: var(--ds-danger-bg); color: var(--ds-danger); }
-.sd-tl-item__severity--medium { background: var(--ds-warning-bg); color: var(--ds-warning); }
-.sd-tl-item__severity--low { background: var(--ds-info-bg); color: var(--ds-info); }
+.smd-tl-item__sev--high { background: var(--mon-danger-soft); color: var(--mon-danger); }
+.smd-tl-item__sev--medium { background: var(--mon-warning-soft); color: var(--mon-warning); }
+.smd-tl-item__sev--low { background: rgba(14,165,233,0.08); color: #0ea5e9; }
 
-/* ── Breakdown ──────────────────────────────────────────────────── */
-.sd-breakdown-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.875rem;
-}
-.sd-breakdown-row:last-child { margin-bottom: 0; }
-.sd-breakdown-label {
-  font-size: 0.78rem;
-  color: var(--ds-text-secondary);
-  min-width: 140px;
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-}
-.sd-breakdown-bar-wrap { flex: 1; }
-.sd-breakdown-bar { height: 6px; border-radius: 9999px; background: var(--ds-gray-100); overflow: hidden; }
-.sd-breakdown-fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
-.sd-breakdown-score { font-size: 0.8rem; font-weight: 800; min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
-
-/* ── Pattern Cards ────────────────────────────────────────────── */
-.sd-pattern-card {
-  padding: 0.875rem 1.25rem;
-  border: 1px solid;
-  border-radius: var(--ds-radius-lg);
-  margin: 0.75rem 1rem;
-}
-.sd-pattern-card__head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-.sd-pattern-card__title { font-size: 0.825rem; font-weight: 800; color: var(--ds-text); flex: 1; }
-.sd-pattern-card__level {
-  font-size: 0.6rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0.15rem 0.4rem;
-  border-radius: 9999px;
-  color: white;
-}
-.sd-pattern-card__desc { font-size: 0.75rem; color: var(--ds-text-secondary); padding-left: 1.5rem; margin: 0; }
-
-/* ── Live Dot ──────────────────────────────────────────────────── */
-.sd-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.sd-live-dot--on { background: var(--ds-success); animation: sd-pulse 1.4s ease-in-out infinite; }
-.sd-live-dot--off { background: var(--ds-text-muted); }
-
-/* ── Realtime List ─────────────────────────────────────────────── */
-.sd-empty-compact {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 2rem;
-  color: var(--ds-text-muted);
-  font-size: 0.8rem;
-}
-.sd-realtime-list { display: flex; flex-direction: column; }
-.sd-realtime-item {
+/* Realtime list */
+.smd-realtime-list { display: flex; flex-direction: column; }
+.smd-realtime-item {
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--ds-border);
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--mon-border);
   border-left: 3px solid transparent;
 }
-.sd-realtime-item:last-child { border-bottom: none; }
-.sd-realtime-item--danger { border-left-color: var(--ds-danger); }
-.sd-realtime-item--warn { border-left-color: var(--ds-warning); }
-.sd-realtime-item--success { border-left-color: var(--ds-success); }
-.sd-realtime-item--neutral { border-left-color: var(--ds-text-muted); }
-.sd-realtime-item__icon {
+.smd-realtime-item:last-child { border-bottom: none; }
+.smd-realtime-item--warn { border-left-color: var(--mon-warning); }
+.smd-realtime-item--danger { border-left-color: var(--mon-danger); }
+.smd-realtime-item--success { border-left-color: var(--mon-success); }
+.smd-realtime-item__icon {
   width: 26px;
   height: 26px;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--mon-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--ds-surface-muted);
-  color: var(--ds-text-muted);
+  background: var(--mon-border);
+  color: var(--mon-text-secondary);
 }
-.sd-realtime-item--danger .sd-realtime-item__icon { background: var(--ds-danger-bg); color: var(--ds-danger); }
-.sd-realtime-item--warn .sd-realtime-item__icon { background: var(--ds-warning-bg); color: var(--ds-warning); }
-.sd-realtime-item--success .sd-realtime-item__icon { background: var(--ds-success-bg); color: var(--ds-success); }
-.sd-realtime-item__body { flex: 1; min-width: 0; }
-.sd-realtime-item__label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin: 0 0 0.15rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.sd-realtime-item__score {
-  font-size: 0.65rem;
+.smd-realtime-item--warn .smd-realtime-item__icon { background: var(--mon-warning-soft); color: var(--mon-warning); }
+.smd-realtime-item--danger .smd-realtime-item__icon { background: var(--mon-danger-soft); color: var(--mon-danger); }
+.smd-realtime-item--success .smd-realtime-item__icon { background: var(--mon-success-soft); color: var(--mon-success); }
+.smd-realtime-item__body { flex: 1; min-width: 0; }
+.smd-realtime-item__label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--mon-text); }
+.smd-realtime-item__score {
+  font-size: 0.62rem;
   font-weight: 800;
   padding: 0.1rem 0.4rem;
   border-radius: 9999px;
-  background: var(--ds-warning-bg);
-  color: var(--ds-warning);
+  background: var(--mon-warning-soft);
+  color: var(--mon-warning);
+  margin-left: 0.375rem;
 }
-.sd-realtime-item__msg { font-size: 0.72rem; color: var(--ds-text-secondary); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sd-realtime-item__time { font-size: 0.65rem; color: var(--ds-text-muted); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; margin-top: 0.2rem; }
-.sd-feed-enter-active { transition: all 0.25s ease; }
-.sd-feed-enter-from { opacity: 0; transform: translateX(-8px); }
+.smd-realtime-item__msg { font-size: 0.72rem; color: var(--mon-text-secondary); margin: 0.1rem 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.smd-realtime-item__time { font-size: 0.65rem; color: var(--mon-text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
 
-/* ── Signal Row ───────────────────────────────────────────────── */
-.sd-signal-row {
+/* Action history */
+.smd-action-list { display: flex; flex-direction: column; }
+.smd-action-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--ds-border);
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--mon-border);
 }
-.sd-signal-row:last-child { border-bottom: none; }
-.sd-signal-icon {
+.smd-action-item:last-child { border-bottom: none; }
+.smd-action-item__icon {
   width: 28px;
   height: 28px;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--mon-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: var(--mon-border);
+  color: var(--mon-text-secondary);
 }
-.sd-signal-body { flex: 1; min-width: 0; }
-.sd-signal-type { font-size: 0.8rem; font-weight: 700; color: var(--ds-text); margin: 0 0 0.15rem; }
-.sd-signal-evidence { font-size: 0.72rem; color: var(--ds-text-secondary); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sd-signal-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; }
-.sd-signal-conf { font-size: 0.8rem; font-weight: 800; color: var(--ds-text); font-variant-numeric: tabular-nums; }
-.sd-signal-sev { font-size: 0.6rem; font-weight: 800; padding: 0.15rem 0.4rem; border-radius: 9999px; }
-.sd-signal-sev--high { background: var(--ds-danger-bg); color: var(--ds-danger); }
-.sd-signal-sev--medium { background: var(--ds-warning-bg); color: var(--ds-warning); }
-.sd-signal-sev--low { background: var(--ds-info-bg); color: var(--ds-info); }
+.smd-action-item__icon--warn { background: var(--mon-warning-soft); color: var(--mon-warning); }
+.smd-action-item__icon--danger { background: var(--mon-danger-soft); color: var(--mon-danger); }
+.smd-action-item__icon--success { background: var(--mon-success-soft); color: var(--mon-success); }
+.smd-action-item__icon--neutral { background: var(--mon-primary-soft); color: var(--mon-primary); }
+.smd-action-item__body { flex: 1; }
+.smd-action-item__label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--mon-text); }
+.smd-action-item__msg { font-size: 0.72rem; color: var(--mon-text-secondary); margin: 0.2rem 0 0; }
+.smd-action-item__time { font-size: 0.65rem; color: var(--mon-text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
 
-/* ── Action Bar ───────────────────────────────────────────────── */
-.sd-action-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.25rem 1.5rem 2rem;
-  flex-wrap: wrap;
-}
-.sd-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.375rem;
-  border-radius: var(--ds-radius-md);
-  font-size: 0.825rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-  box-shadow: var(--ds-shadow-xs);
-}
-.sd-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.sd-action-btn--warn { background: var(--ds-warning-bg); color: var(--ds-warning); border-color: var(--ds-warning-soft); }
-.sd-action-btn--warn:hover:not(:disabled) { background: var(--ds-warning); color: #fff; border-color: var(--ds-warning); box-shadow: var(--ds-shadow-sm); }
-.sd-action-btn--danger { background: var(--ds-danger-bg); color: var(--ds-danger); border-color: var(--ds-danger-soft); }
-.sd-action-btn--danger:hover:not(:disabled) { background: var(--ds-danger); color: #fff; border-color: var(--ds-danger); box-shadow: var(--ds-shadow-sm); }
-.sd-action-btn--resume { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-soft); }
-.sd-action-btn--resume:hover:not(:disabled) { background: var(--ds-success); color: #fff; border-color: var(--ds-success); box-shadow: var(--ds-shadow-sm); }
-.sd-action-btn--outline { background: var(--ds-surface); color: var(--ds-text-secondary); border-color: var(--ds-border); }
-.sd-action-btn--outline:hover:not(:disabled) { background: var(--ds-surface-muted); color: var(--ds-text); border-color: var(--ds-primary-border); }
-.sd-action-sep { flex: 1; border-top: 1px dashed var(--ds-border); margin: 0 0.5rem; align-self: stretch; }
-.sd-action-meta { display: flex; gap: 1rem; align-items: center; margin-left: auto; }
-.sd-action-meta__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--ds-text-muted);
-}
-.sd-action-meta__item--success { color: var(--ds-success); }
-.sd-action-meta__item--warn { color: var(--ds-warning); }
+/* Notes */
+.smd-notes-list { display: flex; flex-direction: column; }
+.smd-note-item { padding: 0.75rem 0; border-bottom: 1px solid var(--mon-border); }
+.smd-note-item:last-child { border-bottom: none; }
+.smd-note-item__body { font-size: 0.825rem; color: var(--mon-text); margin-bottom: 0.375rem; }
+.smd-note-item__meta { display: flex; gap: 0.75rem; }
+.smd-note-item__author { font-size: 0.72rem; font-weight: 600; color: var(--mon-primary); }
+.smd-note-item__time { font-size: 0.72rem; color: var(--mon-text-muted); font-variant-numeric: tabular-nums; }
 
-/* ── Dialog ────────────────────────────────────────────────────── */
-.sd-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(15,23,42,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-}
-.sd-dialog {
-  width: 100%;
-  max-width: 460px;
-  margin: 1rem;
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  box-shadow: var(--ds-shadow-xl);
-  overflow: hidden;
-}
-.sd-dialog__head {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid var(--ds-border);
-  color: var(--ds-warning);
-}
-.sd-dialog__head--danger { color: var(--ds-danger); }
-.sd-dialog__head--success { color: var(--ds-success); }
-.sd-dialog__title { font-size: 1rem; font-weight: 800; color: var(--ds-text); margin: 0; }
-.sd-dialog__body { padding: 1.25rem 1.5rem; }
-.sd-dialog__desc { font-size: 0.875rem; color: var(--ds-text-secondary); margin: 0 0 0.875rem; }
-.sd-dialog__desc--danger { color: var(--ds-danger); }
-.sd-dialog__textarea {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface);
-  color: var(--ds-text);
-  font-size: 0.85rem;
-  resize: vertical;
-  outline: none;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-.sd-dialog__textarea:focus { border-color: var(--ds-primary); box-shadow: var(--ds-shadow-focus); }
-.sd-dialog__textarea::placeholder { color: var(--ds-text-muted); }
-.sd-dialog__foot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.625rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--ds-border);
-  background: var(--ds-surface-muted);
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .smd-header { flex-direction: column; align-items: flex-start; }
+  .smd-overview-grid { grid-template-columns: 1fr; }
+  .smd-content { padding: 1rem; }
+  .smd-tabs { padding: 0.5rem 1rem; }
 }
 
-/* ── Buttons ────────────────────────────────────────────────────── */
-.sd-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.55rem 1.125rem;
-  border-radius: var(--ds-radius-md);
-  font-size: 0.825rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-}
-.sd-btn--secondary { background: var(--ds-surface); color: var(--ds-text-secondary); border-color: var(--ds-border); }
-.sd-btn--secondary:hover { background: var(--ds-surface-muted); color: var(--ds-text); border-color: var(--ds-primary-border); }
-.sd-btn--warn { background: var(--ds-warning); color: #fff; }
-.sd-btn--warn:hover { filter: brightness(1.05); box-shadow: var(--ds-shadow-sm); }
-.sd-btn--danger { background: var(--ds-danger); color: #fff; }
-.sd-btn--danger:hover { filter: brightness(1.05); box-shadow: var(--ds-shadow-sm); }
-.sd-btn--success { background: var(--ds-success); color: #fff; }
-.sd-btn--success:hover { filter: brightness(1.05); box-shadow: var(--ds-shadow-sm); }
-.sd-btn--ghost { background: transparent; color: var(--ds-text-secondary); border-color: var(--ds-border); }
-.sd-btn--ghost:hover { background: var(--ds-surface-muted); color: var(--ds-text); }
-
-/* ── Responsive ─────────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .sd-grid { grid-template-columns: 1fr; }
-  .sd-stats-strip { grid-template-columns: repeat(3, 1fr); }
-  .sd-hero { flex-direction: column; align-items: flex-start; }
-  .sd-hero__right { width: 100%; }
-}
-@media (max-width: 640px) {
-  .sd-stats-strip { grid-template-columns: repeat(2, 1fr); margin: 1rem 1rem 0; }
-  .sd-hero { margin: 1rem 1rem 0; padding: 1rem; }
-  .sd-grid { margin: 1rem 1rem 0; }
-  .sd-action-bar { padding: 1rem 1rem 1.5rem; }
-  .sd-topbar { padding: 0.5rem 1rem; flex-wrap: wrap; }
-  .sd-topbar__refresh span { display: none; }
+/* ── Reduced Motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .smd-panel { transition: none; }
+  .smd-gauge__fill, .smd-progress-fill { transition: none; }
+  .smd-breakdown-row__fill { transition: none; }
 }
 </style>

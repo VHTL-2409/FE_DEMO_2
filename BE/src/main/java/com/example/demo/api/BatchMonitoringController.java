@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Batch monitoring operations for acting on multiple attempts at once.
@@ -54,7 +52,7 @@ public class BatchMonitoringController {
     }
 
     private BatchResult executeBatch(BatchActionRequest request, BatchExecutor executor) {
-        List<Long> ids = request.getAttemptIds();
+        List<Long> ids = request.attemptIds();
         if (ids == null || ids.isEmpty()) {
             return new BatchResult(0, 0, 0, List.of());
         }
@@ -64,7 +62,7 @@ public class BatchMonitoringController {
 
         for (Long attemptId : ids) {
             try {
-                executor.execute(attemptId, request.getReason());
+                executor.execute(attemptId, request.reason());
                 succeeded++;
             } catch (Exception e) {
                 failed++;

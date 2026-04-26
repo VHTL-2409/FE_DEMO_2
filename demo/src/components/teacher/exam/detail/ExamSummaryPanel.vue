@@ -324,13 +324,7 @@ const formatDateTime = (d) => {
 
 const goToLiveMonitoring = () => {
   if (!props.exam?.id) return
-  router.push({
-    path: '/teacher/live-monitoring/session',
-    query: {
-      examId: String(props.exam.id),
-      title: props.exam.title || ''
-    }
-  })
+  router.push(`/teacher/exams/${props.exam.id}/monitoring`)
 }
 </script>
 

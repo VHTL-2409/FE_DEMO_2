@@ -19,6 +19,7 @@ export function useRealtimeChannel() {
   let reconnectAttempts = 0
   let heartbeatTimer = null
   let currentTopics = []
+  const activeSubscriptions = new Map()
   const MAX_RECONNECT_DELAY = 30000
   const BASE_RECONNECT_DELAY = 1000
   const HEARTBEAT_INTERVAL_MS = 20000
@@ -117,8 +118,31 @@ export function useRealtimeChannel() {
     reconnectAttempts += 1
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null
-      connect({ topics, reconnectDelay, onConnect, onDisconnect, onError })
+      // Merge original topics with dynamically added subscriptions
+      const allTopics = [
+        ...topics,
+        ...[...activeSubscriptions.keys()].map(d => ({ destination: d, handler: null }))
+      ]
+      connect({ topics: allTopics, reconnectDelay, onConnect, onDisconnect, onError })
     }, delay)
+  }
+
+  const subscribe = (destination, handler) => {
+    if (!client?.connected) return
+    if (activeSubscriptions.has(destination)) return
+    const sub = client.subscribe(destination, (frame) => {
+      try {
+        handler?.(JSON.parse(frame.body || '{}'), frame)
+      } catch {
+        handler?.(frame.body, frame)
+      }
+    })
+    activeSubscriptions.set(destination, sub)
+  }
+
+  const unsubscribe = (destination) => {
+    const sub = activeSubscriptions.get(destination)
+    if (sub) { sub.unsubscribe(); activeSubscriptions.delete(destination) }
   }
 
   const retryConnection = () => {
@@ -142,6 +166,8 @@ export function useRealtimeChannel() {
     lastError,
     connect,
     disconnect,
-    retryConnection
+    retryConnection,
+    subscribe,
+    unsubscribe
   }
 }

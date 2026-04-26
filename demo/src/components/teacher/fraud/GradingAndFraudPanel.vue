@@ -241,7 +241,8 @@
                     'gf__bio-value--warning': biometricsData.typingProfile?.consistencyScore < 0.7
                   }"
                 >
-                  {{ (((biometricsData.typingProfile?.consistencyScore || 0) * 100).toFixed(0) }}%
+                  {{ formatPercent(biometricsData.typingProfile?.consistencyScore) }}
+                </span>
               </div>
             </div>
           </div>
@@ -489,6 +490,11 @@ function formatTime(timestampMs) {
   if (!timestampMs) return ''
   const d = new Date(timestampMs)
   return d.toLocaleString('vi-VN')
+}
+
+function formatPercent(val) {
+  if (val == null) return '0%'
+  return (val * 100).toFixed(0) + '%'
 }
 </script>
 

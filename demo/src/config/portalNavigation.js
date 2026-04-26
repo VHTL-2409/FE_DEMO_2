@@ -54,6 +54,7 @@ export function getTeacherActiveSection(path = '', query = {}) {
   if (p.startsWith('/teacher/exams/review/summary')) return 'exams'
   if (p.startsWith('/teacher/exams/review')) return 'exams'
   if (p.startsWith('/teacher/analytics')) return 'dashboard'
+  if (p.startsWith('/teacher/exams/') && (p.includes('/monitoring') || p.includes('/student/'))) return 'monitoring'
   if (p.startsWith('/teacher/live-monitoring')) return 'monitoring'
   if (p.startsWith('/teacher/profile')) return 'profile'
   if (

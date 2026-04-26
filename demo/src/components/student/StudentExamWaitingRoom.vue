@@ -38,17 +38,17 @@
           <div class="flex flex-wrap items-center gap-2 sm:justify-end">
             <span
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
-              :class="cameraReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+              :class="!cameraVerified ? 'bg-gray-500/10 text-gray-500 dark:text-gray-400' : cameraReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
             >
               <LucideIcon name="videocam" class="text-[1rem]" />
-              Camera {{ cameraReady ? 'OK' : 'chưa OK' }}
+              Camera {{ !cameraVerified ? 'chưa kiểm tra' : cameraReady ? 'OK' : 'chưa OK' }}
             </span>
             <span
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
-              :class="micReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+              :class="!cameraVerified ? 'bg-gray-500/10 text-gray-500 dark:text-gray-400' : micReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
             >
               <LucideIcon name="mic" class="text-[1rem]" />
-              Mic {{ micReady ? 'OK' : 'chưa OK' }}
+              Mic {{ !cameraVerified ? 'chưa kiểm tra' : micReady ? 'OK' : 'chưa OK' }}
             </span>
             <button
               type="button"
@@ -98,6 +98,7 @@
           :is-ended="isEnded"
           :is-before-start="!!startAtDate && nowMs < startAtDate.getTime()"
           :devices-ready="devicesReady"
+          :devices-verified="devicesVerified"
           :require-camera-mic="requireCameraMic"
           @start="goToExamInterface"
         />
@@ -131,6 +132,9 @@ const cameraReady = ref(false)
 const micReady = ref(false)
 const deviceError = ref('')
 const isCheckingDevices = ref(false)
+/** Tracks whether a camera check has ever completed (pass or fail).
+ *  Used to show "Chưa kiểm tra" vs "OK" / "chưa OK" in the UI. */
+const cameraVerified = ref(false)
 
 const toast = useToast()
 let timerId = null
@@ -158,9 +162,23 @@ const requireCameraMic = computed(() => {
   return examDetail.value?.requireCameraMic !== false
 })
 
-const devicesReady = computed(() =>
-  requireCameraMic.value ? (cameraReady.value && micReady.value) : true
+/**
+ * True when devices have been verified to be working.
+ * Always checked on mount — never bypassed even if requireCameraMic = false.
+ */
+const devicesVerified = computed(() =>
+  cameraVerified.value && cameraReady.value && micReady.value
 )
+
+/**
+ * Whether devices must be ready before starting.
+ * When requireCameraMic = true: must be verified.
+ * When requireCameraMic = false: still show status but allow starting if not checked.
+ */
+const devicesReady = computed(() => {
+  if (!requireCameraMic.value) return true // not a hard requirement
+  return devicesVerified.value
+})
 
 const canStart = computed(() => {
   if (isEnded.value) return false
@@ -189,15 +207,10 @@ const refreshExamDetail = async () => {
 }
 
 const checkDevices = async () => {
-  if (!requireCameraMic.value) {
-    cameraReady.value = true
-    micReady.value = true
-    deviceError.value = ''
-    return
-  }
   if (!navigator?.mediaDevices?.getUserMedia) {
     cameraReady.value = false
     micReady.value = false
+    cameraVerified.value = true
     deviceError.value = 'Trình duyệt không hỗ trợ kiểm tra camera/micro.'
     toast.error(deviceError.value)
     return
@@ -211,6 +224,8 @@ const checkDevices = async () => {
     const audioTrack = stream.getAudioTracks()[0]
     cameraReady.value = Boolean(videoTrack)
     micReady.value = Boolean(audioTrack)
+    deviceError.value = ''
+    cameraVerified.value = true
     stream.getTracks().forEach((track) => track.stop())
   } catch (error) {
     cameraReady.value = false
@@ -219,6 +234,7 @@ const checkDevices = async () => {
       ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
       : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
     toast.error(deviceError.value)
+    cameraVerified.value = true
   } finally {
     isCheckingDevices.value = false
   }
@@ -231,16 +247,6 @@ const goToExamInterface = async () => {
   }
 
   await refreshExamDetail()
-  await checkDevices()
-
-  if (!devicesReady.value) {
-    if (!requireCameraMic.value) {
-      // no-op
-    } else {
-      // deviceError đã được checkDevices() hiển thị toast rồi → không toast lại
-      return
-    }
-  }
 
   if (isEnded.value) {
     toast.error('Bài thi đã kết thúc.')
@@ -248,7 +254,11 @@ const goToExamInterface = async () => {
   }
 
   if (!canStart.value) {
-    toast.error('Bài thi chưa bắt đầu.')
+    if (!devicesVerified.value && requireCameraMic.value) {
+      toast.error('Bạn cần bật camera để vào phòng thi.')
+    } else if (startAtDate.value && nowMs.value < startAtDate.value.getTime()) {
+      toast.error('Bài thi chưa bắt đầu.')
+    }
     return
   }
 

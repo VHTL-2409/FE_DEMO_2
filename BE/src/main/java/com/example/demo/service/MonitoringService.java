@@ -14,6 +14,7 @@ import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
 import com.example.demo.domain.entity.MonitoringEvent;
 import com.example.demo.domain.entity.MonitoringEventType;
+import com.example.demo.domain.entity.RiskActionType;
 import com.example.demo.domain.entity.RiskLevel;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
@@ -47,6 +48,7 @@ public class MonitoringService {
     private final RealtimeNotificationService realtimeNotificationService;
     private final AuditLogService auditLogService;
     private final AuditLogRepository auditLogRepository;
+    private final RiskScoringService riskScoringService;
 
     @Value("${demo.monitoring.events.rate-limit.window-seconds:10}")
     private long eventRateLimitWindowSeconds;
@@ -102,7 +104,7 @@ public class MonitoringService {
 
         realtimeNotificationService.notifyTeacherWarning(attempt, warningMessage);
         auditLogService.logTeacherWarning(attempt, actor, warningMessage);
-        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
+        RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
 
         return toMonitoringEventResponse(attempt, riskResponse, warningMessage);
     }
@@ -135,7 +137,7 @@ public class MonitoringService {
             auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
         }
         realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
-        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
+        RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
         return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
     }
 
@@ -160,8 +162,19 @@ public class MonitoringService {
 
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_RESUMED] " + resumeMessage);
         realtimeNotificationService.notifyAttemptResumed(attempt, resumeMessage);
-        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
-        return toMonitoringEventResponse(attempt, riskResponse, resumeMessage);
+
+        // Do NOT call getRiskSnapshot() here — recomputeRisk() would re-trigger
+        // applyAutomatedAction() (level==CRITICAL && status==IN_PROGRESS) and immediately
+        // re-pause the attempt, overriding the teacher's manual resume.
+        return MonitoringEventResponse.builder()
+                .attemptId(attempt.getId())
+                .riskScore(attempt.getRiskScore())
+                .suspicious(attempt.getSuspicious())
+                .riskLevel(attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : RiskLevel.CLEAN.name())
+                .status(attempt.getStatus().name())
+                .message(resumeMessage)
+                .actionTaken(RiskActionType.ATTEMPT_RESUMED.name())
+                .build();
     }
 
     @Transactional
@@ -176,16 +189,21 @@ public class MonitoringService {
         }
         if (attempt.getStatus() != AttemptStatus.PAUSED) {
             attempt.setStatus(AttemptStatus.PAUSED);
-            attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
             examAttemptRepository.save(attempt);
         }
+        // Always set to MANUAL so that applyAutomatedResume never fires on a teacher-initiated pause.
+        // This handles the case where the attempt was previously auto-paused (autoPausedBy=SYSTEM).
+        attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
 
         String pauseMessage = (reason == null || reason.isBlank())
                 ? "Bai thi dang duoc tam dung de giam thi kiem tra."
                 : reason.trim();
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_PAUSED] " + pauseMessage);
         realtimeNotificationService.notifyAttemptPaused(attempt, pauseMessage);
-        RiskScoreResponse riskResponse = examEventService.getRiskSnapshot(attempt.getId(), actor);
+
+        // Use recomputeRiskSkipAutoActions so the teacher's manual pause is never overridden
+        // by auto-resume (which could fire if the attempt was previously auto-paused by SYSTEM).
+        RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
         return toMonitoringEventResponse(attempt, riskResponse, pauseMessage);
     }
 
