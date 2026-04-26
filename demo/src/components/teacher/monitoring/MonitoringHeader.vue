@@ -210,9 +210,9 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 .dark .mch__live-badge { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
 
 .mch__live-badge--live {
-  background: rgba(22, 163, 74, 0.08);
-  border-color: rgba(22, 163, 74, 0.25);
-  color: var(--ds-success);
+  background: var(--mon-success-soft);
+  border-color: var(--mon-success-border);
+  color: var(--mon-success);
 }
 
 .mch__live-badge--off { color: var(--ds-text-muted); }
@@ -250,7 +250,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   text-overflow: ellipsis;
   max-width: 240px;
 }
-.dark .mch__title { color: #f1f5f9; }
+.dark .mch__title { color: var(--ds-text); }
 
 .mch__subtitle {
   font-size: 0.65rem;
@@ -299,8 +299,8 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 .mch__stat-icon-wrap--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
 .mch__stat-icon-wrap--muted { background: var(--ds-gray-100); color: var(--ds-text-muted); }
 .dark .mch__stat-icon-wrap--muted { background: var(--ds-gray-700); }
-.dark .mch__stat-icon-wrap--success { background: rgba(16, 185, 129, 0.12); }
-.dark .mch__stat-icon-wrap--danger { background: rgba(239, 68, 68, 0.12); }
+.dark .mch__stat-icon-wrap--success { background: var(--mon-success-soft); }
+.dark .mch__stat-icon-wrap--danger { background: var(--mon-danger-soft); }
 
 .mch__stat-body { display: flex; flex-direction: column; min-width: 0; }
 
@@ -312,7 +312,7 @@ watch(() => props.alertCount, (newVal, oldVal) => {
   line-height: 1;
   font-family: var(--ds-font-display);
 }
-.dark .mch__stat-val { color: #f1f5f9; }
+.dark .mch__stat-val { color: var(--ds-text); }
 
 .mch__stat-label {
   font-size: 0.58rem;
@@ -361,9 +361,9 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 .dark .mch__countdown { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
 
 .mch__countdown--urgent {
-  background: var(--ds-danger-soft);
+  background: var(--mon-danger-soft);
   border-color: rgba(220, 38, 38, 0.25);
-  color: var(--ds-danger);
+  color: var(--mon-danger);
 }
 
 .mch__countdown--normal {
@@ -394,9 +394,9 @@ watch(() => props.alertCount, (newVal, oldVal) => {
 .mch__action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .mch__action-btn--alert {
-  color: var(--ds-warning);
-  border-color: rgba(217, 119, 6, 0.3);
-  background: rgba(217, 119, 6, 0.05);
+  color: var(--mon-warning);
+  border-color: var(--mon-warning-border);
+  background: var(--mon-warning-soft);
 }
 
 .mch__action-btn--active-panel {

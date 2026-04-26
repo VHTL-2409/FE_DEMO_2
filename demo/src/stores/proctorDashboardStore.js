@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
+const resolveAttemptId = (card) => card?.attemptId ?? card?.id
 const normalizeTime = (value) => {
   if (!value) return 0
   const time = new Date(value).getTime()
@@ -21,7 +22,8 @@ const resolveStatusToken = (card) => {
   if (raw === 'ACTIVE' || raw === 'IN_PROGRESS') return 'ONLINE'
   if (raw === 'PAUSED') return 'PAUSED'
   if (raw === 'SUBMITTED' || raw === 'AUTO_SUBMITTED' || raw === 'COMPLETED') return 'SUBMITTED'
-  if (raw === 'STOPPED' || raw === 'OFFLINE') return 'OFFLINE'
+  if (raw === 'STOPPED') return 'STOPPED'
+  if (raw === 'OFFLINE') return 'OFFLINE'
   return raw || 'UNKNOWN'
 }
 
@@ -42,10 +44,18 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     reviewOnly: false
   })
 
+  // ── Alert & event deduplication ──────────────────────────────────────────
+  const recentAlertKeys = new Map() // key → timestamp
+  const ALERT_DEDUPE_WINDOW_MS = 10_000
+  let alertIdCounter = 0
+  let eventIdCounter = 0
+  const liveAlerts = ref([])
+  const liveEvents = ref([])
+
   const cardsWithMeta = computed(() => cards.value.map((card) => {
     const riskBand = resolveRiskBand(card.riskScore)
     const statusToken = resolveStatusToken(card)
-    const prevScore = previousRiskScores.value[card.attemptId || card.id]
+    const prevScore = previousRiskScores.value[resolveAttemptId(card)]
     const riskDelta = prevScore != null && card.riskScore != null
       ? card.riskScore - prevScore
       : null
@@ -76,13 +86,15 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const setCards = (nextCards) => {
     // Save current scores before replacing cards
     for (const card of cards.value) {
-      const id = card.attemptId || card.id
-      const newCard = Array.isArray(nextCards) ? nextCards.find(c => (c.attemptId || c.id) === id) : null
+      const id = resolveAttemptId(card)
+      const newCard = Array.isArray(nextCards) ? nextCards.find(c => resolveAttemptId(c) === id) : null
       if (newCard && card.riskScore != null) {
         previousRiskScores.value[id] = card.riskScore
       }
     }
-    cards.value = Array.isArray(nextCards) ? nextCards : []
+    cards.value = Array.isArray(nextCards)
+      ? nextCards.map(card => ({ ...card, attemptId: resolveAttemptId(card) }))
+      : []
     lastUpdatedAt.value = Date.now()
   }
 
@@ -97,12 +109,17 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   }
 
   const upsertCard = (card) => {
+    const cardAttemptId = resolveAttemptId(card)
+    if (cardAttemptId == null) return
     const next = Array.isArray(cards.value) ? [...cards.value] : []
-    const index = next.findIndex((item) => item.attemptId === card.attemptId)
+    const index = next.findIndex((item) => resolveAttemptId(item) === cardAttemptId)
     if (index >= 0) {
-      next[index] = { ...next[index], ...card }
+      if (card.riskScore != null && next[index].riskScore != null && card.riskScore !== next[index].riskScore) {
+        previousRiskScores.value[cardAttemptId] = next[index].riskScore
+      }
+      next[index] = { ...next[index], ...card, attemptId: cardAttemptId }
     } else {
-      next.push(card)
+      next.push({ ...card, attemptId: cardAttemptId })
     }
     cards.value = next
     lastUpdatedAt.value = Date.now()
@@ -143,7 +160,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
           ? bandOrder(resolveRiskBand(b.riskScore)) - bandOrder(resolveRiskBand(a.riskScore))
           : (Number(b.riskScore || 0) - Number(a.riskScore || 0))))
       case 'name':
-        return arr.sort((a, b) => (a.student || a.name || '').localeCompare(b.student || b.name || ''))
+        return arr.sort((a, b) => (a.student || b.name || '').localeCompare(b.student || b.name || ''))
       case 'violations':
         return arr.sort((a, b) => (Number(b.violationCount || 0) - Number(a.violationCount || 0)))
       case 'status':
@@ -178,6 +195,11 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     connectionMode.value = 'polling'
     lastUpdatedAt.value = null
     previousRiskScores.value = {}
+    liveAlerts.value = []
+    liveEvents.value = []
+    recentAlertKeys.clear()
+    alertIdCounter = 0
+    eventIdCounter = 0
     filters.value = {
       search: '',
       riskBand: 'ALL',
@@ -226,25 +248,23 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     return { flagged, critical }
   })
 
-  // ── Alert & event deduplication ──────────────────────────────────────────
-  const recentAlertKeys = new Map() // key → timestamp
-  const ALERT_DEDUPE_WINDOW_MS = 10_000
-
   /**
    * Add a fraud signal alert with deduplication.
    * Returns true if the alert was added, false if it was suppressed as a duplicate.
    * Dedupe key = `${attemptId}|${signalType}|${severity}`
    */
   const addAlert = (alert) => {
-    const key = `${alert.attemptId || ''}|${alert.signalType || ''}|${alert.severity || ''}`
+    const signalType = alert.signalType || alert.type || ''
+    const key = `${alert.attemptId || ''}|${signalType}|${alert.severity || ''}`
     const now = Date.now()
     const lastSeen = recentAlertKeys.get(key)
     if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) {
       return false // duplicate, skip
     }
     recentAlertKeys.set(key, now)
+    const eventTime = normalizeTime(alert.issuedAt || alert.at || alert.timestamp || alert.ts) || now
     liveAlerts.value = [
-      { ...alert, id: `alert-${++alertIdCounter}`, ts: now },
+      { ...alert, signalType, id: `alert-${++alertIdCounter}`, ts: eventTime },
       ...liveAlerts.value
     ].slice(0, 200) // keep last 200
     // Prune old entries every 50 adds
@@ -260,16 +280,12 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
    * Add a system/proctoring event (warning, pause, resume, etc.) without deduplication.
    */
   const addEvent = (event) => {
+    const eventTime = normalizeTime(event.issuedAt || event.at || event.timestamp || event.ts) || Date.now()
     liveEvents.value = [
-      { ...event, id: `event-${++eventIdCounter}`, ts: Date.now() },
+      { ...event, id: `event-${++eventIdCounter}`, ts: eventTime },
       ...liveEvents.value
     ].slice(0, 200)
   }
-
-  let alertIdCounter = 0
-  let eventIdCounter = 0
-  const liveAlerts = ref([])
-  const liveEvents = ref([])
 
   return {
     selectedExamId,

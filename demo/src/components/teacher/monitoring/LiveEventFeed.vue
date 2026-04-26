@@ -79,7 +79,7 @@
           </div>
 
           <span class="lef__event-time" :title="absoluteTime(event.timestamp || event.time)">
-            {{ relativeTime(event.timestamp || event.time) }}
+            {{ relativeTime(event.timestamp || event.time, { short: true }) }}
           </span>
         </div>
       </TransitionGroup>
@@ -108,6 +108,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { relativeTime } from '../../utils/dateUtils'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -126,18 +127,6 @@ const pauseScroll = ref(false)
 const displayEvents = computed(() => props.events.slice(0, props.maxEvents))
 
 const now = () => new Date()
-
-const relativeTime = (ts) => {
-  if (!ts) return ''
-  const diff = now() - new Date(ts)
-  const secs = Math.floor(diff / 1000)
-  if (secs < 5) return 'Vừa'
-  if (secs < 60) return `${secs}s`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m`
-  const hours = Math.floor(mins / 60)
-  return `${hours}h`
-}
 
 const absoluteTime = (ts) => {
   if (!ts) return ''
@@ -349,7 +338,7 @@ watch(() => props.events.length, () => {
   margin: 0;
 }
 
-.dark .lef__title { color: #f1f5f9; }
+.dark .lef__title { color: var(--ds-text); }
 
 .lef__count-badge {
   background: var(--ds-gray-100);
@@ -376,7 +365,7 @@ watch(() => props.events.length, () => {
   transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
-.dark .lef__icon-btn { color: #94a3b8; }
+.dark .lef__icon-btn { color: var(--ds-text-secondary); }
 .lef__icon-btn:hover { background: var(--ds-gray-100); color: var(--ds-danger); }
 .dark .lef__icon-btn:hover { background: var(--ds-gray-700); }
 
@@ -415,8 +404,8 @@ watch(() => props.events.length, () => {
 /* Flat color variant classes */
 .lef__ei--success { border-left-color: var(--ds-success); }
 .lef__ei--danger { border-left-color: var(--ds-danger); }
-.lef__ei--warning { border-left-color: #d97706; }
-.lef__ei--caution { border-left-color: #eab308; }
+.lef__ei--warning { border-left-color: var(--ds-warning); }
+.lef__ei--caution { border-left-color: var(--ds-accent); }
 .lef__ei--info { border-left-color: var(--ds-info); }
 .lef__ei--primary { border-left-color: var(--ds-primary); }
 .lef__ei--muted { border-left-color: var(--ds-gray-300); }
@@ -437,8 +426,8 @@ watch(() => props.events.length, () => {
 
 .lef__tb--success { background: var(--ds-success-soft); color: var(--ds-success); }
 .lef__tb--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
-.lef__tb--warning { background: rgba(234, 179, 8, 0.1); color: #d97706; }
-.lef__tb--caution { background: rgba(234, 179, 8, 0.08); color: #ca8a04; }
+.lef__tb--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
+.lef__tb--caution { background: var(--ds-accent-soft); color: var(--ds-accent); }
 .lef__tb--info { background: var(--ds-info-soft); color: var(--ds-info); }
 .lef__tb--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
 .lef__tb--muted { background: var(--ds-gray-100); color: var(--ds-gray-500); }
@@ -460,8 +449,8 @@ watch(() => props.events.length, () => {
 
 .lef__icon--success { background: var(--ds-success-soft); color: var(--ds-success); }
 .lef__icon--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
-.lef__icon--warning { background: rgba(234, 179, 8, 0.1); color: #d97706; }
-.lef__icon--caution { background: rgba(234, 179, 8, 0.08); color: #eab308; }
+.lef__icon--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
+.lef__icon--caution { background: var(--ds-accent-soft); color: var(--ds-accent); }
 .lef__icon--info { background: var(--ds-info-soft); color: var(--ds-info); }
 .lef__icon--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
 .lef__icon--muted { background: var(--ds-gray-100); color: var(--ds-gray-500); }
@@ -486,7 +475,7 @@ watch(() => props.events.length, () => {
   white-space: nowrap;
 }
 
-.dark .lef__event-text { color: #f1f5f9; }
+.dark .lef__event-text { color: var(--ds-text); }
 
 .lef__event-text strong {
   color: var(--ds-primary);
@@ -586,7 +575,7 @@ watch(() => props.events.length, () => {
   user-select: none;
 }
 
-.dark .lef__auto-scroll { color: #94a3b8; }
+.dark .lef__auto-scroll { color: var(--ds-text-secondary); }
 
 .lef__checkbox { display: none; }
 
@@ -605,7 +594,7 @@ watch(() => props.events.length, () => {
   border-radius: var(--ds-radius-sm);
 }
 
-.dark .lef__footer-clear { color: #94a3b8; }
+.dark .lef__footer-clear { color: var(--ds-text-secondary); }
 .lef__footer-clear:hover { color: var(--ds-danger); background: var(--ds-danger-soft); }
 .dark .lef__footer-clear:hover { background: rgba(220, 38, 38, 0.1); }
 
@@ -628,5 +617,18 @@ watch(() => props.events.length, () => {
   .lef-event-enter-active, .lef-event-leave-active { transition: none; }
   .lef-event-enter-from { opacity: 1; transform: none; }
   .lef-event-leave-to { opacity: 0; transform: none; }
+}
+
+/* Responsive */
+@media (max-height: 600px) {
+  .lef__list { max-height: 200px; }
+}
+@media (max-height: 800px) {
+  .lef__list { max-height: 240px; }
+}
+@media (max-width: 768px) {
+  .lef__list { max-height: 200px; }
+  .lef__event-item { padding: 0.5rem; }
+  .lef__footer { flex-wrap: wrap; gap: 0.5rem; }
 }
 </style>

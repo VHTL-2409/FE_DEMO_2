@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.api.dto.monitoring.EventBatchRequest;
 import com.example.demo.api.dto.monitoring.EventBatchResponse;
 import com.example.demo.api.dto.monitoring.HeartbeatRequest;
+import com.example.demo.api.dto.monitoring.ProctorSessionAlertResponse;
 import com.example.demo.api.dto.monitoring.ProctoringTelemetry;
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
@@ -13,6 +14,7 @@ import com.example.demo.domain.entity.ExamEvent;
 import com.example.demo.domain.entity.FraudSignal;
 import com.example.demo.domain.entity.MonitoringEvent;
 import com.example.demo.domain.entity.MonitoringEventType;
+import com.example.demo.domain.entity.ProctorFlag;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.SignalSeverity;
 import com.example.demo.domain.entity.User;
@@ -20,6 +22,7 @@ import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.ExamEventRepository;
 import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.repository.MonitoringEventRepository;
+import com.example.demo.repository.ProctorFlagRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +46,7 @@ public class ExamEventService {
     private final ExamEventRepository examEventRepository;
     private final FraudSignalRepository fraudSignalRepository;
     private final MonitoringEventRepository monitoringEventRepository;
+    private final ProctorFlagRepository proctorFlagRepository;
     private final FraudSignalService fraudSignalService;
     private final RiskScoringService riskScoringService;
     private final DeviceFingerprintService deviceFingerprintService;
@@ -152,13 +156,6 @@ public class ExamEventService {
         }
         examAttemptRepository.save(attempt);
 
-        if (Boolean.TRUE.equals(attempt.getFullscreenRequired())
-                && Boolean.FALSE.equals(request.getFullscreen())
-                && shouldEmitFullscreenSignal(attempt, now)) {
-            fraudSignalService.recordServerSignal(attempt, "EXIT_FULLSCREEN", SignalSeverity.MEDIUM, 0.9,
-                    Map.of("source", "heartbeat", "visibility", request.getVisibility(), "screenMetrics", request.getScreenMetrics()));
-        }
-
         applyHeartbeatDerivedSignals(attempt, request);
 
         return riskScoringService.recomputeRisk(attempt);
@@ -190,8 +187,7 @@ public class ExamEventService {
     public RiskScoreResponse getRiskSnapshot(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
         ensureCanAccessAttempt(attempt, actor);
-        emitStaleHeartbeatSignalIfNeeded(attempt);
-        return riskScoringService.recomputeRisk(attempt);
+        return riskScoringService.recomputeRiskSkipAutoActions(attempt);
     }
 
     private ExamEvent saveExamEvent(
@@ -221,44 +217,13 @@ public class ExamEventService {
                 .build());
     }
 
+    // ── PHASE-1: All telemetry-derived signal generation is DISABLED.
+    // Signals are ONLY created from events the browser explicitly sends.
+    // The following methods are kept as no-ops for future phase expansion. ──
+
     private void applyHeartbeatDerivedSignals(ExamAttempt attempt, HeartbeatRequest request) {
-        ProctoringTelemetry telemetry = request.getTelemetry();
-        if (telemetry == null) {
-            return;
-        }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorNetworkInstability())
-                && (Boolean.FALSE.equals(telemetry.getNetworkOnline())
-                || positiveInt(telemetry.getReconnectCount()) >= 2
-                || positiveLong(telemetry.getOfflineDurationMs()) >= 10_000L
-                || positiveLong(telemetry.getHeartbeatLagMs()) >= 8_000L)) {
-            Map<String, Object> evidence = new LinkedHashMap<>();
-            evidence.put("source", "heartbeat");
-            evidence.put("networkOnline", telemetry.getNetworkOnline());
-            evidence.put("reconnectCount", telemetry.getReconnectCount());
-            evidence.put("offlineDurationMs", telemetry.getOfflineDurationMs());
-            evidence.put("heartbeatLagMs", telemetry.getHeartbeatLagMs());
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "NETWORK_INSTABILITY",
-                    SignalSeverity.MEDIUM,
-                    0.82,
-                    evidence
-            );
-        }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorSessionRecovery())
-                && positiveInt(telemetry.getReconnectCount()) >= 1) {
-            Map<String, Object> evidence = new LinkedHashMap<>();
-            evidence.put("source", "heartbeat");
-            evidence.put("reconnectCount", telemetry.getReconnectCount());
-            evidence.put("networkType", telemetry.getNetworkType());
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "SESSION_RECOVERY",
-                    SignalSeverity.MEDIUM,
-                    0.76,
-                    evidence
-            );
-        }
+        // Phase-1: heartbeat telemetry is stored but does NOT generate signals.
+        // NETWORK_INSTABILITY, SESSION_RECOVERY must not be auto-created here.
     }
 
     private void applyTelemetryDerivedSignals(
@@ -271,77 +236,9 @@ public class ExamEventService {
         if (telemetry == null) {
             return;
         }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorFullscreenEvasion())
-                && ("EXIT_FULLSCREEN".equals(eventType)
-                || positiveInt(telemetry.getFullscreenExitCount()) >= 2
-                || positiveLong(telemetry.getFullscreenReentryDelayMs()) >= 4_000L
-                || positiveLong(telemetry.getFocusRecoveryDelayMs()) >= 4_000L)) {
-            Map<String, Object> evidence = new LinkedHashMap<>();
-            evidence.put("source", "event_batch");
-            evidence.put("eventType", eventType);
-            evidence.put("details", details);
-            evidence.put("fullscreenExitCount", telemetry.getFullscreenExitCount());
-            evidence.put("fullscreenReentryDelayMs", telemetry.getFullscreenReentryDelayMs());
-            evidence.put("focusRecoveryDelayMs", telemetry.getFocusRecoveryDelayMs());
-            evidence.put("visibility", browserContext != null ? browserContext.getVisibility() : null);
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "FULLSCREEN_EVASION",
-                    SignalSeverity.MEDIUM,
-                    0.85,
-                    evidence
-            );
-        }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorQuestionTimingAnomaly())
-                && (positiveLong(telemetry.getQuestionDwellMs()) <= 2_000L
-                || (positiveLong(telemetry.getQuestionSwitchSpanMs()) > 0 && positiveLong(telemetry.getQuestionSwitchSpanMs()) <= 1_500L))) {
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "QUESTION_TIMING_ANOMALY",
-                    SignalSeverity.MEDIUM,
-                    0.74,
-                    Map.of(
-                            "source", "event_batch",
-                            "questionIndex", telemetry.getQuestionIndex(),
-                            "questionId", telemetry.getQuestionId(),
-                            "questionDwellMs", telemetry.getQuestionDwellMs(),
-                            "questionSwitchSpanMs", telemetry.getQuestionSwitchSpanMs()
-                    )
-            );
-        }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorClipboardBurst())
-                && (positiveInt(telemetry.getClipboardBurstCount()) >= 2
-                || positiveInt(telemetry.getPasteLength()) >= 120
-                || positiveInt(telemetry.getCopiedTextLength()) >= 120)) {
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "CLIPBOARD_BURST",
-                    SignalSeverity.HIGH,
-                    0.88,
-                    Map.of(
-                            "source", "event_batch",
-                            "pasteLength", telemetry.getPasteLength(),
-                            "copiedTextLength", telemetry.getCopiedTextLength(),
-                            "clipboardBurstCount", telemetry.getClipboardBurstCount(),
-                            "selectionSource", telemetry.getSelectionSource()
-                    )
-            );
-        }
-        if (Boolean.TRUE.equals(attempt.getExam().getMonitorAnswerChangeBurst())
-                && positiveInt(telemetry.getAnswerChangeCount()) >= 4) {
-            fraudSignalService.recordServerSignal(
-                    attempt,
-                    "ANSWER_CHANGE_BURST",
-                    SignalSeverity.HIGH,
-                    0.86,
-                    Map.of(
-                            "source", "event_batch",
-                            "answerChangeCount", telemetry.getAnswerChangeCount(),
-                            "questionIndex", telemetry.getQuestionIndex(),
-                            "questionId", telemetry.getQuestionId()
-                    )
-            );
-        }
+        // Phase-1 keeps frontend-observed signals as the source of truth.
+        // Telemetry is stored as evidence only; it must not create extra fraud
+        // signals for a different behavior than the event the browser reported.
     }
 
     private int positiveInt(Integer value) {
@@ -366,21 +263,10 @@ public class ExamEventService {
         }
     }
 
+    // Phase-1: HEARTBEAT_STALE auto-generation is disabled.
+    // Only created when student explicitly sends a signal.
     private void emitStaleHeartbeatSignalIfNeeded(ExamAttempt attempt) {
-        if (attempt.getLastHeartbeatAt() == null) {
-            return;
-        }
-        LocalDateTime now = VietNamTime.now();
-        if (attempt.getLastHeartbeatAt().isAfter(now.minusSeconds(Math.max(heartbeatStaleSeconds, 1)))) {
-            return;
-        }
-        LocalDateTime cutoff = now.minusSeconds(Math.max(heartbeatStaleCooldownSeconds, 1));
-        long recent = fraudSignalRepository.countByAttemptAndSignalTypeAndCreatedAtAfter(
-                attempt, "HEARTBEAT_STALE", cutoff);
-        if (recent == 0) {
-            fraudSignalService.recordServerSignal(attempt, "HEARTBEAT_STALE", SignalSeverity.MEDIUM, 0.8,
-                    Map.of("lastHeartbeatAt", attempt.getLastHeartbeatAt()));
-        }
+        // DISABLED: no auto-generation of HEARTBEAT_STALE
     }
 
     private boolean shouldEmitFullscreenSignal(ExamAttempt attempt, LocalDateTime now) {
@@ -415,13 +301,14 @@ public class ExamEventService {
         return recent >= signalRateLimitMaxPerSignal;
     }
 
+    // Phase-1: fingerprint change does NOT auto-generate DEVICE_FINGERPRINT_CHANGED signal.
+    // Only the current attempt's fingerprint is updated for record-keeping.
     private void applyFingerprintConsistency(ExamAttempt attempt, String normalizedFingerprint, String source) {
         ensureAttemptTracked(attempt);
         if (normalizedFingerprint == null || normalizedFingerprint.isBlank()) {
             return;
         }
         if (attempt.getDeviceFingerprint() == null || attempt.getDeviceFingerprint().isBlank()) {
-            // First time: preserve as both current and original
             attempt.setDeviceFingerprint(normalizedFingerprint);
             attempt.setOriginalDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
@@ -429,60 +316,21 @@ public class ExamEventService {
             return;
         }
         if (!attempt.getDeviceFingerprint().equals(normalizedFingerprint)) {
-            // Fingerprint changed: update current but preserve original for forensics
             attempt.setDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
-            fraudSignalService.recordServerSignal(attempt,
-                    "DEVICE_FINGERPRINT_CHANGED",
-                    SignalSeverity.HIGH,
-                    0.95,
-                    Map.of("source", source, "attemptId", attempt.getId(),
-                            "original", attempt.getOriginalDeviceFingerprint(),
-                            "new", normalizedFingerprint));
+            // DISABLED: no auto DEVICE_FINGERPRINT_CHANGED signal
             duplicateIpDetectionService.detect(attempt);
         }
     }
 
+    // Phase-1: SYNC_BEHAVIOR detection is DISABLED.
+    // Cross-student timing correlation is not used in Phase-1.
     private void applySyncBehaviorSignal(ExamAttempt attempt, ExamEvent event) {
-        if (!shouldConsiderSyncBehavior(attempt, event.getEventType())) {
-            return;
-        }
-        LocalDateTime center = event.getCreatedAt() != null ? event.getCreatedAt() : VietNamTime.now();
-        LocalDateTime from = center.minusSeconds(Math.max(syncBehaviorWindowSeconds, 1));
-        LocalDateTime to = center.plusSeconds(Math.max(syncBehaviorWindowSeconds, 1));
-        long peers = examEventRepository.countDistinctAttemptsByExamAndEventTypeAndCreatedAtBetween(
-                attempt.getExam().getId(),
-                event.getEventType(),
-                from,
-                to
-        );
-        if (peers < Math.max(syncBehaviorMinAttempts, 2)) {
-            return;
-        }
-        if (fraudSignalRepository.countByAttemptAndSignalTypeAndCreatedAtAfter(
-                attempt,
-                "SYNC_BEHAVIOR",
-                center.minusSeconds(Math.max(syncBehaviorWindowSeconds * 3, 10))) > 0) {
-            return;
-        }
-        Map<String, Object> evidence = new LinkedHashMap<>();
-        evidence.put("source", "sync_behavior");
-        evidence.put("eventType", event.getEventType());
-        evidence.put("correlatedAttempts", peers);
-        evidence.put("windowSeconds", syncBehaviorWindowSeconds);
-        evidence.put("eventId", event.getId());
-        fraudSignalService.recordServerSignal(attempt, "SYNC_BEHAVIOR", SignalSeverity.HIGH, 0.84, evidence);
+        // DISABLED: no SYNC_BEHAVIOR signals
     }
 
     private boolean shouldConsiderSyncBehavior(ExamAttempt attempt, String eventType) {
-        if (!Boolean.TRUE.equals(attempt.getExam().getMonitorQuestionTimingAnomaly())
-                && !Boolean.TRUE.equals(attempt.getExam().getMonitorRapidQuestionSwitch())) {
-            return false;
-        }
-        return switch (eventType) {
-            case "TAB_SWITCH", "RAPID_QUESTION_SWITCH", "COPY_PASTE", "EXIT_FULLSCREEN" -> true;
-            default -> false;
-        };
+        return false; // DISABLED
     }
 
     private String normalizeFingerprint(ExamAttempt attempt, String rawFingerprint, String userAgent) {
@@ -555,6 +403,77 @@ public class ExamEventService {
         }
         if (attempt.getFullscreenRequired() == null) {
             attempt.setFullscreenRequired(Boolean.TRUE);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProctorSessionAlertResponse> getSessionAlerts(Long attemptId) {
+        ExamAttempt attempt = requireAttempt(attemptId);
+        List<ProctorSessionAlertResponse> alerts = new ArrayList<>();
+
+        // Fraud signals as alerts
+        List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
+        for (FraudSignal signal : signals) {
+            Map<String, Object> evidenceMap = parseEvidence(signal.getEvidence());
+            alerts.add(ProctorSessionAlertResponse.builder()
+                    .alertType("FRAUD_SIGNAL")
+                    .severity(signal.getSeverity().name())
+                    .message(signal.getSignalType())
+                    .data(Map.of(
+                            "signalType", signal.getSignalType(),
+                            "confidence", signal.getConfidence(),
+                            "evidence", evidenceMap
+                    ))
+                    .timestamp(signal.getCreatedAt())
+                    .build());
+        }
+
+        // Proctor flags as alerts
+        List<ProctorFlag> flags = proctorFlagRepository.findByAttemptOrderByCreatedAtDesc(attempt);
+        for (ProctorFlag flag : flags) {
+            alerts.add(ProctorSessionAlertResponse.builder()
+                    .alertType("PROCTOR_FLAG")
+                    .severity(flag.getRiskLevel().name())
+                    .message(flag.getTitle() != null ? flag.getTitle() : flag.getFlagType())
+                    .data(Map.of(
+                            "flagType", flag.getFlagType(),
+                            "title", flag.getTitle() != null ? flag.getTitle() : "",
+                            "description", flag.getDescription() != null ? flag.getDescription() : "",
+                            "status", flag.getStatus().name(),
+                            "riskScore", flag.getRiskScore()
+                    ))
+                    .timestamp(flag.getCreatedAt())
+                    .build());
+        }
+
+        // Stale heartbeat alert
+        if (attempt.getLastHeartbeatAt() != null) {
+            LocalDateTime now = VietNamTime.now();
+            long staleSeconds = java.time.Duration.between(attempt.getLastHeartbeatAt(), now).getSeconds();
+            if (staleSeconds > heartbeatStaleSeconds) {
+                alerts.add(ProctorSessionAlertResponse.builder()
+                        .alertType("STALE_HEARTBEAT")
+                        .severity("HIGH")
+                        .message("No heartbeat received for " + staleSeconds + " seconds")
+                        .data(Map.of("lastHeartbeatAt", attempt.getLastHeartbeatAt().toString(), "staleSeconds", staleSeconds))
+                        .timestamp(attempt.getLastHeartbeatAt())
+                        .build());
+            }
+        }
+
+        return alerts;
+    }
+
+    private Map<String, Object> parseEvidence(String evidenceJson) {
+        if (evidenceJson == null || evidenceJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = objectMapper.readValue(evidenceJson, Map.class);
+            return map;
+        } catch (JsonProcessingException e) {
+            return Map.of("raw", evidenceJson);
         }
     }
 }

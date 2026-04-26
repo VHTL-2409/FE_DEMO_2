@@ -68,8 +68,8 @@ test-login.json
 .env
 *.env.local
 secrets/
-
-
+.tmp_plan_doc/
+*.zip
 docs_2/
 docs/
 

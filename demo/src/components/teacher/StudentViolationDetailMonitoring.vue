@@ -502,12 +502,23 @@ const RECOMMENDED_ACTION_LABELS = {
 }
 const SEVERITY_LABELS = { HIGH: 'Nghiêm trọng', MEDIUM: 'Trung bình', LOW: 'Thấp', CRITICAL: 'Nghiêm trọng' }
 const V_COLORS = {
-  TAB_SWITCH: '#f59e0b', COPY_PASTE: '#dc2626', DEVTOOLS_OPEN: '#dc2626', EXIT_FULLSCREEN: '#f59e0b',
-  MULTI_MONITOR: '#dc2626', DUPLICATE_IP: '#dc2626', PRINT_SCREEN: '#dc2626', WINDOW_BLUR: '#f59e0b',
-  IDLE_TIME: '#0ea5e9', RIGHT_CLICK: '#0ea5e9', HEARTBEAT_STALE: '#f59e0b', RAPID_QUESTION_SWITCH: '#f59e0b',
-  DEVICE_FINGERPRINT_CHANGED: '#dc2626', SYNC_BEHAVIOR: '#dc2626', IP_FINGERPRINT_GRAPH: '#dc2626',
-  ANSWER_SIMILARITY: '#dc2626', AI_MULTIPLE_FACES: '#dc2626', AI_PHONE_DETECTED: '#dc2626',
-  AI_LOOKING_AWAY: '#0ea5e9', WARNING_SENT: '#818cf8', NOTE: '#94a3b8'
+  // CRITICAL types — red
+  COPY_PASTE: 'var(--mon-risk-critical)', DEVTOOLS_OPEN: 'var(--mon-risk-critical)',
+  MULTI_MONITOR: 'var(--mon-risk-critical)', DUPLICATE_IP: 'var(--mon-risk-critical)',
+  PRINT_SCREEN: 'var(--mon-risk-critical)', DEVICE_FINGERPRINT_CHANGED: 'var(--mon-risk-critical)',
+  SYNC_BEHAVIOR: 'var(--mon-risk-critical)', IP_FINGERPRINT_GRAPH: 'var(--mon-risk-critical)',
+  ANSWER_SIMILARITY: 'var(--mon-risk-critical)', AI_MULTIPLE_FACES: 'var(--mon-risk-critical)',
+  AI_PHONE_DETECTED: 'var(--mon-risk-critical)',
+  // HIGH / WARNING types — orange/amber
+  TAB_SWITCH: 'var(--mon-risk-high)', EXIT_FULLSCREEN: 'var(--mon-risk-high)',
+  WINDOW_BLUR: 'var(--mon-risk-high)', HEARTBEAT_STALE: 'var(--mon-risk-high)',
+  RAPID_QUESTION_SWITCH: 'var(--mon-risk-high)',
+  // LOW / INFO types — sky blue
+  IDLE_TIME: 'var(--mon-risk-low)', RIGHT_CLICK: 'var(--mon-risk-low)',
+  AI_LOOKING_AWAY: 'var(--mon-risk-low)',
+  // NOTE / WARNING_SENT
+  WARNING_SENT: 'var(--mon-primary)',
+  NOTE: 'var(--mon-text-muted)'
 }
 const V_ICONS = {
   TAB_SWITCH: 'layers', WINDOW_BLUR: 'layers', IDLE_TIME: 'clock', RIGHT_CLICK: 'mouse-pointer-2',
@@ -629,7 +640,7 @@ const isStudentTerminal = computed(() => isAttemptTerminal(riskData.value.status
 const sessionTime = computed(() => {
   const ts = attemptData.value.startedAt
   if (!ts) return '—'
-  const diff = Math.floor((Date.now() - new Date(ts).getTime() / 60000))
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000)
   if (diff < 1) return '<1 phút'
   if (diff < 60) return `${diff} phút`
   return `${Math.floor(diff / 60)}h ${diff % 60}p`
@@ -777,8 +788,8 @@ const getVIcon = (type) => V_ICONS[type] || 'alert-circle'
 const getVLabel = (type) => V_LABELS[type] || type || '—'
 const getSeverityLabel = (s) => SEVERITY_LABELS[s] || s || '—'
 const getSeverityStatus = (s) => s === 'HIGH' || s === 'CRITICAL' ? 'high' : s === 'MEDIUM' ? 'medium' : 'low'
-const pColor = (l) => l === 'high' ? 'var(--mon-danger)' : l === 'medium' ? 'var(--mon-warning)' : '#0ea5e9'
-const sColor = (score) => score >= 60 ? 'var(--mon-danger)' : score >= 30 ? 'var(--mon-warning)' : '#0ea5e9'
+const pColor = (l) => l === 'high' ? 'var(--mon-danger)' : l === 'medium' ? 'var(--mon-warning)' : 'var(--mon-info)'
+const sColor = (score) => score >= 60 ? 'var(--mon-danger)' : score >= 30 ? 'var(--mon-warning)' : 'var(--mon-info)'
 
 const formatTime = (ts) => {
   if (!ts) return '—'
@@ -934,8 +945,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-@import '../../styles/monitoring.css';
-
 .mon-root {
   background: var(--mon-bg);
   min-height: 100vh;
@@ -1068,7 +1077,7 @@ onUnmounted(() => {
   justify-content: center;
   padding: 0 4px;
 }
-.smd-tab--active .smd-tab__count { background: var(--mon-primary); color: #fff; }
+.smd-tab--active .smd-tab__count { background: var(--mon-primary); color: var(--ds-surface); }
 
 /* ── Content ─────────────────────────────────────────────────── */
 .smd-content { padding: 1.25rem 1.5rem; }
@@ -1252,7 +1261,7 @@ onUnmounted(() => {
 }
 .smd-tl-item__sev--high { background: var(--mon-danger-soft); color: var(--mon-danger); }
 .smd-tl-item__sev--medium { background: var(--mon-warning-soft); color: var(--mon-warning); }
-.smd-tl-item__sev--low { background: rgba(14,165,233,0.08); color: #0ea5e9; }
+.smd-tl-item__sev--low { background: var(--mon-info-soft); color: var(--mon-info); }
 
 /* Realtime list */
 .smd-realtime-list { display: flex; flex-direction: column; }

@@ -57,6 +57,18 @@
   --ds-accent-soft: rgba(245, 158, 11, 0.12);
   --ds-accent-bg: #fffbeb;
 
+  /* Risk / Status semantic scale - unified green-based monitoring palette */
+  --ds-risk-clean: #16a34a;
+  --ds-risk-clean-soft: rgba(22, 163, 74, 0.08);
+  --ds-risk-low: #0284c7;        /* sky - device info / low risk */
+  --ds-risk-low-soft: rgba(2, 132, 199, 0.08);
+  --ds-risk-moderate: #d97706;   /* amber - warning / moderate */
+  --ds-risk-moderate-soft: rgba(217, 119, 6, 0.08);
+  --ds-risk-high: #ea580c;       /* orange - high risk */
+  --ds-risk-high-soft: rgba(234, 88, 12, 0.08);
+  --ds-risk-critical: #dc2626;    /* red - critical */
+  --ds-risk-critical-soft: rgba(220, 38, 38, 0.08);
+
   /* Typography */
   --ds-font: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   /* Display: Be Vietnam Pro first (Vietnamese), Manrope fallback */
@@ -132,6 +144,11 @@
   --ds-danger-bg: rgba(220, 38, 38, 0.1);
   --ds-info-bg: rgba(2, 132, 199, 0.1);
   --ds-accent-bg: rgba(245, 158, 11, 0.1);
+  --ds-risk-clean-soft: rgba(22, 163, 74, 0.12);
+  --ds-risk-low-soft: rgba(2, 132, 199, 0.12);
+  --ds-risk-moderate-soft: rgba(217, 119, 6, 0.12);
+  --ds-risk-high-soft: rgba(234, 88, 12, 0.12);
+  --ds-risk-critical-soft: rgba(220, 38, 38, 0.12);
 }
 
 /* Selection styling — rounded, soft, brand-colored */

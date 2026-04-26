@@ -11,6 +11,13 @@ export {
   invalidateAttempt
 } from './monitoringService'
 
+export {
+  fetchProctorSessionAlerts,
+  fetchProctorRisk,
+  fetchProctorTimeline,
+  reviewProctorFlag
+} from './proctorService'
+
 // ─── Exam-level monitoring ─────────────────────────────────────────────────
 
 export const fetchExamSummary = async (examId) => {
@@ -26,12 +33,16 @@ export const fetchExamAttempts = async (examId) => {
 export const fetchExamAttemptsFilter = async (examId, filters = {}) => {
   const params = new URLSearchParams()
   if (filters.status) params.set('status', filters.status)
-  if (filters.riskBand) params.set('riskBand', filters.riskBand)
-  if (filters.search) params.set('search', filters.search)
+  if (filters.search) params.set('student', filters.search)
+  if (filters.riskBand === 'SUSPICIOUS') {
+    params.set('riskMin', '31')
+    params.set('suspicious', 'true')
+  }
   const qs = params.toString()
   const path = qs ? `/api/exams/${examId}/attempts/filter?${qs}` : `/api/exams/${examId}/attempts/filter`
   const payload = await apiRequest(path, { suppressToast: true })
-  return unwrapApiData(payload) || []
+  const data = unwrapApiData(payload)
+  return Array.isArray(data) ? data : (data?.items || [])
 }
 
 // ─── Attempt detail ───────────────────────────────────────────────────────

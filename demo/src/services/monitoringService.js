@@ -16,7 +16,7 @@ export const sendMonitoringEvent = async (attemptId, eventType, details = '') =>
 }
 
 export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events/batch`, {
+  const payload = await apiRequest(`/api/v1/proctor/sessions/${attemptId}/events/batch`, {
     method: 'POST',
     body: JSON.stringify(batchPayload),
     suppressToast: true
@@ -25,7 +25,7 @@ export const sendMonitoringEventBatch = async (attemptId, batchPayload) => {
 }
 
 export const sendMonitoringHeartbeat = async (attemptId, heartbeatPayload) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/heartbeat`, {
+  const payload = await apiRequest(`/api/v1/proctor/sessions/${attemptId}/heartbeat`, {
     method: 'POST',
     body: JSON.stringify(heartbeatPayload),
     suppressToast: true
@@ -40,9 +40,14 @@ export const fetchAttemptRisk = async (attemptId) => {
   return unwrapApiData(payload)
 }
 
-export const listMonitoringTimeline = async (attemptId) => {
-  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/timeline`, { suppressToast: true })
-  return unwrapApiData(payload) || []
+export const listMonitoringTimeline = async (attemptId, options = {}) => {
+  const params = new URLSearchParams()
+  if (options.page) params.set('page', String(options.page))
+  if (options.size) params.set('size', String(options.size))
+  if (options.eventType) params.set('eventType', options.eventType)
+  const qs = params.toString()
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/timeline${qs ? `?${qs}` : ''}`, { suppressToast: true })
+  return unwrapApiData(payload) || (qs ? { items: [], page: 1, size: options.size || 10, totalElements: 0, totalPages: 1 } : [])
 }
 
 export const listMonitoringAudit = async (attemptId) => {

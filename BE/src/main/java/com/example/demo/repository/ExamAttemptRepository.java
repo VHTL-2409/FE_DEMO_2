@@ -86,24 +86,20 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             FROM exam_attempts ea
             LEFT JOIN users u ON ea.student_id = u.id
             WHERE ea.exam_id = :examId
-              AND (CASE WHEN :sessionFrom IS NOT NULL AND :sessionTo IS NOT NULL
-                        THEN ea.started_at >= :sessionFrom AND ea.started_at <= :sessionTo
-                        ELSE TRUE END)
+              AND (CAST(:sessionFrom AS TIMESTAMP) IS NULL OR CAST(:sessionTo AS TIMESTAMP) IS NULL OR (ea.started_at >= CAST(:sessionFrom AS TIMESTAMP) AND ea.started_at <= CAST(:sessionTo AS TIMESTAMP)))
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
               AND (:student = '' OR LOWER(u.username) LIKE '%' || :student || '%')
               AND (:riskMin IS NULL OR ea.risk_score >= :riskMin)
               AND (:riskMax IS NULL OR ea.risk_score <= :riskMax)
+            ORDER BY ea.started_at DESC
             """, countQuery = """
             SELECT count(ea.id)
             FROM exam_attempts ea
             WHERE ea.exam_id = :examId
-              AND (CASE WHEN :sessionFrom IS NOT NULL AND :sessionTo IS NOT NULL
-                        THEN ea.started_at >= :sessionFrom AND ea.started_at <= :sessionTo
-                        ELSE TRUE END)
+              AND (CAST(:sessionFrom AS TIMESTAMP) IS NULL OR CAST(:sessionTo AS TIMESTAMP) IS NULL OR (ea.started_at >= CAST(:sessionFrom AS TIMESTAMP) AND ea.started_at <= CAST(:sessionTo AS TIMESTAMP)))
               AND (:status IS NULL OR ea.status = :status)
               AND (:suspicious IS NULL OR ea.suspicious = :suspicious)
-              AND (:student = '' OR LOWER((SELECT u2.username FROM users u2 WHERE u2.id = ea.student_id)) LIKE '%' || :student || '%')
               AND (:riskMin IS NULL OR ea.risk_score >= :riskMin)
               AND (:riskMax IS NULL OR ea.risk_score <= :riskMax)
             """, nativeQuery = true)

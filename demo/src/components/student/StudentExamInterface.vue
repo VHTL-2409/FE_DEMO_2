@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="ei-root">
     <!-- Fixed Top Bar -->
     <div class="ei-topbar">
@@ -375,6 +375,7 @@ import { updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionJson, parseQuestionOptions } from '../../services/questionService'
 import { useToast } from '../../composables/useToast'
 import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
+import { useExamProctoring } from '../../composables/useExamProctoring'
 import { useProctoringSession } from '../../composables/useProctoringSession'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
@@ -408,10 +409,13 @@ const isPracticeExam = computed(() => String(route.query.isPractice || '') === '
 
 const examConfig = ref({
   monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true,
-  monitorCopyPaste: true, monitorIdleTime: true, monitorDevtools: true,
-  monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: true,
-  monitorPrintScreen: true, monitorRapidQuestionSwitch: true,
-  monitorMultiMonitor: true, requireCameraMic: true
+  monitorCopyPaste: true, monitorIdleTime: false, monitorDevtools: true,
+  monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: false,
+  monitorPrintScreen: false, monitorRapidQuestionSwitch: false,
+  monitorMultiMonitor: false, requireCameraMic: true,
+  monitorNetworkInstability: true, monitorSessionRecovery: true,
+  monitorQuestionTimingAnomaly: false, monitorAnswerChangeBurst: false,
+  monitorClipboardBurst: false, monitorFullscreenEvasion: true
 })
 
 // ── Unified modal state (replaces 4 separate popup refs) ──
@@ -453,8 +457,15 @@ const attemptStatus = ref('IN_PROGRESS')
 const isSuspended = ref(false)
 const suspensionMessage = ref('')
 const lastViolationAtByType = ref({})
-const pendingViolationByType = ref({})
-const questionSwitchTimestamps = ref([])
+const answerSignatureByQuestion = ref({})
+const focusLostAt = ref(null)
+const hiddenStartedAt = ref(null)
+const fullscreenExitStartedAt = ref(null)
+const fullscreenExitCount = ref(0)
+const questionEnteredAt = ref(Date.now())
+const reconnectCount = ref(0)
+const offlineStartedAt = ref(null)
+const lastOfflineDurationMs = ref(0)
 const cameraReady = ref(false)
 const micReady = ref(false)
 const isConnected = ref(true)
@@ -467,17 +478,13 @@ let questionList = []
 let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
-let idleTimer = null
-let devtoolsCheckTimer = null
 let blockBackHandler = null
 
 const VIOLATION_COOLDOWN_MS = 7000
 const LONG_VIOLATION_COOLDOWN_MS = 60000
 const BLUR_GRACE_MS = 1200
-const IDLE_THRESHOLD_MS = 3 * 60 * 1000
 const DEVTOOLS_GAP_PX = 160
-const RAPID_SWITCH_WINDOW_MS = 10000
-const RAPID_SWITCH_THRESHOLD = 6
+const LONG_SCREEN_LEAVE_THRESHOLD_MS = 30_000
 
 const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
@@ -678,6 +685,31 @@ const syncRiskState = (payload) => {
   }
 }
 
+const handleRealtimeProctorMessage = (payload = {}) => {
+  const type = String(payload?.type || '').toUpperCase()
+  if (!type) return
+
+  if (type === 'RISK_UPDATED' || type === 'RISK_UPDATE') {
+    syncRiskState(payload)
+    handleProctorActions([payload.actionTaken], payload)
+    return
+  }
+
+  if (type === 'WARNING_SENT' || type === 'TEACHER_WARNING') {
+    handleProctorActions(['WARNING_SENT'], payload)
+    return
+  }
+
+  if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
+    applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'), payload.message || 'Bài thi đã bị đình chỉ.')
+    return
+  }
+
+  if (type === 'ATTEMPT_RESUMED') {
+    void resumeFromPause(payload.message)
+  }
+}
+
 const handleProctorActions = (actions = [], payload = {}) => {
   const normalized = actions.map((item) => String(item || '').toUpperCase())
   if (normalized.includes('PAUSE_ATTEMPT') || normalized.includes('ATTEMPT_PAUSED')) {
@@ -708,7 +740,23 @@ const getHeartbeatPayload = () => ({
   fullscreen: Boolean(document.fullscreenElement), visibility: document.visibilityState || 'visible',
   cameraOn: cameraReady.value, micOn: micReady.value,
   screenMetrics: { screenWidth: window.screen?.width || null, screenHeight: window.screen?.height || null,
-    availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null }
+    availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null,
+    networkType: navigator.connection?.effectiveType || '', online: navigator.onLine !== false },
+  telemetry: buildTelemetrySnapshot()
+})
+
+const {
+  start: startPhaseOneProctoring,
+  refreshRisk: refreshPhaseOneRisk
+} = useExamProctoring({
+  attemptId: attemptId.value,
+  sessionId: examId.value,
+  getDeviceFingerprint: buildDeviceFingerprintSeed,
+  getCameraState: () => cameraReady.value,
+  getMicState: () => micReady.value,
+  autoStart: false,
+  cooldownMs: VIOLATION_COOLDOWN_MS,
+  onRiskUpdate: syncRiskState
 })
 
 const { queueEvent, flush: flushQueuedViolations, syncHeartbeat, startHeartbeat, stopHeartbeat } = useProctoringSession({
@@ -716,17 +764,52 @@ const { queueEvent, flush: flushQueuedViolations, syncHeartbeat, startHeartbeat,
   onRiskUpdate: syncRiskState, onActionRequired: handleProctorActions, batchWindowMs: 1200, heartbeatIntervalMs: 15000
 })
 
-const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS) => {
+const buildTelemetrySnapshot = (overrides = {}) => ({
+  questionIndex: currentIndex.value + 1,
+  questionId: currentQuestion.value?.id || null,
+  networkOnline: navigator.onLine !== false,
+  reconnectCount: reconnectCount.value,
+  offlineDurationMs: lastOfflineDurationMs.value,
+  networkType: navigator.connection?.effectiveType || '',
+  ...overrides
+})
+
+const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS, telemetry = {}) => {
   if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
   const cfg = examConfig.value
-  const monitorMap = { TAB_SWITCH: 'monitorTabSwitch', BLUR: 'monitorBlur', EXIT_FULLSCREEN: 'monitorExitFullscreen', COPY_PASTE: 'monitorCopyPaste', IDLE_TIME: 'monitorIdleTime', DEVTOOLS_OPEN: 'monitorDevtools', RIGHT_CLICK: 'monitorRightClick', PRINT_SCREEN: 'monitorPrintScreen', RAPID_QUESTION_SWITCH: 'monitorRapidQuestionSwitch', MULTI_MONITOR: 'monitorMultiMonitor', FAST_SUBMIT: 'monitorFastSubmit' }
+  // Only send real browser-observed events
+  const monitorMap = {
+    TAB_SWITCH: 'monitorTabSwitch',
+    WINDOW_BLUR: 'monitorBlur',
+    LONG_SCREEN_LEAVE: 'monitorBlur',
+    EXIT_FULLSCREEN: 'monitorExitFullscreen',
+    COPY_ATTEMPT: 'monitorCopyPaste',
+    PASTE_ATTEMPT: 'monitorCopyPaste',
+    CUT_ATTEMPT: 'monitorCopyPaste',
+    LONG_PASTE: 'monitorCopyPaste',
+    RIGHT_CLICK: 'monitorRightClick',
+    INSPECT_ATTEMPT: 'monitorRightClick',
+    PRINT_SCREEN: 'monitorPrintScreen',
+    DEVTOOLS_OPEN: 'monitorDevtools',
+    DEVTOOLS_DETECTED: 'monitorDevtools',
+    MULTI_MONITOR: 'monitorMultiMonitor'
+  }
   const prop = monitorMap[eventType]
   if (prop && cfg[prop] === false) return
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
-  if (now - lastAt < cooldownMs) return
+  if (cooldownMs > 0 && now - lastAt < cooldownMs) return
   lastViolationAtByType.value = { ...lastViolationAtByType.value, [eventType]: now }
-  try { queueEvent(eventType, details, { questionIndex: currentIndex.value + 1 }) } catch { /* ignore */ }
+  try {
+    queueEvent(
+      eventType,
+      details,
+      { questionIndex: currentIndex.value + 1, questionId: currentQuestion.value?.id || null },
+      null,
+      buildTelemetrySnapshot({ eventSource: eventType, ...telemetry }),
+      now
+    )
+  } catch { /* ignore */ }
 }
 
 const applyAttemptStatus = (status, message = '') => {
@@ -806,7 +889,15 @@ const syncAttemptStatus = async () => {
       const diff = Math.abs(remainingSeconds.value - detail.remainingSeconds)
       if (diff > 5) remainingSeconds.value = Math.max(0, detail.remainingSeconds)
     }
+    if (!isPracticeExam.value) {
+      await refreshPhaseOneRisk()
+    }
   } catch { /* ignore */ }
+}
+
+const createAnswerSignature = (question, value) => {
+  const normalized = normalizeAnswerIdsForQuestion(question, value)
+  return JSON.stringify(normalized)
 }
 
 const connectProctorRealtime = async () => {
@@ -815,29 +906,7 @@ const connectProctorRealtime = async () => {
     reconnectDelay: 5000,
     topics: [{
       destination: `/topic/attempts/${attemptId.value}/proctor-actions`,
-      handler: (payload) => {
-        const type = String(payload?.type || '').toUpperCase()
-        if (type === 'TEACHER_WARNING') {
-          showModal({
-            type: 'warning',
-            title: 'Cảnh báo từ giám thị',
-            subtitle: 'Vui lòng chú ý và tuân thủ quy định phòng thi.',
-            message: payload.message || 'Bạn đang bị cảnh báo bởi giám thị.',
-            confirmLabel: 'Tôi đã hiểu'
-          })
-          toast.warning(payload.message || 'Bạn nhận được cảnh báo từ giám thị.')
-        }
-        if (type === 'ATTEMPT_STOPPED' || type === 'ATTEMPT_PAUSED') {
-          applyAttemptStatus(payload.status || (type === 'ATTEMPT_PAUSED' ? 'PAUSED' : 'STOPPED'), payload.message || 'Bài thi đã bị đình chỉ.')
-        }
-        if (type === 'ATTEMPT_RESUMED') {
-          void resumeFromPause(payload.message)
-        }
-        if (type === 'RISK_UPDATE') {
-          syncRiskState({ riskScore: payload.riskScore, riskLevel: payload.riskLevel, status: payload.status })
-          handleProctorActions([payload.actionTaken], payload)
-        }
-      }
+      handler: handleRealtimeProctorMessage
     }]
   })
 }
@@ -850,48 +919,76 @@ const setupBlockBackButton = () => {
 const teardownBlockBackButton = () => { if (blockBackHandler) { window.removeEventListener('popstate', blockBackHandler); blockBackHandler = null } }
 
 const handleVisibilityChange = () => {
-  if (document.hidden) { pendingViolationByType.value = { ...pendingViolationByType.value, TAB_SWITCH: true }; void reportViolation('TAB_SWITCH', 'TAB_SWITCH') }
-  else if (pendingViolationByType.value.TAB_SWITCH) pendingViolationByType.value = { ...pendingViolationByType.value, TAB_SWITCH: false }
+  if (document.hidden) {
+    hiddenStartedAt.value = Date.now()
+    void reportViolation('TAB_SWITCH', 'Rời tab làm bài', VIOLATION_COOLDOWN_MS, { hidden: true })
+    return
+  }
+  const hiddenDurationMs = hiddenStartedAt.value ? Math.max(0, Date.now() - hiddenStartedAt.value) : null
+  hiddenStartedAt.value = null
+  if (hiddenDurationMs && hiddenDurationMs >= 30_000) {
+    void reportViolation('LONG_SCREEN_LEAVE', `Rời màn hình ${Math.round(hiddenDurationMs / 1000)}s`, LONG_VIOLATION_COOLDOWN_MS, { hiddenDurationMs })
+  }
 }
 
 const handleWindowBlur = () => {
   clearBlurGraceTimer()
-  blurGraceTimer = window.setTimeout(() => { pendingViolationByType.value = { ...pendingViolationByType.value, BLUR: true }; void reportViolation('BLUR', 'Cửa sổ mất tiêu điểm') }, BLUR_GRACE_MS)
+  focusLostAt.value = Date.now()
+  blurGraceTimer = window.setTimeout(() => {
+    void reportViolation('WINDOW_BLUR', 'Mất focus cửa sổ', VIOLATION_COOLDOWN_MS, { blur: true })
+  }, BLUR_GRACE_MS)
 }
-const handleWindowFocus = () => { clearBlurGraceTimer(); if (pendingViolationByType.value.BLUR) pendingViolationByType.value = { ...pendingViolationByType.value, BLUR: false } }
+const handleWindowFocus = () => {
+  const blurDurationMs = focusLostAt.value ? Math.max(0, Date.now() - focusLostAt.value) : null
+  focusLostAt.value = null
+  clearBlurGraceTimer()
+  if (blurDurationMs && blurDurationMs >= 30_000) {
+    void reportViolation('LONG_SCREEN_LEAVE', `Mất focus ${Math.round(blurDurationMs / 1000)}s`, LONG_VIOLATION_COOLDOWN_MS, { blurDurationMs, focusRecoveryDelayMs: blurDurationMs })
+  }
+}
 
 const handleFullscreenChange = () => {
   const inFs = Boolean(document.fullscreenElement); isFullscreenActive.value = inFs; examSessionStore.setFullscreenState({ required: true, active: inFs })
-  if (inFs) { pendingViolationByType.value = { ...pendingViolationByType.value, EXIT_FULLSCREEN: false }; showFullscreenPrompt.value = false; return }
-  pendingViolationByType.value = { ...pendingViolationByType.value, EXIT_FULLSCREEN: true }; showFullscreenPrompt.value = !isPracticeExam.value; void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình')
-}
-
-const onIdleActivity = () => {
-  if (idleTimer) window.clearTimeout(idleTimer)
-  idleTimer = window.setTimeout(() => { void reportViolation('IDLE_TIME', `Idle ${Math.round(IDLE_THRESHOLD_MS / 60000)} phút`, LONG_VIOLATION_COOLDOWN_MS) }, IDLE_THRESHOLD_MS)
+  if (!inFs) {
+    fullscreenExitStartedAt.value = Date.now()
+    fullscreenExitCount.value += 1
+  }
+  if (inFs) {
+    fullscreenExitStartedAt.value = null
+    showFullscreenPrompt.value = false
+    return
+  }
+  showFullscreenPrompt.value = !isPracticeExam.value
+  void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình', VIOLATION_COOLDOWN_MS, {
+    fullscreenExitCount: fullscreenExitCount.value,
+    fullscreenReentryDelayMs: null
+  })
 }
 
 const handleCopyPaste = (event) => {
   const target = event?.target
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
   const txt = event?.clipboardData?.getData?.('text') || ''
+  const eventType =
+    event.type === 'paste'
+      ? (txt.length > 300 ? 'LONG_PASTE' : 'PASTE_ATTEMPT')
+      : event.type === 'cut'
+        ? 'CUT_ATTEMPT'
+        : 'COPY_ATTEMPT'
   const summary = txt.length > 50 ? `${event.type} ${txt.length} ký tự` : `Phát hiện ${event.type}`
-  void reportViolation('COPY_PASTE', summary, LONG_VIOLATION_COOLDOWN_MS)
+  void reportViolation(eventType, summary, LONG_VIOLATION_COOLDOWN_MS, {
+    pasteLength: event.type === 'paste' ? txt.length : null,
+    copiedTextLength: event.type === 'copy' || event.type === 'cut' ? txt.length : null,
+    selectionSource: event.type
+  })
 }
 
 const detectDevToolsOpen = () => { if (document.hidden) return false; const wg = Math.abs(window.outerWidth - window.innerWidth); const hg = Math.abs(window.outerHeight - window.innerHeight); return wg > DEVTOOLS_GAP_PX || hg > DEVTOOLS_GAP_PX }
-const scheduleDevToolsCheck = () => { if (devtoolsCheckTimer) window.clearInterval(devtoolsCheckTimer); devtoolsCheckTimer = window.setInterval(() => { if (detectDevToolsOpen()) void reportViolation('DEVTOOLS_OPEN', 'DevTools được phát hiện', LONG_VIOLATION_COOLDOWN_MS) }, 5000) }
-
-const checkRapidQuestionSwitch = () => {
-  const now = Date.now()
-  questionSwitchTimestamps.value = [...questionSwitchTimestamps.value, now].filter(t => now - t <= RAPID_SWITCH_WINDOW_MS)
-  if (questionSwitchTimestamps.value.length >= RAPID_SWITCH_THRESHOLD) { void reportViolation('RAPID_QUESTION_SWITCH', `${questionSwitchTimestamps.value.length} lần đổi câu trong ${RAPID_SWITCH_WINDOW_MS / 1000}s`); questionSwitchTimestamps.value = [] }
-}
 
 const selectQuestion = (index) => {
   if (isSuspended.value) return
-  if (index !== currentIndex.value && examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
   currentIndex.value = index
+  questionEnteredAt.value = Date.now()
   const q = questions.value[index]
   if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
 }
@@ -899,8 +996,8 @@ const selectQuestion = (index) => {
 const goPrevious = () => {
   if (isSuspended.value) return
   if (currentIndex.value > 0) {
-    if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value -= 1
+    questionEnteredAt.value = Date.now()
     const q = questions.value[currentIndex.value]
     if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
   }
@@ -909,8 +1006,8 @@ const goPrevious = () => {
 const goNext = () => {
   if (isSuspended.value) return
   if (currentIndex.value < questions.value.length - 1) {
-    if (examConfig.value.monitorRapidQuestionSwitch !== false) checkRapidQuestionSwitch()
     currentIndex.value += 1
+    questionEnteredAt.value = Date.now()
     const q = questions.value[currentIndex.value]
     if (q?.id != null) { markVisited(q.id); examSessionStore.setCurrentQuestion(q.id) }
   }
@@ -923,6 +1020,18 @@ const checkMultiMonitor = () => {
   if (examConfig.value.monitorMultiMonitor === false) return
   const sw = window.screen?.width || 0; const sh = window.screen?.height || 0; const aw = window.screen?.availWidth || 0; const ah = window.screen?.availHeight || 0
   if (sw > 0 && aw > 0 && (sw - aw > 100 || sh - ah > 100)) void reportViolation('MULTI_MONITOR', 'Nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS)
+}
+
+const handleNetworkOffline = () => {
+  isOnline.value = false
+  offlineStartedAt.value = Date.now()
+}
+
+const handleNetworkOnline = () => {
+  isOnline.value = true
+  reconnectCount.value += 1
+  lastOfflineDurationMs.value = offlineStartedAt.value ? Math.max(0, Date.now() - offlineStartedAt.value) : 0
+  offlineStartedAt.value = null
 }
 
 const persistDraftToServer = async () => {
@@ -955,6 +1064,12 @@ const onSelectAnswer = (questionId, selectedAnswer) => {
     type === 'SINGLE_CHOICE'
       ? (selectedAnswer != null && selectedAnswer !== '' ? String(selectedAnswer) : '')
       : selectedAnswer
+  const questionKey = String(questionId)
+  const nextSignature = createAnswerSignature(q, stored)
+  answerSignatureByQuestion.value = {
+    ...answerSignatureByQuestion.value,
+    [questionKey]: nextSignature
+  }
   answers.value[questionId] = stored
   markVisited(questionId)
   examSessionStore.setAnswer(questionId, stored)
@@ -1047,6 +1162,10 @@ const restoreSession = async () => {
     const q = questionById.value.get(Number(item.questionId))
     if (q) {
       answers.value[item.questionId] = deserializeAnswerValue(q, item.selectedAnswer)
+      answerSignatureByQuestion.value = {
+        ...answerSignatureByQuestion.value,
+        [String(item.questionId)]: createAnswerSignature(q, answers.value[item.questionId])
+      }
     }
   }
 }
@@ -1068,26 +1187,34 @@ const loadExam = async () => {
 }
 
 const attachEventListeners = () => {
-  window.addEventListener('visibilitychange', handleVisibilityChange)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('blur', handleWindowBlur)
   window.addEventListener('focus', handleWindowFocus)
   window.addEventListener('fullscreenchange', handleFullscreenChange)
-  document.addEventListener('mousemove', onIdleActivity)
-  document.addEventListener('keydown', onIdleActivity)
+
   document.addEventListener('contextmenu', handleRightClick)
   document.addEventListener('keydown', handlePrintScreen)
+  document.addEventListener('copy', handleCopyPaste)
+  document.addEventListener('cut', handleCopyPaste)
+  document.addEventListener('paste', handleCopyPaste)
+  window.addEventListener('offline', handleNetworkOffline)
+  window.addEventListener('online', handleNetworkOnline)
   void checkMultiMonitor()
 }
 
 const removeEventListeners = () => {
-  window.removeEventListener('visibilitychange', handleVisibilityChange)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('blur', handleWindowBlur)
   window.removeEventListener('focus', handleWindowFocus)
   window.removeEventListener('fullscreenchange', handleFullscreenChange)
-  document.removeEventListener('mousemove', onIdleActivity)
-  document.removeEventListener('keydown', onIdleActivity)
+
   document.removeEventListener('contextmenu', handleRightClick)
   document.removeEventListener('keydown', handlePrintScreen)
+  document.removeEventListener('copy', handleCopyPaste)
+  document.removeEventListener('cut', handleCopyPaste)
+  document.removeEventListener('paste', handleCopyPaste)
+  window.removeEventListener('offline', handleNetworkOffline)
+  window.removeEventListener('online', handleNetworkOnline)
 }
 
 onMounted(async () => {
@@ -1095,15 +1222,18 @@ onMounted(async () => {
   attachEventListeners()
   setupBlockBackButton()
   if (!isPracticeExam.value) {
-    void enforceDeviceAccess()
+    await enforceDeviceAccess()
+    if (attemptId.value && examId.value) {
+      await startPhaseOneProctoring()
+    }
     void connectProctorRealtime()
     void syncAttemptStatus()
     attemptStatusTimer = setInterval(syncAttemptStatus, 30000)
   }
-  scheduleDevToolsCheck()
+
   startHeartbeat()
   startTimer()
-  onIdleActivity()
+
 })
 
 onUnmounted(() => {
@@ -1112,7 +1242,6 @@ onUnmounted(() => {
   stopMediaStream()
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)
-  if (devtoolsCheckTimer) clearInterval(devtoolsCheckTimer)
   stopHeartbeat()
   flushQueuedViolations()
   realtimeChannel.disconnect()

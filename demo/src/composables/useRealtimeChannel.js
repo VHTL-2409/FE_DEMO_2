@@ -10,6 +10,8 @@ const buildWebSocketUrl = () => {
   return token ? `${baseWs}?access_token=${encodeURIComponent(token)}` : baseWs
 }
 
+const hasAuthToken = () => Boolean(String(getStoredToken() || '').trim())
+
 export function useRealtimeChannel() {
   const isConnected = ref(false)
   const isConnecting = ref(false)
@@ -17,41 +19,26 @@ export function useRealtimeChannel() {
   let client = null
   let reconnectTimer = null
   let reconnectAttempts = 0
-  let heartbeatTimer = null
   let currentTopics = []
   const activeSubscriptions = new Map()
   const MAX_RECONNECT_DELAY = 30000
   const BASE_RECONNECT_DELAY = 1000
-  const HEARTBEAT_INTERVAL_MS = 20000
 
   const getReconnectDelay = () => {
     const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY)
     return delay + Math.random() * 1000
   }
 
-  const clearHeartbeat = () => {
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null }
-  }
-
-  const startHeartbeat = () => {
-    clearHeartbeat()
-    heartbeatTimer = setInterval(() => {
-      if (client?.connected) {
-        try {
-          client.publish({ destination: '/app/heartbeat', body: JSON.stringify({ ts: Date.now() }) })
-        } catch { /* ignore */ }
-      }
-    }, HEARTBEAT_INTERVAL_MS)
-  }
-
   const disconnect = () => {
-    clearHeartbeat()
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     reconnectAttempts = 0
     if (client) {
       client.deactivate()
       client = null
     }
+    activeSubscriptions.forEach((entry, destination) => {
+      activeSubscriptions.set(destination, { ...entry, subscription: null })
+    })
     isConnected.value = false
     isConnecting.value = false
   }
@@ -64,8 +51,16 @@ export function useRealtimeChannel() {
     onError
   } = {}) => {
     disconnect()
-    isConnecting.value = true
     currentTopics = topics
+
+    if (!hasAuthToken()) {
+      lastError.value = 'Missing auth token for realtime channel'
+      isConnected.value = false
+      isConnecting.value = false
+      return
+    }
+
+    isConnecting.value = true
 
     const token = String(getStoredToken() || '')
     client = new Client({
@@ -83,9 +78,10 @@ export function useRealtimeChannel() {
       onWebSocketClose: (event) => {
         isConnected.value = false
         isConnecting.value = false
-        clearHeartbeat()
         onDisconnect?.(event)
-        scheduleReconnect({ topics: currentTopics, reconnectDelay, onConnect, onDisconnect, onError })
+        if (hasAuthToken()) {
+          scheduleReconnect({ topics: currentTopics, reconnectDelay, onConnect, onDisconnect, onError })
+        }
       }
     })
 
@@ -95,17 +91,22 @@ export function useRealtimeChannel() {
       lastError.value = ''
       reconnectAttempts = 0
 
+      const seenTopics = new Set()
       currentTopics.forEach(({ destination, handler }) => {
-        client.subscribe(destination, (frame) => {
+        if (!destination || seenTopics.has(destination)) return
+        seenTopics.add(destination)
+        const sub = client.subscribe(destination, (frame) => {
           try {
             handler?.(JSON.parse(frame.body || '{}'), frame)
           } catch {
             handler?.(frame.body, frame)
           }
         })
+        if (activeSubscriptions.has(destination)) {
+          activeSubscriptions.set(destination, { handler, subscription: sub })
+        }
       })
 
-      startHeartbeat()
       onConnect?.(client)
     }
 
@@ -113,7 +114,7 @@ export function useRealtimeChannel() {
   }
 
   const scheduleReconnect = ({ topics = [], reconnectDelay = 5000, onConnect, onDisconnect, onError } = {}) => {
-    if (reconnectTimer) return
+    if (reconnectTimer || !hasAuthToken()) return
     const delay = getReconnectDelay()
     reconnectAttempts += 1
     reconnectTimer = setTimeout(() => {
@@ -121,7 +122,7 @@ export function useRealtimeChannel() {
       // Merge original topics with dynamically added subscriptions
       const allTopics = [
         ...topics,
-        ...[...activeSubscriptions.keys()].map(d => ({ destination: d, handler: null }))
+        ...[...activeSubscriptions.entries()].map(([destination, entry]) => ({ destination, handler: entry.handler }))
       ]
       connect({ topics: allTopics, reconnectDelay, onConnect, onDisconnect, onError })
     }, delay)
@@ -137,12 +138,13 @@ export function useRealtimeChannel() {
         handler?.(frame.body, frame)
       }
     })
-    activeSubscriptions.set(destination, sub)
+    activeSubscriptions.set(destination, { subscription: sub, handler })
   }
 
   const unsubscribe = (destination) => {
-    const sub = activeSubscriptions.get(destination)
-    if (sub) { sub.unsubscribe(); activeSubscriptions.delete(destination) }
+    const entry = activeSubscriptions.get(destination)
+    if (entry?.subscription) entry.subscription.unsubscribe()
+    activeSubscriptions.delete(destination)
   }
 
   const retryConnection = () => {

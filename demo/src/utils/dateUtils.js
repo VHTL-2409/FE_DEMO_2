@@ -19,6 +19,34 @@ export function parseBackendDate(value) {
 }
 
 /**
+ * Relative time display (for live feeds and alerts).
+ * e.g. "Vừa xong", "5m trước", "2h trước", "3d trước"
+ */
+export function relativeTime(ts, { short = false } = {}) {
+  if (!ts) return ''
+  const nowMs = Date.now()
+  const tsMs = new Date(ts).getTime()
+  if (!Number.isFinite(tsMs)) return ''
+  const diffMs = nowMs - tsMs
+  const secs = Math.floor(diffMs / 1000)
+  if (short) {
+    if (secs < 5) return 'Vừa'
+    if (secs < 60) return `${secs}s`
+    const mins = Math.floor(secs / 60)
+    if (mins < 60) return `${mins}m`
+    const hours = Math.floor(mins / 60)
+    return `${hours}h`
+  }
+  if (secs < 60) return 'Vừa xong'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m trước`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h trước`
+  const days = Math.floor(hours / 24)
+  return `${days}d trước`
+}
+
+/**
  * Format Date thành chuỗi hiển thị tiếng Việt, luôn theo múi giờ +07:00.
  */
 export function formatVietnamDate(date, options = {}) {

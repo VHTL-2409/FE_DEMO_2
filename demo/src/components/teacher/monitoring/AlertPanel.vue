@@ -158,6 +158,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { relativeTime } from '../../utils/dateUtils'
 
 const props = defineProps({
   alerts: { type: Array, default: () => [] },
@@ -187,7 +188,7 @@ watch(() => props.alerts.length, (newLen) => {
     // Play sound if enabled
     if (soundEnabled.value) {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const ctx = new window.AudioContext()
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.connect(gain)
@@ -253,21 +254,6 @@ const severityTabs = computed(() => [
     count: props.alerts.filter(a => (a.severity || a.riskBand) === 'SUSPICIOUS').length
   }
 ])
-
-const now = () => new Date()
-
-const relativeTime = (ts) => {
-  if (!ts) return ''
-  const diff = now() - new Date(ts)
-  const secs = Math.floor(diff / 1000)
-  if (secs < 60) return 'Vừa xong'
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m trước`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h trước`
-  const days = Math.floor(hours / 24)
-  return `${days}d trước`
-}
 
 const severityColor = (severity) => {
   const map = { CRITICAL: 'danger', HIGH_RISK: 'warning', SUSPICIOUS: 'caution', CLEAN: 'success' }
@@ -400,7 +386,7 @@ const groupedAlerts = computed(() => {
 }
 
 .ap__header-icon-wrap--danger { background: var(--ds-danger-soft); color: var(--ds-danger); }
-.ap__header-icon-wrap--warning { background: rgba(234, 179, 8, 0.1); color: #d97706; }
+.ap__header-icon-wrap--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
 
 .ap__header-icon { font-size: 1.125rem; }
 
@@ -413,7 +399,7 @@ const groupedAlerts = computed(() => {
   line-height: 1.2;
 }
 
-.dark .ap__title { color: #f1f5f9; }
+.dark .ap__title { color: var(--ds-text); }
 
 .ap__count {
   background: var(--ds-warning);
@@ -476,7 +462,7 @@ const groupedAlerts = computed(() => {
   transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
-.dark .ap__mark-read { color: #94a3b8; }
+.dark .ap__mark-read { color: var(--ds-text-secondary); }
 .ap__mark-read:hover { background: var(--ds-gray-100); color: var(--ds-primary); }
 .dark .ap__mark-read:hover { background: var(--ds-gray-700); }
 
@@ -627,8 +613,8 @@ const groupedAlerts = computed(() => {
 
 /* Severity borders — 4px */
 .ap__alert-item--danger { border-left-color: var(--ds-danger); }
-.ap__alert-item--warning { border-left-color: #d97706; }
-.ap__alert-item--caution { border-left-color: #eab308; }
+.ap__alert-item--warning { border-left-color: var(--ds-warning); }
+.ap__alert-item--caution { border-left-color: var(--ds-accent); }
 .ap__alert-item--success { border-left-color: var(--ds-success); }
 .ap__alert-item--default { border-left-color: var(--ds-gray-300); }
 .dark .ap__alert-item--default { border-left-color: var(--ds-gray-600); }
@@ -652,8 +638,8 @@ const groupedAlerts = computed(() => {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
-.ap__alert-icon--warning { background: rgba(234, 179, 8, 0.1); color: #d97706; }
-.ap__alert-icon--caution { background: rgba(234, 179, 8, 0.08); color: #eab308; }
+.ap__alert-icon--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
+.ap__alert-icon--caution { background: var(--ds-accent-soft); color: var(--ds-accent); }
 .ap__alert-icon--success { background: var(--ds-success-soft); color: var(--ds-success); }
 .ap__alert-icon--default { background: var(--ds-gray-100); color: var(--ds-text-muted); }
 .dark .ap__alert-icon--default { background: var(--ds-gray-700); }
@@ -684,7 +670,7 @@ const groupedAlerts = computed(() => {
   min-width: 0;
 }
 
-.dark .ap__alert-title { color: #f1f5f9; }
+.dark .ap__alert-title { color: var(--ds-text); }
 
 /* Alert type badge */
 .ap__alert-type-badge {
@@ -705,15 +691,15 @@ const groupedAlerts = computed(() => {
 }
 
 .ap__alert-type-badge--warning {
-  background: rgba(234, 179, 8, 0.1);
-  color: #d97706;
-  border: 1px solid rgba(234, 179, 8, 0.2);
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 
 .ap__alert-type-badge--caution {
-  background: rgba(234, 179, 8, 0.07);
-  color: #ca8a04;
-  border: 1px solid rgba(234, 179, 8, 0.15);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
 .ap__alert-type-badge--success {
@@ -855,7 +841,7 @@ const groupedAlerts = computed(() => {
   margin: 0;
 }
 
-.dark .ap__empty-title { color: #f1f5f9; }
+.dark .ap__empty-title { color: var(--ds-text); }
 
 .ap__empty-desc {
   font-size: 0.75rem;
@@ -908,5 +894,12 @@ const groupedAlerts = computed(() => {
 .ap-alert-leave-to {
   opacity: 0;
   transform: translateX(12px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ap__filter-row { overflow-x: auto; }
+  .ap__alert-item { padding: 0.5rem; }
+  .ap__alert-meta { flex-wrap: wrap; gap: 0.25rem; }
 }
 </style>

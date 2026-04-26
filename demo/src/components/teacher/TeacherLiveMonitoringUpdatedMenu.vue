@@ -1,11 +1,17 @@
 <template>
   <div class="pm-root">
-
     <!-- ── Top Command Bar ──────────────────────────────────────── -->
     <header class="pm-topbar">
       <div class="pm-topbar__left">
-        <button class="pm-back-btn" @click="handleBack" title="Quay lại danh sách kỳ thi">
-          <LucideIcon name="arrow-left" :size="16" />
+        <button
+          class="pm-back-btn"
+          title="Quay lại danh sách kỳ thi"
+          @click="handleBack"
+        >
+          <LucideIcon
+            name="arrow-left"
+            :size="16"
+          />
           <span>Quay lại</span>
         </button>
         <div class="pm-topbar__divider" />
@@ -15,7 +21,9 @@
             LIVE
           </div>
           <div class="pm-exam-meta">
-            <h1 class="pm-exam-meta__title">{{ selectedExamTitle }}</h1>
+            <h1 class="pm-exam-meta__title">
+              {{ selectedExamTitle }}
+            </h1>
             <span class="pm-exam-meta__sub">{{ selectedExamMeta }}</span>
           </div>
         </div>
@@ -23,37 +31,64 @@
 
       <div class="pm-topbar__center">
         <!-- Connection status -->
-        <div class="pm-conn-status" :class="isSocketConnected ? 'pm-conn-status--live' : 'pm-conn-status--poll'">
+        <div
+          class="pm-conn-status"
+          :class="isSocketConnected ? 'pm-conn-status--live' : 'pm-conn-status--poll'"
+        >
           <span class="pm-conn-status__dot" />
-          <LucideIcon :name="isSocketConnected ? 'zap' : 'refresh-cw'" :size="12" />
+          <LucideIcon
+            :name="isSocketConnected ? 'zap' : 'refresh-cw'"
+            :size="12"
+          />
           <span>{{ isSocketConnected ? 'Real-time' : 'Polling' }}</span>
         </div>
 
         <!-- Quick stats pills -->
         <div class="pm-stat-pill pm-stat-pill--online">
-          <LucideIcon name="wifi" :size="13" />
+          <LucideIcon
+            name="wifi"
+            :size="13"
+          />
           <span class="pm-stat-pill__value">{{ onlineCount }}</span>
           <span class="pm-stat-pill__label">Online</span>
         </div>
-        <div class="pm-stat-pill pm-stat-pill--warn" v-if="alertCount > 0">
-          <LucideIcon name="alert-triangle" :size="13" />
+        <div
+          v-if="alertCount > 0"
+          class="pm-stat-pill pm-stat-pill--warn"
+        >
+          <LucideIcon
+            name="alert-triangle"
+            :size="13"
+          />
           <span class="pm-stat-pill__value">{{ alertCount }}</span>
           <span class="pm-stat-pill__label">Nghi ngờ</span>
         </div>
         <div class="pm-stat-pill pm-stat-pill--submit">
-          <LucideIcon name="check-circle" :size="13" />
+          <LucideIcon
+            name="check-circle"
+            :size="13"
+          />
           <span class="pm-stat-pill__value">{{ submittedCount }}</span>
           <span class="pm-stat-pill__label">Đã nộp</span>
         </div>
         <div class="pm-stat-pill pm-stat-pill--neutral">
-          <LucideIcon name="users" :size="13" />
+          <LucideIcon
+            name="users"
+            :size="13"
+          />
           <span class="pm-stat-pill__value">{{ store.cards.length }}</span>
           <span class="pm-stat-pill__label">Tổng</span>
         </div>
 
         <!-- Timer -->
-        <div v-if="timeRemaining" class="pm-timer">
-          <LucideIcon name="clock" :size="14" />
+        <div
+          v-if="timeRemaining"
+          class="pm-timer"
+        >
+          <LucideIcon
+            name="clock"
+            :size="14"
+          />
           <span>{{ timeRemaining }}</span>
         </div>
       </div>
@@ -63,20 +98,30 @@
         <button
           class="pm-icon-btn"
           :class="{ 'pm-icon-btn--active': !allPanelsCollapsed }"
-          @click="allPanelsCollapsed = !allPanelsCollapsed"
           title="Bật/tắt cảnh báo"
+          @click="allPanelsCollapsed = !allPanelsCollapsed"
         >
-          <LucideIcon name="bell" :size="16" />
-          <span v-if="liveAlerts.length" class="pm-icon-btn__badge">{{ liveAlerts.length }}</span>
+          <LucideIcon
+            name="bell"
+            :size="16"
+          />
+          <span
+            v-if="liveAlerts.length"
+            class="pm-icon-btn__badge"
+          >{{ liveAlerts.length }}</span>
         </button>
         <!-- Refresh -->
         <button
           class="pm-icon-btn pm-icon-btn--primary"
-          @click="handleRefresh"
           :disabled="isSyncing"
           title="Làm mới"
+          @click="handleRefresh"
         >
-          <LucideIcon name="refresh-cw" :size="16" :class="{ 'pm-spin': isSyncing }" />
+          <LucideIcon
+            name="refresh-cw"
+            :size="16"
+            :class="{ 'pm-spin': isSyncing }"
+          />
         </button>
       </div>
     </header>
@@ -84,7 +129,6 @@
     <!-- ── Main Layout ──────────────────────────────────────────── -->
     <div class="pm-layout">
       <div class="pm-main">
-
         <!-- ── Filter Bar ── -->
         <div class="pm-filter-bar">
           <div class="pm-filter-tabs">
@@ -96,20 +140,34 @@
               @click="activeTab = tab.value"
             >
               <span>{{ tab.label }}</span>
-              <span v-if="tab.count > 0" class="pm-filter-tab__count">{{ tab.count }}</span>
+              <span
+                v-if="tab.count > 0"
+                class="pm-filter-tab__count"
+              >{{ tab.count }}</span>
             </button>
           </div>
 
           <div class="pm-filter-actions">
             <div class="pm-search-box">
-              <LucideIcon name="search" :size="14" class="pm-search-box__icon" />
+              <LucideIcon
+                name="search"
+                :size="14"
+                class="pm-search-box__icon"
+              />
               <input
                 v-model="searchQuery"
                 class="pm-search-box__input"
                 placeholder="Tìm học sinh..."
-              />
-              <button v-if="searchQuery" class="pm-search-box__clear" @click="searchQuery = ''">
-                <LucideIcon name="x" :size="12" />
+              >
+              <button
+                v-if="searchQuery"
+                class="pm-search-box__clear"
+                @click="searchQuery = ''"
+              >
+                <LucideIcon
+                  name="x"
+                  :size="12"
+                />
               </button>
             </div>
 
@@ -117,18 +175,24 @@
               <button
                 class="pm-view-btn"
                 :class="{ 'pm-view-btn--active': viewMode === 'grid' }"
-                @click="viewMode = 'grid'"
                 title="Lưới"
+                @click="viewMode = 'grid'"
               >
-                <LucideIcon name="layout-grid" :size="15" />
+                <LucideIcon
+                  name="layout-grid"
+                  :size="15"
+                />
               </button>
               <button
                 class="pm-view-btn"
                 :class="{ 'pm-view-btn--active': viewMode === 'list' }"
-                @click="viewMode = 'list'"
                 title="Danh sách"
+                @click="viewMode = 'list'"
               >
-                <LucideIcon name="list" :size="15" />
+                <LucideIcon
+                  name="list"
+                  :size="15"
+                />
               </button>
             </div>
           </div>
@@ -136,35 +200,79 @@
 
         <!-- ── Batch Actions ── -->
         <Transition name="pm-slide">
-          <div v-if="selectedIds.length > 0" class="pm-batch-bar">
+          <div
+            v-if="selectedIds.length > 0"
+            class="pm-batch-bar"
+          >
             <div class="pm-batch-bar__info">
-              <LucideIcon name="check-square" :size="15" />
+              <LucideIcon
+                name="check-square"
+                :size="15"
+              />
               <span>{{ selectedIds.length }} học sinh đã chọn</span>
             </div>
             <div class="pm-batch-bar__actions">
-              <button class="pm-batch-btn pm-batch-btn--warn" @click="handleBatchWarn">
-                <LucideIcon name="alert-triangle" :size="13" />
+              <button
+                class="pm-batch-btn pm-batch-btn--warn"
+                @click="handleBatchWarn"
+              >
+                <LucideIcon
+                  name="alert-triangle"
+                  :size="13"
+                />
                 Cảnh báo
               </button>
-              <button class="pm-batch-btn pm-batch-btn--pause" @click="handleBatchPause">
-                <LucideIcon name="pause" :size="13" />
+              <button
+                class="pm-batch-btn pm-batch-btn--pause"
+                @click="handleBatchPause"
+              >
+                <LucideIcon
+                  name="pause"
+                  :size="13"
+                />
                 Tạm dừng
               </button>
-              <button v-if="hasPausedSelection" class="pm-batch-btn pm-batch-btn--resume" @click="handleBatchResume">
-                <LucideIcon name="play" :size="13" />
+              <button
+                v-if="hasPausedSelection"
+                class="pm-batch-btn pm-batch-btn--resume"
+                @click="handleBatchResume"
+              >
+                <LucideIcon
+                  name="play"
+                  :size="13"
+                />
                 Cho phép tiếp tục
               </button>
-              <button v-if="pausedCountInExam > 0" class="pm-batch-btn pm-batch-btn--restore" @click="handleRestoreAllPaused">
-                <LucideIcon name="rotate-ccw" :size="13" />
+              <button
+                v-if="pausedCountInExam > 0"
+                class="pm-batch-btn pm-batch-btn--restore"
+                @click="handleRestoreAllPaused"
+              >
+                <LucideIcon
+                  name="rotate-ccw"
+                  :size="13"
+                />
                 Khôi phục hàng loạt ({{ pausedCountInExam }})
               </button>
-              <button class="pm-batch-btn pm-batch-btn--danger" @click="handleBatchInvalidate">
-                <LucideIcon name="x-circle" :size="13" />
+              <button
+                class="pm-batch-btn pm-batch-btn--danger"
+                @click="handleBatchInvalidate"
+              >
+                <LucideIcon
+                  name="x-circle"
+                  :size="13"
+                />
                 Đình chỉ
               </button>
               <div class="pm-batch-bar__sep" />
-              <button class="pm-batch-btn pm-batch-btn--ghost" @click="clearSelection">
-                <LucideIcon name="x" :size="13" />
+              <button
+                class="pm-batch-btn pm-batch-btn--ghost"
+                @click="clearSelection"
+              >
+                <LucideIcon
+                  name="x"
+                  :size="13"
+                />
                 Bỏ chọn
               </button>
             </div>
@@ -200,11 +308,25 @@
         </div>
 
         <!-- ── Student Grid ── -->
-        <div v-if="viewMode === 'grid'" class="pm-grid">
-          <div v-if="filteredStudents.length === 0" class="pm-empty">
-            <LucideIcon name="users" :size="44" class="pm-empty__icon" />
-            <p class="pm-empty__title">Không có thí sinh nào</p>
-            <p class="pm-empty__sub">Thử thay đổi bộ lọc hoặc tìm kiếm</p>
+        <div
+          v-if="viewMode === 'grid'"
+          class="pm-grid"
+        >
+          <div
+            v-if="filteredStudents.length === 0"
+            class="pm-empty"
+          >
+            <LucideIcon
+              name="users"
+              :size="44"
+              class="pm-empty__icon"
+            />
+            <p class="pm-empty__title">
+              Không có thí sinh nào
+            </p>
+            <p class="pm-empty__sub">
+              Thử thay đổi bộ lọc hoặc tìm kiếm
+            </p>
           </div>
           <StudentCard
             v-for="student in filteredStudents"
@@ -220,11 +342,25 @@
         </div>
 
         <!-- ── Student List ── -->
-        <div v-else class="pm-list-view">
-          <div v-if="filteredStudents.length === 0" class="pm-empty">
-            <LucideIcon name="users" :size="44" class="pm-empty__icon" />
-            <p class="pm-empty__title">Không có thí sinh nào</p>
-            <p class="pm-empty__sub">Thử thay đổi bộ lọc hoặc tìm kiếm</p>
+        <div
+          v-else
+          class="pm-list-view"
+        >
+          <div
+            v-if="filteredStudents.length === 0"
+            class="pm-empty"
+          >
+            <LucideIcon
+              name="users"
+              :size="44"
+              class="pm-empty__icon"
+            />
+            <p class="pm-empty__title">
+              Không có thí sinh nào
+            </p>
+            <p class="pm-empty__sub">
+              Thử thay đổi bộ lọc hoặc tìm kiếm
+            </p>
           </div>
           <StudentRow
             v-for="student in filteredStudents"
@@ -242,9 +378,15 @@
         <!-- ── Connection Bar ── -->
         <div class="pm-conn-bar">
           <div class="pm-conn-bar__left">
-            <span class="pm-conn-indicator" :class="isSocketConnected ? 'pm-conn-indicator--live' : 'pm-conn-indicator--poll'">
+            <span
+              class="pm-conn-indicator"
+              :class="isSocketConnected ? 'pm-conn-indicator--live' : 'pm-conn-indicator--poll'"
+            >
               <span class="pm-conn-indicator__dot" />
-              <LucideIcon :name="isSocketConnected ? 'zap' : 'refresh-cw'" :size="11" />
+              <LucideIcon
+                :name="isSocketConnected ? 'zap' : 'refresh-cw'"
+                :size="11"
+              />
             </span>
             <span class="pm-conn-bar__text">
               {{ isSocketConnected ? 'Đang kết nối thời gian thực' : `Cập nhật định kỳ · lần cuối ${lastUpdatedLabel}` }}
@@ -252,8 +394,15 @@
           </div>
           <div class="pm-conn-bar__right">
             <span class="pm-conn-bar__version">v2.0</span>
-            <button v-if="wsError" class="pm-conn-bar__retry" @click="retryConnection">
-              <LucideIcon name="refresh-cw" :size="11" />
+            <button
+              v-if="wsError"
+              class="pm-conn-bar__retry"
+              @click="retryConnection"
+            >
+              <LucideIcon
+                name="refresh-cw"
+                :size="11"
+              />
               Kết nối lại
             </button>
           </div>
@@ -262,18 +411,35 @@
 
       <!-- ── Sidebar ── -->
       <Transition name="pm-sidebar">
-        <aside v-if="!allPanelsCollapsed" class="pm-sidebar">
+        <aside
+          v-if="!allPanelsCollapsed"
+          class="pm-sidebar"
+        >
           <div class="pm-sidebar__header">
             <div class="pm-sidebar__title">
-              <LucideIcon name="bell-ring" :size="16" />
+              <LucideIcon
+                name="bell-ring"
+                :size="16"
+              />
               <span>Cảnh báo &amp; Sự kiện</span>
             </div>
             <div class="pm-sidebar__actions">
-              <button v-if="liveAlerts.length" class="pm-sidebar__mark-all" @click="handleMarkAllRead">
+              <button
+                v-if="liveAlerts.length"
+                class="pm-sidebar__mark-all"
+                @click="handleMarkAllRead"
+              >
                 Đánh dấu đã đọc
               </button>
-              <button class="pm-sidebar__clear-btn" @click="handleClearEvents" title="Xóa tất cả">
-                <LucideIcon name="trash-2" :size="13" />
+              <button
+                class="pm-sidebar__clear-btn"
+                title="Xóa tất cả"
+                @click="handleClearEvents"
+              >
+                <LucideIcon
+                  name="trash-2"
+                  :size="13"
+                />
               </button>
             </div>
           </div>
@@ -284,29 +450,56 @@
               :class="{ 'pm-sidebar__tab--active': sidebarTab === 'alerts' }"
               @click="sidebarTab = 'alerts'"
             >
-              <LucideIcon name="alert-triangle" :size="13" />
+              <LucideIcon
+                name="alert-triangle"
+                :size="13"
+              />
               Cảnh báo
-              <span v-if="liveAlerts.length" class="pm-sidebar__tab-count pm-sidebar__tab-count--danger">{{ liveAlerts.length }}</span>
+              <span
+                v-if="liveAlerts.length"
+                class="pm-sidebar__tab-count pm-sidebar__tab-count--danger"
+              >{{ liveAlerts.length }}</span>
             </button>
             <button
               class="pm-sidebar__tab"
               :class="{ 'pm-sidebar__tab--active': sidebarTab === 'events' }"
               @click="sidebarTab = 'events'"
             >
-              <LucideIcon name="activity" :size="13" />
+              <LucideIcon
+                name="activity"
+                :size="13"
+              />
               Sự kiện
-              <span v-if="recentEvents.length" class="pm-sidebar__tab-count">{{ recentEvents.length }}</span>
+              <span
+                v-if="recentEvents.length"
+                class="pm-sidebar__tab-count"
+              >{{ recentEvents.length }}</span>
             </button>
           </div>
 
           <!-- Alerts content -->
-          <div v-if="sidebarTab === 'alerts'" class="pm-sidebar__content">
-            <div v-if="liveAlerts.length === 0" class="pm-sidebar__empty">
-              <LucideIcon name="check-circle" :size="28" class="pm-sidebar__empty-icon" />
+          <div
+            v-if="sidebarTab === 'alerts'"
+            class="pm-sidebar__content"
+          >
+            <div
+              v-if="liveAlerts.length === 0"
+              class="pm-sidebar__empty"
+            >
+              <LucideIcon
+                name="check-circle"
+                :size="28"
+                class="pm-sidebar__empty-icon"
+              />
               <p>Tất cả an toàn</p>
               <span>Không có cảnh báo nào</span>
             </div>
-            <TransitionGroup v-else name="pm-alert" tag="div" class="pm-alert-list">
+            <TransitionGroup
+              v-else
+              name="pm-alert"
+              tag="div"
+              class="pm-alert-list"
+            >
               <div
                 v-for="alert in liveAlerts"
                 :key="alert.id"
@@ -319,46 +512,92 @@
                 @click="handleAlertClick(alert)"
               >
                 <div class="pm-alert-item__icon-wrap">
-                  <LucideIcon name="alert-triangle" :size="14" />
+                  <LucideIcon
+                    name="alert-triangle"
+                    :size="14"
+                  />
                 </div>
                 <div class="pm-alert-item__body">
                   <div class="pm-alert-item__header">
                     <span class="pm-alert-item__name">{{ alert.studentName }}</span>
-                    <span class="pm-alert-item__score" :class="alert.severity === 'HIGH' || alert.severity === 'CRITICAL' ? 'pm-alert-item__score--danger' : 'pm-alert-item__score--warn'">
+                    <span
+                      class="pm-alert-item__score"
+                      :class="alert.severity === 'HIGH' || alert.severity === 'CRITICAL' ? 'pm-alert-item__score--danger' : 'pm-alert-item__score--warn'"
+                    >
                       {{ alert.riskScore }}đ
                     </span>
                   </div>
-                  <p class="pm-alert-item__msg">{{ alert.message }}</p>
+                  <p class="pm-alert-item__msg">
+                    {{ alert.message }}
+                  </p>
                   <span class="pm-alert-item__time">{{ relativeTime(alert.timestamp) }}</span>
                 </div>
-                <button class="pm-alert-item__dismiss" @click.stop="handleDismissAlert(alert.id)" title="Bỏ qua">
-                  <LucideIcon name="x" :size="11" />
+                <button
+                  class="pm-alert-item__dismiss"
+                  title="Bỏ qua"
+                  @click.stop="handleDismissAlert(alert.id)"
+                >
+                  <LucideIcon
+                    name="x"
+                    :size="11"
+                  />
                 </button>
-                <span v-if="!alert.read" class="pm-alert-item__unread" />
+                <span
+                  v-if="!alert.read"
+                  class="pm-alert-item__unread"
+                />
               </div>
             </TransitionGroup>
           </div>
 
           <!-- Events content -->
-          <div v-else class="pm-sidebar__content">
-            <div v-if="recentEvents.length === 0" class="pm-sidebar__empty">
-              <LucideIcon name="activity" :size="28" class="pm-sidebar__empty-icon" />
+          <div
+            v-else
+            class="pm-sidebar__content"
+          >
+            <div
+              v-if="recentEvents.length === 0"
+              class="pm-sidebar__empty"
+            >
+              <LucideIcon
+                name="activity"
+                :size="28"
+                class="pm-sidebar__empty-icon"
+              />
               <p>Chưa có sự kiện</p>
               <span>Đang chờ sự kiện từ thí sinh...</span>
             </div>
-            <TransitionGroup v-else name="pm-alert" tag="div" class="pm-alert-list">
+            <TransitionGroup
+              v-else
+              name="pm-alert"
+              tag="div"
+              class="pm-alert-list"
+            >
               <div
                 v-for="event in recentEvents"
                 :key="event.id"
                 class="pm-event-item"
                 @click="handleAlertClick(event)"
               >
-                <div class="pm-event-item__icon" :class="`pm-event-item__icon--${eventTypeColor(event.type)}`">
-                  <LucideIcon :name="eventTypeIcon(event.type)" :size="12" />
+                <div
+                  class="pm-event-item__icon"
+                  :class="`pm-event-item__icon--${eventTypeColor(event.type)}`"
+                >
+                  <LucideIcon
+                    :name="eventTypeIcon(event.type)"
+                    :size="12"
+                  />
                 </div>
                 <div class="pm-event-item__body">
-                  <p v-if="event.studentName" class="pm-event-item__name">{{ event.studentName }}</p>
-                  <p class="pm-event-item__msg">{{ event.message }}</p>
+                  <p
+                    v-if="event.studentName"
+                    class="pm-event-item__name"
+                  >
+                    {{ event.studentName }}
+                  </p>
+                  <p class="pm-event-item__msg">
+                    {{ event.message }}
+                  </p>
                 </div>
                 <span class="pm-event-item__time">{{ relativeTime(event.timestamp) }}</span>
               </div>
@@ -405,7 +644,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const store = useProctorDashboardStore()
-const { cards: attempts, connectionMode, lastUpdatedAt } = storeToRefs(store)
+const { cards: attempts, lastUpdatedAt } = storeToRefs(store)
 
 // ── View mode ──────────────────────────────────────────────────────────
 const viewMode = ref('grid')
@@ -684,7 +923,6 @@ const openWarningModal = (student) => openActionModal(student, 'warn')
 const openPauseModal = (student) => openActionModal(student, 'pause')
 const openResumeModal = (student) => openActionModal(student, 'resume')
 const openStudentDetail = (student) => {
-  const studentId = student.userId || student.studentId || student.id
   router.push(`/teacher/exams/${examId.value}/monitoring/student/${student.id || student.attemptId}`)
 }
 const ACTION_HANDLERS = {
@@ -772,7 +1010,7 @@ const handleRestoreAllPaused = () => {
     .map(a => a.id || a.attemptId)
   if (pausedIds.length === 0) return
   return runBatchAction({
-    ids: pausedIds, call: resumeAttempt, reason: 'Khôi phục hàng loạt',
+    ids: pausedIds, call: batchResume, reason: 'Khôi phục hàng loạt',
     successMsg: 'Đã khôi phục', errorMsg: 'Không thể khôi phục hàng loạt.', refresh: true
   })
 }
@@ -1002,9 +1240,9 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
   border-color: rgba(245,158,11,0.2);
 }
 .pm-stat-pill--submit {
-  background: rgba(165,180,252,0.12);
-  color: #818cf8;
-  border-color: rgba(165,180,252,0.2);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  border-color: var(--ds-primary-border);
 }
 .pm-stat-pill--neutral {
   background: var(--ds-surface-muted);
@@ -1313,7 +1551,7 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 }
 .pm-risk-strip__item--clean .pm-risk-strip__dot { background: var(--ds-success); }
 .pm-risk-strip__item--suspicious .pm-risk-strip__dot { background: var(--ds-warning); }
-.pm-risk-strip__item--high .pm-risk-strip__dot { background: #f97316; }
+.pm-risk-strip__item--high .pm-risk-strip__dot { background: var(--mon-risk-high); }
 .pm-risk-strip__item--critical .pm-risk-strip__dot { background: var(--ds-danger); animation: pm-pulse 1.5s ease-in-out infinite; }
 .pm-risk-strip__label {
   font-size: 0.72rem;
@@ -1687,7 +1925,7 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 .pm-event-item__icon--warn { background: var(--ds-warning-bg); color: var(--ds-warning); }
 .pm-event-item__icon--danger { background: var(--ds-danger-bg); color: var(--ds-danger); }
 .pm-event-item__icon--success { background: var(--ds-success-bg); color: var(--ds-success); }
-.pm-event-item__icon--info { background: rgba(165,180,252,0.15); color: #818cf8; }
+.pm-event-item__icon--info { background: var(--ds-primary-soft); color: var(--ds-primary); }
 .pm-event-item__icon--neutral { background: var(--ds-surface-muted); color: var(--ds-text-secondary); }
 .pm-event-item__body { flex: 1; min-width: 0; }
 .pm-event-item__name { font-size: 0.78rem; font-weight: 700; color: var(--ds-text); margin: 0 0 0.1rem; }

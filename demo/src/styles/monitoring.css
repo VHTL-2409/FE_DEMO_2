@@ -27,22 +27,25 @@
   --mon-primary-soft: rgba(79, 70, 229, 0.08);
   --mon-primary-border: rgba(79, 70, 229, 0.2);
 
-  /* Status Colors */
-  --mon-success: #10b981;
-  --mon-success-soft: rgba(16, 185, 129, 0.1);
-  --mon-success-border: rgba(16, 185, 129, 0.2);
-  --mon-warning: #f59e0b;
-  --mon-warning-soft: rgba(245, 158, 11, 0.1);
-  --mon-warning-border: rgba(245, 158, 11, 0.2);
-  --mon-danger: #ef4444;
-  --mon-danger-soft: rgba(239, 68, 68, 0.08);
-  --mon-danger-border: rgba(239, 68, 68, 0.2);
+  /* Status Colors — aligned with --ds-* canonical tokens */
+  --mon-success: var(--ds-success);
+  --mon-success-soft: var(--ds-success-soft);
+  --mon-success-border: rgba(22, 163, 74, 0.2);
+  --mon-warning: var(--ds-warning);
+  --mon-warning-soft: var(--ds-warning-soft);
+  --mon-warning-border: rgba(217, 119, 6, 0.2);
+  --mon-danger: var(--ds-danger);
+  --mon-danger-soft: var(--ds-danger-soft);
+  --mon-danger-border: rgba(220, 38, 38, 0.2);
+  --mon-info: var(--ds-info);
+  --mon-info-soft: var(--ds-info-soft);
 
-  /* Risk band colors */
-  --mon-risk-critical: #dc2626;
-  --mon-risk-high: #f59e0b;
-  --mon-risk-suspicious: #eab308;
-  --mon-risk-clean: #10b981;
+  /* Risk band colors - unified green-based scale */
+  --mon-risk-clean: var(--ds-risk-clean);
+  --mon-risk-low: var(--ds-risk-low);
+  --mon-risk-moderate: var(--ds-risk-moderate);
+  --mon-risk-high: var(--ds-risk-high);
+  --mon-risk-critical: var(--ds-risk-critical);
 
   /* Radius */
   --mon-radius-xs: 6px;
@@ -58,7 +61,7 @@
   --mon-shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.15);
 
   /* Font */
-  --mon-font: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  --mon-font: var(--ds-font);
 
   /* Spacing */
   --mon-space-xs: 0.25rem;
@@ -89,12 +92,13 @@
   --mon-primary-hover: #6366f1;
   --mon-primary-soft: rgba(129, 140, 248, 0.1);
   --mon-primary-border: rgba(129, 140, 248, 0.25);
-  --mon-success-soft: rgba(74, 222, 128, 0.1);
-  --mon-success-border: rgba(74, 222, 128, 0.25);
-  --mon-warning-soft: rgba(251, 191, 36, 0.1);
-  --mon-warning-border: rgba(251, 191, 36, 0.25);
-  --mon-danger-soft: rgba(248, 113, 113, 0.1);
-  --mon-danger-border: rgba(248, 113, 113, 0.25);
+  --mon-success-soft: var(--ds-risk-clean-soft);
+  --mon-success-border: rgba(22, 163, 74, 0.25);
+  --mon-warning-soft: var(--ds-risk-moderate-soft);
+  --mon-warning-border: rgba(217, 119, 6, 0.3);
+  --mon-danger-soft: var(--ds-risk-critical-soft);
+  --mon-danger-border: rgba(220, 38, 38, 0.3);
+  --mon-info-soft: var(--ds-risk-low-soft);
   --mon-shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
   --mon-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
   --mon-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -171,27 +175,26 @@
 .mon-header__center { display: flex; align-items: center; gap: 0.75rem; flex: 1; }
 .mon-header__right { display: flex; align-items: center; gap: 0.5rem; }
 
-/* LIVE badge */
+/* Status badge */
 .mon-live-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.3rem 0.75rem;
   border-radius: 9999px;
-  background: rgba(220, 38, 38, 0.08);
-  color: var(--mon-danger);
+  background: var(--mon-success-soft);
+  color: var(--mon-success);
   font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  font-weight: 700;
+  letter-spacing: 0;
+  border: 1px solid var(--mon-success-border);
   flex-shrink: 0;
 }
 .mon-live-badge__dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--mon-danger);
-  animation: mon-pulse 1.5s ease-in-out infinite;
+  background: var(--mon-success);
 }
 .mon-live-badge--success {
   background: var(--mon-success-soft);
@@ -233,7 +236,7 @@
 .mon-ws-badge--on { color: var(--mon-success); border-color: var(--mon-success-border); background: var(--mon-success-soft); }
 .mon-ws-badge--off { color: var(--mon-text-muted); border-color: var(--mon-border); background: transparent; }
 .mon-ws-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.mon-ws-badge--on .mon-ws-badge__dot { animation: mon-pulse 1.5s ease-in-out infinite; }
+.mon-ws-badge--on .mon-ws-badge__dot { background: currentColor; }
 
 /* ── Filter Bar ──────────────────────────────────────────────── */
 .mon-filter-bar {
@@ -267,7 +270,7 @@
 .mon-filter-btn--active { background: var(--mon-surface-2); border-color: var(--mon-border); color: var(--mon-text); }
 .mon-filter-btn--critical.mon-filter-btn--active { background: rgba(220,38,38,0.06); border-color: rgba(220,38,38,0.2); color: var(--mon-danger); }
 .mon-filter-btn--high_risk.mon-filter-btn--active { background: var(--mon-warning-soft); border-color: var(--mon-warning-border); color: var(--mon-warning); }
-.mon-filter-btn--suspicious.mon-filter-btn--active { background: rgba(234,179,8,0.06); border-color: rgba(234,179,8,0.2); color: #ca8a04; }
+.mon-filter-btn--suspicious.mon-filter-btn--active { background: var(--ds-risk-moderate-soft); border-color: rgba(217, 119, 6, 0.2); color: var(--ds-risk-moderate); }
 .mon-filter-btn--clean.mon-filter-btn--active { background: var(--mon-success-soft); border-color: var(--mon-success-border); color: var(--mon-success); }
 .mon-filter-btn__count {
   padding: 0.05rem 0.4rem;
@@ -381,10 +384,10 @@
   border-radius: var(--mon-radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: transform var(--mon-transition-normal), box-shadow var(--mon-transition-normal);
+  transition: border-color var(--mon-transition), box-shadow var(--mon-transition);
 }
-.mon-card:hover { transform: translateY(-2px); box-shadow: var(--mon-shadow-md); }
-.mon-card--selected { box-shadow: 0 0 0 2px var(--mon-primary), var(--mon-shadow-md); }
+.mon-card:hover { border-color: var(--mon-primary-border); box-shadow: var(--mon-shadow-md); }
+.mon-card--selected { border-color: var(--mon-primary); box-shadow: 0 0 0 1px var(--mon-primary), var(--mon-shadow-md); }
 
 .mon-card__accent {
   position: absolute;
@@ -393,7 +396,7 @@
 }
 .mon-card--critical .mon-card__accent { background: var(--mon-risk-critical); }
 .mon-card--high_risk .mon-card__accent { background: var(--mon-risk-high); }
-.mon-card--suspicious .mon-card__accent { background: var(--mon-risk-suspicious); }
+.mon-card--suspicious .mon-card__accent { background: var(--mon-risk-moderate); }
 .mon-card--clean .mon-card__accent { background: var(--mon-risk-clean); }
 
 .mon-card__head {
@@ -752,7 +755,7 @@
 }
 .mon-alert-item--critical { border-left-color: var(--mon-danger); }
 .mon-alert-item--high, .mon-alert-item--high_risk { border-left-color: var(--mon-warning); }
-.mon-alert-item--medium, .mon-alert-item--suspicious { border-left-color: #eab308; }
+.mon-alert-item--medium, .mon-alert-item--suspicious { border-left-color: var(--mon-risk-moderate); }
 .mon-alert-item--low, .mon-alert-item--clean { border-left-color: var(--mon-success); }
 .mon-alert-item__student { font-weight: 700; color: var(--mon-text); }
 .mon-alert-item__msg { color: var(--mon-text-secondary); }
@@ -1060,7 +1063,7 @@
 .mon-event-item__icon--warn { background: var(--mon-warning-soft); color: var(--mon-warning); }
 .mon-event-item__icon--danger { background: var(--mon-danger-soft); color: var(--mon-danger); }
 .mon-event-item__icon--success { background: var(--mon-success-soft); color: var(--mon-success); }
-.mon-event-item__icon--info { background: rgba(165,180,252,0.15); color: #818cf8; }
+.mon-event-item__icon--info { background: var(--mon-primary-soft); color: var(--mon-primary); }
 .mon-event-item__icon--neutral { background: var(--mon-surface-2); color: var(--mon-text-secondary); }
 .mon-event-item__body { flex: 1; min-width: 0; }
 .mon-event-item__name { font-size: 0.78rem; font-weight: 700; color: var(--mon-text); margin: 0 0 0.1rem; }
@@ -1103,8 +1106,8 @@
 }
 .mon-risk-strip__item--clean .mon-risk-strip__dot { background: var(--mon-success); }
 .mon-risk-strip__item--suspicious .mon-risk-strip__dot { background: var(--mon-warning); }
-.mon-risk-strip__item--high .mon-risk-strip__dot { background: #f97316; }
-.mon-risk-strip__item--critical .mon-risk-strip__dot { background: var(--mon-danger); animation: mon-pulse 1.5s ease-in-out infinite; }
+.mon-risk-strip__item--high .mon-risk-strip__dot { background: var(--mon-risk-high); }
+.mon-risk-strip__item--critical .mon-risk-strip__dot { background: var(--mon-danger); }
 .mon-risk-strip__label {
   font-size: 0.72rem;
   font-weight: 600;

@@ -10,7 +10,9 @@ const getBrowserContextSnapshot = () => ({
   viewportWidth: window.innerWidth || null,
   viewportHeight: window.innerHeight || null,
   platform: navigator.platform || '',
-  userAgent: navigator.userAgent || ''
+  userAgent: navigator.userAgent || '',
+  networkType: navigator.connection?.effectiveType || '',
+  online: navigator.onLine !== false
 })
 
 export function useProctoringSession({
@@ -27,6 +29,7 @@ export function useProctoringSession({
   let pendingEvents = []
   let flushTimer = null
   let heartbeatTimer = null
+  let lastHeartbeatStartedAt = 0
 
   const emitAction = (response) => {
     if (!response) return
@@ -72,14 +75,16 @@ export function useProctoringSession({
     }
   }
 
-  const queueEvent = (eventType, details = '', payload = null, confidence = null) => {
+  const queueEvent = (eventType, details = '', payload = null, confidence = null, telemetry = null, clientTimestamp = null) => {
     pendingEvents = [
       ...pendingEvents,
       {
         eventType,
         details,
         payload,
-        confidence
+        confidence,
+        telemetry,
+        clientTimestamp: clientTimestamp || Date.now()
       }
     ]
     pendingCount.value = pendingEvents.length
@@ -98,9 +103,19 @@ export function useProctoringSession({
       if (pendingEvents.length) {
         await flush()
       }
+      const now = Date.now()
+      const heartbeatLagMs = lastHeartbeatStartedAt ? Math.max(0, now - lastHeartbeatStartedAt - heartbeatIntervalMs) : 0
+      lastHeartbeatStartedAt = now
+      const heartbeatPayload = getHeartbeatPayload?.() || {}
       const response = await sendMonitoringHeartbeat(attemptId, {
-        ...(getHeartbeatPayload?.() || {}),
-        deviceFingerprint: getDeviceFingerprint?.() || ''
+        ...heartbeatPayload,
+        deviceFingerprint: getDeviceFingerprint?.() || '',
+        telemetry: {
+          ...(heartbeatPayload.telemetry || {}),
+          networkOnline: navigator.onLine !== false,
+          networkType: navigator.connection?.effectiveType || '',
+          heartbeatLagMs
+        }
       })
       onRiskUpdate?.(response)
       emitAction(response)

@@ -69,7 +69,16 @@ export const createExam = async ({
   monitorPrintScreen,
   monitorRapidQuestionSwitch,
   monitorMultiMonitor,
-  requireCameraMic
+  requireCameraMic,
+  monitorNetworkInstability,
+  monitorSessionRecovery,
+  monitorQuestionTimingAnomaly,
+  monitorAnswerChangeBurst,
+  monitorClipboardBurst,
+  monitorFullscreenEvasion,
+  monitorAnswerSimilarity,
+  monitorIpFingerprintGraph,
+  enableAiProctoring
 }) => {
   const payload = await apiRequest('/api/exams', {
     method: 'POST',
@@ -96,7 +105,16 @@ export const createExam = async ({
       monitorPrintScreen,
       monitorRapidQuestionSwitch,
       monitorMultiMonitor,
-      requireCameraMic
+      requireCameraMic,
+      monitorNetworkInstability,
+      monitorSessionRecovery,
+      monitorQuestionTimingAnomaly,
+      monitorAnswerChangeBurst,
+      monitorClipboardBurst,
+      monitorFullscreenEvasion,
+      monitorAnswerSimilarity,
+      monitorIpFingerprintGraph,
+      enableAiProctoring
     })
   })
 
@@ -125,7 +143,16 @@ export const updateExam = async (examId, {
   monitorPrintScreen,
   monitorRapidQuestionSwitch,
   monitorMultiMonitor,
-  requireCameraMic
+  requireCameraMic,
+  monitorNetworkInstability,
+  monitorSessionRecovery,
+  monitorQuestionTimingAnomaly,
+  monitorAnswerChangeBurst,
+  monitorClipboardBurst,
+  monitorFullscreenEvasion,
+  monitorAnswerSimilarity,
+  monitorIpFingerprintGraph,
+  enableAiProctoring
 }) => {
   const body = {
     title,
@@ -147,7 +174,16 @@ export const updateExam = async (examId, {
     monitorPrintScreen,
     monitorRapidQuestionSwitch,
     monitorMultiMonitor,
-    requireCameraMic
+    requireCameraMic,
+    monitorNetworkInstability,
+    monitorSessionRecovery,
+    monitorQuestionTimingAnomaly,
+    monitorAnswerChangeBurst,
+    monitorClipboardBurst,
+    monitorFullscreenEvasion,
+    monitorAnswerSimilarity,
+    monitorIpFingerprintGraph,
+    enableAiProctoring
   }
   if (shuffleQuestions !== undefined) {
     body.shuffleQuestions = shuffleQuestions

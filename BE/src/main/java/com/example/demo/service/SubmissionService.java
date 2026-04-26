@@ -438,7 +438,7 @@ public class SubmissionService {
                 studentKeyword,
                 riskMin,
                 riskMax,
-                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "startedAt")));
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "started_at")));
 
         return AttemptFilterResponse.builder()
                 .items(filteredPage.getContent().stream().map(this::toSummary).toList())

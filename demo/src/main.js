@@ -15,6 +15,7 @@ import './styles/admin-dashboard.css'
 import './styles/teacher-ui.css'
 import './styles/teacher-ui-refresh.css'
 import './styles/portal-ui.css'
+import './styles/monitoring.css'
 import './styles/anti-blur-overrides.css'
 
 let _toast = null
