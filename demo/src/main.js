@@ -4,6 +4,8 @@ import router from './router'
 import { pinia } from './stores'
 import { useToastStore } from './stores/toastStore'
 import LucideIcon from './components/common/LucideIcon.vue'
+import PrimeVue from 'primevue/config'
+import Dialog from 'primevue/dialog'
 import './styles/tailwind.css'
 import './fonts.css'
 import './animation.css'
@@ -32,4 +34,4 @@ const toastServiceProxy = () => {
   }
 }
 
-createApp(App).use(pinia).provide('toast', toastServiceProxy()).use(router).component('LucideIcon', LucideIcon).mount('#app')
+createApp(App).use(pinia).provide('toast', toastServiceProxy()).use(router).use(PrimeVue).component('Dialog', Dialog).component('LucideIcon', LucideIcon).mount('#app')

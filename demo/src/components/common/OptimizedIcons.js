@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  CircleDot,
   FileText,
   List,
   Menu,
@@ -78,6 +79,7 @@ import {
   Minus,
   Mail,
   Flag,
+  FlagOff,
   MessageSquare,
   Folder,
   FolderOpen,
@@ -196,7 +198,6 @@ import {
   BookmarkCheck,
   MonitorSmartphone,
   BellRing,
-  CircleDot,
 } from 'lucide-vue-next'
 
 // Icon name to component mapping - only includes icons that are used
@@ -617,6 +618,11 @@ const ICON_MAP = {
   bar_chart_2: BarChart2,
   'circle-dot': CircleDot,
   circle_dot: CircleDot,
+
+  // New icons for monitoring
+  flag_off: FlagOff,
+  'flag-off': FlagOff,
+  user_search: User,
 
   // Proctoring violation icon names (getViolationIcon)
   mouse_right_button: MousePointer2,

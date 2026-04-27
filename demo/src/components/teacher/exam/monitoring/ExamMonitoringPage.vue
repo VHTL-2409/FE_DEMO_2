@@ -1,351 +1,328 @@
 <template>
-  <main class="mp-page">
+  <main class="emp-root">
+    <!-- Loading -->
     <section
       v-if="loading"
-      class="mp-state"
+      class="emp-loading"
     >
-      <div class="mp-spinner" />
+      <div class="emp-spinner" />
       <p>Đang tải phòng thi...</p>
     </section>
 
-    <section
-      v-else
-      class="mp-shell"
-    >
-      <header class="mp-header">
+    <!-- Main content -->
+    <template v-else>
+      <!-- ── Header ─────────────────────────────────────────── -->
+      <header class="emp-header">
         <RouterLink
           to="/teacher/live-monitoring"
-          class="mp-back"
+          class="emp-back"
           aria-label="Quay lại danh sách kỳ thi"
         >
-          <LucideIcon
-            name="arrow-left"
-            :size="18"
-          />
+          <LucideIcon name="arrow-left" :size="18" />
         </RouterLink>
 
-        <div class="mp-heading">
-          <span>Phòng giám sát</span>
-          <h1>{{ examTitle }}</h1>
-          <p v-if="examCode">
-            {{ examCode }}
-          </p>
-          <p v-else class="mp-subtle">
-            Đồng bộ lần cuối {{ lastUpdatedLabel }}
-          </p>
+        <div class="emp-header__main">
+          <div class="emp-header__meta">
+            <span class="emp-label">Phòng giám sát</span>
+            <span
+              v-if="examStatus"
+              class="emp-status-badge"
+              :class="`emp-status-badge--${examStatus.toLowerCase()}`"
+            >
+              <i class="emp-status-dot" />
+              {{ examStatus === 'LIVE' ? 'LIVE' : examStatus === 'ENDED' ? 'Đã kết thúc' : examStatus }}
+            </span>
+          </div>
+          <h1 class="emp-title">{{ examTitle }}</h1>
+          <p v-if="examCode" class="emp-subtitle">{{ examCode }}</p>
         </div>
 
-        <div class="mp-header-actions">
-          <span :class="['mp-conn', isConnected ? 'on' : 'off']">
-            <i />{{ isConnected ? 'Realtime' : 'Tự cập nhật' }}
+        <div class="emp-header__stats">
+          <div class="emp-stat-chip emp-stat-chip--online">
+            <LucideIcon name="user-check" :size="14" />
+            <span class="emp-stat-val">{{ onlineCount }}</span>
+            <span class="emp-stat-label">đang thi</span>
+          </div>
+          <div class="emp-stat-chip emp-stat-chip--flag">
+            <LucideIcon name="flag" :size="14" />
+            <span class="emp-stat-val">{{ openFlagCount }}</span>
+            <span class="emp-stat-label">flag mở</span>
+          </div>
+        </div>
+
+        <div class="emp-header__actions">
+          <span
+            class="emp-conn"
+            :class="isConnected ? 'emp-conn--on' : 'emp-conn--off'"
+            :title="isConnected ? 'Kết nối realtime' : 'Đang dùng polling'"
+          >
+            <i class="emp-conn-dot" />
+            {{ isConnected ? 'Realtime' : 'Polling' }}
           </span>
           <button
-            class="mp-icon"
+            class="emp-icon-btn"
             type="button"
             :disabled="isRefreshing"
             aria-label="Làm mới dữ liệu"
+            title="Làm mới"
             @click="refresh"
           >
             <LucideIcon
               name="refresh-cw"
-              :size="17"
-              :class="{ 'mp-spin': isRefreshing }"
+              :size="16"
+              :class="{ 'emp-spin': isRefreshing }"
             />
           </button>
         </div>
       </header>
 
-      <section
-        class="mp-toolbar"
-        aria-label="Bộ lọc thí sinh"
-      >
-        <label class="mp-search">
-          <LucideIcon
-            name="search"
-            :size="16"
-          />
+      <!-- ── Toolbar ─────────────────────────────────────────── -->
+      <div class="emp-toolbar">
+        <div class="emp-search">
+          <LucideIcon name="search" :size="16" />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Tìm thí sinh"
+            placeholder="Tìm thí sinh..."
+            aria-label="Tìm thí sinh"
           >
-        </label>
+          <button
+            v-if="searchQuery"
+            class="emp-search-clear"
+            type="button"
+            aria-label="Xóa tìm kiếm"
+            @click="searchQuery = ''"
+          >
+            <LucideIcon name="x" :size="14" />
+          </button>
+        </div>
 
-        <div class="mp-toolbar__meta">
-          <div
-            class="mp-filters"
-            role="tablist"
-            aria-label="Lọc trạng thái"
-          >
+        <div class="emp-toolbar__right">
+          <div class="emp-filters" role="tablist" aria-label="Lọc theo mức rủi ro">
             <button
-              v-for="tab in filterTabs"
+              v-for="tab in riskFilterTabs"
               :key="tab.value"
               type="button"
               role="tab"
-              :aria-selected="activeFilter === tab.value"
-              :class="{ active: activeFilter === tab.value }"
-              @click="activeFilter = tab.value"
+              :aria-selected="activeRiskFilter === tab.value"
+              :class="['emp-filter-btn', `emp-filter-btn--${tab.value.toLowerCase()}`, { active: activeRiskFilter === tab.value }]"
+              @click="activeRiskFilter = tab.value"
             >
-              {{ tab.label }} <span>{{ tab.count }}</span>
+              {{ tab.label }}
+              <span class="emp-filter-count">{{ tab.count }}</span>
             </button>
           </div>
-          <div class="mp-inline-stats">
-            <span>{{ enrichedCards.length }} thí sinh</span>
-            <span>{{ openFlagCount }} flag mở</span>
-            <span>Cập nhật {{ lastUpdatedLabel }}</span>
+
+          <div class="emp-filters" role="tablist" aria-label="Lọc theo trạng thái">
+            <button
+              v-for="tab in statusFilterTabs"
+              :key="tab.value"
+              type="button"
+              role="tab"
+              :aria-selected="activeStatusFilter === tab.value"
+              :class="['emp-filter-btn', { active: activeStatusFilter === tab.value }]"
+              @click="activeStatusFilter = tab.value"
+            >
+              {{ tab.label }}
+              <span class="emp-filter-count">{{ tab.count }}</span>
+            </button>
           </div>
-          <label class="mp-sort">
+
+          <label class="emp-sort">
             <span>Sắp xếp</span>
-            <select v-model="sortBy">
-              <option value="risk">Risk cao nhất</option>
-              <option value="violations">Nhiều vi phạm</option>
-              <option value="status">Trạng thái</option>
-              <option value="name">Tên</option>
+            <select v-model="sortBy" aria-label="Sắp xếp">
+              <option value="riskScore">Risk cao nhất</option>
+              <option value="latestSignalAt">Tín hiệu mới nhất</option>
+              <option value="name">Tên (A-Z)</option>
             </select>
           </label>
         </div>
-      </section>
+      </div>
 
-      <div class="mp-layout">
-        <section
-          class="mp-roster"
-          aria-label="Danh sách thí sinh"
-        >
-          <div v-if="visibleCards.length" class="mp-roster__head">
-            <span>Thí sinh</span>
-            <span>Risk</span>
+      <!-- ── Body: Table + Panel ─────────────────────────────── -->
+      <div class="emp-body">
+        <!-- Left: Student table -->
+        <section class="emp-table-wrap" aria-label="Danh sách thí sinh">
+          <!-- Table header -->
+          <div class="emp-table-head">
+            <span class="emp-th">Học sinh</span>
+            <span class="emp-th emp-th--center">Trạng thái</span>
+            <span class="emp-th emp-th--center">Risk</span>
+            <span class="emp-th emp-th--center">Mức</span>
+            <span class="emp-th">Flag</span>
+            <span class="emp-th">Hành vi mới</span>
           </div>
-          <div
-            v-if="visibleCards.length === 0"
-            class="mp-empty"
-          >
-            <LucideIcon
-              name="users"
-              :size="32"
-            />
+
+          <!-- Empty state -->
+          <div v-if="visibleCards.length === 0" class="emp-empty">
+            <LucideIcon name="users" :size="32" />
             <p>Không có thí sinh phù hợp</p>
           </div>
 
-          <button
+          <!-- Rows -->
+          <div
             v-for="card in visibleCards"
             :key="getCardId(card)"
-            type="button"
-            class="mp-student"
-            :class="{ selected: selectedId === String(getCardId(card)) }"
+            class="emp-row"
+            :class="{
+              'emp-row--selected': selectedId === String(getCardId(card)),
+              [`emp-row--${card._riskBand?.toLowerCase()}`]: true
+            }"
+            role="row"
+            tabindex="0"
             @click="selectCard(card)"
+            @keydown.enter="selectCard(card)"
           >
-            <span
-              class="mp-student__avatar"
-              :style="{ background: card._avatarBg, color: card._avatarColor }"
-            >
-              {{ getInitials(card) }}
-            </span>
-
-            <span class="mp-student__body">
-              <strong>{{ card.student || 'Chưa có tên' }}</strong>
-              <small>{{ card.email || card._statusLabel }}</small>
-              <small class="mp-student__meta">
-                {{ card._statusLabel }} · {{ card.violationCount || 0 }} tín hiệu
-                <template v-if="card.activeFlagStatus"> · Flag {{ card.activeFlagStatus }}</template>
-              </small>
-            </span>
-
-            <div class="mp-risk-box">
+            <!-- Student -->
+            <div class="emp-cell emp-cell--student">
               <span
-                class="mp-risk"
-                :style="{ color: card._riskColor, background: card._riskBg }"
+                class="emp-avatar"
+                :style="{ background: card._riskBg, color: card._riskColor }"
+              >
+                {{ getInitials(card) }}
+              </span>
+              <div class="emp-student-info">
+                <span class="emp-student-name">{{ card.student || 'Chưa có tên' }}</span>
+                <span class="emp-student-email">{{ card.email || card.studentCode || '' }}</span>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="emp-cell emp-cell--center">
+              <span
+                class="emp-status-chip"
+                :class="`emp-status-chip--${card._statusToken?.toLowerCase()}`"
+              >
+                {{ card._statusLabel }}
+              </span>
+            </div>
+
+            <!-- Risk score -->
+            <div class="emp-cell emp-cell--center">
+              <span
+                class="emp-risk-score"
+                :style="{ color: card._riskColor }"
               >
                 {{ Math.round(card.riskScore || 0) }}
               </span>
-              <small>{{ card._riskBandLabel }}</small>
-            </div>
-          </button>
-        </section>
-
-        <aside
-          class="mp-panel"
-          aria-label="Thông tin xử lý nhanh"
-        >
-          <div
-            v-if="!selectedCard"
-            class="mp-empty mp-empty--panel"
-          >
-            <LucideIcon
-              name="mouse-pointer-2"
-              :size="30"
-            />
-            <p>Chọn một thí sinh để xử lý.</p>
-          </div>
-
-          <template v-else>
-            <div class="mp-panel__head">
-              <div>
-                <h2>{{ selectedCard.student || 'Chưa có tên' }}</h2>
-                <p>{{ selectedCard.email || 'Chưa có email' }}</p>
-              </div>
-              <button
-                class="mp-icon"
-                type="button"
-                title="Mở chi tiết"
-                aria-label="Mở chi tiết thí sinh"
-                @click="openDetailPage"
-              >
-                <LucideIcon
-                  name="external-link"
-                  :size="16"
-                />
-              </button>
             </div>
 
-            <div class="mp-summary">
-              <strong :style="{ color: selectedCard._riskColor }">{{ Math.round(selectedCard.riskScore || 0) }}</strong>
-              <span>{{ selectedCard._riskBandLabel }} · {{ selectedCard._statusLabel }}</span>
-              <small>{{ selectedCard.answeredCount || 0 }}/{{ selectedCard.totalQuestions || 0 }} câu đã trả lời</small>
-            </div>
-
-            <dl class="mp-facts">
-              <div>
-                <dt>Vi phạm</dt>
-                <dd>{{ selectedCard.violationCount || 0 }}</dd>
-              </div>
-              <div>
-                <dt>Flag</dt>
-                <dd>{{ selectedCard.activeFlagStatus || 'Không' }}</dd>
-              </div>
-              <div>
-                <dt>Kết nối</dt>
-                <dd>{{ selectedCard._statusLabel }}</dd>
-              </div>
-            </dl>
-
-            <div
-              v-if="selectedCard.reasons?.length"
-              class="mp-reasons"
-            >
+            <!-- Risk level -->
+            <div class="emp-cell emp-cell--center">
               <span
-                v-for="reason in selectedCard.reasons.slice(0, 3)"
-                :key="reason"
+                class="emp-level-badge"
+                :class="`emp-level-badge--${card._riskBand?.toLowerCase()}`"
               >
-                {{ reason }}
+                {{ card._riskBandLabel }}
               </span>
             </div>
 
-            <div v-if="selectedCard.activeFlagStatus || selectedCard.latestFlagTitle" class="mp-flag">
-              <strong>{{ selectedCard.activeFlagStatus || 'FLAG' }}</strong>
-              <span>{{ selectedCard.latestFlagTitle || 'Đang chờ review' }}</span>
+            <!-- Active flag -->
+            <div class="emp-cell">
+              <span
+                v-if="card.activeFlagStatus && card.activeFlagStatus !== 'DISMISSED'"
+                class="emp-flag-chip"
+                :class="`emp-flag-chip--${card.activeFlagStatus?.toLowerCase()}`"
+              >
+                <LucideIcon name="flag" :size="12" />
+                {{ card.activeFlagStatus }}
+              </span>
+              <span v-else class="emp-flag-chip emp-flag-chip--none">—</span>
             </div>
 
-            <div v-if="selectedEvidence.length" class="mp-evidence">
-              <p>Chứng cứ gần nhất</p>
-              <ul>
-                <li
-                  v-for="item in selectedEvidence.slice(0, 4)"
-                  :key="item"
-                >
-                  {{ item }}
-                </li>
-              </ul>
+            <!-- Latest behavior -->
+            <div class="emp-cell emp-cell--signal">
+              <span class="emp-signal-type">{{ getSignalLabel(card.latestSignalType) }}</span>
+              <span class="emp-signal-time">{{ formatTimeAgo(card.latestSignalAt || card.lastSignalAt) }}</span>
             </div>
+          </div>
+        </section>
 
-            <div v-if="selectedFlagOpen" class="mp-flag-review">
-              <textarea
-                v-model="reviewNote"
-                class="mp-textarea"
-                rows="2"
-                placeholder="Ghi chú review nhanh..."
-              />
-              <div class="mp-flag-review__actions">
-                <button
-                  class="success"
-                  type="button"
-                  :disabled="actionLoading === 'flag-CONFIRMED'"
-                  @click="reviewSelectedFlag('CONFIRMED')"
+        <!-- Right: Quick detail panel -->
+        <aside class="emp-panel" aria-label="Thông tin chi tiết nhanh">
+          <div v-if="!selectedCard" class="emp-panel-empty">
+            <LucideIcon name="mouse-pointer-click" :size="28" />
+            <p>Chọn thí sinh để xem nhanh.</p>
+          </div>
+
+          <template v-else>
+            <!-- Student header -->
+            <div class="emp-panel-head">
+              <div class="emp-panel-student">
+                <span
+                  class="emp-avatar emp-avatar--lg"
+                  :style="{ background: selectedCard._riskBg, color: selectedCard._riskColor }"
                 >
-                  Xác nhận flag
-                </button>
-                <button
-                  class="mp-ghost"
-                  type="button"
-                  :disabled="actionLoading === 'flag-DISMISSED'"
-                  @click="reviewSelectedFlag('DISMISSED')"
-                >
-                  Bỏ qua flag
-                </button>
+                  {{ getInitials(selectedCard) }}
+                </span>
+                <div>
+                  <h2 class="emp-panel-name">{{ selectedCard.student || 'Chưa có tên' }}</h2>
+                  <p class="emp-panel-email">{{ selectedCard.email || selectedCard.studentCode || 'Chưa có thông tin' }}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                class="emp-icon-btn emp-icon-btn--sm"
+                title="Mở chi tiết"
+                aria-label="Mở chi tiết thí sinh"
+                @click="goToDetail(selectedCard)"
+              >
+                <LucideIcon name="external-link" :size="15" />
+              </button>
             </div>
 
-            <div class="mp-actions">
+            <!-- Actions -->
+            <div class="emp-panel-actions">
               <button
-                class="warn"
                 type="button"
+                class="emp-btn emp-btn--warn"
+                :disabled="actionLoading === 'warning'"
                 @click="openWarnDialog(selectedCard)"
               >
-                <LucideIcon
-                  name="send"
-                  :size="15"
-                />
+                <LucideIcon name="send" :size="15" />
                 Gửi cảnh báo
               </button>
+
               <button
                 v-if="selectedCard._isPaused"
-                class="success"
                 type="button"
+                class="emp-btn emp-btn--success"
+                :disabled="actionLoading === 'resume' || !backendCapabilities.resume"
+                :title="!backendCapabilities.resume ? 'Chưa hỗ trợ backend' : ''"
                 @click="resumeStudent(selectedCard)"
               >
-                <LucideIcon
-                  name="play"
-                  :size="15"
-                />
+                <LucideIcon name="play" :size="15" />
                 Cho tiếp tục
               </button>
               <button
                 v-else
-                class="pause"
                 type="button"
-                :disabled="selectedCard._isTerminal"
+                class="emp-btn emp-btn--pause"
+                :disabled="selectedCard._isTerminal || actionLoading === 'pause' || !backendCapabilities.pause"
+                :title="!backendCapabilities.pause ? 'Chưa hỗ trợ backend' : ''"
                 @click="pauseStudent(selectedCard)"
               >
-                <LucideIcon
-                  name="pause"
-                  :size="15"
-                />
+                <LucideIcon name="pause" :size="15" />
                 Tạm dừng
               </button>
+
               <button
-                class="danger"
                 type="button"
-                :disabled="selectedCard._isTerminal"
-                @click="openStopDialog(selectedCard)"
+                class="emp-btn emp-btn--danger"
+                :disabled="selectedCard._isTerminal || actionLoading === 'invalidate' || !backendCapabilities.invalidate"
+                :title="!backendCapabilities.invalidate ? 'Chưa hỗ trợ backend' : ''"
+                @click="forceSubmitStudent(selectedCard)"
               >
-                <LucideIcon
-                  name="stop-circle"
-                  :size="15"
-                />
+                <LucideIcon name="stop-circle" :size="15" />
                 Buộc nộp bài
               </button>
-            </div>
-
-            <div v-if="recentAlertFeed.length" class="mp-alerts">
-              <div class="mp-alerts__head">
-                <h3>Alert mới</h3>
-                <span>{{ recentAlertFeed.length }}</span>
-              </div>
-              <div class="mp-alert-list">
-                <article
-                  v-for="alert in recentAlertFeed"
-                  :key="alert.id"
-                  class="mp-alert-item"
-                >
-                  <strong>{{ alert.signalType || alert.type || 'ALERT' }}</strong>
-                  <p>{{ alert.message || 'Rủi ro vừa thay đổi' }}</p>
-                </article>
-              </div>
             </div>
           </template>
         </aside>
       </div>
-    </section>
+    </template>
 
+    <!-- ── Warning Dialog ─────────────────────────────────────── -->
     <Dialog
       v-model:visible="showWarnDialog"
       header="Gửi cảnh báo"
@@ -353,55 +330,31 @@
       :closable="true"
       :style="{ width: '420px' }"
     >
+      <p class="emp-dialog-info">
+        Gửi cảnh báo tới <strong>{{ dialogStudentName }}</strong>
+      </p>
       <textarea
         v-model="warningMessage"
-        class="mp-textarea"
+        class="emp-textarea"
         rows="3"
-        placeholder="Nội dung cảnh báo"
+        placeholder="Nội dung cảnh báo (không bắt buộc)"
+        aria-label="Nội dung cảnh báo"
       />
       <template #footer>
         <button
-          class="mp-dialog-btn"
+          type="button"
+          class="emp-dialog-btn"
           @click="showWarnDialog = false"
         >
           Hủy
         </button>
         <button
-          class="mp-dialog-btn primary"
+          type="button"
+          class="emp-dialog-btn emp-dialog-btn--warn"
           :disabled="actionLoading === 'warning'"
           @click="confirmSendWarning"
         >
-          Gửi cảnh báo
-        </button>
-      </template>
-    </Dialog>
-
-    <Dialog
-      v-model:visible="showStopDialog"
-      header="Xác nhận buộc nộp bài"
-      :modal="true"
-      :closable="true"
-      :style="{ width: '420px' }"
-    >
-      <textarea
-        v-model="stopReason"
-        class="mp-textarea"
-        rows="2"
-        placeholder="Lý do"
-      />
-      <template #footer>
-        <button
-          class="mp-dialog-btn"
-          @click="showStopDialog = false"
-        >
-          Hủy
-        </button>
-        <button
-          class="mp-dialog-btn danger"
-          :disabled="actionLoading === 'stop'"
-          @click="confirmStop"
-        >
-          Xác nhận
+          {{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}
         </button>
       </template>
     </Dialog>
@@ -409,23 +362,35 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onActivated } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import Dialog from 'primevue/dialog'
 import LucideIcon from '../../../common/LucideIcon.vue'
 import { useToast } from '../../../../composables/useToast'
 import { useProctorDashboardStore } from '../../../../stores/proctorDashboardStore'
 import { useExamMonitoring } from '../../../../composables/useExamMonitoring'
-import { fetchExamSummary, fetchExamAttemptsFilter, fetchProctorSessionAlerts, reviewProctorFlag, sendTeacherWarning, pauseAttempt, resumeAttempt, invalidateAttempt } from '../../../../services/examMonitoringService'
+import {
+  fetchExamSummary,
+  fetchExamAttemptsFilter,
+  fetchProctorSessionAlerts,
+  sendTeacherWarning,
+  pauseAttempt,
+  resumeAttempt,
+  invalidateAttempt
+} from '../../../../services/examMonitoringService'
 
+// ── Constants ───────────────────────────────────────────────────────────
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
-const RISK_BAND_LABELS = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao', SUSPICIOUS: 'Đáng ngờ', CLEAN: 'Bình thường' }
+const RISK_BAND_LABELS = {
+  CRITICAL: 'Nguy cơ cao',
+  HIGH_RISK: 'Rủi ro cao',
+  SUSPICIOUS: 'Đáng ngờ',
+  CLEAN: 'Bình thường'
+}
 const RISK_COLORS = {
-  CRITICAL: 'var(--mon-risk-critical)',
-  HIGH_RISK: 'var(--mon-risk-high)',
-  SUSPICIOUS: 'var(--mon-risk-moderate)',
-  CLEAN: 'var(--mon-risk-clean)'
+  CRITICAL: 'var(--ds-risk-critical)',
+  HIGH_RISK: 'var(--ds-risk-high)',
+  SUSPICIOUS: 'var(--ds-risk-moderate)',
+  CLEAN: 'var(--ds-risk-clean)'
 }
 const RISK_BG_SOFT = {
   CRITICAL: 'rgba(220, 38, 38, 0.08)',
@@ -434,40 +399,64 @@ const RISK_BG_SOFT = {
   CLEAN: 'rgba(22, 163, 74, 0.08)'
 }
 const STATUS_META = {
-  ONLINE: { label: 'Đang thi', color: 'var(--mon-primary)', bg: 'var(--mon-primary-soft)' },
-  SUBMITTED: { label: 'Đã nộp', color: 'var(--mon-success)', bg: 'var(--mon-success-soft)' },
-  PAUSED: { label: 'Tạm dừng', color: 'var(--mon-warning)', bg: 'var(--mon-warning-soft)' },
-  STOPPED: { label: 'Đã dừng', color: 'var(--mon-danger)', bg: 'var(--mon-danger-soft)' },
-  OFFLINE: { label: 'Offline', color: 'var(--mon-text-muted)', bg: 'var(--mon-surface-2)' }
+  ONLINE: { label: 'Đang thi', token: 'ONLINE' },
+  SUBMITTED: { label: 'Đã nộp', token: 'SUBMITTED' },
+  PAUSED: { label: 'Tạm dừng', token: 'PAUSED' },
+  STOPPED: { label: 'Đã dừng', token: 'STOPPED' },
+  OFFLINE: { label: 'Offline', token: 'OFFLINE' }
+}
+const SIGNAL_LABELS = {
+  TAB_SWITCH: 'Chuyển tab',
+  WINDOW_BLUR: 'Mất tiêu điểm',
+  SCREEN_LEAVE: 'Rời màn hình',
+  FULLSCREEN_VIOLATION: 'Thoát toàn màn hình',
+  CLIPBOARD_ABUSE: 'Clipboard bất thường',
+  COPY_ATTEMPT: 'Sao chép',
+  PASTE_ATTEMPT: 'Dán nội dung',
+  DEVTOOLS_OPEN: 'Mở DevTools',
+  IP_ANOMALY: 'IP bất thường',
+  WARNING_SENT: 'Cảnh báo',
+  ATTEMPT_PAUSED: 'Tạm dừng',
+  ATTEMPT_RESUMED: 'Tiếp tục'
 }
 
+// ── Router & stores ──────────────────────────────────────────────────
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const store = useProctorDashboardStore()
-const { cards, liveAlerts, lastUpdatedAt } = storeToRefs(store)
 const { isConnected, connect, disconnect } = useExamMonitoring()
 
 const examId = computed(() => route.params.examId)
 const examTitle = ref('Đang tải...')
 const examCode = ref('')
+const examStatus = ref('')
 const loading = ref(true)
 const isRefreshing = ref(false)
-const activeFilter = ref('all')
-const sortBy = ref('risk')
-const selectedId = ref(null)
+const backendCapabilities = ref({
+  pause: true,
+  resume: true,
+  warn: true,
+  invalidate: true
+})
+
+// Filters
+const activeRiskFilter = ref('ALL')
+const activeStatusFilter = ref('ALL')
+const sortBy = ref('riskScore')
 const searchQuery = ref('')
+const selectedId = ref(null)
+
+// Dialog state
 const showWarnDialog = ref(false)
-const showStopDialog = ref(false)
-const warningMessage = ref('')
-const stopReason = ref('')
-const reviewNote = ref('')
-const actionLoading = ref('')
 const dialogStudentName = ref('')
 const dialogAttemptId = ref(null)
-let refreshTimer = null
-let searchTimer = null
+const warningMessage = ref('')
+const actionLoading = ref('')
 
+let refreshTimer = null
+
+// ── Computed ─────────────────────────────────────────────────────────
 const enrichedCards = computed(() => cards.value.map(card => {
   const score = Math.round(card.riskScore || 0)
   let riskBand = 'CLEAN'
@@ -482,120 +471,166 @@ const enrichedCards = computed(() => cards.value.map(card => {
   else if (/PAUSED/.test(statusStr)) statusToken = 'PAUSED'
   else if (/ACTIVE|IN_PROGRESS/.test(statusStr)) statusToken = 'ONLINE'
 
-  const riskColor = RISK_COLORS[riskBand]
+  const identityStatus = card.identityStatus || card.identityVerified ? 'VERIFIED' : 'UNVERIFIED'
+
   return {
     ...card,
     _riskBand: riskBand,
     _riskBandLabel: RISK_BAND_LABELS[riskBand],
-    _riskColor: riskColor,
+    _riskColor: RISK_COLORS[riskBand],
     _riskBg: RISK_BG_SOFT[riskBand],
     _statusToken: statusToken,
-    _statusLabel: STATUS_META[statusToken].label,
-    _statusColor: STATUS_META[statusToken].color,
-    _statusBg: STATUS_META[statusToken].bg,
-    _avatarBg: RISK_BG_SOFT[riskBand],
-    _avatarColor: riskColor,
+    _statusLabel: STATUS_META[statusToken]?.label || statusToken,
+    _identityStatus: identityStatus,
     _isPaused: statusToken === 'PAUSED',
     _isTerminal: statusToken === 'SUBMITTED' || statusToken === 'STOPPED'
   }
 }))
 
+const cards = computed(() => store.cards)
+
 const onlineCount = computed(() => enrichedCards.value.filter(c => c._statusToken === 'ONLINE').length)
-const attentionCount = computed(() => enrichedCards.value.filter(c => c._riskBand !== 'CLEAN' || c.reviewRequired).length)
-const openFlagCount = computed(() => enrichedCards.value.filter(c => String(c.activeFlagStatus || '').toUpperCase() === 'OPEN').length)
-const selectedCard = computed(() => enrichedCards.value.find(c => String(getCardId(c)) === selectedId.value) || null)
-const filterTabs = computed(() => [
-  { label: 'Tất cả', value: 'all', count: enrichedCards.value.length },
-  { label: 'Cần chú ý', value: 'attention', count: attentionCount.value },
-  { label: 'Đang thi', value: 'online', count: onlineCount.value }
-])
+const openFlagCount = computed(() =>
+  enrichedCards.value.filter(c =>
+    c.activeFlagStatus && !['DISMISSED', 'CONFIRMED'].includes(String(c.activeFlagStatus).toUpperCase())
+  ).length
+)
+
+const selectedCard = computed(() =>
+  enrichedCards.value.find(c => String(getCardId(c)) === selectedId.value) || null
+)
+
 const visibleCards = computed(() => {
   let list = enrichedCards.value
-  if (activeFilter.value === 'attention') list = list.filter(c => c._riskBand !== 'CLEAN' || c.reviewRequired)
-  if (activeFilter.value === 'online') list = list.filter(c => c._statusToken === 'ONLINE')
+
+  // Search
   const q = searchQuery.value.trim().toLowerCase()
-  if (q) list = list.filter(c => `${c.student || ''} ${c.email || ''}`.toLowerCase().includes(q))
+  if (q) {
+    list = list.filter(c =>
+      `${c.student || ''} ${c.email || ''} ${c.studentCode || ''}`.toLowerCase().includes(q)
+    )
+  }
+
+  // Risk filter
+  if (activeRiskFilter.value !== 'ALL') {
+    list = list.filter(c => c._riskBand === activeRiskFilter.value)
+  }
+
+  // Status filter
+  if (activeStatusFilter.value !== 'ALL') {
+    list = list.filter(c => c._statusToken === activeStatusFilter.value)
+  }
+
+  // Sort
   return [...list].sort((a, b) => {
+    if (sortBy.value === 'riskScore') {
+      return Number(b.riskScore || 0) - Number(a.riskScore || 0)
+    }
+    if (sortBy.value === 'latestSignalAt') {
+      const aTime = new Date(a.latestSignalAt || a.lastSignalAt || 0).getTime()
+      const bTime = new Date(b.latestSignalAt || b.lastSignalAt || 0).getTime()
+      return bTime - aTime
+    }
     if (sortBy.value === 'name') {
       return String(a.student || '').localeCompare(String(b.student || ''))
     }
-    if (sortBy.value === 'status') {
-      return String(a._statusToken || '').localeCompare(String(b._statusToken || ''))
-    }
-    if (sortBy.value === 'violations') {
-      return Number(b.violationCount || 0) - Number(a.violationCount || 0)
-    }
-    return Number(b.riskScore || 0) - Number(a.riskScore || 0)
+    return 0
   })
 })
 
-const recentAlertFeed = computed(() => liveAlerts.value
-  .filter(alert => String(alert.examId || examId.value) === String(examId.value))
-  .slice(0, 6))
+const riskFilterTabs = computed(() => [
+  { label: 'Tất cả', value: 'ALL', count: enrichedCards.value.length },
+  { label: 'Bình thường', value: 'CLEAN', count: enrichedCards.value.filter(c => c._riskBand === 'CLEAN').length },
+  { label: 'Đáng ngờ', value: 'SUSPICIOUS', count: enrichedCards.value.filter(c => c._riskBand === 'SUSPICIOUS').length },
+  { label: 'Cao', value: 'HIGH_RISK', count: enrichedCards.value.filter(c => c._riskBand === 'HIGH_RISK').length },
+  { label: 'Nghiêm trọng', value: 'CRITICAL', count: enrichedCards.value.filter(c => c._riskBand === 'CRITICAL').length }
+])
 
-const selectedEvidence = computed(() => selectedCard.value?.evidenceSummary || [])
-const selectedFlagOpen = computed(() => String(selectedCard.value?.activeFlagStatus || '').toUpperCase() === 'OPEN')
-const lastUpdatedLabel = computed(() => {
-  if (!lastUpdatedAt.value) return 'Chưa đồng bộ'
-  return new Date(lastUpdatedAt.value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-})
+const statusFilterTabs = computed(() => [
+  { label: 'Tất cả', value: 'ALL', count: enrichedCards.value.length },
+  { label: 'Đang thi', value: 'ONLINE', count: enrichedCards.value.filter(c => c._statusToken === 'ONLINE').length },
+  { label: 'Tạm dừng', value: 'PAUSED', count: enrichedCards.value.filter(c => c._statusToken === 'PAUSED').length },
+  { label: 'Đã nộp', value: 'SUBMITTED', count: enrichedCards.value.filter(c => c._statusToken === 'SUBMITTED').length }
+])
 
-function mergeAlertsIntoAttempts(attempts = [], alerts = []) {
-  const alertsByAttempt = new Map((alerts || []).map(alert => [String(alert.attemptId), alert]))
-  return (attempts || []).map((attempt) => {
-    const alert = alertsByAttempt.get(String(getCardId(attempt)))
-    if (!alert) return attempt
-    return {
-      ...attempt,
-      riskScore: alert.riskScore ?? attempt.riskScore,
-      riskLevel: alert.riskLevel ?? attempt.riskLevel,
-      reviewRequired: alert.reviewRequired ?? attempt.reviewRequired,
-      recommendedAction: alert.recommendedAction ?? attempt.recommendedAction,
-      reasons: alert.reasons?.length ? alert.reasons : attempt.reasons,
-      evidenceSummary: alert.evidenceSummary?.length ? alert.evidenceSummary : attempt.evidenceSummary,
-      activeFlagId: alert.activeFlagId ?? attempt.activeFlagId,
-      activeFlagStatus: alert.activeFlagStatus ?? attempt.activeFlagStatus,
-      latestFlagTitle: alert.latestFlagTitle ?? attempt.latestFlagTitle
-    }
-  })
-}
-
+// ── Helpers ──────────────────────────────────────────────────────────
 function getCardId(card) {
   return card?.id ?? card?.attemptId
 }
 
 function getInitials(card) {
   const name = card.student || card.name || '?'
-  return (name.trim().split(/\s+/).at(-1)?.[0] || '?').toUpperCase()
+  const parts = name.trim().split(/\s+/)
+  return (parts.at(-1)?.[0] || '?').toUpperCase()
+}
+
+function getSignalLabel(type) {
+  if (!type) return '—'
+  return SIGNAL_LABELS[type] || type.replace(/_/g, ' ')
+}
+
+function formatTimeAgo(ts) {
+  if (!ts) return '—'
+  try {
+    const diff = Date.now() - new Date(ts).getTime()
+    if (diff < 60000) return 'Vừa xong'
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`
+    return new Date(ts).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  } catch {
+    return '—'
+  }
 }
 
 function selectCard(card) {
   selectedId.value = String(getCardId(card))
 }
 
-function openDetailPage() {
-  if (selectedCard.value) router.push(`/teacher/exams/${examId.value}/monitoring/student/${getCardId(selectedCard.value)}`)
+function goToDetail(card) {
+  if (card) {
+    router.push(`/teacher/exams/${examId.value}/monitoring/student/${getCardId(card)}`)
+  }
 }
 
+// ── Data loading ─────────────────────────────────────────────────────
 async function loadData() {
   if (!examId.value) return
   loading.value = true
   try {
-    const filters = {
-      status: activeFilter.value === 'online' ? 'IN_PROGRESS' : '',
-      riskBand: activeFilter.value === 'attention' ? 'SUSPICIOUS' : '',
-      search: searchQuery.value.trim()
-    }
     const [summary, attempts, alerts] = await Promise.all([
-      fetchExamSummary(examId.value),
-      fetchExamAttemptsFilter(examId.value, filters),
+      fetchExamSummary(examId.value).catch(() => ({})),
+      fetchExamAttemptsFilter(examId.value, {}).catch(() => []),
       fetchProctorSessionAlerts(examId.value).catch(() => [])
     ])
+
     examTitle.value = summary?.title || summary?.name || 'Kỳ thi'
     examCode.value = summary?.code || ''
-    const mergedAttempts = mergeAlertsIntoAttempts(attempts || [], alerts || [])
-    store.setCards(mergedAttempts)
-    if (!selectedId.value && mergedAttempts?.length) selectedId.value = String(getCardId(mergedAttempts[0]))
+    examStatus.value = summary?.status || 'LIVE'
+
+    // Merge alerts into attempts
+    const alertsMap = new Map((alerts || []).map(a => [String(a.attemptId), a]))
+    const merged = (attempts || []).map(attempt => {
+      const alert = alertsMap.get(String(getCardId(attempt)))
+      if (!alert) return attempt
+      return {
+        ...attempt,
+        riskScore: alert.riskScore ?? attempt.riskScore,
+        riskLevel: alert.riskLevel ?? attempt.riskLevel,
+        reviewRequired: alert.reviewRequired ?? attempt.reviewRequired,
+        reasons: alert.reasons?.length ? alert.reasons : attempt.reasons,
+        evidenceSummary: alert.evidenceSummary?.length ? alert.evidenceSummary : attempt.evidenceSummary,
+        activeFlagId: alert.activeFlagId ?? attempt.activeFlagId,
+        activeFlagStatus: alert.activeFlagStatus ?? attempt.activeFlagStatus,
+        latestFlagTitle: alert.latestFlagTitle ?? attempt.latestFlagTitle
+      }
+    })
+
+    store.setCards(merged)
+
+    // Auto-select first card if none selected
+    if (!selectedId.value && merged.length) {
+      selectedId.value = String(getCardId(merged[0]))
+    }
   } catch (err) {
     toast.error(err?.message || 'Không thể tải dữ liệu giám sát.')
   } finally {
@@ -605,21 +640,19 @@ async function loadData() {
 
 async function refresh() {
   isRefreshing.value = true
-  try { await loadData() } finally { isRefreshing.value = false }
+  try {
+    await loadData()
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
+// ── Actions ───────────────────────────────────────────────────────────
 function openWarnDialog(card) {
   dialogStudentName.value = card.student || 'Chưa có tên'
   dialogAttemptId.value = getCardId(card)
   warningMessage.value = ''
   showWarnDialog.value = true
-}
-
-function openStopDialog(card) {
-  dialogStudentName.value = card.student || 'Chưa có tên'
-  dialogAttemptId.value = getCardId(card)
-  stopReason.value = ''
-  showStopDialog.value = true
 }
 
 async function runAction(key, call, successMsg, errorMsg) {
@@ -636,44 +669,35 @@ async function runAction(key, call, successMsg, errorMsg) {
   }
 }
 
-async function reviewSelectedFlag(status) {
-  if (!selectedCard.value?.activeFlagId) return
-  actionLoading.value = `flag-${status}`
-  try {
-    await reviewProctorFlag(selectedCard.value.activeFlagId, {
-      status,
-      teacherNote: reviewNote.value
-    })
-    toast.success(status === 'CONFIRMED' ? 'Đã xác nhận flag.' : 'Đã bỏ qua flag.')
-    reviewNote.value = ''
-    await refresh()
-  } catch (err) {
-    toast.error(err?.message || 'Cập nhật flag thất bại.')
-  } finally {
-    actionLoading.value = ''
-  }
+async function confirmSendWarning() {
+  showWarnDialog.value = false
+  await runAction(
+    'warning',
+    id => sendTeacherWarning(id, warningMessage.value),
+    'Đã gửi cảnh báo.',
+    'Gửi cảnh báo thất bại.'
+  )
 }
 
 function pauseStudent(card) {
+  if (!backendCapabilities.value.pause) return
   dialogAttemptId.value = getCardId(card)
   void runAction('pause', pauseAttempt, 'Đã tạm dừng bài thi.', 'Tạm dừng thất bại.')
 }
 
 function resumeStudent(card) {
+  if (!backendCapabilities.value.resume) return
   dialogAttemptId.value = getCardId(card)
   void runAction('resume', resumeAttempt, 'Đã cho phép tiếp tục.', 'Khôi phục thất bại.')
 }
 
-async function confirmSendWarning() {
-  showWarnDialog.value = false
-  await runAction('warning', id => sendTeacherWarning(id, warningMessage.value), 'Đã gửi cảnh báo.', 'Gửi cảnh báo thất bại.')
+function forceSubmitStudent(card) {
+  if (!backendCapabilities.value.invalidate || card._isTerminal) return
+  dialogAttemptId.value = getCardId(card)
+  void runAction('invalidate', invalidateAttempt, 'Đã buộc nộp bài.', 'Buộc nộp bài thất bại.')
 }
 
-async function confirmStop() {
-  showStopDialog.value = false
-  await runAction('stop', id => invalidateAttempt(id, stopReason.value), 'Đã buộc nộp bài.', 'Buộc nộp bài thất bại.')
-}
-
+// ── Watchers ────────────────────────────────────────────────────────
 watch(examId, id => {
   if (id) {
     selectedId.value = null
@@ -683,60 +707,65 @@ watch(examId, id => {
   }
 }, { immediate: true })
 
-watch([activeFilter, searchQuery], () => {
-  if (!examId.value) return
-  if (searchTimer) window.clearTimeout(searchTimer)
-  searchTimer = window.setTimeout(() => {
-    selectedId.value = null
-    void loadData()
-  }, 250)
-})
-
 onMounted(() => {
   refreshTimer = window.setInterval(() => {
-    if (!document.hidden) void refresh()
+    if (!document.hidden && isConnected()) void refresh()
   }, 30000)
 })
 
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
-  if (searchTimer) window.clearTimeout(searchTimer)
   disconnect()
+})
+
+onActivated(() => {
+  // Reload data when navigating back to this page
+  void loadData()
 })
 </script>
 
 <style scoped>
-.mp-page {
+/* ── Reset & root ─────────────────────────────────────────────────── */
+.emp-root {
   min-height: 100vh;
   background: var(--ds-bg);
   color: var(--ds-text);
+  font-family: var(--ds-font);
 }
 
-.mp-shell {
-  padding: var(--ds-space-5);
-}
-
-.mp-header,
-.mp-toolbar,
-.mp-student,
-.mp-panel,
-.mp-empty {
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-sm);
-}
-
-.mp-header {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: var(--ds-space-4);
+/* ── Loading ─────────────────────────────────────────────────────── */
+.emp-loading {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: var(--ds-space-4);
+  justify-content: center;
+  gap: var(--ds-space-3);
+  min-height: 100vh;
+  color: var(--ds-text-secondary);
+}
+.emp-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--ds-gray-200);
+  border-top-color: var(--ds-primary);
+  border-radius: 50%;
+  animation: emp-spin 0.8s linear infinite;
+}
+@keyframes emp-spin { to { transform: rotate(360deg); } }
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.emp-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-4) var(--ds-space-5);
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  flex-wrap: wrap;
 }
 
-.mp-back,
-.mp-icon {
+.emp-back,
+.emp-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -747,640 +776,900 @@ onUnmounted(() => {
   color: var(--ds-text-secondary);
   background: var(--ds-surface-muted);
   cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--ds-duration-base) var(--ds-easing);
 }
 
-.mp-back:hover,
-.mp-icon:hover:not(:disabled) {
-  color: var(--ds-primary);
-  background: var(--ds-primary-soft);
-}
-
-.mp-icon:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.mp-heading {
-  min-width: 0;
-}
-
-.mp-heading span {
-  color: var(--ds-primary);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mp-heading h1 {
-  margin: var(--ds-space-1) 0 0;
-  overflow: hidden;
-  font-size: var(--ds-text-2xl);
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mp-heading p,
-.mp-empty p,
-.mp-panel p,
-.mp-summary small,
-.mp-student small {
-  color: var(--ds-text-secondary);
-}
-
-.mp-subtle {
-  opacity: 0.8;
-}
-
-.mp-heading p,
-.mp-panel p {
-  margin: var(--ds-space-1) 0 0;
-  font-size: var(--ds-text-sm);
-}
-
-.mp-header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-}
-
-.mp-conn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 32px;
-  padding: 0 var(--ds-space-3);
-  border-radius: var(--ds-radius-full);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-}
-
-.mp-conn i {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.mp-conn.on {
-  color: var(--ds-text);
-  background: var(--ds-surface-muted);
-}
-
-.mp-conn.off {
-  color: var(--ds-text-muted);
-  background: var(--ds-surface-muted);
-}
-
-.mp-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ds-space-3);
-  margin: var(--ds-space-4) 0;
-  padding: var(--ds-space-3);
-}
-
-.mp-toolbar__meta {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-3);
-  flex-wrap: wrap;
-}
-
-.mp-search {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-  width: min(320px, 100%);
-  min-height: 40px;
-  padding: 0 var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface-muted);
-}
-
-.mp-search input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ds-text);
-  font: inherit;
-}
-
-.mp-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
-}
-
-.mp-filters button {
-  min-height: 34px;
-  padding: 0 var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-full);
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface);
-  font: inherit;
-  font-size: var(--ds-text-sm);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.mp-filters button.active,
-.mp-filters button:hover {
+.emp-back:hover,
+.emp-icon-btn:hover:not(:disabled) {
   color: var(--ds-primary);
   background: var(--ds-primary-soft);
   border-color: var(--ds-primary-border);
 }
 
-.mp-filters span {
-  margin-left: 4px;
-  color: var(--ds-text-muted);
+.emp-icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.mp-sort {
+.emp-icon-btn--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.emp-header__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.emp-header__meta {
   display: flex;
   align-items: center;
   gap: var(--ds-space-2);
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-text-sm);
+  margin-bottom: 2px;
 }
 
-.mp-sort select {
-  min-height: 36px;
-  padding: 0 var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  color: var(--ds-text);
-  background: var(--ds-surface);
-  font: inherit;
+.emp-label {
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ds-primary);
 }
 
-.mp-inline-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
-}
-
-.mp-inline-stats span {
+.emp-status-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: 999px;
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface-muted);
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 9999px;
   font-size: var(--ds-text-xs);
   font-weight: 700;
 }
 
-.mp-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: var(--ds-space-4);
-  align-items: start;
+.emp-status-badge--live {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+  border: 1px solid rgba(22, 163, 74, 0.2);
 }
 
-.mp-roster {
-  display: grid;
+.emp-status-badge--ended {
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+  border: 1px solid var(--ds-border);
+}
+
+.emp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.emp-status-badge--live .emp-status-dot {
+  animation: emp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes emp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.emp-title {
+  margin: 0;
+  font-size: var(--ds-text-2xl);
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emp-subtitle {
+  margin: 2px 0 0;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-secondary);
+}
+
+.emp-header__stats {
+  display: flex;
   gap: var(--ds-space-2);
 }
 
-.mp-roster__head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--ds-space-3);
-  padding: 0 var(--ds-space-3);
-  color: var(--ds-text-muted);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mp-student {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: var(--ds-space-3);
-  align-items: center;
-  width: 100%;
-  padding: var(--ds-space-3);
-  text-align: left;
-  cursor: pointer;
-}
-
-.mp-student:hover,
-.mp-student.selected {
-  border-color: var(--ds-border-strong, var(--ds-border));
-  background: var(--ds-surface-muted);
-}
-
-.mp-student__avatar {
+.emp-stat-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: var(--ds-radius-md);
-  font-weight: 900;
-}
-
-.mp-student__body {
-  min-width: 0;
-}
-
-.mp-student strong,
-.mp-student small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mp-student__meta {
-  margin-top: 2px;
-  font-size: 11px;
-}
-
-.mp-student strong {
-  color: var(--ds-text);
-}
-
-.mp-risk-box {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-}
-
-.mp-risk {
-  min-width: 40px;
-  padding: 5px 8px;
-  border-radius: var(--ds-radius-md);
-  text-align: center;
-  font-weight: 900;
-}
-
-.mp-risk-box small {
-  color: var(--ds-text-muted);
-  font-size: 11px;
-}
-
-.mp-panel {
-  position: sticky;
-  top: var(--ds-space-4);
-  padding: var(--ds-space-4);
-}
-
-.mp-panel__head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  gap: var(--ds-space-3);
-  align-items: start;
-}
-
-.mp-panel h2 {
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--ds-text-xl);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mp-summary {
-  display: grid;
-  gap: var(--ds-space-1);
-  margin: var(--ds-space-4) 0;
-  padding: var(--ds-space-4);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-lg);
-  background: var(--ds-surface-muted);
-}
-
-.mp-summary strong {
-  font-size: 44px;
-  line-height: 1;
-}
-
-.mp-summary span {
-  font-weight: 800;
-}
-
-.mp-facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--ds-space-3);
-  margin-bottom: var(--ds-space-4);
-}
-
-.mp-facts div {
-  min-width: 0;
-}
-
-.mp-facts dt {
-  margin: 0 0 4px;
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-text-xs);
-  text-transform: uppercase;
-}
-
-.mp-facts dd {
-  margin: 0;
-  color: var(--ds-text);
-  font-size: var(--ds-text-base);
-  font-weight: 800;
-}
-
-.mp-reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
-  margin-bottom: var(--ds-space-4);
-}
-
-.mp-reasons span {
-  padding: 6px 8px;
-  border-radius: var(--ds-radius-full);
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface-muted);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-}
-
-.mp-flag {
-  display: grid;
-  gap: 4px;
-  margin-bottom: var(--ds-space-4);
-  padding: var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface-muted);
-}
-
-.mp-flag strong {
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-text-xs);
-  letter-spacing: 0.08em;
-}
-
-.mp-flag span {
-  color: var(--ds-text-secondary);
   font-size: var(--ds-text-sm);
+  font-weight: 700;
+  border: 1px solid;
 }
 
-.mp-evidence {
-  margin-bottom: var(--ds-space-4);
-  padding: var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
+.emp-stat-chip--online {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.emp-stat-chip--flag {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+.emp-stat-val {
+  font-size: var(--ds-text-base);
+  font-weight: 900;
+}
+
+.emp-stat-label {
+  font-size: var(--ds-text-xs);
+  opacity: 0.8;
+}
+
+.emp-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+
+.emp-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.emp-conn--on {
+  color: var(--ds-success);
+  border-color: rgba(22, 163, 74, 0.2);
+  background: var(--ds-success-soft);
+}
+
+.emp-conn--off {
+  color: var(--ds-text-muted);
+  border-color: var(--ds-border);
   background: var(--ds-surface-muted);
 }
 
-.mp-evidence p {
-  margin: 0 0 var(--ds-space-2);
-  color: var(--ds-text);
-  font-weight: 800;
+.emp-conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.mp-evidence ul {
-  margin: 0;
-  padding-left: 18px;
+.emp-conn--on .emp-conn-dot {
+  animation: emp-pulse 2s ease-in-out infinite;
 }
 
-.mp-evidence li {
-  color: var(--ds-text-secondary);
+.emp-spin {
+  animation: emp-spin 0.8s linear infinite;
 }
 
-.mp-evidence li + li {
-  margin-top: 6px;
-}
-
-.mp-flag-review {
-  display: grid;
-  gap: var(--ds-space-2);
-  margin-bottom: var(--ds-space-4);
-}
-
-.mp-flag-review__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--ds-space-2);
-}
-
-.mp-ghost {
-  min-height: 40px;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  color: var(--ds-text-secondary);
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+.emp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-5);
   background: var(--ds-surface);
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
+  border-bottom: 1px solid var(--ds-border);
+  flex-wrap: wrap;
 }
 
-.mp-actions {
-  display: grid;
+.emp-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.emp-search {
+  display: flex;
+  align-items: center;
   gap: var(--ds-space-2);
-}
-
-.mp-actions button,
-.mp-dialog-btn {
-  min-height: 40px;
-  border: 1px solid var(--ds-border);
+  width: 220px;
+  min-height: 38px;
+  padding: 0 var(--ds-space-3);
+  border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
+  transition: border-color var(--ds-duration-base);
 }
 
-.mp-actions button:disabled,
-.mp-dialog-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.mp-actions .warn {
-  color: var(--ds-warning);
-  background: var(--ds-warning-soft);
-  border-color: var(--ds-warning);
-}
-
-.mp-actions .pause,
-.mp-dialog-btn.primary {
-  color: var(--ds-primary);
-  background: var(--ds-primary-soft);
+.emp-search:focus-within {
   border-color: var(--ds-primary);
 }
 
-.mp-actions .success {
-  color: var(--ds-success);
-  background: var(--ds-success-soft);
-  border-color: var(--ds-success);
+.emp-search input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ds-text);
+  font-size: var(--ds-text-sm);
+  font-family: inherit;
 }
 
-.mp-actions .danger,
-.mp-dialog-btn.danger {
-  color: var(--ds-danger);
-  background: var(--ds-danger-soft);
-  border-color: var(--ds-danger);
+.emp-search input::placeholder {
+  color: var(--ds-text-muted);
 }
 
-.mp-alerts {
-  margin-top: var(--ds-space-4);
-  padding-top: var(--ds-space-4);
-  border-top: 1px solid var(--ds-border);
-}
-
-.mp-alerts__head {
+.emp-search-clear {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--ds-space-2);
-  margin-bottom: var(--ds-space-2);
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.mp-alerts__head h3 {
-  margin: 0;
-  font-size: var(--ds-text-base);
+.emp-search-clear:hover {
+  background: var(--ds-gray-200);
+  color: var(--ds-text);
 }
 
-.mp-alerts__head span {
+.emp-filters {
+  display: flex;
+  gap: 4px;
+}
+
+.emp-filter-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  color: var(--ds-text-secondary);
-  background: var(--ds-surface-muted);
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1.5px solid transparent;
+  border-radius: var(--ds-radius-full);
   font-size: var(--ds-text-xs);
-  font-weight: 800;
+  font-weight: 700;
+  color: var(--ds-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--ds-duration-base);
+  font-family: inherit;
+  white-space: nowrap;
 }
 
-.mp-alert-list {
+.emp-filter-btn:hover {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+
+.emp-filter-btn.active {
+  background: var(--ds-surface-muted);
+  border-color: var(--ds-border);
+  color: var(--ds-text);
+}
+
+.emp-filter-btn--critical.active {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: var(--ds-risk-critical);
+}
+
+.emp-filter-btn--high_risk.active {
+  background: rgba(234, 88, 12, 0.08);
+  border-color: rgba(234, 88, 12, 0.2);
+  color: var(--ds-risk-high);
+}
+
+.emp-filter-btn--suspicious.active {
+  background: rgba(217, 119, 6, 0.08);
+  border-color: rgba(217, 119, 6, 0.2);
+  color: var(--ds-risk-moderate);
+}
+
+.emp-filter-btn--clean.active {
+  background: var(--ds-success-soft);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: var(--ds-risk-clean);
+}
+
+.emp-filter-count {
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  opacity: 0.7;
+}
+
+.emp-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-secondary);
+}
+
+.emp-sort select {
+  padding: 4px 28px 4px 10px;
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+/* ── Body layout ─────────────────────────────────────────────────── */
+.emp-body {
   display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-4) var(--ds-space-5);
+  min-height: calc(100vh - 130px);
+  align-items: start;
+}
+
+/* ── Table ──────────────────────────────────────────────────────── */
+.emp-table-wrap {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+}
+
+.emp-table-head {
+  display: grid;
+  grid-template-columns: 2fr 100px 70px 100px 100px 1fr;
+  gap: 1px;
+  padding: 0 var(--ds-space-3);
+  background: var(--ds-gray-50);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.dark .emp-table-head {
+  background: var(--ds-gray-800);
+}
+
+.emp-th {
+  padding: var(--ds-space-2) var(--ds-space-2);
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  color: var(--ds-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.emp-th--center {
+  text-align: center;
+}
+
+.emp-row {
+  display: grid;
+  grid-template-columns: 2fr 100px 70px 100px 100px 1fr;
+  gap: 1px;
+  padding: 0 var(--ds-space-3);
+  border-bottom: 1px solid var(--ds-border);
+  cursor: pointer;
+  transition: background var(--ds-duration-fast);
+  border-left: 3px solid transparent;
+  align-items: center;
+}
+
+.emp-row:last-child {
+  border-bottom: none;
+}
+
+.emp-row:hover {
+  background: var(--ds-gray-50);
+}
+
+.dark .emp-row:hover {
+  background: var(--ds-gray-800);
+}
+
+.emp-row--selected {
+  background: var(--ds-primary-soft);
+}
+
+.emp-row--critical { border-left-color: var(--ds-risk-critical); }
+.emp-row--high_risk { border-left-color: var(--ds-risk-high); }
+.emp-row--suspicious { border-left-color: var(--ds-risk-moderate); }
+.emp-row--clean { border-left-color: transparent; }
+
+.emp-cell {
+  padding: var(--ds-space-2) var(--ds-space-2);
+  min-width: 0;
+}
+
+.emp-cell--center {
+  text-align: center;
+}
+
+.emp-cell--student {
+  display: flex;
+  align-items: center;
   gap: var(--ds-space-2);
 }
 
-.mp-alert-item {
-  padding: var(--ds-space-3);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface-muted);
+.emp-cell--signal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.mp-alert-item strong {
+/* Avatar */
+.emp-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ds-text-xs);
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.emp-avatar--lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--ds-text-sm);
+}
+
+/* Student info */
+.emp-student-info {
+  min-width: 0;
+}
+
+.emp-student-name {
   display: block;
-  margin-bottom: 4px;
   font-size: var(--ds-text-sm);
+  font-weight: 700;
+  color: var(--ds-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.mp-alert-item p,
-.mp-alerts__empty {
-  margin: 0;
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-text-sm);
+.emp-student-email {
+  display: block;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.mp-empty,
-.mp-state {
+/* Status chip */
+.emp-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.emp-status-chip--online {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.emp-status-chip--submitted {
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+}
+
+.emp-status-chip--paused {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.emp-status-chip--stopped {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.emp-status-chip--offline {
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+}
+
+/* Risk score */
+.emp-risk-score {
+  font-size: var(--ds-text-base);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Level badge */
+.emp-level-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--ds-radius-sm);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.emp-level-badge--lg {
+  padding: 4px 8px;
+  font-size: var(--ds-text-xs);
+}
+
+.emp-level-badge--critical {
+  background: var(--ds-risk-critical-soft);
+  color: var(--ds-risk-critical);
+}
+
+.emp-level-badge--high_risk {
+  background: var(--ds-risk-high-soft);
+  color: var(--ds-risk-high);
+}
+
+.emp-level-badge--suspicious {
+  background: var(--ds-risk-moderate-soft);
+  color: var(--ds-risk-moderate);
+}
+
+.emp-level-badge--clean {
+  background: var(--ds-success-soft);
+  color: var(--ds-risk-clean);
+}
+
+/* Flag chip */
+.emp-flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.emp-flag-chip--open {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.emp-flag-chip--confirmed {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.emp-flag-chip--none {
+  color: var(--ds-text-muted);
+}
+
+/* Signal */
+.emp-signal-type {
+  display: block;
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  color: var(--ds-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emp-signal-time {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empty */
+.emp-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--ds-space-3);
-  min-height: 220px;
-  padding: var(--ds-space-6);
+  padding: var(--ds-space-10);
+  color: var(--ds-text-secondary);
   text-align: center;
 }
 
-.mp-empty--panel {
-  min-height: 280px;
-  border-style: dashed;
-  box-shadow: none;
+/* ── Detail panel ────────────────────────────────────────────────── */
+.emp-panel {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  padding: var(--ds-space-4);
+  position: sticky;
+  top: var(--ds-space-4);
 }
 
-.mp-state {
-  min-height: 100vh;
+.emp-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-10) var(--ds-space-4);
+  color: var(--ds-text-muted);
+  text-align: center;
 }
 
-.mp-spinner {
-  width: 34px;
-  height: 34px;
-  border: 3px solid var(--ds-gray-200);
-  border-top-color: var(--ds-primary);
-  border-radius: 50%;
-  animation: mp-spin 0.8s linear infinite;
+.emp-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-4);
+  padding-bottom: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-border);
 }
 
-.mp-dialog-text {
+.emp-panel-student {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-width: 0;
+}
+
+.emp-panel-name {
+  margin: 0;
+  font-size: var(--ds-text-lg);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emp-panel-email {
+  margin: 2px 0 0;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Panel actions */
+.emp-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+}
+
+.emp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
+  min-height: 40px;
+  padding: 0 var(--ds-space-4);
+  border: 1.5px solid;
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--ds-duration-base);
+  font-family: inherit;
+}
+
+.emp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.emp-btn--warn {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+  border-color: var(--ds-warning);
+}
+
+.emp-btn--warn:hover:not(:disabled) {
+  background: rgba(217, 119, 6, 0.12);
+}
+
+.emp-btn--pause {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  border-color: var(--ds-primary);
+}
+
+.emp-btn--pause:hover:not(:disabled) {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.emp-btn--success {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+  border-color: var(--ds-success);
+}
+
+.emp-btn--success:hover:not(:disabled) {
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.emp-btn--detail {
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  border-color: var(--ds-border);
+}
+
+.emp-btn--detail:hover:not(:disabled) {
+  background: var(--ds-gray-50);
+  border-color: var(--ds-primary-border);
+  color: var(--ds-primary);
+}
+
+.emp-btn--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  border-color: var(--ds-danger);
+}
+
+.emp-btn--danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+}
+
+/* Dialog */
+.emp-dialog-info {
   margin: 0 0 var(--ds-space-3);
+  font-size: var(--ds-text-sm);
   color: var(--ds-text-secondary);
 }
 
-.mp-textarea {
+.emp-dialog-info strong {
+  color: var(--ds-text);
+}
+
+.emp-textarea {
   width: 100%;
   box-sizing: border-box;
   padding: var(--ds-space-3);
-  border: 1px solid var(--ds-border);
+  border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
+  font-size: var(--ds-text-sm);
+  font-family: inherit;
   color: var(--ds-text);
+  background: var(--ds-surface);
   resize: vertical;
+  outline: none;
+  transition: border-color var(--ds-duration-base);
 }
 
-.mp-spin {
-  animation: mp-spin 0.8s linear infinite;
+.emp-textarea:focus {
+  border-color: var(--ds-primary);
 }
 
-@keyframes mp-spin {
-  to { transform: rotate(360deg); }
+.emp-dialog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-height: 38px;
+  padding: 0 var(--ds-space-4);
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--ds-duration-base);
+  font-family: inherit;
+  background: var(--ds-surface);
+  color: var(--ds-text);
 }
 
-@media (max-width: 980px) {
-  .mp-layout {
+.emp-dialog-btn:hover {
+  background: var(--ds-gray-50);
+}
+
+.emp-dialog-btn--warn {
+  background: var(--ds-warning);
+  color: #fff;
+  border-color: var(--ds-warning);
+}
+
+.emp-dialog-btn--warn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.emp-dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .emp-body {
     grid-template-columns: 1fr;
   }
 
-  .mp-panel {
+  .emp-panel {
     position: static;
+  }
+
+  .emp-table-head,
+  .emp-row {
+    grid-template-columns: 2fr 90px 60px 90px 80px 1fr;
   }
 }
 
-@media (max-width: 700px) {
-  .mp-shell {
+@media (max-width: 900px) {
+  .emp-header {
+    padding: var(--ds-space-3);
+    gap: var(--ds-space-3);
+  }
+
+  .emp-header__stats {
+    display: none;
+  }
+
+  .emp-toolbar {
     padding: var(--ds-space-3);
   }
 
-  .mp-header,
-  .mp-toolbar {
-    align-items: stretch;
-    grid-template-columns: 1fr;
-    flex-direction: column;
-  }
-
-  .mp-toolbar__meta,
-  .mp-header-actions,
-  .mp-search {
+  .emp-toolbar__right {
+    margin-left: 0;
     width: 100%;
   }
 
-  .mp-toolbar__meta,
-  .mp-facts,
-  .mp-flag-review__actions {
-    display: grid;
-    grid-template-columns: 1fr;
+  .emp-search {
+    width: 100%;
+  }
+
+  .emp-body {
+    padding: var(--ds-space-3);
   }
 }
 
+@media (max-width: 600px) {
+  .emp-table-head {
+    display: none;
+  }
+
+  .emp-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2);
+    padding: var(--ds-space-3);
+    border-left-width: 3px;
+    border-bottom: 1px solid var(--ds-border);
+  }
+
+  .emp-cell--center,
+  .emp-cell--action {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .emp-cell--student {
+    margin-bottom: var(--ds-space-1);
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .mp-spinner,
-  .mp-spin {
+  .emp-spin,
+  .emp-conn-dot,
+  .emp-status-dot {
     animation: none;
+  }
+
+  .emp-row,
+  .emp-btn,
+  .emp-back,
+  .emp-icon-btn {
+    transition: none;
   }
 }
 </style>

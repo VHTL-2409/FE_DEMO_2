@@ -8,11 +8,14 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 
 public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> {
     List<FraudSignal> findByAttemptOrderByCreatedAtAsc(ExamAttempt attempt);
+
+    Optional<FraudSignal> findTopByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
     List<FraudSignal> findTop20ByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
@@ -35,4 +38,22 @@ public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> 
     long countByAttemptAndSignalTypeSince(@Param("attempt") ExamAttempt attempt,
                                          @Param("signalType") String signalType,
                                          @Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * Checks if an identity signal with a specific pair signature already exists recently.
+     * Used for idempotent multi-device session detection.
+     */
+    @Query(value = """
+            SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END
+            FROM fraud_signals f
+            WHERE f.attempt_id = :attemptId
+              AND f.signal_type = :signalType
+              AND f.created_at >= :cutoff
+              AND f.evidence::text ILIKE '%' || :pairSignature || '%'
+            """, nativeQuery = true)
+    boolean existsByAttemptAndSignalTypeAndCreatedAtAfterWithDetails(
+            @Param("attemptId") Long attemptId,
+            @Param("signalType") String signalType,
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("pairSignature") String pairSignature);
 }

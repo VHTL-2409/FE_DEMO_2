@@ -46,7 +46,11 @@ CREATE TABLE IF NOT EXISTS fraud_signals (
     confidence DOUBLE PRECISION NOT NULL,
     severity VARCHAR(20) NOT NULL,
     evidence JSONB,
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL,
+    category VARCHAR(32),
+    display_message VARCHAR(255),
+    risk_impact INTEGER,
+    metadata JSONB
 );
 
 CREATE INDEX IF NOT EXISTS idx_fraud_signals_attempt_type ON fraud_signals(attempt_id, signal_type);

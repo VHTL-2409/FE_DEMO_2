@@ -27,6 +27,13 @@ const resolveStatusToken = (card) => {
   return raw || 'UNKNOWN'
 }
 
+// ── Event deduplication ──────────────────────────────────────────────────────
+const recentEventKeys = new Map() // key → timestamp
+const EVENT_DEDUPE_WINDOW_MS = 5_000
+
+const makeEventKey = (event) =>
+  `${event.attemptId || ''}:${event.type || event.eventType || ''}:${event.occurredAt || event.issuedAt || event.at || ''}`
+
 export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const selectedExamId = ref(null)
   const cards = ref([])
@@ -34,7 +41,6 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const selectedAttemptIds = ref([])
   const connectionMode = ref('polling')
   const lastUpdatedAt = ref(null)
-  // Tracks previous risk scores for delta computation
   const previousRiskScores = ref({})
   const filters = ref({
     search: '',
@@ -44,13 +50,23 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     reviewOnly: false
   })
 
-  // ── Alert & event deduplication ──────────────────────────────────────────
-  const recentAlertKeys = new Map() // key → timestamp
+  // ── Alert & event state ────────────────────────────────────────────────────
+  const recentAlertKeys = new Map()
   const ALERT_DEDUPE_WINDOW_MS = 10_000
   let alertIdCounter = 0
   let eventIdCounter = 0
   const liveAlerts = ref([])
   const liveEvents = ref([])
+
+  // ── Map-backed lookup for O(1) patch ───────────────────────────────────────
+  const cardsMap = computed(() => {
+    const m = {}
+    for (const card of cards.value) {
+      const id = resolveAttemptId(card)
+      if (id != null) m[id] = card
+    }
+    return m
+  })
 
   const cardsWithMeta = computed(() => cards.value.map((card) => {
     const riskBand = resolveRiskBand(card.riskScore)
@@ -84,7 +100,6 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   }
 
   const setCards = (nextCards) => {
-    // Save current scores before replacing cards
     for (const card of cards.value) {
       const id = resolveAttemptId(card)
       const newCard = Array.isArray(nextCards) ? nextCards.find(c => resolveAttemptId(c) === id) : null
@@ -98,13 +113,82 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     lastUpdatedAt.value = Date.now()
   }
 
-  /**
-   * Update previous risk score for a specific card (e.g. when receiving realtime update).
-   */
   const trackRiskDelta = (attemptId, newScore) => {
     const id = String(attemptId)
     if (previousRiskScores.value[id] == null) {
       previousRiskScores.value[id] = newScore
+    }
+  }
+
+  /**
+   * Universal realtime event handler — patches or creates a card from a realtime event.
+   * No full reload, no extra fetches. O(1) map lookup.
+   */
+  const patchAttemptFromRealtime = (event) => {
+    const attemptId = String(event.attemptId || event.id || '')
+    if (!attemptId) return false
+
+    // Dedupe: skip if same event within window
+    const eventKey = makeEventKey(event)
+    const now = Date.now()
+    const lastSeen = recentEventKeys.get(eventKey)
+    if (lastSeen && (now - lastSeen) < EVENT_DEDUPE_WINDOW_MS) {
+      return false
+    }
+    recentEventKeys.set(eventKey, now)
+
+    const existing = cardsMap.value[attemptId]
+    const prevScore = existing?.riskScore
+
+    const patch = buildCardPatch(event)
+    if (existing) {
+      const idx = cards.value.findIndex(c => String(resolveAttemptId(c)) === attemptId)
+      if (idx >= 0) {
+        if (patch.riskScore != null && prevScore != null && patch.riskScore !== prevScore) {
+          previousRiskScores.value[attemptId] = prevScore
+        }
+        cards.value[idx] = { ...existing, ...patch, attemptId }
+      }
+    } else {
+      // New card — only push minimal data if we have enough info
+      if (attemptId && (patch.riskScore != null || patch.student)) {
+        cards.value.push({ attemptId, ...patch })
+      }
+    }
+    lastUpdatedAt.value = now
+    return true
+  }
+
+  /**
+   * Build a card patch from a realtime event payload.
+   */
+  const buildCardPatch = (event) => {
+    const signal = event.latestSignal || {}
+    const occurredAt = signal.occurredAt || event.issuedAt || event.updatedAt || new Date().toISOString()
+
+    return {
+      examId: event.examId ?? event.sessionId,
+      attemptId: String(event.attemptId || event.id || ''),
+      student: event.student || event.studentName,
+      riskScore: event.riskScore ?? event.scores?.totalScore,
+      riskLevel: event.riskLevel,
+      status: event.status,
+      reviewRequired: event.reviewRequired,
+      recommendedAction: event.recommendedAction,
+      reasons: event.reasons,
+      evidenceSummary: event.evidenceSummary,
+      activeFlagId: event.activeFlag?.id ?? event.activeFlagId,
+      activeFlagStatus: event.activeFlag?.status ?? event.activeFlagStatus,
+      activeFlagTitle: event.activeFlag?.title ?? event.latestFlagTitle,
+      violationCount: existing => existing ? existing.violationCount + 1 : 1,
+      lastSignalAt: occurredAt,
+      lastRiskUpdatedAt: occurredAt,
+      latestSignalType: signal.signalType || event.signalType,
+      latestSignalSeverity: signal.severity || event.severity,
+      latestSignalCategory: signal.category,
+      latestSignalDisplayMessage: signal.displayMessage,
+      scores: event.scores,
+      lastWarning: event.type === 'WARNING_SENT' ? event.message : undefined
     }
   }
 
@@ -198,6 +282,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     liveAlerts.value = []
     liveEvents.value = []
     recentAlertKeys.clear()
+    recentEventKeys.clear()
     alertIdCounter = 0
     eventIdCounter = 0
     filters.value = {
@@ -213,22 +298,18 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     const groups = {}
     for (const card of cards.value) {
       const examId = card.examId || 'unknown'
-      if (!groups[examId]) {
-        groups[examId] = []
-      }
+      if (!groups[examId]) groups[examId] = []
       groups[examId].push(card)
     }
     return groups
   })
 
-  const alertsBySeverity = computed(() => {
-    return {
-      CRITICAL: cardsWithMeta.value.filter(c => c._riskBand === 'CRITICAL'),
-      HIGH_RISK: cardsWithMeta.value.filter(c => c._riskBand === 'HIGH_RISK'),
-      SUSPICIOUS: cardsWithMeta.value.filter(c => c._riskBand === 'SUSPICIOUS'),
-      CLEAN: cardsWithMeta.value.filter(c => c._riskBand === 'CLEAN')
-    }
-  })
+  const alertsBySeverity = computed(() => ({
+    CRITICAL: cardsWithMeta.value.filter(c => c._riskBand === 'CRITICAL'),
+    HIGH_RISK: cardsWithMeta.value.filter(c => c._riskBand === 'HIGH_RISK'),
+    SUSPICIOUS: cardsWithMeta.value.filter(c => c._riskBand === 'SUSPICIOUS'),
+    CLEAN: cardsWithMeta.value.filter(c => c._riskBand === 'CLEAN')
+  }))
 
   const connectionHealth = computed(() => {
     const total = cardsWithMeta.value.length
@@ -248,26 +329,18 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     return { flagged, critical }
   })
 
-  /**
-   * Add a fraud signal alert with deduplication.
-   * Returns true if the alert was added, false if it was suppressed as a duplicate.
-   * Dedupe key = `${attemptId}|${signalType}|${severity}`
-   */
   const addAlert = (alert) => {
     const signalType = alert.signalType || alert.type || ''
     const key = `${alert.attemptId || ''}|${signalType}|${alert.severity || ''}`
     const now = Date.now()
     const lastSeen = recentAlertKeys.get(key)
-    if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) {
-      return false // duplicate, skip
-    }
+    if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) return false
     recentAlertKeys.set(key, now)
     const eventTime = normalizeTime(alert.issuedAt || alert.at || alert.timestamp || alert.ts) || now
     liveAlerts.value = [
       { ...alert, signalType, id: `alert-${++alertIdCounter}`, ts: eventTime },
       ...liveAlerts.value
-    ].slice(0, 200) // keep last 200
-    // Prune old entries every 50 adds
+    ].slice(0, 200)
     if (alertIdCounter % 50 === 0) {
       for (const [k, t] of recentAlertKeys) {
         if (now - t > ALERT_DEDUPE_WINDOW_MS) recentAlertKeys.delete(k)
@@ -276,15 +349,26 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     return true
   }
 
-  /**
-   * Add a system/proctoring event (warning, pause, resume, etc.) without deduplication.
-   */
   const addEvent = (event) => {
     const eventTime = normalizeTime(event.issuedAt || event.at || event.timestamp || event.ts) || Date.now()
     liveEvents.value = [
       { ...event, id: `event-${++eventIdCounter}`, ts: eventTime },
       ...liveEvents.value
     ].slice(0, 200)
+  }
+
+  // ── Dev logging helper ─────────────────────────────────────────────────────
+  const debugLog = (context, event) => {
+    if (import.meta.env.DEV) {
+      const occurredAt = event.occurredAt || event.issuedAt || event.updatedAt
+      const latencyMs = occurredAt ? Date.now() - new Date(occurredAt).getTime() : null
+      console.debug(`[Realtime][${context}]`, {
+        type: event.type,
+        attemptId: event.attemptId,
+        latencyMs,
+        payload: event
+      })
+    }
   }
 
   return {
@@ -304,6 +388,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     flagStats,
     liveAlerts,
     liveEvents,
+    patchAttemptFromRealtime,
+    buildCardPatch,
     addAlert,
     addEvent,
     setSelectedExam,
@@ -317,7 +403,8 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     sortCards,
     trackRiskDelta,
     reset,
-    resolveRiskBand
+    resolveRiskBand,
+    debugLog
   }
 })
 
@@ -328,20 +415,13 @@ function matchesTimeRange(card, timeRange) {
   const now = Date.now()
   const diff = now - source
   switch (timeRange) {
-    case '5m':
-      return diff <= 5 * 60 * 1000
-    case '15m':
-      return diff <= 15 * 60 * 1000
-    case '1h':
-      return diff <= 60 * 60 * 1000
+    case '5m': return diff <= 5 * 60 * 1000
+    case '15m': return diff <= 15 * 60 * 1000
+    case '1h': return diff <= 60 * 60 * 1000
     case 'today': {
-      const d = new Date(source)
-      const n = new Date(now)
-      return d.getFullYear() === n.getFullYear()
-        && d.getMonth() === n.getMonth()
-        && d.getDate() === n.getDate()
+      const d = new Date(source), n = new Date(now)
+      return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate()
     }
-    default:
-      return true
+    default: return true
   }
 }

@@ -227,10 +227,10 @@ const hasViolationPulse = computed(() =>
   height: 3px;
   border-radius: var(--ds-radius-xl) var(--ds-radius-xl) 0 0;
 }
-.sc-card--clean .sc-card__accent { background: var(--ds-success); }
-.sc-card--suspicious .sc-card__accent { background: var(--ds-warning); }
-.sc-card--high .sc-card__accent { background: #f97316; }
-.sc-card--critical .sc-card__accent { background: var(--ds-danger); }
+.sc-card--clean .sc-card__accent { background: var(--ds-risk-clean); }
+.sc-card--suspicious .sc-card__accent { background: var(--ds-risk-moderate); }
+.sc-card--high .sc-card__accent { background: var(--ds-risk-high); }
+.sc-card--critical .sc-card__accent { background: var(--ds-risk-critical); }
 
 .sc-card__body {
   padding: 0.875rem 0.875rem 0.75rem;

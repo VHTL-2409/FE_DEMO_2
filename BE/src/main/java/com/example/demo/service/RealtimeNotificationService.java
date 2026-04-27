@@ -1,11 +1,14 @@
 package com.example.demo.service;
 
 import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.FraudSignal;
+import com.example.demo.domain.entity.ProctorFlag;
 import com.example.demo.domain.entity.RiskActionType;
 import com.example.demo.domain.entity.RiskLevel;
 import com.example.demo.realtime.TeacherAlertGateway;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -17,12 +20,20 @@ public class RealtimeNotificationService {
         this.teacherAlertGateway = teacherAlertGateway;
     }
 
-    public void notifySuspicious(ExamAttempt attempt) {
-        teacherAlertGateway.publishSuspiciousAlert(
-            attempt.getExam().getId(),
-            attempt.getId(),
-            attempt.getStudent().getUsername(),
-            attempt.getRiskScore()
+    public void notifyFraudSignalRecorded(
+            ExamAttempt attempt,
+            FraudSignal signal,
+            int riskScore,
+            RiskLevel level,
+            Map<String, Integer> breakdown
+    ) {
+        teacherAlertGateway.publishFraudSignalRecorded(
+                attempt.getExam().getId(),
+                attempt.getId(),
+                signal,
+                riskScore,
+                level,
+                breakdown
         );
     }
 
@@ -31,7 +42,9 @@ public class RealtimeNotificationService {
             RiskLevel level,
             Map<String, Integer> breakdown,
             RiskActionType actionTaken,
-            RiskScoringService.DecisionSummary decision
+            RiskScoringService.DecisionSummary decision,
+            FraudSignal latestSignal,
+            ProctorFlag activeFlag
     ) {
         teacherAlertGateway.publishRiskUpdate(
                 attempt.getExam().getId(),
@@ -45,7 +58,10 @@ public class RealtimeNotificationService {
                 decision.reviewRequired(),
                 decision.recommendedAction(),
                 decision.reasons(),
-                decision.evidenceSummary()
+                decision.evidenceSummary(),
+                latestSignal != null ? toSignalInfo(latestSignal) : null,
+                activeFlag != null ? toFlagInfo(activeFlag) : null,
+                LocalDateTime.now()
         );
     }
 
@@ -104,5 +120,29 @@ public class RealtimeNotificationService {
             answeredCount,
             remainingSeconds
         );
+    }
+
+    private TeacherAlertGateway.AlertPayload.SignalInfo toSignalInfo(FraudSignal signal) {
+        return TeacherAlertGateway.AlertPayload.SignalInfo.builder()
+                .id(signal.getId())
+                .signalType(signal.getSignalType())
+                .category(signal.getCategory())
+                .displayMessage(signal.getDisplayMessage())
+                .riskImpact(signal.getRiskImpact())
+                .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
+                .confidence(signal.getConfidence())
+                .occurredAt(signal.getCreatedAt())
+                .build();
+    }
+
+    private TeacherAlertGateway.AlertPayload.ActiveFlagInfo toFlagInfo(ProctorFlag flag) {
+        return TeacherAlertGateway.AlertPayload.ActiveFlagInfo.builder()
+                .id(flag.getId())
+                .flagType(flag.getFlagType())
+                .status(flag.getStatus() != null ? flag.getStatus().name() : null)
+                .title(flag.getTitle())
+                .riskScore(flag.getRiskScore())
+                .riskLevel(flag.getRiskLevel() != null ? flag.getRiskLevel().name() : null)
+                .build();
     }
 }

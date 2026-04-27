@@ -87,6 +87,14 @@ export const invalidateAttempt = async (attemptId, reason = '') => {
   return unwrapApiData(payload)
 }
 
+export const addMonitoringNote = async (attemptId, note) => {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/monitoring/events`, {
+    method: 'POST',
+    body: JSON.stringify({ eventType: 'NOTE', details: note })
+  })
+  return unwrapApiData(payload)
+}
+
 // ── Batch Actions ────────────────────────────────────────────────────────────
 export const batchWarn = async (attemptIds, reason = '') => {
   const payload = await apiRequest('/api/v1/proctor/batch/warn', {

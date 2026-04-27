@@ -1,9 +1,11 @@
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import { useProctorDashboardStore } from '../stores/proctorDashboardStore'
 
-const STOMP_CONNECT_TIMEOUT_MS = 3000
-const POLL_INTERVAL_MS = 30000
+const STOMP_CONNECT_TIMEOUT_MS = 1500
+const POLL_INTERVAL_WHEN_CONNECTED_MS = 60_000   // reconcile only when WS is healthy
+const POLL_INTERVAL_WHEN_DISCONNECTED_MS = 8_000 // fallback polling
+
 const resolveAttemptId = (card) => card?.attemptId ?? card?.id
 
 export function useExamMonitoring() {
@@ -12,12 +14,12 @@ export function useExamMonitoring() {
 
   const examId = ref(null)
   const attemptSubscriptions = new Map()
-  const pollTimers = new Map()
   let stompTimeoutId = null
   let pollIntervalId = null
+  let currentPollInterval = POLL_INTERVAL_WHEN_DISCONNECTED_MS
 
-  const isConnected = computed(() => realtime.isConnected.value)
-  const isConnecting = computed(() => realtime.isConnecting.value)
+  const isConnected = () => realtime.isConnected.value
+  const isConnecting = () => realtime.isConnecting.value
 
   function getAttemptTopic(attemptId) {
     return `/topic/attempts/${attemptId}/proctor-actions`
@@ -27,87 +29,68 @@ export function useExamMonitoring() {
     return payload?.issuedAt || payload?.updatedAt || payload?.createdAt || new Date().toISOString()
   }
 
-  function signalLabel(payload, fallbackType) {
-    return payload?.signalType || payload?.eventType || payload?.type || fallbackType
-  }
-
-  // ── Message dispatch ──────────────────────────────────────────────────────
-
-  function handleExamMessage(payload) {
-    if (!payload) return
-    const type = String(payload.type || '').toUpperCase()
-
-    const payloadAttemptId = payload.attemptId || payload.id
-
-    if (type === 'RISK_UPDATED' || type === 'SUSPICIOUS' || type === 'SUSPICIOUS_ALERT') {
-      store.upsertCard({
-        id: payloadAttemptId,
-        attemptId: payloadAttemptId,
-        examId: payload.examId,
-        student: payload.student || payload.studentName,
-        riskScore: payload.riskScore,
-        riskLevel: payload.riskLevel,
-        reviewRequired: payload.reviewRequired,
-        recommendedAction: payload.recommendedAction,
-        reasons: payload.reasons,
-        evidenceSummary: payload.evidenceSummary,
-        activeFlagId: payload.activeFlagId,
-        activeFlagStatus: payload.activeFlagStatus,
-        latestFlagTitle: payload.latestFlagTitle,
-        lastRiskUpdatedAt: toEventTime(payload)
-      })
-      store.addAlert({
-        attemptId: payloadAttemptId,
-        signalType: signalLabel(payload, type),
-        type: signalLabel(payload, type),
-        severity: payload.severity || payload.riskLevel,
-        message: payload.message,
-        issuedAt: toEventTime(payload)
-      })
-    } else if (type === 'FRAUD_SIGNAL_RECORDED') {
-      const currentCard = store.cards.find((item) => String(item.attemptId || item.id) === String(payloadAttemptId))
-      store.upsertCard({
-        id: payloadAttemptId,
-        attemptId: payloadAttemptId,
-        examId: payload.examId,
-        student: payload.student || payload.studentName,
-        violationCount: Number(currentCard?.violationCount || 0) + 1,
-        lastSignalAt: toEventTime(payload),
-        latestSignalType: payload.signalType,
-        latestSignalSeverity: payload.severity
-      })
-      store.addAlert({
-        attemptId: payloadAttemptId,
-        signalType: signalLabel(payload, type),
-        type,
-        severity: payload.severity,
-        confidence: payload.confidence,
-        evidence: payload.evidence,
-        issuedAt: toEventTime(payload)
-      })
-    } else if (type === 'WARNING_SENT') {
-      store.upsertCard({ id: payloadAttemptId, attemptId: payloadAttemptId, lastWarning: payload.message, lastSignalAt: toEventTime(payload) })
-      store.addEvent({ attemptId: payloadAttemptId, eventType: 'WARNING_SENT', details: payload.message, issuedAt: toEventTime(payload) })
-    } else if (type === 'ATTEMPT_STOPPED') {
-      store.upsertCard({ id: payloadAttemptId, attemptId: payloadAttemptId, status: 'STOPPED', lastSignalAt: toEventTime(payload) })
-      store.addEvent({ attemptId: payloadAttemptId, eventType: 'ATTEMPT_STOPPED', details: payload.message, issuedAt: toEventTime(payload) })
-    } else if (type === 'ATTEMPT_PAUSED') {
-      store.upsertCard({ id: payloadAttemptId, attemptId: payloadAttemptId, status: 'PAUSED', riskScore: payload.riskScore, lastSignalAt: toEventTime(payload) })
-      store.addEvent({ attemptId: payloadAttemptId, eventType: 'ATTEMPT_PAUSED', details: payload.message, issuedAt: toEventTime(payload) })
-    } else if (type === 'ATTEMPT_RESUMED') {
-      store.upsertCard({ id: payloadAttemptId, attemptId: payloadAttemptId, status: 'IN_PROGRESS', riskScore: payload.riskScore, lastSignalAt: toEventTime(payload) })
-      store.addEvent({ attemptId: payloadAttemptId, eventType: 'ATTEMPT_RESUMED', details: payload.message, issuedAt: toEventTime(payload) })
-    } else if (type === 'DRAFT_SAVED') {
-      store.upsertCard({ id: payloadAttemptId, attemptId: payloadAttemptId, draftSavedAt: payload.savedAt })
+  // ── Dev logging ─────────────────────────────────────────────────────────────
+  function logRealtime(type, attemptId, payload) {
+    if (import.meta.env.DEV) {
+      const occurredAt = payload?.occurredAt || payload?.issuedAt || payload?.updatedAt
+      const latencyMs = occurredAt ? Date.now() - new Date(occurredAt).getTime() : null
+      console.debug(`[Realtime] type=${type} attemptId=${attemptId} latencyMs=${latencyMs}`, payload)
     }
   }
 
-  function handleAttemptMessage(attemptId, payload) {
-    handleExamMessage({ ...payload, attemptId })
+  // ── Core: applyRealtimeEvent ───────────────────────────────────────────────
+  function applyRealtimeEvent(event) {
+    if (!event) return
+    const type = String(event.type || '').toUpperCase()
+    const attemptId = String(event.attemptId || event.id || '')
+    if (!attemptId) return
+
+    logRealtime(type, attemptId, event)
+
+    // 1. Patch card (dashboard row)
+    store.patchAttemptFromRealtime(event)
+
+    // 2. Add alert (live alert panel)
+    addAlertFromEvent(event, type, attemptId)
+
+    // 3. Add system event
+    addSystemEventFromEvent(event, type, attemptId)
   }
 
-  // ── STOMP connect ────────────────────────────────────────────────────────
+  function addAlertFromEvent(event, type, attemptId) {
+    const signal = event.latestSignal || {}
+    store.addAlert({
+      attemptId,
+      signalType: signal.signalType || event.signalType || type,
+      type,
+      severity: signal.severity || event.severity || event.riskLevel,
+      confidence: signal.confidence,
+      evidence: signal.evidence,
+      issuedAt: signal.occurredAt || event.issuedAt
+    })
+  }
 
+  function addSystemEventFromEvent(event, type, attemptId) {
+    const systemEventTypes = ['WARNING_SENT', 'ATTEMPT_STOPPED', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED']
+    if (!systemEventTypes.includes(type)) return
+    store.addEvent({
+      attemptId,
+      eventType: type,
+      details: event.message,
+      issuedAt: event.issuedAt || new Date().toISOString()
+    })
+  }
+
+  // ── Message dispatch ───────────────────────────────────────────────────────
+  function handleExamMessage(payload) {
+    applyRealtimeEvent(payload)
+  }
+
+  function handleAttemptMessage(attemptId, payload) {
+    applyRealtimeEvent({ ...payload, attemptId })
+  }
+
+  // ── STOMP connect ─────────────────────────────────────────────────────────
   function connect(id) {
     const nextExamId = id == null ? null : String(id)
     const currentExamId = examId.value == null ? null : String(examId.value)
@@ -120,8 +103,9 @@ export function useExamMonitoring() {
 
     // Fallback: if STOMP not connected within timeout, start polling
     stompTimeoutId = setTimeout(() => {
-      if (!realtime.isConnected.value) {
-        startPolling()
+      if (!isConnected()) {
+        store.setConnectionMode('polling')
+        startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
       }
     }, STOMP_CONNECT_TIMEOUT_MS)
 
@@ -131,13 +115,16 @@ export function useExamMonitoring() {
       onConnect: () => {
         clearTimeout(stompTimeoutId)
         stompTimeoutId = null
+        store.setConnectionMode('realtime')
         stopPolling()
+        // Re-subscribe to per-attempt channels
         attemptSubscriptions.forEach((handler, aId) => {
           realtime.subscribe(getAttemptTopic(aId), handler)
         })
       },
       onDisconnect: () => {
-        if (examId.value) startPolling()
+        store.setConnectionMode('polling')
+        if (examId.value) startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
       }
     })
   }
@@ -153,8 +140,7 @@ export function useExamMonitoring() {
     examId.value = null
   }
 
-  // ── Per-student subscriptions ─────────────────────────────────────────────
-
+  // ── Per-student subscriptions ───────────────────────────────────────────────
   function subscribeToAttempt(attemptId, onMessage) {
     if (attemptSubscriptions.has(attemptId)) return
     const handler = (payload) => {
@@ -162,9 +148,9 @@ export function useExamMonitoring() {
       onMessage?.({ ...payload, attemptId })
     }
     attemptSubscriptions.set(attemptId, handler)
-    if (realtime.isConnected.value) {
+    if (isConnected()) {
       realtime.subscribe(getAttemptTopic(attemptId), handler)
-    } else if (!realtime.isConnecting.value && examId.value == null) {
+    } else if (!isConnecting() && examId.value == null) {
       void realtime.connect({
         reconnectDelay: 5000,
         topics: [{ destination: getAttemptTopic(attemptId), handler }]
@@ -175,7 +161,7 @@ export function useExamMonitoring() {
   function unsubscribeFromAttempt(attemptId) {
     const handler = attemptSubscriptions.get(attemptId)
     if (handler) {
-      if (realtime.isConnected.value) {
+      if (isConnected()) {
         realtime.unsubscribe(getAttemptTopic(attemptId))
       }
       attemptSubscriptions.delete(attemptId)
@@ -184,53 +170,29 @@ export function useExamMonitoring() {
 
   function unsubscribeFromAllAttempts() {
     attemptSubscriptions.forEach((handler, attemptId) => {
-      if (realtime.isConnected.value) {
+      if (isConnected()) {
         realtime.unsubscribe(getAttemptTopic(attemptId))
       }
     })
     attemptSubscriptions.clear()
   }
 
-  // ── Polling fallback ─────────────────────────────────────────────────────
-
-  function startPolling() {
+  // ── Polling: adaptive interval ────────────────────────────────────────────
+  function startPolling(intervalMs) {
     if (pollIntervalId) return
+    currentPollInterval = intervalMs || POLL_INTERVAL_WHEN_DISCONNECTED_MS
     pollIntervalId = setInterval(async () => {
       if (!examId.value) return
-      // Import dynamically to avoid circular deps — poll is triggered
-      // when STOMP is unavailable; polling is best-effort refresh.
-      const { fetchExamAttempts, fetchProctorSessionAlerts } = await import('../services/examMonitoringService').catch(() => ({
-        fetchExamAttempts: null,
-        fetchProctorSessionAlerts: null
-      }))
-      if (fetchExamAttempts && fetchProctorSessionAlerts && examId.value) {
-        try {
-          const [attempts, alerts] = await Promise.all([
-            fetchExamAttempts(examId.value),
-            fetchProctorSessionAlerts(examId.value)
-          ])
-          if (Array.isArray(attempts)) {
-            const alertsByAttempt = new Map((alerts || []).map(alert => [String(resolveAttemptId(alert)), alert]))
-            store.setCards(attempts.map((attempt) => {
-              const alert = alertsByAttempt.get(String(resolveAttemptId(attempt)))
-              if (!alert) return attempt
-              return {
-                ...attempt,
-                riskScore: alert.riskScore ?? attempt.riskScore,
-                riskLevel: alert.riskLevel ?? attempt.riskLevel,
-                reviewRequired: alert.reviewRequired ?? attempt.reviewRequired,
-                reasons: alert.reasons?.length ? alert.reasons : attempt.reasons,
-                evidenceSummary: alert.evidenceSummary?.length ? alert.evidenceSummary : attempt.evidenceSummary,
-                activeFlagId: alert.activeFlagId ?? attempt.activeFlagId,
-                activeFlagStatus: alert.activeFlagStatus ?? attempt.activeFlagStatus,
-                latestFlagTitle: alert.latestFlagTitle ?? attempt.latestFlagTitle,
-                lastSignalAt: alert.updatedAt || attempt.lastSignalAt || attempt.startedAt || null
-              }
-            }))
-          }
-        } catch { /* silent */ }
+      const { fetchExamAttempts } = await import('../services/examMonitoringService').catch(() => ({ fetchExamAttempts: null }))
+      if (!fetchExamAttempts || !examId.value) return
+      try {
+        const attempts = await fetchExamAttempts(examId.value)
+        if (Array.isArray(attempts)) {
+          store.setCards(attempts)
+        }
+      } catch { /* silent fallback */
       }
-    }, POLL_INTERVAL_MS)
+    }, currentPollInterval)
   }
 
   function stopPolling() {
@@ -238,8 +200,20 @@ export function useExamMonitoring() {
       clearInterval(pollIntervalId)
       pollIntervalId = null
     }
-    pollTimers.forEach(t => clearInterval(t))
-    pollTimers.clear()
+  }
+
+  // ── Reconciliation: called after websocket reconnect ───────────────────────
+  async function reconcile(examIdVal) {
+    if (!examIdVal) return
+    const { fetchExamAttempts } = await import('../services/examMonitoringService').catch(() => ({ fetchExamAttempts: null }))
+    if (!fetchExamAttempts) return
+    try {
+      const attempts = await fetchExamAttempts(examIdVal)
+      if (Array.isArray(attempts)) {
+        store.setCards(attempts)
+      }
+    } catch { /* silent */
+    }
   }
 
   onUnmounted(() => {
@@ -252,6 +226,8 @@ export function useExamMonitoring() {
     connect,
     disconnect,
     subscribeToAttempt,
-    unsubscribeFromAttempt
+    unsubscribeFromAttempt,
+    applyRealtimeEvent,
+    reconcile
   }
 }

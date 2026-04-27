@@ -8,7 +8,11 @@ export {
   sendTeacherWarning,
   pauseAttempt,
   resumeAttempt,
-  invalidateAttempt
+  invalidateAttempt,
+  batchWarn,
+  batchPause,
+  batchResume,
+  batchInvalidate,
 } from './monitoringService'
 
 export {

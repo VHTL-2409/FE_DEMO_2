@@ -20,6 +20,7 @@ import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamEventService;
 import com.example.demo.service.MonitoringService;
 import com.example.demo.service.ProctorFlagService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import static com.example.demo.service.ClientIpResolver.resolveClientIp;
 
 @RestController
 @RequestMapping("/api/v1/proctor")
@@ -42,7 +45,18 @@ public class ProctoringController {
     private final CurrentUserService currentUserService;
 
     @PostMapping("/start")
-    public ApiResponse<ProctorStartResponse> startSession(@Valid @RequestBody ProctorStartRequest request) {
+    public ApiResponse<ProctorStartResponse> startSession(
+            @Valid @RequestBody ProctorStartRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientIp = resolveClientIp(httpRequest);
+        examEventService.initProctoringSession(
+                request.getAttemptId(),
+                request.getDeviceFingerprint(),
+                request.getUserAgent(),
+                clientIp
+        );
+
         String sessionToken = UUID.randomUUID().toString();
         Instant startedAt = Instant.now();
         Instant expiresAt = startedAt.plusSeconds(7200);
@@ -69,19 +83,23 @@ public class ProctoringController {
     @PostMapping("/sessions/{attemptId}/events/batch")
     public ApiResponse<EventBatchResponse> ingestEventBatch(
             @PathVariable Long attemptId,
-            @Valid @RequestBody EventBatchRequest request
+            @Valid @RequestBody EventBatchRequest request,
+            HttpServletRequest httpRequest
     ) {
+        String clientIp = resolveClientIp(httpRequest);
         return ApiResponse.success(
-                examEventService.ingestBatch(attemptId, request, currentUserService.requireCurrentUser()));
+                examEventService.ingestBatch(attemptId, request, currentUserService.requireCurrentUser(), clientIp));
     }
 
     @PostMapping("/sessions/{attemptId}/heartbeat")
     public ApiResponse<RiskScoreResponse> heartbeat(
             @PathVariable Long attemptId,
-            @Valid @RequestBody HeartbeatRequest request
+            @Valid @RequestBody HeartbeatRequest request,
+            HttpServletRequest httpRequest
     ) {
+        String clientIp = resolveClientIp(httpRequest);
         return ApiResponse.success(
-                examEventService.processHeartbeat(attemptId, request, currentUserService.requireCurrentUser()));
+                examEventService.processHeartbeat(attemptId, request, currentUserService.requireCurrentUser(), clientIp));
     }
 
     @GetMapping("/sessions/{attemptId}/risk")

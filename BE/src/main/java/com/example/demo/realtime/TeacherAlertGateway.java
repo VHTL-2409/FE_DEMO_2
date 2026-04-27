@@ -1,8 +1,11 @@
 package com.example.demo.realtime;
 
+import com.example.demo.domain.entity.FraudSignal;
+import com.example.demo.domain.entity.RiskLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -14,9 +17,72 @@ import java.util.Map;
 public class TeacherAlertGateway {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final ObjectMapper objectMapper;
 
-    public TeacherAlertGateway(SimpMessagingTemplate messagingTemplate) {
+    public TeacherAlertGateway(SimpMessagingTemplate messagingTemplate, ObjectMapper objectMapper) {
         this.messagingTemplate = messagingTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Publish FRAUD_SIGNAL_RECORDED event — minimal payload so teacher dashboard
+     * can update the card incrementally without fetching the whole attempt list.
+     */
+    public void publishFraudSignalRecorded(
+            Long examId,
+            Long attemptId,
+            FraudSignal signal,
+            int riskScore,
+            RiskLevel level,
+            Map<String, Integer> breakdown
+    ) {
+        AlertPayload.SignalInfo signalInfo = AlertPayload.SignalInfo.builder()
+                .id(signal.getId())
+                .signalType(signal.getSignalType())
+                .category(signal.getCategory())
+                .displayMessage(signal.getDisplayMessage())
+                .riskImpact(signal.getRiskImpact())
+                .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
+                .confidence(signal.getConfidence())
+                .evidence(signal.getEvidence())
+                .occurredAt(signal.getCreatedAt())
+                .metadata(parseMetadata(signal.getMetadata()))
+                .build();
+
+        AlertPayload.ScoresBreakdown scores = null;
+        if (breakdown != null) {
+            scores = AlertPayload.ScoresBreakdown.builder()
+                    .screenLeaveScore(breakdown.get("screenLeaveScore"))
+                    .clipboardScore(breakdown.get("clipboardScore"))
+                    .technicalScore(breakdown.get("technicalScore"))
+                    .identityScore(breakdown.get("identityScore"))
+                    .heartbeatScore(breakdown.get("heartbeatScore"))
+                    .totalScore(breakdown.get("totalScore"))
+                    .build();
+        }
+
+        AlertPayload payload = AlertPayload.builder()
+                .type("FRAUD_SIGNAL_RECORDED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(signal.getStudentUsername())
+                .riskScore(riskScore)
+                .riskLevel(level.name())
+                .latestSignal(signalInfo)
+                .scores(scores)
+                .issuedAt(signal.getCreatedAt())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
+    private java.util.Map<String, Object> parseMetadata(String metadataJson) {
+        if (metadataJson == null || metadataJson.isBlank()) return java.util.Map.of();
+        try {
+            return objectMapper.readValue(metadataJson, java.util.Map.class);
+        } catch (Exception e) {
+            return java.util.Map.of();
+        }
     }
 
     public void publishSuspiciousAlert(Long examId, Long attemptId, String student, Integer riskScore) {
@@ -45,8 +111,23 @@ public class TeacherAlertGateway {
             Boolean reviewRequired,
             String recommendedAction,
             List<String> reasons,
-            List<String> evidenceSummary
+            List<String> evidenceSummary,
+            AlertPayload.SignalInfo latestSignal,
+            AlertPayload.ActiveFlagInfo activeFlag,
+            LocalDateTime occurredAt
     ) {
+        AlertPayload.ScoresBreakdown scores = null;
+        if (breakdown != null) {
+            scores = AlertPayload.ScoresBreakdown.builder()
+                    .screenLeaveScore(breakdown.get("screenLeaveScore"))
+                    .clipboardScore(breakdown.get("clipboardScore"))
+                    .technicalScore(breakdown.get("technicalScore"))
+                    .identityScore(breakdown.get("identityScore"))
+                    .heartbeatScore(breakdown.get("heartbeatScore"))
+                    .totalScore(breakdown.get("totalScore"))
+                    .build();
+        }
+
         AlertPayload payload = AlertPayload.builder()
                 .type("RISK_UPDATED")
                 .examId(examId)
@@ -55,16 +136,17 @@ public class TeacherAlertGateway {
                 .studentName(student)
                 .riskScore(riskScore)
                 .riskLevel(riskLevel)
-                .breakdown(breakdown)
+                .scores(scores)
                 .actionTaken(actionTaken)
                 .message(message)
                 .reviewRequired(reviewRequired)
                 .recommendedAction(recommendedAction)
                 .reasons(reasons)
                 .evidenceSummary(evidenceSummary)
-                .issuedAt(LocalDateTime.now())
+                .latestSignal(latestSignal)
+                .activeFlag(activeFlag)
+                .issuedAt(occurredAt)
                 .build();
-        messagingTemplate.convertAndSend("/topic/teacher-alerts", payload);
         messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
@@ -166,5 +248,48 @@ public class TeacherAlertGateway {
         private List<String> evidenceSummary;
         private String message;
         private LocalDateTime issuedAt;
+        private SignalInfo latestSignal;
+        private ScoresBreakdown scores;
+        private ActiveFlagInfo activeFlag;
+
+        @Getter
+        @Builder
+        @AllArgsConstructor
+        public static class SignalInfo {
+            private Long id;
+            private String signalType;
+            private String category;
+            private String displayMessage;
+            private Integer riskImpact;
+            private String severity;
+            private Double confidence;
+            private String evidence;
+            private LocalDateTime occurredAt;
+            private Map<String, Object> metadata;
+        }
+
+        @Getter
+        @Builder
+        @AllArgsConstructor
+        public static class ScoresBreakdown {
+            private Integer screenLeaveScore;
+            private Integer clipboardScore;
+            private Integer technicalScore;
+            private Integer identityScore;
+            private Integer heartbeatScore;
+            private Integer totalScore;
+        }
+
+        @Getter
+        @Builder
+        @AllArgsConstructor
+        public static class ActiveFlagInfo {
+            private Long id;
+            private String flagType;
+            private String status;
+            private String title;
+            private Integer riskScore;
+            private String riskLevel;
+        }
     }
 }

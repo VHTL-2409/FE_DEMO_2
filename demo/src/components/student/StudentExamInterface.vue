@@ -319,39 +319,17 @@
     </main>
 
     <!-- ── Submit Modal ────────────────────────────────── -->
-    <Modal v-model="showSubmitModal" title="Xác nhận nộp bài" :persistent="true">
-      <div class="ei-submit-info">
-        <p class="ei-submit-count">
-          Đã trả lời <strong>{{ answeredCount }}</strong> / {{ questions.length }} câu.
-          <span v-if="unansweredCount > 0" class="ei-submit-warn">
-            Còn {{ unansweredCount }} câu chưa trả lời.
-          </span>
-        </p>
-        <div class="ei-submit-stats">
-          <div class="ei-submit-stat">
-            <p class="ei-submit-stat__label">Đánh dấu</p>
-            <p class="ei-submit-stat__val ei-submit-stat__val--warn">{{ markedCount }}</p>
-          </div>
-          <div class="ei-submit-stat">
-            <p class="ei-submit-stat__label">Bỏ qua</p>
-            <p class="ei-submit-stat__val">{{ skippedCount }}</p>
-          </div>
-        </div>
-        <p class="ei-submit-note">Bạn sẽ không thể thay đổi đáp án sau khi nộp.</p>
-        <div v-if="unansweredCount > 0" class="ei-submit-unanswered">
-          <LucideIcon name="warning" size="14" />
-          <span>Còn {{ unansweredCount }} câu chưa làm.</span>
-        </div>
-      </div>
-      <template #footer>
-        <div class="ei-modal-actions">
-          <BaseButton variant="ghost" type="button" @click="closeSubmitModal">Tiếp tục làm bài</BaseButton>
-          <BaseButton id="submit-exam-confirm" :loading="isSubmitting" type="button" @click="submitExamAction">
-            Nộp bài
-          </BaseButton>
-        </div>
-      </template>
-    </Modal>
+    <SubmitDialog
+      v-model="showSubmitModal"
+      :answered-count="answeredCount"
+      :total-questions="questions.length"
+      :unanswered-count="unansweredCount"
+      :not-visited-count="notVisitedCount"
+      :marked-count="markedCount"
+      :skipped-count="skippedCount"
+      :is-submitting="isSubmitting"
+      @confirm="submitExamAction"
+    />
 
     <ConfirmDialog
       v-model="showLeaveConfirm"
@@ -382,11 +360,10 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
 import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
-import Modal from '../ui/Modal.vue'
-import BaseButton from '../shared/BaseButton.vue'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
 import MathDisplay from '../shared/MathDisplay.vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
+import SubmitDialog from './exam/exam/SubmitDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -418,6 +395,9 @@ const examConfig = ref({
   monitorClipboardBurst: false, monitorFullscreenEvasion: true
 })
 
+const MODAL_COOLDOWN_MS = 3000  // Prevent rapid-fire duplicate modals
+let lastModalShownAt = 0
+
 // ── Unified modal state (replaces 4 separate popup refs) ──
 const modal = ref({
   show: false,
@@ -433,11 +413,18 @@ const modalIconMap = { warning: 'warning', error: 'error', success: 'check_circl
 const modalIcon = computed(() => modalIconMap[modal.value.type] || 'info')
 
 const showModal = (cfg) => {
+  const now = Date.now()
+  // Prevent showing if modal is already displayed or within cooldown
+  if (modal.value.show) return
+  if (now - lastModalShownAt < MODAL_COOLDOWN_MS) return
+  lastModalShownAt = now
   modal.value = { show: true, ...cfg }
 }
 
 const closeModal = () => {
   modal.value.show = false
+  // Reset cooldown when modal is closed to allow new modals immediately
+  lastModalShownAt = 0
 }
 
 const handleModalConfirm = () => {
@@ -480,8 +467,8 @@ let blurGraceTimer = null
 let attemptStatusTimer = null
 let blockBackHandler = null
 
-const VIOLATION_COOLDOWN_MS = 7000
-const LONG_VIOLATION_COOLDOWN_MS = 60000
+const VIOLATION_COOLDOWN_MS = 5000  // 5s - prevents rapid-fire duplicates during batch, backend handles score dedup
+const LONG_VIOLATION_COOLDOWN_MS = 10000  // 10s - longer cooldown for severe violations
 const BLUR_GRACE_MS = 1200
 const DEVTOOLS_GAP_PX = 160
 const LONG_SCREEN_LEAVE_THRESHOLD_MS = 30_000
@@ -730,11 +717,20 @@ const handleProctorActions = (actions = [], payload = {}) => {
   }
 }
 
-const buildDeviceFingerprintSeed = () => JSON.stringify({
-  screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
-  language: navigator.language || '', platform: navigator.platform || '', userAgent: navigator.userAgent || ''
-})
+const buildDeviceFingerprintSeed = () => {
+  const screen = window.screen || {}
+  return JSON.stringify({
+    screen: `${screen.width || 0}x${screen.height || 0}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    language: navigator.language || '',
+    platform: navigator.platform || '',
+    userAgent: navigator.userAgent || '',
+    hardwareConcurrency: navigator.hardwareConcurrency || null,
+    deviceMemory: navigator.deviceMemory || null,
+    colorDepth: screen.colorDepth || null,
+    touchPoints: navigator.maxTouchPoints || 0
+  })
+}
 
 const getHeartbeatPayload = () => ({
   fullscreen: Boolean(document.fullscreenElement), visibility: document.visibilityState || 'visible',
@@ -1099,7 +1095,6 @@ const buildSubmitPayload = () => Object.entries(answers.value).filter(([, v]) =>
 })
 
 const openSubmitModal = () => { if (isSuspended.value) return; showSubmitModal.value = true }
-const closeSubmitModal = () => { showSubmitModal.value = false }
 
 const autoSubmitOnTimeUp = async () => {
   if (!attemptId.value || isSuspended.value || isSubmitting.value) return
@@ -2015,57 +2010,6 @@ const onCancelLeave = () => {
 .ei-legend-dot { width: 7px; height: 7px; border-radius: 50%; }
 .ei-legend-dot--done { background: var(--ds-primary); }
 .ei-legend-dot--mark { background: var(--ds-warning); }
-
-/* ── Submit Modal Content ──── */
-.ei-submit-info { padding: 0.25rem 0; }
-
-.ei-submit-count {
-  font-size: 0.875rem;
-  color: var(--ds-text);
-  line-height: 1.5;
-  margin: 0 0 0.875rem;
-}
-.ei-submit-warn { color: var(--ds-warning); font-weight: 700; }
-
-.ei-submit-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-bottom: 0.875rem;
-}
-
-.ei-submit-stat {
-  padding: 0.625rem;
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  text-align: center;
-}
-.ei-submit-stat__label { font-size: 0.62rem; font-weight: 600; color: var(--ds-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
-.ei-submit-stat__val { font-family: var(--ds-font-display); font-size: 1.15rem; font-weight: 900; color: var(--ds-text); }
-.ei-submit-stat__val--warn { color: var(--ds-warning); }
-
-.ei-submit-note { font-size: 0.775rem; color: var(--ds-text-muted); margin: 0 0 0.875rem; }
-
-.ei-submit-unanswered {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(245,158,11,0.06);
-  border: 1px solid rgba(245,158,11,0.2);
-  border-radius: var(--ds-radius-xl);
-  font-size: 0.775rem;
-  font-weight: 600;
-  color: var(--ds-warning);
-}
-
-.ei-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.625rem;
-  width: 100%;
-}
 
 /* ── Transitions ──── */
 .ei-fade-enter-active, .ei-fade-leave-active { transition: opacity 0.2s ease; }

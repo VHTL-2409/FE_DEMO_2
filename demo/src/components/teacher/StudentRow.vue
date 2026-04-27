@@ -192,10 +192,10 @@ const topViolations = computed(() =>
   bottom: 0;
   width: 3px;
 }
-.sr-row--clean .sr-row__accent { background: var(--ds-success); }
-.sr-row--suspicious .sr-row__accent { background: var(--ds-warning); }
-.sr-row--high .sr-row__accent { background: #f97316; }
-.sr-row--critical .sr-row__accent { background: var(--ds-danger); }
+.sr-row--clean .sr-row__accent { background: var(--ds-risk-clean); }
+.sr-row--suspicious .sr-row__accent { background: var(--ds-risk-moderate); }
+.sr-row--high .sr-row__accent { background: var(--ds-risk-high); }
+.sr-row--critical .sr-row__accent { background: var(--ds-risk-critical); }
 
 /* Checkbox */
 .sr-row__check {

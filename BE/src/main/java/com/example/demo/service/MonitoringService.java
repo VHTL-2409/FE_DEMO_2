@@ -35,6 +35,9 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Service giám sát phiên thi: quản lý events, timeline, các hành động của giám thị (pause/resume/stop/warning).
+ */
 @Service
 @RequiredArgsConstructor
 public class MonitoringService {
@@ -56,6 +59,9 @@ public class MonitoringService {
     @Value("${demo.monitoring.events.rate-limit.max:25}")
     private long eventRateLimitMax;
 
+    /**
+     * Thêm một monitoring event từ giám thị.
+     */
     @Transactional
     public MonitoringEventResponse addEvent(Long attemptId, MonitoringEventRequest request, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -85,12 +91,18 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
+    /**
+     * Thêm một system event (được gọi từ backend, không phải từ giám thị).
+     */
     @Transactional
     public MonitoringEventResponse addSystemEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
         RiskScoreResponse riskResponse = examEventService.recordLegacyEvent(attempt, eventType.name(), details);
         return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
+    /**
+     * Gửi cảnh báo cho học sinh.
+     */
     @Transactional
     public MonitoringEventResponse sendWarning(Long attemptId, String message, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -109,6 +121,9 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, warningMessage);
     }
 
+    /**
+     * Đình chỉ bài thi của học sinh.
+     */
     @Transactional
     public MonitoringEventResponse invalidateAttempt(Long attemptId, String reason, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -141,6 +156,9 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
     }
 
+    /**
+     * Khôi phục bài thi đang bị tạm dừng.
+     */
     @Transactional
     public MonitoringEventResponse resumeAttempt(Long attemptId, String message, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -157,15 +175,15 @@ public class MonitoringService {
         examAttemptRepository.save(attempt);
 
         String resumeMessage = (message == null || message.isBlank())
-                ? "Bai thi da duoc giam thi khoi phuc. Vui long tiep tuc lam bai."
+                ? "Bài thi đã được giám thị khôi phục. Vui lòng tiếp tục làm bài."
                 : message.trim();
 
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_RESUMED] " + resumeMessage);
         realtimeNotificationService.notifyAttemptResumed(attempt, resumeMessage);
 
-        // Do NOT call getRiskSnapshot() here — recomputeRisk() would re-trigger
-        // applyAutomatedAction() (level==CRITICAL && status==IN_PROGRESS) and immediately
-        // re-pause the attempt, overriding the teacher's manual resume.
+        // KHÔNG gọi getRiskSnapshot() ở đây — recomputeRisk() sẽ re-trigger
+        // applyAutomatedAction() (level==CRITICAL && status==IN_PROGRESS) và immediately
+        // re-pause attempt, override việc teacher resume thủ công.
         return MonitoringEventResponse.builder()
                 .attemptId(attempt.getId())
                 .riskScore(attempt.getRiskScore())
@@ -177,6 +195,9 @@ public class MonitoringService {
                 .build();
     }
 
+    /**
+     * Tạm dừng bài thi của học sinh.
+     */
     @Transactional
     public MonitoringEventResponse pauseAttempt(Long attemptId, String reason, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -191,22 +212,25 @@ public class MonitoringService {
             attempt.setStatus(AttemptStatus.PAUSED);
             examAttemptRepository.save(attempt);
         }
-        // Always set to MANUAL so that applyAutomatedResume never fires on a teacher-initiated pause.
-        // This handles the case where the attempt was previously auto-paused (autoPausedBy=SYSTEM).
+        // Luôn đặt thành MANUAL để applyAutomatedResume không bao giờ fire trên teacher-initiated pause.
+        // Điều này xử lý trường hợp attempt đã bị auto-pause trước đó (autoPausedBy=SYSTEM).
         attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
 
         String pauseMessage = (reason == null || reason.isBlank())
-                ? "Bai thi dang duoc tam dung de giam thi kiem tra."
+                ? "Bài thi đang được tạm dừng để giám thị kiểm tra."
                 : reason.trim();
         auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_PAUSED] " + pauseMessage);
         realtimeNotificationService.notifyAttemptPaused(attempt, pauseMessage);
 
-        // Use recomputeRiskSkipAutoActions so the teacher's manual pause is never overridden
-        // by auto-resume (which could fire if the attempt was previously auto-paused by SYSTEM).
+        // Sử dụng recomputeRiskSkipAutoActions để teacher pause thủ công không bao giờ bị override
+        // bởi auto-resume (có thể fire nếu attempt đã bị auto-paused bởi SYSTEM trước đó).
         RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
         return toMonitoringEventResponse(attempt, riskResponse, pauseMessage);
     }
 
+    /**
+     * Lấy timeline đầy đủ của một attempt (events, signals, risk snapshots).
+     */
     public List<MonitoringTimelineItem> timeline(Long attemptId, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
@@ -250,6 +274,9 @@ public class MonitoringService {
                 .toList();
     }
 
+    /**
+     * Cập nhật trạng thái thiết bị của học sinh (camera, mic).
+     */
     @Transactional
     public void updateDeviceStatus(Long attemptId, Boolean cameraOn, Boolean micOn, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -258,7 +285,7 @@ public class MonitoringService {
         if (!attempt.getStudent().getId().equals(actor.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only the student can update their own device status");
         }
-        // Allow heartbeat to be updated even for PAUSED attempts
+        // Cho phép cập nhật heartbeat ngay cả khi attempt đang PAUSED
         boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.IN_PROGRESS;
         if (allowFullUpdate) {
             attempt.setCameraOn(cameraOn);
@@ -269,6 +296,9 @@ public class MonitoringService {
         examAttemptRepository.save(attempt);
     }
 
+    /**
+     * Lấy audit log của một attempt.
+     */
     public List<AuditLogItem> auditLog(Long attemptId, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
@@ -289,6 +319,9 @@ public class MonitoringService {
                 .build();
     }
 
+    /**
+     * Kiểm tra rate limit cho monitoring events.
+     */
     private void enforceMonitoringRateLimit(ExamAttempt attempt) {
         if (eventRateLimitWindowSeconds <= 0 || eventRateLimitMax <= 0) {
             return;
@@ -300,11 +333,14 @@ public class MonitoringService {
         }
     }
 
-    /** Align with student UI: monitoring is on unless explicitly false (null counts as on). */
+    /** Khớp với student UI: monitoring bật trừ khi được đặt explicit là false (null được coi là bật). */
     private static boolean monitoringFlagEnabled(Boolean value) {
         return !Boolean.FALSE.equals(value);
     }
 
+    /**
+     * Kiểm tra xem một loại event có được giám sát không (dựa trên cấu hình exam).
+     */
     private boolean isEventEnabled(ExamAttempt attempt, MonitoringEventType eventType) {
         var exam = attempt.getExam();
         return switch (eventType) {

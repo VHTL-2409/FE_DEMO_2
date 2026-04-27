@@ -51,4 +51,23 @@ public class FraudSignal {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(length = 32)
+    private String category;
+
+    @Column(name = "display_message", length = 255)
+    private String displayMessage;
+
+    @Column(name = "risk_impact")
+    private Integer riskImpact;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String metadata;
+
+    // Convenience: cached student username for realtime payload (avoid lazy-load)
+    @Transient
+    public String getStudentUsername() {
+        return student != null ? student.getUsername() : null;
+    }
 }

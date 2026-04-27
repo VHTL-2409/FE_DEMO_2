@@ -4,6 +4,53 @@
  * Light mode + Dark mode support via CSS custom properties
  */
 
+/* ── PrimeVue Dialog Override ─────────────────────────────────── */
+.p-dialog {
+  background: var(--mon-surface) !important;
+  border: 1px solid var(--mon-border) !important;
+  border-radius: var(--mon-radius-lg) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--mon-border) !important;
+  color: var(--mon-text) !important;
+}
+
+.p-dialog-mask {
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.p-dialog-header {
+  background: var(--mon-surface) !important;
+  border-bottom: 1px solid var(--mon-border) !important;
+  padding: 1rem 1.25rem !important;
+  color: var(--mon-text) !important;
+}
+
+.p-dialog-title {
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  color: var(--mon-text) !important;
+}
+
+.p-dialog-header-icon {
+  color: var(--mon-text-secondary) !important;
+}
+
+.p-dialog-header-icon:hover {
+  background: var(--mon-surface-2) !important;
+}
+
+.p-dialog-content {
+  background: var(--mon-surface) !important;
+  padding: 1.25rem !important;
+  color: var(--mon-text-secondary) !important;
+}
+
+.p-dialog-footer {
+  background: var(--mon-surface-2) !important;
+  border-top: 1px solid var(--mon-border) !important;
+  padding: 1rem 1.25rem !important;
+}
+
 /* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
   /* Surface */

@@ -14,11 +14,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Fraud Analysis Service
- * Provides comprehensive fraud analysis methods: plagiarism, timing, statistical,
- * biometrics, IP reputation, and a combined comprehensive analysis.
+ * Service Phân tích Gian lận
+ * Cung cấp các phương pháp phân tích gian lận toàn diện: đạo văn, thời gian, thống kê,
+ * sinh trắc học, danh tiếng IP, và phân tích kết hợp toàn diện.
  *
- * All response shapes are designed to match exactly what the Vue frontend expects.
+ * Tất cả các response được thiết kế khớp chính xác với những gì Vue frontend mong đợi.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,7 +31,7 @@ public class FraudAnalysisService {
     private final AnswerSimilarityService answerSimilarityService;
     private final ObjectMapper objectMapper;
 
-    // --- Plagiarism Analysis ---
+    // --- Phân tích đạo văn ---
 
     public PlagiarismAnalysisResponse analyzePlagiarismByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -116,7 +116,7 @@ public class FraudAnalysisService {
         return "Bat thuong nhe: can ghi nhan nhung khong can hanh dong ngay.";
     }
 
-    // --- Timing Analysis ---
+    // --- Phân tích thời gian ---
 
     public TimingAnalysisResponse analyzeTimingByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -198,7 +198,7 @@ public class FraudAnalysisService {
         return map;
     }
 
-    // --- Statistical Analysis ---
+    // --- Phân tích thống kê ---
 
     public StatisticalAnalysisResponse analyzeStatisticalByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -288,7 +288,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Biometrics Analysis ---
+    // --- Phân tích sinh trắc học ---
 
     public BiometricsAnalysisResponse analyzeBiometricsByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -466,7 +466,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- IP Reputation Analysis ---
+    // --- Phân tích danh tiếng IP ---
 
     public IpReputationAnalysisResponse analyzeIpReputation(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -522,7 +522,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Comprehensive Analysis ---
+    // --- Phân tích toàn diện ---
 
     public ComprehensiveAnalysisResponse analyzeComprehensiveByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -593,8 +593,8 @@ public class FraudAnalysisService {
     }
 
     /**
-     * Compute suspicious behavioral patterns server-side from fraud signals.
-     * This replaces the hardcoded PATTERN_RULES that were previously in the FE.
+     * Tính toán các mẫu hành vi đáng ngờ server-side từ fraud signals.
+     * Thay thế các PATTERN_RULES hardcoded trước đó ở FE.
      */
     private List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> buildSuspiciousPatterns(List<ExamAttempt> attempts) {
         List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> patterns = new ArrayList<>();
@@ -646,7 +646,7 @@ public class FraudAnalysisService {
                 .build());
     }
 
-    // --- Helpers ---
+    // --- Các hàm hỗ trợ ---
 
     private List<ExamAttempt> filterSubmittedAttempts(Exam exam) {
         if (exam.getStartTime() != null && exam.getEndTime() != null) {

@@ -1550,9 +1550,9 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
   flex-shrink: 0;
 }
 .pm-risk-strip__item--clean .pm-risk-strip__dot { background: var(--ds-success); }
-.pm-risk-strip__item--suspicious .pm-risk-strip__dot { background: var(--ds-warning); }
-.pm-risk-strip__item--high .pm-risk-strip__dot { background: var(--mon-risk-high); }
-.pm-risk-strip__item--critical .pm-risk-strip__dot { background: var(--ds-danger); animation: pm-pulse 1.5s ease-in-out infinite; }
+.pm-risk-strip__item--suspicious .pm-risk-strip__dot { background: var(--ds-risk-moderate); }
+.pm-risk-strip__item--high .pm-risk-strip__dot { background: var(--ds-risk-high); }
+.pm-risk-strip__item--critical .pm-risk-strip__dot { background: var(--ds-risk-critical); animation: pm-pulse 1.5s ease-in-out infinite; }
 .pm-risk-strip__label {
   font-size: 0.72rem;
   font-weight: 600;

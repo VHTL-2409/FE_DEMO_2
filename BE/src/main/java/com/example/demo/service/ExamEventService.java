@@ -51,6 +51,7 @@ public class ExamEventService {
     private final RiskScoringService riskScoringService;
     private final DeviceFingerprintService deviceFingerprintService;
     private final DuplicateIpDetectionService duplicateIpDetectionService;
+    private final IdentityAnomalyService identityAnomalyService;
     private final ObjectMapper objectMapper;
 
     @Value("${demo.proctoring.events.dedupe-seconds:5}")
@@ -66,13 +67,14 @@ public class ExamEventService {
     private long fullscreenExitCooldownSeconds;
 
     /**
-     * Per-signal-type rate limits — maximum signals of each type allowed within the window.
-     * Prevents a single signal type (e.g. TAB_SWITCH) from being spammed to inflate risk scores.
+     * Giới hạn rate theo loại signal — số signal tối đa của mỗi loại được phép trong khoảng thời gian.
+     * Ngăn một loại signal duy nhất (ví dụ: TAB_SWITCH) bị spam để làm inflation điểm risk.
+     * Khoảng thời gian ngắn (mặc định 60s) để cho phép các vi phạm lặp lại hợp lý sau cooldown.
      */
-    @Value("${demo.proctoring.rate-limit.signal-window-seconds:300}")
+    @Value("${demo.proctoring.events.signal-window-seconds:60}")
     private long signalRateLimitWindowSeconds;
 
-    @Value("${demo.proctoring.rate-limit.max-per-signal:10}")
+    @Value("${demo.proctoring.events.max-per-signal:10}")
     private int signalRateLimitMaxPerSignal;
 
     @Value("${demo.proctoring.sync-behavior.window-seconds:5}")
@@ -83,6 +85,15 @@ public class ExamEventService {
 
     @Transactional
     public EventBatchResponse ingestBatch(Long attemptId, EventBatchRequest request, User actor) {
+        return ingestBatchInternal(attemptId, request, actor, null);
+    }
+
+    @Transactional
+    public EventBatchResponse ingestBatch(Long attemptId, EventBatchRequest request, User actor, String clientIp) {
+        return ingestBatchInternal(attemptId, request, actor, clientIp);
+    }
+
+    private EventBatchResponse ingestBatchInternal(Long attemptId, EventBatchRequest request, User actor, String clientIp) {
         ExamAttempt attempt = requireAttempt(attemptId);
         ensureStudentOwnsAttempt(attempt, actor);
         ensureAttemptActive(attempt);
@@ -90,6 +101,13 @@ public class ExamEventService {
         String normalizedFingerprint = normalizeFingerprint(attempt, request.getDeviceFingerprint(),
                 request.getBrowserContext() != null ? request.getBrowserContext().getUserAgent() : null);
         applyFingerprintConsistency(attempt, normalizedFingerprint, "batch");
+
+        // Phát hiện bất thường danh tính: fingerprint thay đổi, multi-device, IP thay đổi
+        // Sử dụng clientIp từ request nếu có, nếu không fallback sang IP đã lưu
+        String ipForDetection = clientIp != null && !clientIp.isBlank()
+                ? clientIp
+                : (attempt.getCurrentClientIp() != null ? attempt.getCurrentClientIp() : attempt.getClientIp());
+        identityAnomalyService.onProctoringHeartbeat(attempt, normalizedFingerprint, ipForDetection);
 
         int acceptedCount = 0;
         int droppedCount = 0;
@@ -146,6 +164,40 @@ public class ExamEventService {
         String normalizedFingerprint = normalizeFingerprint(attempt, request.getDeviceFingerprint(), null);
         applyFingerprintConsistency(attempt, normalizedFingerprint, "heartbeat");
 
+        // Phát hiện bất thường danh tính trên heartbeat
+        String clientIp = attempt.getCurrentClientIp() != null ? attempt.getCurrentClientIp() : attempt.getClientIp();
+        identityAnomalyService.onProctoringHeartbeat(attempt, normalizedFingerprint, clientIp);
+
+        LocalDateTime now = VietNamTime.now();
+        attempt.setLastHeartbeatAt(now);
+        attempt.setCameraOn(request.getCameraOn());
+        attempt.setMicOn(request.getMicOn());
+        attempt.setDeviceCheckedAt(now);
+        if (attempt.getFullscreenRequired() == null) {
+            attempt.setFullscreenRequired(Boolean.TRUE);
+        }
+        examAttemptRepository.save(attempt);
+
+        applyHeartbeatDerivedSignals(attempt, request);
+
+        return riskScoringService.recomputeRisk(attempt);
+    }
+
+    @Transactional
+    public RiskScoreResponse processHeartbeat(Long attemptId, HeartbeatRequest request, User actor, String clientIp) {
+        ExamAttempt attempt = requireAttempt(attemptId);
+        ensureStudentOwnsAttempt(attempt, actor);
+        ensureAttemptActive(attempt);
+
+        String normalizedFingerprint = normalizeFingerprint(attempt, request.getDeviceFingerprint(), null);
+        applyFingerprintConsistency(attempt, normalizedFingerprint, "heartbeat");
+
+        // Phát hiện bất thường danh tính trên heartbeat, sử dụng IP từ request nếu có
+        String ipForDetection = clientIp != null && !clientIp.isBlank()
+                ? clientIp
+                : (attempt.getCurrentClientIp() != null ? attempt.getCurrentClientIp() : attempt.getClientIp());
+        identityAnomalyService.onProctoringHeartbeat(attempt, normalizedFingerprint, ipForDetection);
+
         LocalDateTime now = VietNamTime.now();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
@@ -183,6 +235,25 @@ public class ExamEventService {
         return riskScoringService.recomputeRisk(attempt);
     }
 
+    /**
+     * Khởi tạo phiên giám sát: thiết lập fingerprint ban đầu, IP, và chạy multi-device detection.
+     * Được gọi từ ProctoringController.startSession.
+     */
+    @Transactional
+    public void initProctoringSession(Long attemptId, String deviceFingerprint, String userAgent, String clientIp) {
+        ExamAttempt attempt = requireAttempt(attemptId);
+        String normalizedFingerprint = deviceFingerprintService.normalizeFingerprint(deviceFingerprint, userAgent, attempt.getStudent().getId());
+        
+        // Debug logging
+        System.out.println("[DEBUG] initProctoringSession called for attemptId=" + attemptId 
+            + ", studentId=" + attempt.getStudent().getId()
+            + ", rawFingerprint=" + (deviceFingerprint != null ? deviceFingerprint.substring(0, Math.min(50, deviceFingerprint.length())) + "..." : "null")
+            + ", normalizedFingerprint=" + (normalizedFingerprint != null ? normalizedFingerprint.substring(0, Math.min(16, normalizedFingerprint.length())) + "..." : "null")
+            + ", clientIp=" + clientIp);
+        
+        identityAnomalyService.onProctoringStart(attempt, normalizedFingerprint, clientIp);
+    }
+
     @Transactional
     public RiskScoreResponse getRiskSnapshot(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
@@ -217,13 +288,13 @@ public class ExamEventService {
                 .build());
     }
 
-    // ── PHASE-1: All telemetry-derived signal generation is DISABLED.
-    // Signals are ONLY created from events the browser explicitly sends.
-    // The following methods are kept as no-ops for future phase expansion. ──
+    // ── GIAI ĐOẠN 1: Tất cả signal từ telemetry đều BỊ TẮT.
+    // Signals CHỈ được tạo từ events mà browser gửi rõ ràng.
+    // Các method sau được giữ lại như no-ops để mở rộng cho giai đoạn sau. ──
 
     private void applyHeartbeatDerivedSignals(ExamAttempt attempt, HeartbeatRequest request) {
-        // Phase-1: heartbeat telemetry is stored but does NOT generate signals.
-        // NETWORK_INSTABILITY, SESSION_RECOVERY must not be auto-created here.
+        // Giai đoạn 1: telemetry heartbeat được lưu nhưng KHÔNG tạo signals.
+        // NETWORK_INSTABILITY, SESSION_RECOVERY không được tự động tạo ở đây.
     }
 
     private void applyTelemetryDerivedSignals(
@@ -236,9 +307,9 @@ public class ExamEventService {
         if (telemetry == null) {
             return;
         }
-        // Phase-1 keeps frontend-observed signals as the source of truth.
-        // Telemetry is stored as evidence only; it must not create extra fraud
-        // signals for a different behavior than the event the browser reported.
+        // Giai đoạn 1 giữ browser-observed signals là nguồn sự thật.
+        // Telemetry được lưu như bằng chứng; không được tạo thêm fraud
+        // signals cho behavior khác với event mà browser báo cáo.
     }
 
     private int positiveInt(Integer value) {
@@ -259,14 +330,14 @@ public class ExamEventService {
                     .createdAt(createdAt)
                     .build());
         } catch (IllegalArgumentException ignored) {
-            // Legacy timeline keeps only enum-backed events.
+            // Legacy timeline chỉ giữ các events dựa trên enum.
         }
     }
 
-    // Phase-1: HEARTBEAT_STALE auto-generation is disabled.
-    // Only created when student explicitly sends a signal.
+    // Giai đoạn 1: HEARTBEAT_STALE auto-generation bị tắt.
+    // Chỉ được tạo khi student gửi rõ ràng một signal.
     private void emitStaleHeartbeatSignalIfNeeded(ExamAttempt attempt) {
-        // DISABLED: no auto-generation of HEARTBEAT_STALE
+        // TẮT: không tự động tạo HEARTBEAT_STALE
     }
 
     private boolean shouldEmitFullscreenSignal(ExamAttempt attempt, LocalDateTime now) {
@@ -286,10 +357,10 @@ public class ExamEventService {
     }
 
     /**
-     * Per-signal-type rate limiting.
-     * A given signal type (e.g. TAB_SWITCH) can only be recorded a maximum number of times
-     * within the configurable window (default: 10 times per 5 minutes).
-     * This prevents a single event type from being spammed to artificially inflate the risk score.
+     * Giới hạn rate theo loại signal.
+     * Một loại signal cụ thể (ví dụ: TAB_SWITCH) chỉ được ghi nhận tối đa một số lần
+     * nhất định trong khoảng thời gian có thể cấu hình (mặc định: 10 lần / 5 phút).
+     * Điều này ngăn một loại event bị spam để làm inflation điểm risk một cách giả tạo.
      */
     private boolean isSignalRateLimited(ExamAttempt attempt, String eventType) {
         if (signalRateLimitWindowSeconds <= 0 || signalRateLimitMaxPerSignal <= 0) {
@@ -301,8 +372,8 @@ public class ExamEventService {
         return recent >= signalRateLimitMaxPerSignal;
     }
 
-    // Phase-1: fingerprint change does NOT auto-generate DEVICE_FINGERPRINT_CHANGED signal.
-    // Only the current attempt's fingerprint is updated for record-keeping.
+    // Giai đoạn 1: fingerprint thay đổi KHÔNG tự động tạo DEVICE_FINGERPRINT_CHANGED signal.
+    // Chỉ cập nhật fingerprint hiện tại của attempt để ghi nhận.
     private void applyFingerprintConsistency(ExamAttempt attempt, String normalizedFingerprint, String source) {
         ensureAttemptTracked(attempt);
         if (normalizedFingerprint == null || normalizedFingerprint.isBlank()) {
@@ -318,19 +389,19 @@ public class ExamEventService {
         if (!attempt.getDeviceFingerprint().equals(normalizedFingerprint)) {
             attempt.setDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
-            // DISABLED: no auto DEVICE_FINGERPRINT_CHANGED signal
+            // TẮT: không tự động tạo DEVICE_FINGERPRINT_CHANGED signal
             duplicateIpDetectionService.detect(attempt);
         }
     }
 
-    // Phase-1: SYNC_BEHAVIOR detection is DISABLED.
-    // Cross-student timing correlation is not used in Phase-1.
+    // Giai đoạn 1: SYNC_BEHAVIOR detection bị TẮT.
+    // Cross-student timing correlation không được sử dụng trong Giai đoạn 1.
     private void applySyncBehaviorSignal(ExamAttempt attempt, ExamEvent event) {
-        // DISABLED: no SYNC_BEHAVIOR signals
+        // TẮT: không có SYNC_BEHAVIOR signals
     }
 
     private boolean shouldConsiderSyncBehavior(ExamAttempt attempt, String eventType) {
-        return false; // DISABLED
+        return false; // TẮT
     }
 
     private String normalizeFingerprint(ExamAttempt attempt, String rawFingerprint, String userAgent) {
@@ -411,7 +482,7 @@ public class ExamEventService {
         ExamAttempt attempt = requireAttempt(attemptId);
         List<ProctorSessionAlertResponse> alerts = new ArrayList<>();
 
-        // Fraud signals as alerts
+        // Fraud signals dưới dạng alerts
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
         for (FraudSignal signal : signals) {
             Map<String, Object> evidenceMap = parseEvidence(signal.getEvidence());
@@ -428,7 +499,7 @@ public class ExamEventService {
                     .build());
         }
 
-        // Proctor flags as alerts
+        // Proctor flags dưới dạng alerts
         List<ProctorFlag> flags = proctorFlagRepository.findByAttemptOrderByCreatedAtDesc(attempt);
         for (ProctorFlag flag : flags) {
             alerts.add(ProctorSessionAlertResponse.builder()

@@ -161,4 +161,20 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
               AND ea.status IN ('IN_PROGRESS', 'PAUSED')
             """)
     boolean hasActiveAttempts(@Param("examId") Long examId);
+
+    /**
+     * Find active attempts for the same student + exam, excluding the current attempt.
+     * Used for multi-device session detection.
+     */
+    @Query("""
+            SELECT ea FROM ExamAttempt ea
+            WHERE ea.exam.id = :examId
+              AND ea.student.id = :studentId
+              AND ea.id <> :excludeAttemptId
+              AND ea.status IN ('IN_PROGRESS', 'PAUSED')
+            """)
+    List<ExamAttempt> findActiveCounterpartsForMultiDeviceDetection(
+            @Param("examId") Long examId,
+            @Param("studentId") Long studentId,
+            @Param("excludeAttemptId") Long excludeAttemptId);
 }

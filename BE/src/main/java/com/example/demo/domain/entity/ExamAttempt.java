@@ -60,6 +60,12 @@ public class ExamAttempt {
     @Column(name = "client_ip", length = 64)
     private String clientIp;
 
+    @Column(name = "initial_client_ip", length = 64)
+    private String initialClientIp;
+
+    @Column(name = "current_client_ip", length = 64)
+    private String currentClientIp;
+
     @Column(name = "camera_on")
     private Boolean cameraOn;
 
