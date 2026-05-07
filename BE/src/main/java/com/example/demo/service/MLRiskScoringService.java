@@ -87,6 +87,7 @@ public class MLRiskScoringService {
             Map.entry("MULTIPLE_FACES", 0.98),
             Map.entry("FACE_SPOOFING_SUSPECTED", 0.95),
             // AI Camera Detection - High
+            Map.entry("NO_CAMERA", 0.95),
             Map.entry("FACE_NOT_DETECTED", 0.90),
             Map.entry("FACE_OBSTRUCTED_MASK", 0.88),
             // AI Camera Detection - Medium
@@ -508,6 +509,7 @@ public class MLRiskScoringService {
         score += signalCounts.getOrDefault("FACE_SPOOFING_SUSPECTED", 0L) * 7.0;
         
         // High severity AI camera signals
+        score += signalCounts.getOrDefault("NO_CAMERA", 0L) * 7.0;
         score += signalCounts.getOrDefault("FACE_NOT_DETECTED", 0L) * 6.0;
         score += signalCounts.getOrDefault("FACE_OBSTRUCTED_MASK", 0L) * 5.5;
         score += signalCounts.getOrDefault("VERY_LOW_LIGHTING", 0L) * 4.0;

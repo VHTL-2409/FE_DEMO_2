@@ -9,11 +9,13 @@ import com.example.demo.api.dto.exam.WaitingStudentResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.Answer;
+import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
+import com.example.demo.realtime.TeacherAlertGateway;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.AssignmentRepository;
 import com.example.demo.repository.AuditLogRepository;
@@ -72,6 +74,7 @@ public class ExamService {
     private final ImportXlsxService importXlsxService;
     private final CurrentUserService currentUserService;
     private final ClassService classService;
+    private final TeacherAlertGateway teacherAlertGateway;
 
     @Transactional
     public ExamResponse createExam(ExamRequest request, User teacher) {
@@ -610,7 +613,31 @@ public class ExamService {
     public ExamResponse updateMonitoringConfig(Long examId, ExamRequest request, User actor) {
         Exam exam = requireManageableExam(examId, actor);
         applyMonitoringConfig(exam, request);
-        return toResponse(examRepository.save(exam));
+        Exam saved = examRepository.save(exam);
+        publishMonitoringConfigUpdated(saved);
+        return toResponse(saved);
+    }
+
+    private void publishMonitoringConfigUpdated(Exam exam) {
+        if (exam == null || exam.getId() == null) {
+            return;
+        }
+        List<ExamAttempt> activeAttempts = examAttemptRepository.findByExamAndStatusIn(
+                exam,
+                List.of(AttemptStatus.IN_PROGRESS, AttemptStatus.PAUSED)
+        );
+        for (ExamAttempt attempt : activeAttempts) {
+            if (attempt == null || attempt.getId() == null) {
+                continue;
+            }
+            teacherAlertGateway.publishMonitoringConfigUpdated(
+                    exam.getId(),
+                    attempt.getId(),
+                    Boolean.TRUE.equals(exam.getRequireCameraMic()),
+                    Boolean.TRUE.equals(exam.getEnableAiProctoring()),
+                    "Cấu hình giám sát đã được cập nhật."
+            );
+        }
     }
 
     private void applyMonitoringConfig(Exam exam, ExamRequest request) {

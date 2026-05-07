@@ -197,10 +197,7 @@ public class SubmissionService {
 
         if (attempt.getStatus() == AttemptStatus.STOPPED) {
             if (VietNamTime.now().isAfter(submissionHelper.deadlineAt(attempt))) {
-                attempt.setScore(submissionHelper.calculateScore(attempt));
-                attempt.setSubmittedAt(VietNamTime.now());
-                attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
-                examAttemptRepository.save(attempt);
+                autoSubmitFromDraft(attempt, VietNamTime.now());
                 return toSubmitResponse(attempt);
             }
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt has been suspended by proctor");
@@ -232,6 +229,7 @@ public class SubmissionService {
         examAttemptRepository.save(attempt);
 
         detectAndLogFastSubmit(attempt, now);
+        publishAttemptSubmittedAfterCommit(attempt, "Thi sinh da nop bai");
 
         return toSubmitResponse(attempt);
     }
@@ -666,6 +664,62 @@ public class SubmissionService {
         attempt.setSubmittedAt(submittedAt);
         attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
         examAttemptRepository.save(attempt);
+        publishAttemptSubmittedAfterCommit(attempt, "Thi sinh da tu dong nop bai");
+    }
+
+    private void publishAttemptSubmittedAfterCommit(ExamAttempt attempt, String message) {
+        if (attempt == null || attempt.getExam() == null || attempt.getStudent() == null) {
+            return;
+        }
+        Long examId = attempt.getExam().getId();
+        Long attemptId = attempt.getId();
+        String studentUsername = attempt.getStudent().getUsername();
+        String studentName = attempt.getStudent().getFullName();
+        String email = attempt.getStudent().getEmail();
+        String studentCode = attempt.getStudent().getStudentCode();
+        String status = attempt.getStatus() != null ? attempt.getStatus().name() : AttemptStatus.SUBMITTED.name();
+        Double score = attempt.getScore();
+        LocalDateTime startedAt = attempt.getStartedAt();
+        LocalDateTime submittedAt = attempt.getSubmittedAt();
+        LocalDateTime deadlineAt = submissionHelper.deadlineAt(attempt);
+        Long remainingSeconds = submissionHelper.remainingSeconds(attempt);
+        Integer riskScore = attempt.getRiskScore();
+        String riskLevel = attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : RiskLevel.CLEAN.name();
+        Boolean cameraOn = attempt.getCameraOn();
+        Boolean micOn = attempt.getMicOn();
+        String clientIp = attempt.getClientIp();
+
+        Runnable publish = () -> realtimeNotificationService.notifyAttemptSubmitted(
+                examId,
+                attemptId,
+                studentUsername,
+                studentName,
+                email,
+                studentCode,
+                status,
+                score,
+                startedAt,
+                submittedAt,
+                deadlineAt,
+                remainingSeconds,
+                riskScore,
+                riskLevel,
+                cameraOn,
+                micOn,
+                clientIp,
+                message
+        );
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
     }
 
     private void detectAndLogFastSubmit(ExamAttempt attempt, LocalDateTime submittedAt) {

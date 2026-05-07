@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
+const normalizeSignalType = (value) => String(value || '').trim().toUpperCase()
 const resolveAttemptId = (card) => {
   const raw = card?.attemptId ?? card?.id
   if (raw == null || raw === '') return raw
@@ -38,6 +39,27 @@ const EVENT_DEDUPE_WINDOW_MS = 5_000
 
 const makeEventKey = (event) =>
   `${event.attemptId || ''}:${event.type || event.eventType || ''}:${event.occurredAt || event.issuedAt || event.at || ''}`
+
+const CAMERA_ALERT_CATEGORIES = new Set(['CAMERA_PROCTORING', 'AI_CAMERA'])
+
+const isCameraAlert = (alert = {}) => {
+  const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
+  const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
+  return CAMERA_ALERT_CATEGORIES.has(category) || signalType === 'AI_CAMERA_SIGNAL'
+}
+
+const buildAlertKey = (alert = {}) => {
+  const attemptId = alert.attemptId || ''
+  const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
+  const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
+  const relatedKey = Array.isArray(alert.relatedAttemptIds) ? alert.relatedAttemptIds.join(',') : ''
+
+  if (isCameraAlert(alert)) {
+    return `${attemptId}|CAMERA|${signalType}`
+  }
+
+  return `${attemptId}|${category}|${signalType}|${normalizeSignalType(alert.severity)}|${relatedKey}`
+}
 
 export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const selectedExamId = ref(null)
@@ -219,9 +241,11 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       latestSignalSeverity: signal.severity || event.severity,
       latestSignalCategory: signal.category,
       latestSignalDisplayMessage: signal.displayMessage,
+      latestSignalRiskImpact: signal.riskImpact,
       scores: event.scores,
       latestWarningCategory: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningCategory : undefined,
       latestWarningType: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningType : undefined,
+      latestWarningRiskImpact: event.type === 'FRAUD_WARNING_RECORDED' ? event.riskImpact : undefined,
       latestWarningReviewStatus: event.type === 'FRAUD_WARNING_RECORDED' ? event.reviewStatus : undefined,
       lastWarning: event.type === 'WARNING_SENT' || event.type === 'FRAUD_WARNING_RECORDED' ? event.message : undefined,
       lastWarningAt: event.type === 'FRAUD_WARNING_RECORDED' ? occurredAt : undefined
@@ -377,10 +401,9 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   })
 
   const addAlert = (alert) => {
-    const signalType = alert.signalType || alert.warningType || alert.type || ''
-    const category = alert.category || alert.warningCategory || alert.latestSignalCategory || ''
-    const relatedKey = Array.isArray(alert.relatedAttemptIds) ? alert.relatedAttemptIds.join(',') : ''
-    const key = `${alert.attemptId || ''}|${category}|${signalType}|${alert.severity || ''}|${relatedKey}`
+    const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
+    const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
+    const key = buildAlertKey(alert)
     const now = Date.now()
     const lastSeen = recentAlertKeys.get(key)
     if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) return false

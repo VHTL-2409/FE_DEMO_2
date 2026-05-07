@@ -57,6 +57,9 @@ public class FraudWarning {
     @Column(length = 500)
     private String message;
 
+    @Column(name = "risk_impact")
+    private Integer riskImpact;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String evidence;

@@ -194,6 +194,48 @@ public class RealtimeNotificationService {
         );
     }
 
+    public void notifyAttemptSubmitted(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            Double score,
+            LocalDateTime startedAt,
+            LocalDateTime submittedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp,
+            String message
+    ) {
+        teacherAlertGateway.publishAttemptSubmitted(
+                examId,
+                attemptId,
+                student,
+                studentName,
+                email,
+                studentCode,
+                status,
+                score,
+                startedAt,
+                submittedAt,
+                deadlineAt,
+                remainingSeconds,
+                riskScore,
+                riskLevel,
+                cameraOn,
+                micOn,
+                clientIp,
+                message
+        );
+    }
+
     public void notifyDraftSaved(ExamAttempt attempt, Integer answeredCount, Long remainingSeconds) {
         teacherAlertGateway.publishDraftSaved(
             attempt.getExam().getId(),
@@ -232,6 +274,7 @@ public class RealtimeNotificationService {
     private boolean isAiCameraSignal(String signalType) {
         if (signalType == null) return false;
         return Set.of(
+                "NO_CAMERA",
                 "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                 "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                 "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",

@@ -40,6 +40,7 @@ const PATTERN_LEVEL_VISUAL = {
 
 // AI Camera Detection Signal Labels
 export const AI_CAMERA_SIGNALS = {
+  NO_CAMERA: { label: 'Camera tắt', severity: 'HIGH', icon: 'videocam_off' },
   FACE_NOT_DETECTED: { label: 'Không có khuôn mặt', severity: 'HIGH', icon: 'user-x' },
   MULTIPLE_FACES: { label: 'Nhiều khuôn mặt', severity: 'CRITICAL', icon: 'users' },
   FACE_SPOOFING_SUSPECTED: { label: 'Nghi vấn giả mạo', severity: 'CRITICAL', icon: 'shield-alert' },

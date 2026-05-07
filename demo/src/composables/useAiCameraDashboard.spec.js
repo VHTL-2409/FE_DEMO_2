@@ -104,7 +104,7 @@ describe('useAiCameraDashboard', () => {
       }
     })
 
-    const camera = dashboard.cameraStatuses.value[0]
+    let camera = dashboard.cameraStatuses.value[0]
     expect(camera.status).toBe('CRITICAL')
     expect(camera.faceCount).toBe(2)
     expect(camera.multipleFaces).toBe(true)
@@ -112,6 +112,24 @@ describe('useAiCameraDashboard', () => {
     expect(camera.activeSignals).toContain('MULTIPLE_FACES')
     expect(camera.criticalSignals).toHaveLength(1)
     expect(dashboard.recentAlerts.value[0].signalType).toBe('MULTIPLE_FACES')
+
+    dashboard.applyRealtimeEvent({
+      type: 'FRAUD_WARNING_RECORDED',
+      warningCategory: 'CAMERA_PROCTORING',
+      warningType: 'MULTIPLE_FACES',
+      severity: 'CRITICAL',
+      confidence: 0.98,
+      riskImpact: 25,
+      attemptId: 88,
+      studentName: 'Student One',
+      issuedAt: '2026-05-07T10:00:01+07:00'
+    })
+
+    camera = dashboard.cameraStatuses.value[0]
+    expect(camera.activeSignals).toEqual(['MULTIPLE_FACES'])
+    expect(camera.criticalSignals).toHaveLength(1)
+    expect(camera.alertCount).toBe(1)
+    expect(dashboard.recentAlerts.value).toHaveLength(1)
 
     unmount()
   })
@@ -126,6 +144,7 @@ describe('useAiCameraDashboard', () => {
       warningType: 'FACE_NOT_DETECTED',
       severity: 'HIGH',
       confidence: 0.92,
+      riskImpact: 20,
       attemptId: 89,
       studentName: 'Student Two',
       faceCount: 0,
@@ -137,7 +156,9 @@ describe('useAiCameraDashboard', () => {
     expect(dashboard.cameraStatuses.value).toHaveLength(1)
     expect(dashboard.cameraStatuses.value[0].status).toBe('WARNING')
     expect(dashboard.cameraStatuses.value[0].faceCount).toBe(0)
+    expect(dashboard.cameraStatuses.value[0].riskImpact).toBe(20)
     expect(dashboard.recentAlerts.value).toHaveLength(1)
+    expect(dashboard.recentAlerts.value[0].riskImpact).toBe(20)
 
     const alertId = dashboard.recentAlerts.value[0].id
     await expect(dashboard.dismissAlert(alertId)).resolves.toBe(true)

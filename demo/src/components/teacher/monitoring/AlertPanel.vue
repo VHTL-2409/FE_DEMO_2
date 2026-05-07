@@ -124,6 +124,9 @@
                   <span v-if="alert.category || alert.warningCategory" class="ap__alert-category-badge">
                     {{ categoryLabel(alert.category || alert.warningCategory) }}
                   </span>
+                  <span v-if="alert.riskImpact != null" class="ap__alert-risk-badge">
+                    +{{ alert.riskImpact }} risk
+                  </span>
                 </div>
                 <p class="ap__alert-student">{{ alert.studentName || alert.studentEmail || alert.userName || '—' }}</p>
               </div>
@@ -779,6 +782,18 @@ const groupedAlerts = computed(() => {
   background: rgba(14, 165, 233, 0.1);
   color: var(--ds-info);
   border: 1px solid rgba(14, 165, 233, 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ap__alert-risk-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 0.1rem 0.42rem;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  border: 1px solid var(--ds-primary-border);
   white-space: nowrap;
   flex-shrink: 0;
 }

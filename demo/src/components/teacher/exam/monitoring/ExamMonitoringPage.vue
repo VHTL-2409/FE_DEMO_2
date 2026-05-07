@@ -147,8 +147,7 @@
           <div class="emp-table-head">
             <span class="emp-th">Học sinh</span>
             <span class="emp-th emp-th--center">Trạng thái</span>
-            <span class="emp-th emp-th--center">Risk</span>
-            <span class="emp-th emp-th--center">Mức</span>
+            <span class="emp-th emp-th--center">Rủi ro</span>
             <span class="emp-th">Flag</span>
             <span class="emp-th">Hành vi mới</span>
           </div>
@@ -197,18 +196,14 @@
               </span>
             </div>
 
-            <!-- Risk score -->
-            <div class="emp-cell emp-cell--center">
+            <!-- Risk -->
+            <div class="emp-cell emp-cell--center emp-cell--risk">
               <span
                 class="emp-risk-score"
                 :style="{ color: card._riskColor }"
               >
                 {{ Math.round(card.riskScore || 0) }}
               </span>
-            </div>
-
-            <!-- Risk level -->
-            <div class="emp-cell emp-cell--center">
               <span
                 class="emp-level-badge"
                 :class="`emp-level-badge--${card._riskBand?.toLowerCase()}`"
@@ -225,7 +220,7 @@
                 :class="`emp-flag-chip--${card.activeFlagStatus?.toLowerCase()}`"
               >
                 <LucideIcon name="flag" :size="12" />
-                {{ card.activeFlagStatus }}
+                {{ getFlagStatusLabel(card.activeFlagStatus) }}
               </span>
               <span v-else class="emp-flag-chip emp-flag-chip--none">—</span>
             </div>
@@ -269,6 +264,24 @@
               >
                 <LucideIcon name="external-link" :size="15" />
               </button>
+            </div>
+
+            <div class="emp-panel-summary">
+              <span class="emp-panel-summary__chip emp-panel-summary__chip--status">
+                {{ selectedCard._statusLabel }}
+              </span>
+              <span class="emp-panel-summary__chip emp-panel-summary__chip--risk" :style="{ color: selectedCard._riskColor }">
+                {{ Math.round(selectedCard.riskScore || 0) }} · {{ selectedCard._riskBandLabel }}
+              </span>
+              <span
+                v-if="selectedCard.activeFlagStatus && selectedCard.activeFlagStatus !== 'DISMISSED'"
+                class="emp-panel-summary__chip emp-panel-summary__chip--flag"
+              >
+                {{ getFlagStatusLabel(selectedCard.activeFlagStatus) }}
+              </span>
+              <span class="emp-panel-summary__chip emp-panel-summary__chip--signal">
+                {{ getSignalLabel(selectedCard.latestSignalType) }} · {{ formatTimeAgo(selectedCard.latestSignalAt || selectedCard.lastSignalAt) }}
+              </span>
             </div>
 
             <!-- Actions -->
@@ -567,6 +580,14 @@ function getInitials(card) {
 function getSignalLabel(type) {
   if (!type) return '—'
   return SIGNAL_LABELS[type] || type.replace(/_/g, ' ')
+}
+
+function getFlagStatusLabel(status) {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'OPEN') return 'Đang mở'
+  if (normalized === 'CONFIRMED') return 'Đã xác nhận'
+  if (normalized === 'DISMISSED') return 'Đã bỏ qua'
+  return status || '—'
 }
 
 function formatTimeAgo(ts) {
@@ -1132,7 +1153,7 @@ onActivated(() => {
 
 .emp-table-head {
   display: grid;
-  grid-template-columns: 2fr 100px 70px 100px 100px 1fr;
+  grid-template-columns: 2fr 100px 132px 100px 1fr;
   gap: 1px;
   padding: 0 var(--ds-space-3);
   background: var(--ds-gray-50);
@@ -1158,7 +1179,7 @@ onActivated(() => {
 
 .emp-row {
   display: grid;
-  grid-template-columns: 2fr 100px 70px 100px 100px 1fr;
+  grid-template-columns: 2fr 100px 132px 100px 1fr;
   gap: 1px;
   padding: 0 var(--ds-space-3);
   border-bottom: 1px solid var(--ds-border);
@@ -1208,6 +1229,13 @@ onActivated(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.emp-cell--risk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Avatar */
@@ -1442,6 +1470,46 @@ onActivated(() => {
   white-space: nowrap;
 }
 
+.emp-panel-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--ds-space-4);
+}
+
+.emp-panel-summary__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-full);
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+  background: var(--ds-gray-100);
+  color: var(--ds-text-secondary);
+}
+
+.emp-panel-summary__chip--status {
+  background: var(--ds-gray-100);
+}
+
+.emp-panel-summary__chip--risk {
+  background: var(--ds-surface-muted);
+}
+
+.emp-panel-summary__chip--flag {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.emp-panel-summary__chip--signal {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Panel actions */
 .emp-panel-actions {
   display: flex;
@@ -1600,7 +1668,7 @@ onActivated(() => {
 
   .emp-table-head,
   .emp-row {
-    grid-template-columns: 2fr 90px 60px 90px 80px 1fr;
+    grid-template-columns: 2fr 90px 120px 90px 1fr;
   }
 }
 

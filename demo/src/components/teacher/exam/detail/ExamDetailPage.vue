@@ -636,6 +636,22 @@ const handleSave = async () => {
     toast.success('Đã lưu đề thi và câu hỏi.')
     setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle' }, 4000)
   } catch (err) {
+    if (examHasStarted.value && err instanceof ApiError && err.status === 400) {
+      try {
+        const updated = await updateMonitoringConfig(exam.value.id, buildMonitoringPayload())
+        exam.value = updated
+        populateForm(updated)
+        saveState.value = 'saved'
+        toast.warning('Đề thi đã bắt đầu, chỉ lưu cấu hình giám sát.')
+        setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle' }, 4000)
+        return
+      } catch (monitoringErr) {
+        saveState.value = 'error'
+        toast.error(monitoringErr instanceof ApiError ? monitoringErr.message : 'Không thể lưu cấu hình giám sát.')
+        setTimeout(() => { if (saveState.value === 'error') saveState.value = 'idle' }, 4000)
+        return
+      }
+    }
     saveState.value = 'error'
     toast.error(err instanceof ApiError ? err.message : 'Không thể lưu đề thi.')
     setTimeout(() => { if (saveState.value === 'error') saveState.value = 'idle' }, 4000)

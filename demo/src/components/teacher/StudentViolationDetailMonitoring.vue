@@ -308,7 +308,6 @@
                   </div>
                   <div class="smd-realtime-item__body">
                     <span class="smd-realtime-item__label">{{ evt.label }}</span>
-                    <span v-if="evt.riskScore != null" class="smd-realtime-item__score">{{ evt.riskScore }}</span>
                     <p v-if="evt.message" class="smd-realtime-item__msg">{{ evt.message }}</p>
                   </div>
                   <span class="smd-realtime-item__time">{{ formatTime(evt.timestamp) }}</span>
@@ -509,13 +508,26 @@ const V_COLORS = {
   SYNC_BEHAVIOR: 'var(--mon-risk-critical)', IP_FINGERPRINT_GRAPH: 'var(--mon-risk-critical)',
   ANSWER_SIMILARITY: 'var(--mon-risk-critical)', AI_MULTIPLE_FACES: 'var(--mon-risk-critical)',
   AI_PHONE_DETECTED: 'var(--mon-risk-critical)',
+  MULTIPLE_FACES: 'var(--mon-risk-critical)', FACE_SPOOFING_SUSPECTED: 'var(--mon-risk-critical)',
   // HIGH / WARNING types — orange/amber
   TAB_SWITCH: 'var(--mon-risk-high)', EXIT_FULLSCREEN: 'var(--mon-risk-high)',
   WINDOW_BLUR: 'var(--mon-risk-high)', HEARTBEAT_STALE: 'var(--mon-risk-high)',
-  RAPID_QUESTION_SWITCH: 'var(--mon-risk-high)',
+  RAPID_QUESTION_SWITCH: 'var(--mon-risk-high)', FACE_NOT_DETECTED: 'var(--mon-risk-high)',
+  NO_CAMERA: 'var(--mon-risk-high)',
+  SCREEN_LEAVE: 'var(--mon-risk-high)', FULLSCREEN_VIOLATION: 'var(--mon-risk-high)',
+  FULLSCREEN_EVASION: 'var(--mon-risk-high)', LONG_SCREEN_LEAVE: 'var(--mon-risk-high)',
+  FACE_OBSTRUCTED_MASK: 'var(--mon-risk-high)', EYES_OBSTRUCTED: 'var(--mon-risk-high)',
+  PARTIAL_FACE_VISIBLE: 'var(--mon-risk-high)', FACE_TOO_FAR: 'var(--mon-risk-high)',
+  FACE_TURNED_AWAY: 'var(--mon-risk-high)', EYES_NOT_DETECTED: 'var(--mon-risk-high)',
+  VERY_LOW_LIGHTING: 'var(--mon-risk-high)', VERY_BLURRY_FRAME: 'var(--mon-risk-high)',
+  GAZE_OFF_SCREEN: 'var(--mon-risk-high)',
   // LOW / INFO types — sky blue
   IDLE_TIME: 'var(--mon-risk-low)', RIGHT_CLICK: 'var(--mon-risk-low)',
-  AI_LOOKING_AWAY: 'var(--mon-risk-low)',
+  AI_LOOKING_AWAY: 'var(--mon-risk-low)', FACE_TOO_CLOSE: 'var(--mon-risk-low)',
+  FACE_NOT_CENTERED: 'var(--mon-risk-low)', LOW_LIGHTING: 'var(--mon-risk-low)',
+  OVEREXPOSED_FRAME: 'var(--mon-risk-low)', BLURRY_FRAME: 'var(--mon-risk-low)',
+  EYE_BLINK_ANOMALY: 'var(--mon-risk-low)', EYES_CLOSED_PROLONGED: 'var(--mon-risk-low)',
+  RAPID_EYE_MOVEMENT: 'var(--mon-risk-low)',
   // NOTE / WARNING_SENT
   WARNING_SENT: 'var(--mon-primary)',
   NOTE: 'var(--mon-text-muted)'
@@ -526,6 +538,16 @@ const V_ICONS = {
   MULTI_MONITOR: 'monitor', DUPLICATE_IP: 'globe', RAPID_QUESTION_SWITCH: 'monitor', HEARTBEAT_STALE: 'wifi-off',
   DEVICE_FINGERPRINT_CHANGED: 'code', SYNC_BEHAVIOR: 'monitor', IP_FINGERPRINT_GRAPH: 'globe',
   ANSWER_SIMILARITY: 'copy', AI_MULTIPLE_FACES: 'monitor', AI_PHONE_DETECTED: 'monitor', AI_LOOKING_AWAY: 'wifi-off',
+  NO_CAMERA: 'videocam_off',
+  SCREEN_LEAVE: 'monitor-off', FULLSCREEN_VIOLATION: 'minimize', FULLSCREEN_EVASION: 'minimize',
+  LONG_SCREEN_LEAVE: 'monitor-off',
+  MULTIPLE_FACES: 'monitor', FACE_SPOOFING_SUSPECTED: 'shield-alert', FACE_NOT_DETECTED: 'user-x',
+  FACE_OBSTRUCTED_MASK: 'shield-alert', EYES_OBSTRUCTED: 'eye-off', PARTIAL_FACE_VISIBLE: 'monitor',
+  FACE_TOO_FAR: 'search', FACE_TOO_CLOSE: 'search', FACE_TURNED_AWAY: 'rotate-ccw',
+  FACE_NOT_CENTERED: 'monitor', EYES_NOT_DETECTED: 'eye-off', VERY_LOW_LIGHTING: 'wb_sunny',
+  LOW_LIGHTING: 'wb_sunny', OVEREXPOSED_FRAME: 'wb_sunny', VERY_BLURRY_FRAME: 'image-off',
+  BLURRY_FRAME: 'image-off', EYE_BLINK_ANOMALY: 'eye', EYES_CLOSED_PROLONGED: 'eye-off',
+  GAZE_OFF_SCREEN: 'eye-off', RAPID_EYE_MOVEMENT: 'activity',
   WARNING_SENT: 'alert-triangle', NOTE: 'sticky-note'
 }
 const V_LABELS = {
@@ -536,6 +558,18 @@ const V_LABELS = {
   DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị', SYNC_BEHAVIOR: 'Hành vi đồng bộ',
   IP_FINGERPRINT_GRAPH: 'Liên kết IP', ANSWER_SIMILARITY: 'Tương đồng đáp án',
   AI_MULTIPLE_FACES: 'Nhiều khuôn mặt', AI_PHONE_DETECTED: 'Phát hiện điện thoại', AI_LOOKING_AWAY: 'Nhìn lệch hướng',
+  NO_CAMERA: 'Camera tắt',
+  SCREEN_LEAVE: 'Rời màn hình',
+  FULLSCREEN_VIOLATION: 'Thoát toàn màn hình',
+  FULLSCREEN_EVASION: 'Thoát toàn màn hình',
+  LONG_SCREEN_LEAVE: 'Rời màn hình lâu',
+  MULTIPLE_FACES: 'Nhiều khuôn mặt', FACE_SPOOFING_SUSPECTED: 'Nghi vấn giả mạo khuôn mặt',
+  FACE_NOT_DETECTED: 'Không phát hiện khuôn mặt', FACE_OBSTRUCTED_MASK: 'Khuôn mặt bị che', EYES_OBSTRUCTED: 'Mắt bị che',
+  PARTIAL_FACE_VISIBLE: 'Khuôn mặt không đầy đủ', FACE_TOO_FAR: 'Khuôn mặt quá xa', FACE_TOO_CLOSE: 'Khuôn mặt quá gần',
+  FACE_TURNED_AWAY: 'Quay mặt đi', FACE_NOT_CENTERED: 'Khuôn mặt lệch tâm', EYES_NOT_DETECTED: 'Không phát hiện mắt',
+  VERY_LOW_LIGHTING: 'Ánh sáng rất yếu', LOW_LIGHTING: 'Ánh sáng yếu', OVEREXPOSED_FRAME: 'Ảnh quá sáng',
+  VERY_BLURRY_FRAME: 'Ảnh rất mờ', BLURRY_FRAME: 'Ảnh mờ', EYE_BLINK_ANOMALY: 'Nháy mắt bất thường',
+  EYES_CLOSED_PROLONGED: 'Mắt nhắm lâu', GAZE_OFF_SCREEN: 'Nhìn lệch màn hình', RAPID_EYE_MOVEMENT: 'Mắt di chuyển nhanh',
   WARNING_SENT: 'Cảnh báo đã gửi', NOTE: 'Ghi chú'
 }
 const PATTERN_RULES = [
@@ -547,11 +581,50 @@ const PATTERN_RULES = [
 const REALTIME_META = {
   RISK_UPDATED: { icon: 'trending-up', tone: 'warn', label: 'Cập nhật rủi ro' },
   SUSPICIOUS: { icon: 'alert-triangle', tone: 'warn', label: 'Hành vi đáng ngờ' },
+  FRAUD_SIGNAL_RECORDED: { icon: 'activity', tone: 'warn', label: 'Tín hiệu giám sát' },
+  FRAUD_WARNING_RECORDED: { icon: 'alert-triangle', tone: 'warn', label: 'Cảnh báo giám sát' },
   WARNING_SENT: { icon: 'alert-circle', tone: 'warn', label: 'Đã gửi cảnh báo' },
   ATTEMPT_PAUSED: { icon: 'pause-circle', tone: 'warn', label: 'Tạm dừng' },
   ATTEMPT_RESUMED: { icon: 'play-circle', tone: 'success', label: 'Tiếp tục' },
   ATTEMPT_STOPPED: { icon: 'x-circle', tone: 'danger', label: 'Đình chỉ' }
 }
+const TIMELINE_HIDDEN_TYPES = new Set(['RISK_SCORE', 'RISK_UPDATED'])
+const AI_CAMERA_TIMELINE_TYPES = new Set([
+  'NO_CAMERA',
+  'FACE_NOT_DETECTED',
+  'MULTIPLE_FACES',
+  'FACE_SPOOFING_SUSPECTED',
+  'FACE_OBSTRUCTED_MASK',
+  'EYES_OBSTRUCTED',
+  'PARTIAL_FACE_VISIBLE',
+  'FACE_TOO_FAR',
+  'FACE_TOO_CLOSE',
+  'FACE_TURNED_AWAY',
+  'FACE_NOT_CENTERED',
+  'EYES_NOT_DETECTED',
+  'VERY_LOW_LIGHTING',
+  'LOW_LIGHTING',
+  'OVEREXPOSED_FRAME',
+  'VERY_BLURRY_FRAME',
+  'BLURRY_FRAME',
+  'EYE_BLINK_ANOMALY',
+  'EYES_CLOSED_PROLONGED',
+  'GAZE_OFF_SCREEN',
+  'RAPID_EYE_MOVEMENT'
+])
+const TIMELINE_COLLAPSE_TYPES = new Set([
+  'WARNING_SENT',
+  'WARNING',
+  'FRAUD_WARNING',
+  'TAB_SWITCH',
+  'WINDOW_BLUR',
+  'SCREEN_LEAVE',
+  'EXIT_FULLSCREEN',
+  'FULLSCREEN_VIOLATION',
+  'FULLSCREEN_EVASION',
+  'LONG_SCREEN_LEAVE',
+  ...AI_CAMERA_TIMELINE_TYPES
+])
 
 const route = useRoute()
 const toast = useToast()
@@ -707,22 +780,113 @@ function extractDetails(raw) {
   return String(raw)
 }
 
+function normalizeTimelineType(value) {
+  const text = String(value || '').trim()
+  return text ? text.toUpperCase() : ''
+}
+
+function normalizeTimelineText(value) {
+  return String(value || '').trim()
+}
+
+function isCameraTimelineType(eventType = '') {
+  return AI_CAMERA_TIMELINE_TYPES.has(eventType)
+}
+
+function isCameraTimelineCategory(category = '') {
+  return ['AI_CAMERA', 'EYE_TRACKING', 'GAZE_TRACKING', 'AI_SPOOFING', 'CAMERA_PROCTORING']
+    .includes(normalizeTimelineType(category))
+}
+
+function normalizeTimelineDetails(item = {}, eventType = '') {
+  const raw = extractDetails(item.details || item.evidence || item.message || item.displayMessage || '')
+  const text = normalizeTimelineText(raw)
+  if (!text) return ''
+  const label = normalizeTimelineText(getVLabel(eventType))
+  if (text === label || text.toUpperCase() === eventType) return ''
+  return text
+}
+
+function normalizeTimelineEvent(item = {}) {
+  const eventType = normalizeTimelineType(item.eventType || item.type || item.warningType)
+  if (!eventType || TIMELINE_HIDDEN_TYPES.has(eventType)) return null
+  const at = item.at || item.createdAt || item.timestamp || item.issuedAt || null
+  const severity = normalizeTimelineType(item.severity) || 'MEDIUM'
+  const category = normalizeTimelineType(item.category) || ''
+  const bucketSize = timelineBucketSize(eventType, category)
+  const bucketAt = bucketSize > 0
+    ? Math.floor(new Date(at || 0).getTime() / bucketSize) * bucketSize
+    : new Date(at || 0).getTime()
+
+  return {
+    ...item,
+    eventType,
+    at,
+    severity,
+    details: normalizeTimelineDetails(item, eventType),
+    category,
+    _bucketAt: bucketAt
+  }
+}
+
+function timelineBucketSize(eventType = '', category = '') {
+  if (eventType === 'RISK_SCORE' || eventType === 'RISK_UPDATED') return 0
+  if (TIMELINE_COLLAPSE_TYPES.has(eventType) || isCameraTimelineType(eventType) || isCameraTimelineCategory(category)) {
+    return 15_000
+  }
+  return 1_000
+}
+
+function makeTimelineFingerprint(item = {}) {
+  const eventType = normalizeTimelineType(item.eventType || item.type || item.warningType)
+  const atBucket = item._bucketAt != null
+    ? String(item._bucketAt)
+    : String(item.at || item.createdAt || item.timestamp || item.issuedAt || '')
+  const category = normalizeTimelineType(item.category) || ''
+  const collapse = TIMELINE_COLLAPSE_TYPES.has(eventType) || isCameraTimelineType(eventType) || isCameraTimelineCategory(category)
+  const severity = collapse ? '' : normalizeTimelineType(item.severity) || ''
+  const details = collapse ? '' : normalizeTimelineText(item.details || item.message || item.displayMessage)
+  const normalizedCategory = collapse ? 'CAMERA_PROCTORING' : category
+  return [eventType, atBucket, normalizedCategory, severity, details].join('|')
+}
+
+function preferTimelineItem(candidate = {}, existing = {}) {
+  if (!existing) return true
+  const candidateType = (candidate.type || '').toUpperCase()
+  const existingType = (existing.type || '').toUpperCase()
+  if (candidateType === 'FRAUD_SIGNAL' && existingType !== 'FRAUD_SIGNAL') {
+    return true
+  }
+  if (existingType === 'FRAUD_SIGNAL' && candidateType !== 'FRAUD_SIGNAL') return false
+  if (candidate.details && !existing.details) return true
+  if (candidate.riskImpact != null && existing.riskImpact == null) return true
+  if (candidate.confidence != null && existing.confidence == null) return true
+  const candidateText = normalizeTimelineText(candidate.details || candidate.message || candidate.displayMessage)
+  const existingText = normalizeTimelineText(existing.details || existing.message || existing.displayMessage)
+  return candidateText.length > existingText.length
+}
+
 const timelineEvents = computed(() => {
-  const seen = new Set()
-  return (timeline.value || []).map(item => {
-    const at = item.at || item.createdAt || item.timestamp
-    const eventType = item.eventType || item.type || ''
-    const key = `${eventType}-${at}`
-    if (seen.has(key)) return null
-    seen.add(key)
-    return {
-      key,
-      at,
-      eventType,
-      details: extractDetails(item.details || item.evidence || ''),
-      severity: item.severity || 'MEDIUM'
+  const unique = new Map()
+  for (const rawItem of timeline.value || []) {
+    const item = normalizeTimelineEvent(rawItem)
+    if (!item) continue
+    const key = makeTimelineFingerprint(item)
+    const existing = unique.get(key)
+    if (!existing || preferTimelineItem(item, existing)) {
+      unique.set(key, item)
     }
-  }).filter(Boolean)
+  }
+  return [...unique.values()]
+    .sort((a, b) => {
+      const aTime = new Date(a.at || a.createdAt || a.timestamp || 0).getTime()
+      const bTime = new Date(b.at || b.createdAt || b.timestamp || 0).getTime()
+      return bTime - aTime
+    })
+    .map((item, index) => ({
+      ...item,
+      key: item.key || makeTimelineFingerprint(item) || `${item.eventType}-${index}`
+    }))
 })
 
 const filteredTimeline = computed(() => {
@@ -749,13 +913,14 @@ const suspiciousPatterns = computed(() =>
 
 // ── Notes & Actions ───────────────────────────────────────────────────────────
 const notes = computed(() =>
-  [...(timeline.value.filter(t => t.eventType === 'NOTE') || [])].reverse()
+  timelineEvents.value
+    .filter(item => item.eventType === 'NOTE')
     .map(n => ({ ...n, key: n.key || `${n.eventType}-${n.at}` }))
 )
 
 const actionHistory = computed(() => {
   const actions = []
-  for (const item of timeline.value) {
+  for (const item of timelineEvents.value) {
     const type = String(item.eventType || item.type || '').toUpperCase()
     const isAction = ['WARNING_SENT', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED', 'NOTE'].includes(type)
     if (!isAction) continue
@@ -838,14 +1003,30 @@ function stopAutoRefresh() {
 
 // ── Realtime ─────────────────────────────────────────────────────────────────
 function pushRealtimeEvent(payload = {}) {
-  const type = String(payload.type || '').toUpperCase()
+  const type = normalizeTimelineType(payload.type)
+  if (!type || type === 'RISK_UPDATED') return
   const meta = REALTIME_META[type] || { icon: 'activity', tone: 'neutral', label: type || 'Sự kiện' }
+  const timestamp = payload.timestamp || payload.issuedAt || new Date().toISOString()
+  const logicalType = normalizeTimelineType(
+    payload.warningType
+      || payload.latestSignal?.signalType
+      || payload.signalType
+      || payload.eventType
+      || type
+  )
+  const isFraudRealtime = type === 'FRAUD_SIGNAL_RECORDED' || type === 'FRAUD_WARNING_RECORDED'
+  const message = payload.message || payload.latestSignal?.displayMessage || (isFraudRealtime ? getVLabel(logicalType) : '')
+  const key = [
+    isFraudRealtime ? logicalType : type,
+    Math.floor(new Date(timestamp).getTime() / 5000),
+    isFraudRealtime ? '' : normalizeTimelineText(message)
+  ].join('|')
+  if (realtimeFeed.value.some(evt => evt.id === key)) return
   realtimeFeed.value = [{
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: key,
     type, icon: meta.icon, tone: meta.tone, label: meta.label,
-    message: payload.message || '',
-    riskScore: payload.riskScore ?? null,
-    timestamp: payload.timestamp || new Date().toISOString()
+    message,
+    timestamp
   }, ...realtimeFeed.value].slice(0, 30)
 }
 

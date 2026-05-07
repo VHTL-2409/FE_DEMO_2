@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.api.dto.ai.BehaviorAnalysisRequest;
 import com.example.demo.api.dto.ai.FrameAnalysisRequest;
 import com.example.demo.common.ApiException;
+import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudWarningCategory;
 import com.example.demo.domain.entity.SignalSeverity;
@@ -21,12 +22,15 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +47,7 @@ public class AiAssistService {
     private final TeacherAlertGateway teacherAlertGateway;
     private final FraudWarningService fraudWarningService;
     private final Map<Long, Map<String, Object>> latestCameraFrames = new ConcurrentHashMap<>();
+    private final Map<Long, CameraSignalClusterState> cameraSignalClusterStates = new ConcurrentHashMap<>();
 
     public AiAssistService(
             ExamAttemptRepository examAttemptRepository,
@@ -72,8 +77,32 @@ public class AiAssistService {
     @Value("${app.ai-service.api-key:${APP_AI_SERVICE_API_KEY:${AI_SERVICE_API_KEY:}}}")
     private String aiServiceApiKey;
 
-    @Value("${app.proctor.camera.max-frame-base64-chars:2500000}")
+    @Value("${demo.ai-camera.max-frame-base64-chars:2500000}")
     private int cameraFrameMaxBase64Chars;
+
+    @Value("${demo.ai-camera.warning-dedup-seconds:5}")
+    private long cameraWarningDedupSeconds;
+
+    @Value("${demo.ai-camera.signal-dedup-seconds:${demo.ai-behavior.signal-dedup-seconds:30}}")
+    private long cameraSignalDedupSeconds;
+
+    @Value("${demo.ai-camera.state-clear-seconds:4}")
+    private long cameraStateClearSeconds;
+
+    @Value("${demo.ai-behavior.signal-dedup-seconds:30}")
+    private long behaviorSignalDedupSeconds;
+
+    @Value("${demo.ai-camera.derive-warnings-from-metrics:false}")
+    private boolean deriveCameraWarningsFromMetrics;
+
+    @Value("${demo.ai-camera.very-low-light-brightness-threshold:40}")
+    private double cameraVeryLowLightBrightnessThreshold;
+
+    @Value("${demo.ai-camera.low-light-brightness-threshold:60}")
+    private double cameraLowLightBrightnessThreshold;
+
+    @Value("${demo.ai-camera.overexposed-brightness-threshold:240}")
+    private double cameraOverexposedBrightnessThreshold;
 
     public Map<String, Object> processOcr(MultipartFile file, String language, Integer maxPages) {
         ensureEnabled();
@@ -116,9 +145,18 @@ public class AiAssistService {
         try {
             Map<String, Object> response = postJson("/proctor/analyze/frame", buildFramePayload(request));
             response.put("backendAnalysisReceived", true);
+            List<Map<String, Object>> aiSignals = collectAiCameraWarningSignals(response);
+            response.put("signals", aiSignals);
+            List<Map<String, Object>> recordableAiSignals = clusterAiCameraSignalsForRecording(
+                    request.getAttemptId(),
+                    aiSignals,
+                    response
+            );
+            response.put("recordableSignals", recordableAiSignals);
+            safeBridgeAiSignals(request.getAttemptId(), recordableAiSignals, response, "frame");
             Map<String, Object> aiAck = safePublishCameraFrame(request, response, "ai");
             mergeFrameAck(response, aiAck != null ? aiAck : initialAck);
-            safeRecordAiCameraWarnings(request, response, "frame");
+            safeRecordAiCameraWarnings(request, recordableAiSignals, response, "frame");
             return response;
         } catch (Exception ex) {
             fallbackResponse.put("status", "AI_UNAVAILABLE");
@@ -218,7 +256,15 @@ public class AiAssistService {
         response.put("diagnostics", Map.of(
                 "aiServiceEnabled", enabled,
                 "baseUrl", baseUrl,
-                "cameraFrameMaxBase64Chars", cameraFrameMaxBase64Chars
+                "cameraFrameMaxBase64Chars", cameraFrameMaxBase64Chars,
+                "cameraWarningDedupSeconds", cameraWarningDedupSeconds,
+                "cameraSignalDedupSeconds", cameraSignalDedupSeconds,
+                "deriveCameraWarningsFromMetrics", deriveCameraWarningsFromMetrics,
+                "brightnessThresholds", Map.of(
+                        "veryLowLight", cameraVeryLowLightBrightnessThreshold,
+                        "lowLight", cameraLowLightBrightnessThreshold,
+                        "overexposed", cameraOverexposedBrightnessThreshold
+                )
         ));
         return response;
     }
@@ -303,25 +349,32 @@ public class AiAssistService {
     }
 
     private void safeBridgeAiSignals(Long attemptId, Map<String, Object> response, String source) {
+        List<?> signals = response != null && response.get("signals") instanceof List<?> rawSignals
+                ? rawSignals
+                : List.of();
+        safeBridgeAiSignals(attemptId, signals, response, source);
+    }
+
+    private void safeBridgeAiSignals(Long attemptId, List<?> signals, Map<String, Object> response, String source) {
         try {
-            bridgeAiSignals(attemptId, response, source);
+            bridgeAiSignals(attemptId, signals, response, source);
         } catch (Exception ex) {
             log.warn("[AI-Bridge] Failed to bridge AI signals for attemptId={}, source={}: {}",
                     attemptId, source, ex.getMessage());
         }
     }
 
-    private void safeRecordAiCameraWarnings(FrameAnalysisRequest request, Map<String, Object> response, String source) {
+    private void safeRecordAiCameraWarnings(FrameAnalysisRequest request, List<Map<String, Object>> signals, Map<String, Object> response, String source) {
         Long attemptId = request != null ? request.getAttemptId() : null;
         try {
-            recordAiCameraWarnings(request, response, source);
+            recordAiCameraWarnings(request, signals, response, source);
         } catch (Exception ex) {
             log.warn("[AI-Bridge] Failed to record AI camera warnings for attemptId={}, source={}: {}",
                     attemptId, source, ex.getMessage());
         }
     }
 
-    private void recordAiCameraWarnings(FrameAnalysisRequest request, Map<String, Object> response, String source) {
+    private void recordAiCameraWarnings(FrameAnalysisRequest request, List<Map<String, Object>> signals, Map<String, Object> response, String source) {
         Long attemptId = request != null ? request.getAttemptId() : null;
         if (attemptId == null || response == null || response.isEmpty()) {
             return;
@@ -331,12 +384,10 @@ public class AiAssistService {
             return;
         }
 
-        List<?> signals = response.get("signals") instanceof List<?> rawSignals ? rawSignals : List.of();
+        List<Map<String, Object>> safeSignals = signals == null ? List.of() : signals;
         int warningCount = 0;
-        for (Object rawSignal : signals) {
-            if (!(rawSignal instanceof Map<?, ?> signalMap)) {
-                continue;
-            }
+        Duration dedupWindow = Duration.ofSeconds(Math.max(cameraWarningDedupSeconds, 1L));
+        for (Map<String, Object> signalMap : safeSignals) {
             String signalType = normalizeSignalType(signalMap.get("signal_type"));
             if (signalType == null) {
                 signalType = normalizeSignalType(signalMap.get("signalType"));
@@ -348,11 +399,15 @@ public class AiAssistService {
             double confidence = normalizeConfidence(signalMap.get("confidence"), 0.82d);
             SignalSeverity severity = parseSeverity(signalMap.get("severity"), severityForAiSignal(signalType));
             Map<String, Object> evidence = buildAiEvidence(source, signalType, signalMap, response);
-            evidence.put("riskImpactIgnored", true);
             evidence.put("reviewRequired", true);
+            evidence.put("frameId", request.getFrameId());
+            evidence.put("capturedAt", request.getCapturedAt());
+            evidence.put("cameraWarningDedupSeconds", dedupWindow.getSeconds());
 
             var descriptor = fraudSignalService.descriptorFor(signalType);
-            fraudWarningService.recordWarning(
+            evidence.put("riskImpact", descriptor.riskImpact());
+            evidence.put("riskImpactSource", "ai_camera_signal_config");
+            fraudWarningService.recordWarningWithDedupWindow(
                     attempt.getExam(),
                     attempt,
                     FraudWarningCategory.CAMERA_PROCTORING,
@@ -362,7 +417,8 @@ public class AiAssistService {
                     descriptor.displayMessage(),
                     evidence,
                     "ai_camera_frame",
-                    List.of(attempt.getId())
+                    List.of(attempt.getId()),
+                    dedupWindow
             );
             warningCount++;
         }
@@ -371,8 +427,511 @@ public class AiAssistService {
         }
     }
 
+    private List<Map<String, Object>> collectAiCameraWarningSignals(Map<String, Object> response) {
+        Map<String, Map<String, Object>> signalsByType = new LinkedHashMap<>();
+
+        Map<String, Object> noCameraEvidence = buildNoCameraEvidence(response);
+        if (noCameraEvidence != null) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "NO_CAMERA",
+                    SignalSeverity.HIGH,
+                    0.99d,
+                    noCameraEvidence
+            ));
+            return new ArrayList<>(signalsByType.values());
+        }
+
+        Object signalsObj = response.get("signals");
+        if (signalsObj instanceof List<?> rawSignals) {
+            for (Object rawSignal : rawSignals) {
+                if (rawSignal instanceof Map<?, ?> signalMap) {
+                    registerAiCameraSignal(signalsByType, normalizeSignalMap(signalMap));
+                }
+            }
+        }
+
+        if (signalsByType.isEmpty()) {
+            registerDerivedCameraSignals(signalsByType, response);
+        }
+        return new ArrayList<>(signalsByType.values());
+    }
+
+    private Map<String, Object> buildNoCameraEvidence(Map<String, Object> response) {
+        if (response == null || response.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Object> metadata = extractFrameMetadata(response);
+        String status = asUpperCaseString(firstPresent(response, "status"));
+        Boolean cameraOn = asBoolean(firstPresent(metadata, "cameraOn", "camera_on"));
+        Boolean trackEnabled = asBoolean(firstPresent(metadata, "trackEnabled", "track_enabled"));
+        String trackReadyState = asUpperCaseString(firstPresent(metadata, "trackReadyState", "track_ready_state"));
+
+        String reason = null;
+        if ("NO_CAMERA".equals(status)) {
+            reason = "AI service reported no camera";
+        }
+        if (Boolean.FALSE.equals(cameraOn)) {
+            reason = "cameraOn=false";
+        } else if (Boolean.FALSE.equals(trackEnabled)) {
+            reason = "trackEnabled=false";
+        } else if ("ENDED".equals(trackReadyState) || "INACTIVE".equals(trackReadyState)) {
+            reason = "trackReadyState=" + trackReadyState.toLowerCase(Locale.ROOT);
+        }
+        if (reason == null) {
+            return null;
+        }
+
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("derivedFromMetadata", true);
+        evidence.put("reason", reason);
+        evidence.put("recommendation", "Turn the camera back on to continue AI monitoring");
+        if (cameraOn != null) {
+            evidence.put("cameraOn", cameraOn);
+        }
+        if (trackEnabled != null) {
+            evidence.put("trackEnabled", trackEnabled);
+        }
+        if (trackReadyState != null) {
+            evidence.put("trackReadyState", trackReadyState);
+        }
+        if (!metadata.isEmpty()) {
+            evidence.put("metadata", metadata);
+        }
+        return evidence;
+    }
+
+    private Map<String, Object> extractFrameMetadata(Map<String, Object> response) {
+        Object metadataObj = response.get("metadata");
+        if (metadataObj instanceof Map<?, ?> rawMetadata) {
+            return normalizeObjectMap(rawMetadata);
+        }
+        Object diagnosticsObj = response.get("diagnostics");
+        if (diagnosticsObj instanceof Map<?, ?> diagnostics) {
+            Object diagnosticsMetadata = diagnostics.get("metadata");
+            if (diagnosticsMetadata instanceof Map<?, ?> rawMetadata) {
+                return normalizeObjectMap(rawMetadata);
+            }
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> normalizeObjectMap(Map<?, ?> rawMap) {
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            normalized.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return normalized;
+    }
+
+    private List<Map<String, Object>> clusterAiCameraSignalsForRecording(
+            Long attemptId,
+            List<Map<String, Object>> signals,
+            Map<String, Object> response
+    ) {
+        List<Map<String, Object>> safeSignals = signals == null ? List.of() : signals;
+        if (attemptId == null) {
+            return safeSignals;
+        }
+
+        List<Map<String, Object>> cameraSignals = safeSignals.stream()
+                .filter(signal -> {
+                    String type = signalTypeOf(signal);
+                    return type != null && isAiCameraWarningType(type);
+                })
+                .toList();
+        if (cameraSignals.isEmpty()) {
+            markCameraSignalClusterClean(attemptId, response);
+            return List.of();
+        }
+
+        LocalDateTime now = VietNamTime.now();
+        Map<String, Object> representative = copySignalWithClusterEvidence(
+                selectRepresentativeCameraSignal(cameraSignals),
+                cameraSignals,
+                now
+        );
+        String representativeType = signalTypeOf(representative);
+        int representativeRisk = riskImpactForAiSignal(representativeType);
+        String clusterKey = "VISUAL_IDENTITY";
+        long clusterWindowSeconds = Math.max(cameraSignalDedupSeconds, 1L);
+
+        CameraSignalClusterState previous = cameraSignalClusterStates.get(attemptId);
+        boolean insideClusterWindow = previous != null
+                && clusterKey.equals(previous.clusterKey())
+                && previous.lastEmittedAt() != null
+                && Duration.between(previous.lastEmittedAt(), now).getSeconds() < clusterWindowSeconds;
+        boolean escalatesRisk = previous == null || representativeRisk > previous.riskImpact();
+
+        if (insideClusterWindow && !escalatesRisk) {
+            cameraSignalClusterStates.put(attemptId, new CameraSignalClusterState(
+                    previous.clusterKey(),
+                    previous.signalType(),
+                    previous.riskImpact(),
+                    previous.lastEmittedAt(),
+                    now,
+                    null
+            ));
+            if (response != null) {
+                response.put("cameraSignalSuppressed", true);
+                response.put("cameraSignalSuppressedReason", "visual_identity_cluster_window");
+                response.put("cameraSignalSuppressedCount", cameraSignals.size());
+                response.put("cameraSignalClusterWindowSeconds", clusterWindowSeconds);
+            }
+            return List.of();
+        }
+
+        cameraSignalClusterStates.put(attemptId, new CameraSignalClusterState(
+                clusterKey,
+                representativeType,
+                representativeRisk,
+                now,
+                now,
+                null
+        ));
+        if (response != null) {
+            response.put("cameraSignalClustered", true);
+            response.put("cameraSignalClusteredCount", cameraSignals.size());
+            response.put("cameraSignalRepresentativeType", representativeType);
+            response.put("cameraSignalClusterWindowSeconds", clusterWindowSeconds);
+        }
+        return List.of(representative);
+    }
+
+    private void markCameraSignalClusterClean(Long attemptId, Map<String, Object> response) {
+        CameraSignalClusterState previous = cameraSignalClusterStates.get(attemptId);
+        if (previous == null) {
+            return;
+        }
+
+        long clearSeconds = Math.max(cameraStateClearSeconds, 0L);
+        if (clearSeconds == 0L) {
+            cameraSignalClusterStates.remove(attemptId);
+            if (response != null) {
+                response.put("cameraSignalClusterCleared", true);
+            }
+            return;
+        }
+
+        LocalDateTime now = VietNamTime.now();
+        LocalDateTime clearStartedAt = previous.clearStartedAt() != null ? previous.clearStartedAt() : now;
+        if (Duration.between(clearStartedAt, now).getSeconds() >= clearSeconds) {
+            cameraSignalClusterStates.remove(attemptId);
+            if (response != null) {
+                response.put("cameraSignalClusterCleared", true);
+            }
+            return;
+        }
+
+        cameraSignalClusterStates.put(attemptId, new CameraSignalClusterState(
+                previous.clusterKey(),
+                previous.signalType(),
+                previous.riskImpact(),
+                previous.lastEmittedAt(),
+                previous.lastSeenAt(),
+                clearStartedAt
+        ));
+        if (response != null) {
+            response.put("cameraSignalClusterClearing", true);
+            response.put("cameraSignalStateClearSeconds", clearSeconds);
+        }
+    }
+
+    private Map<String, Object> selectRepresentativeCameraSignal(List<Map<String, Object>> signals) {
+        Map<String, Object> best = null;
+        int bestPriority = Integer.MIN_VALUE;
+        for (Map<String, Object> signal : signals) {
+            int priority = cameraSignalPriority(signal);
+            if (best == null || priority > bestPriority) {
+                best = signal;
+                bestPriority = priority;
+            }
+        }
+        return best == null ? Map.of() : best;
+    }
+
+    private int cameraSignalPriority(Map<String, Object> signal) {
+        String signalType = signalTypeOf(signal);
+        int riskImpact = riskImpactForAiSignal(signalType);
+        int severityRank = severityRank(parseSeverity(signal.get("severity"), severityForAiSignal(signalType)));
+        int confidenceRank = (int) Math.round(normalizeConfidence(signal.get("confidence"), 0.0d) * 100.0d);
+        return (riskImpact * 10_000) + (severityRank * 1_000) + confidenceRank;
+    }
+
+    private Map<String, Object> copySignalWithClusterEvidence(
+            Map<String, Object> representative,
+            List<Map<String, Object>> clusteredSignals,
+            LocalDateTime clusteredAt
+    ) {
+        Map<String, Object> copy = new LinkedHashMap<>(representative == null ? Map.of() : representative);
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        Object rawEvidence = copy.get("evidence");
+        if (rawEvidence instanceof Map<?, ?> evidenceMap) {
+            for (Map.Entry<?, ?> entry : evidenceMap.entrySet()) {
+                evidence.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        } else if (rawEvidence != null) {
+            evidence.put("rawEvidence", rawEvidence);
+        }
+        List<String> clusteredTypes = clusteredSignals.stream()
+                .map(this::signalTypeOf)
+                .filter(type -> type != null && !type.isBlank())
+                .distinct()
+                .toList();
+        evidence.put("cameraSignalClustered", true);
+        evidence.put("clusteredSignalTypes", clusteredTypes);
+        evidence.put("clusteredSignalCount", clusteredTypes.size());
+        evidence.put("clusteredAt", clusteredAt);
+        copy.put("evidence", evidence);
+        return copy;
+    }
+
+    private String signalTypeOf(Map<String, Object> signal) {
+        if (signal == null) {
+            return null;
+        }
+        String signalType = normalizeSignalType(signal.get("signal_type"));
+        return signalType != null ? signalType : normalizeSignalType(signal.get("signalType"));
+    }
+
+    private int severityRank(SignalSeverity severity) {
+        if (severity == null) {
+            return 0;
+        }
+        return switch (severity) {
+            case CRITICAL -> 4;
+            case HIGH -> 3;
+            case MEDIUM -> 2;
+            case LOW -> 1;
+        };
+    }
+
+    private int riskImpactForAiSignal(String signalType) {
+        if (signalType == null || signalType.isBlank()) {
+            return 0;
+        }
+        try {
+            var descriptor = fraudSignalService.descriptorFor(signalType);
+            return descriptor != null ? Math.max(0, descriptor.riskImpact()) : 0;
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private void registerDerivedCameraSignals(Map<String, Map<String, Object>> signalsByType, Map<String, Object> response) {
+        Integer faceCount = asInteger(firstPresent(response, "face_count", "faceCount"));
+        Boolean faceDetected = asBoolean(firstPresent(response, "face_detected", "faceDetected"));
+        Boolean multipleFaces = asBoolean(firstPresent(response, "multiple_faces", "multipleFaces"));
+        String faceQuality = asUpperCaseString(firstPresent(response, "face_quality", "faceQuality"));
+        String frameQuality = asUpperCaseString(firstPresent(response, "frame_quality", "frameQuality"));
+        Double brightness = asDouble(firstPresent(response, "average_brightness", "averageBrightness"));
+        Integer eyeCount = asInteger(firstPresent(response, "eye_count", "eyeCount"));
+        String eyeState = asUpperCaseString(firstPresent(response, "eye_state", "eyeState"));
+        Boolean gazeOffScreen = asBoolean(firstPresent(response, "gaze_off_screen", "gazeOffScreen"));
+
+        if (!deriveCameraWarningsFromMetrics) {
+            return;
+        }
+
+        if ((faceCount != null && faceCount == 0)
+                || Boolean.FALSE.equals(faceDetected)
+                || "NO_FACE".equals(faceQuality)) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "FACE_NOT_DETECTED",
+                    SignalSeverity.HIGH,
+                    0.92d,
+                    Map.of("derivedFromMetrics", true, "faceCount", 0, "reason", "No face found in frame")
+            ));
+        } else if ((faceCount != null && faceCount > 1)
+                || Boolean.TRUE.equals(multipleFaces)
+                || "MULTIPLE_FACES".equals(faceQuality)) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "MULTIPLE_FACES",
+                    SignalSeverity.CRITICAL,
+                    0.98d,
+                    Map.of("derivedFromMetrics", true, "faceCount", faceCount != null ? faceCount : 2, "reason", "Multiple faces detected")
+            ));
+        }
+
+        if (faceCount != null && faceCount == 1
+                && ((eyeCount != null && eyeCount == 0)
+                || "EYES_NOT_VISIBLE".equals(faceQuality)
+                || "EYES_NOT_DETECTED".equals(eyeState))) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "EYES_NOT_DETECTED",
+                    SignalSeverity.MEDIUM,
+                    0.75d,
+                    Map.of("derivedFromMetrics", true, "eyeCount", eyeCount != null ? eyeCount : 0, "reason", "Eyes not detectable")
+            ));
+        }
+
+        if (gazeOffScreen != null && gazeOffScreen) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "GAZE_OFF_SCREEN",
+                    SignalSeverity.HIGH,
+                    0.78d,
+                    Map.of("derivedFromMetrics", true, "reason", "Looking away from screen")
+            ));
+        }
+
+        if (brightness != null) {
+            if (brightness < cameraVeryLowLightBrightnessThreshold) {
+                registerAiCameraSignal(signalsByType, buildSignalMap(
+                        "VERY_LOW_LIGHTING",
+                        SignalSeverity.HIGH,
+                        0.85d,
+                        Map.of("derivedFromMetrics", true, "averageBrightness", brightness, "reason", "Lighting is too dark")
+                ));
+            } else if (brightness < cameraLowLightBrightnessThreshold) {
+                registerAiCameraSignal(signalsByType, buildSignalMap(
+                        "LOW_LIGHTING",
+                        SignalSeverity.MEDIUM,
+                        0.68d,
+                        Map.of("derivedFromMetrics", true, "averageBrightness", brightness, "reason", "Lighting could be improved")
+                ));
+            } else if (brightness > cameraOverexposedBrightnessThreshold) {
+                registerAiCameraSignal(signalsByType, buildSignalMap(
+                        "OVEREXPOSED_FRAME",
+                        SignalSeverity.LOW,
+                        0.60d,
+                        Map.of("derivedFromMetrics", true, "averageBrightness", brightness, "reason", "Image is too bright")
+                ));
+            }
+        }
+
+        String frameQualityLabel = frameQuality != null ? frameQuality : "UNKNOWN";
+        if ("VERY_BLURRY".equals(frameQuality) || "BLURRY".equals(frameQuality)
+                || ("POOR".equals(frameQuality) && (brightness == null || brightness >= 40))) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "VERY_BLURRY_FRAME",
+                    SignalSeverity.HIGH,
+                    0.88d,
+                    Map.of("derivedFromMetrics", true, "frameQuality", frameQualityLabel, "reason", "Frame is very blurry")
+            ));
+        } else if ("FAIR".equals(frameQuality)) {
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "BLURRY_FRAME",
+                    SignalSeverity.LOW,
+                    0.60d,
+                    Map.of("derivedFromMetrics", true, "frameQuality", frameQualityLabel, "reason", "Frame has some blur")
+            ));
+        }
+    }
+
+    private void registerAiCameraSignal(Map<String, Map<String, Object>> signalsByType, Map<String, Object> signalMap) {
+        if (signalMap == null || signalMap.isEmpty()) {
+            return;
+        }
+        String signalType = normalizeSignalType(signalMap.get("signal_type"));
+        if (signalType == null) {
+            signalType = normalizeSignalType(signalMap.get("signalType"));
+        }
+        if (signalType == null || signalsByType.containsKey(signalType)) {
+            return;
+        }
+        signalMap.put("signal_type", signalType);
+        signalsByType.put(signalType, signalMap);
+    }
+
+    private Map<String, Object> buildSignalMap(String signalType, SignalSeverity severity, double confidence, Map<String, Object> evidence) {
+        Map<String, Object> signal = new LinkedHashMap<>();
+        signal.put("signal_type", signalType);
+        signal.put("severity", severity != null ? severity.name() : SignalSeverity.MEDIUM.name());
+        signal.put("confidence", confidence);
+        signal.put("evidence", evidence == null ? Map.of() : evidence);
+        return signal;
+    }
+
+    private Map<String, Object> normalizeSignalMap(Map<?, ?> rawSignal) {
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawSignal.entrySet()) {
+            normalized.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        if (!normalized.containsKey("signal_type") && normalized.containsKey("signalType")) {
+            normalized.put("signal_type", normalized.get("signalType"));
+        }
+        if (!normalized.containsKey("severity") && normalized.containsKey("level")) {
+            normalized.put("severity", normalized.get("level"));
+        }
+        return normalized;
+    }
+
+    private Object firstPresent(Map<String, Object> source, String... keys) {
+        if (source == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key != null && source.containsKey(key) && source.get(key) != null) {
+                return source.get(key);
+            }
+        }
+        return null;
+    }
+
+    private String asUpperCaseString(Object value) {
+        String text = asString(value);
+        return text == null ? null : text.toUpperCase(Locale.ROOT);
+    }
+
+    private String asString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private Integer asInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return value == null ? null : Integer.parseInt(String.valueOf(value).trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Double asDouble(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return value == null ? null : Double.parseDouble(String.valueOf(value).trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Boolean asBoolean(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        if (text.isEmpty()) {
+            return null;
+        }
+        if (Set.of("true", "1", "yes", "y", "on").contains(text)) {
+            return true;
+        }
+        if (Set.of("false", "0", "no", "n", "off").contains(text)) {
+            return false;
+        }
+        return null;
+    }
+
     @SuppressWarnings("unchecked")
     private void bridgeAiSignals(Long attemptId, Map<String, Object> response, String source) {
+        List<?> signals = response != null && response.get("signals") instanceof List<?> rawSignals
+                ? rawSignals
+                : List.of();
+        bridgeAiSignals(attemptId, signals, response, source);
+    }
+
+    private void bridgeAiSignals(Long attemptId, List<?> signals, Map<String, Object> response, String source) {
         if (attemptId == null || response == null || response.isEmpty()) {
             return;
         }
@@ -381,10 +940,11 @@ public class AiAssistService {
             return;
         }
 
-        List<?> signals = response.get("signals") instanceof List<?> rawSignals ? rawSignals : List.of();
+        List<?> safeSignals = signals == null ? List.of() : signals;
         int bridgedCount = 0;
+        Duration dedupWindow = Duration.ofSeconds(Math.max(signalDedupSeconds(source), 1L));
 
-        for (Object rawSignal : signals) {
+        for (Object rawSignal : safeSignals) {
             if (!(rawSignal instanceof Map<?, ?> signalMap)) {
                 continue;
             }
@@ -396,11 +956,7 @@ public class AiAssistService {
                 continue;
             }
 
-            if (fraudSignalRepository.countByAttemptAndSignalTypeAndCreatedAtAfter(
-                    attempt,
-                    signalType,
-                    java.time.LocalDateTime.now().minusSeconds(30)
-            ) > 0) {
+            if (hasRecentFraudSignal(attempt, signalType, dedupWindow)) {
                 continue;
             }
 
@@ -418,9 +974,40 @@ public class AiAssistService {
         }
 
         if (bridgedCount > 0) {
-            riskScoringService.recomputeRisk(attempt);
+            var risk = riskScoringService.recomputeRisk(attempt);
+            if (risk != null) {
+                response.put("riskScore", risk.getScore());
+                response.put("riskLevel", risk.getLevel());
+            }
             response.put("bridgedSignalCount", bridgedCount);
         }
+    }
+
+    private long signalDedupSeconds(String source) {
+        if (source != null) {
+            String normalized = source.trim().toLowerCase(Locale.ROOT);
+            if (normalized.contains("frame") || normalized.contains("camera")) {
+                return cameraSignalDedupSeconds;
+            }
+        }
+        return behaviorSignalDedupSeconds;
+    }
+
+    private boolean hasRecentFraudSignal(ExamAttempt attempt, String signalType, Duration dedupWindow) {
+        if (attempt == null || signalType == null || signalType.isBlank()) {
+            return false;
+        }
+        Duration safeWindow = dedupWindow == null || dedupWindow.isNegative()
+                ? Duration.ZERO
+                : dedupWindow;
+        if (safeWindow.isZero()) {
+            return false;
+        }
+        return fraudSignalRepository.countByAttemptAndSignalTypeAndCreatedAtAfter(
+                attempt,
+                signalType,
+                LocalDateTime.now().minus(safeWindow)
+        ) > 0;
     }
 
     @SuppressWarnings("unchecked")
@@ -491,9 +1078,26 @@ public class AiAssistService {
         copyIfPresent(payload, response, "off_screen_duration_ms", "offScreenDurationMs");
         copyIfPresent(payload, response, "visual_overlay", "visualOverlay");
         copyIfPresent(payload, response, "visualOverlay", "visualOverlay");
-        Object signalsObj = response.get("signals");
-        if (signalsObj instanceof List<?> signals && !signals.isEmpty()) {
-            payload.put("signals", new java.util.ArrayList<>(signals));
+        copyIfPresent(payload, response, "cameraSignalClustered", "cameraSignalClustered");
+        copyIfPresent(payload, response, "cameraSignalClusteredCount", "cameraSignalClusteredCount");
+        copyIfPresent(payload, response, "cameraSignalSuppressed", "cameraSignalSuppressed");
+        copyIfPresent(payload, response, "cameraSignalSuppressedReason", "cameraSignalSuppressedReason");
+        copyIfPresent(payload, response, "cameraSignalSuppressedCount", "cameraSignalSuppressedCount");
+        copyIfPresent(payload, response, "cameraSignalRepresentativeType", "cameraSignalRepresentativeType");
+        copyIfPresent(payload, response, "cameraSignalClusterWindowSeconds", "cameraSignalClusterWindowSeconds");
+        copyIfPresent(payload, response, "cameraSignalClusterCleared", "cameraSignalClusterCleared");
+        copyIfPresent(payload, response, "cameraSignalClearing", "cameraSignalClearing");
+        copyIfPresent(payload, response, "cameraSignalStateClearSeconds", "cameraSignalStateClearSeconds");
+
+        if (response.containsKey("recordableSignals")) {
+            Object clusteredSignalsObj = response.get("recordableSignals");
+            List<?> clusteredSignals = clusteredSignalsObj instanceof List<?> clustered ? clustered : List.of();
+            payload.put("signals", new java.util.ArrayList<>(clusteredSignals));
+        } else {
+            Object signalsObj = response.get("signals");
+            if (signalsObj instanceof List<?> signals && !signals.isEmpty()) {
+                payload.put("signals", new java.util.ArrayList<>(signals));
+            }
         }
         Object warningsObj = response.get("warnings");
         if (warningsObj instanceof List<?> warnings && !warnings.isEmpty()) {
@@ -694,7 +1298,7 @@ public class AiAssistService {
         return switch (signalType) {
             case "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE" ->
                     SignalSeverity.CRITICAL;
-            case "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
+            case "NO_CAMERA", "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
                     "FLAT_IMAGE", "SCREEN_DISPLAY", "GAZE_OFF_SCREEN" -> SignalSeverity.HIGH;
             case "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE", "FACE_TOO_FAR", "FACE_TURNED_AWAY",
                     "EYES_NOT_DETECTED", "LOW_LIGHTING", "EYE_BLINK_ANOMALY", "RAPID_EYE_MOVEMENT" ->
@@ -704,8 +1308,11 @@ public class AiAssistService {
     }
 
     private boolean isAiCameraWarningType(String signalType) {
+        if (signalType == null || signalType.isBlank()) {
+            return false;
+        }
         return switch (signalType) {
-            case "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
+            case "NO_CAMERA", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                     "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                     "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
                     "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
@@ -715,6 +1322,16 @@ public class AiAssistService {
                     "FLAT_IMAGE", "SCREEN_DISPLAY" -> true;
             default -> false;
         };
+    }
+
+    private record CameraSignalClusterState(
+            String clusterKey,
+            String signalType,
+            int riskImpact,
+            LocalDateTime lastEmittedAt,
+            LocalDateTime lastSeenAt,
+            LocalDateTime clearStartedAt
+    ) {
     }
 
     private static class NamedByteArrayResource extends ByteArrayResource {

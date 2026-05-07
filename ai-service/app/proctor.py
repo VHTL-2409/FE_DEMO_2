@@ -259,6 +259,9 @@ class ProctorAnalyzer:
     def analyze_frame(self, image_base64: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         """Comprehensive frame analysis including face detection, eye tracking, and spoofing detection."""
         metadata = dict(metadata or {})
+        camera_state = self._resolve_camera_state(metadata)
+        if camera_state["camera_off"]:
+            return self._build_camera_off_response(metadata, camera_state)
         sample_time = self._resolve_sample_time(metadata)
         tracking_key = self._resolve_tracking_key(metadata)
 
@@ -1335,6 +1338,140 @@ class ProctorAnalyzer:
             return datetime.fromisoformat(normalized).timestamp()
         except Exception:
             return time.time()
+
+    def _resolve_camera_state(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        camera_on = self._coerce_bool(self._metadata_value(metadata, "cameraOn", "camera_on"))
+        track_enabled = self._coerce_bool(self._metadata_value(metadata, "trackEnabled", "track_enabled"))
+        track_ready_state = self._normalize_text(self._metadata_value(metadata, "trackReadyState", "track_ready_state"))
+        state = {
+            "camera_on": camera_on,
+            "track_enabled": track_enabled,
+            "track_ready_state": track_ready_state,
+            "camera_off": False,
+            "reason": None,
+        }
+        ready_state = track_ready_state.upper() if track_ready_state else ""
+        if camera_on is False:
+            state["camera_off"] = True
+            state["reason"] = "cameraOn=false"
+        elif track_enabled is False:
+            state["camera_off"] = True
+            state["reason"] = "trackEnabled=false"
+        elif ready_state in {"ENDED", "INACTIVE"}:
+            state["camera_off"] = True
+            state["reason"] = f"trackReadyState={ready_state.lower()}"
+        return state
+
+    def _build_camera_off_response(self, metadata: dict[str, Any], camera_state: dict[str, Any]) -> dict[str, Any]:
+        signals = [self._signal(
+            "NO_CAMERA",
+            "HIGH",
+            0.99,
+            {
+                "derivedFromMetadata": True,
+                "cameraState": camera_state,
+                "reason": camera_state.get("reason") or "Camera is disabled",
+                "recommendation": "Turn the camera back on to continue AI monitoring",
+            },
+        )]
+        return {
+            "status": "NO_CAMERA",
+            "face_count": 0,
+            "eye_count": 0,
+            "face_detected": False,
+            "multiple_faces": False,
+            "face_quality": "NO_CAMERA",
+            "frame_quality": "NO_CAMERA",
+            "average_brightness": 0.0,
+            "signals": signals,
+            "warnings": self._generate_warnings(signals),
+            "eye_state": "UNKNOWN",
+            "eye_aspect_ratio": 0.0,
+            "blink_rate": 0,
+            "eye_tracking_confidence": 0.0,
+            "closure_duration_ms": 0,
+            "gaze_direction": "UNKNOWN",
+            "gaze_off_screen": False,
+            "gaze_confidence": 0.0,
+            "off_screen_duration_ms": 0,
+            "attention_score": 0.0,
+            "visual_overlay": {
+                "status": "NO_CAMERA",
+                "label": "Camera tắt",
+                "tone": "muted",
+                "imageWidth": 0,
+                "imageHeight": 0,
+                "faceBoxes": [],
+                "eyeBoxes": [],
+                "pupilPoints": [],
+            },
+            "diagnostics": {
+                "cv_ready": self.cv_ready(),
+                "dnn_ready": self.dnn_ready(),
+                "eye_landmark_ready": self.eye_landmark_ready(),
+                "spoofing_dl_ready": self.spoofing_dl_ready(),
+                "detection_method": "NO_CAMERA",
+                "face_detector": self.face_detector_status(),
+                "image_width": 0,
+                "image_height": 0,
+                "face_locations": [],
+                "spoofing_check": {
+                    "detected": False,
+                    "type": None,
+                    "confidence": 0.0,
+                    "dl_enhanced": False,
+                    "method": "camera_off",
+                },
+                "occlusion_check": {
+                    "mask_detected": False,
+                    "sunglasses_detected": False,
+                    "partial_face": False,
+                    "coverage_percent": 0,
+                },
+                "position_analysis": {
+                    "face_turned": False,
+                    "face_not_centered": False,
+                    "turn_angle": 0,
+                    "center_offset": {"x": 0, "y": 0},
+                },
+                "eye_tracking": {"eye_count": 0},
+                "gaze_analysis": {
+                    "gaze_off_screen": False,
+                    "rapid_eye_movement": False,
+                    "primary_direction": "UNKNOWN",
+                    "attention_score": 0.0,
+                    "gaze_confidence": 0.0,
+                },
+                "camera_state": camera_state,
+                "metadata": metadata or {},
+            },
+        }
+
+    def _metadata_value(self, metadata: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in metadata and metadata.get(key) not in (None, ""):
+                return metadata.get(key)
+        return None
+
+    def _normalize_text(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def _coerce_bool(self, value: Any) -> bool | None:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return None
+        text = str(value).strip().lower()
+        if not text:
+            return None
+        if text in {"true", "1", "yes", "y", "on"}:
+            return True
+        if text in {"false", "0", "no", "n", "off"}:
+            return False
+        return None
 
     def _to_millis(self, sample_time: float | None) -> int:
         if sample_time is None:

@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.VietNamTime;
+import com.example.demo.config.RiskSignalScoreProperties;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
@@ -66,6 +67,7 @@ public class RiskScoringService {
     private final RealtimeNotificationService realtimeNotificationService;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    private final RiskSignalScoreProperties riskSignalScoreProperties;
 
     @Value("${demo.risk.level.suspicious-min:20}")
     private int suspiciousMin;
@@ -87,6 +89,12 @@ public class RiskScoringService {
 
     @Value("${demo.risk.snapshots.interval-seconds:60}")
     private long snapshotIntervalSeconds;
+
+    @Value("${demo.risk.dedup.visual-identity-seconds:30}")
+    private long visualIdentityDedupSeconds;
+
+    @Value("${demo.risk.cap.visual-identity:40}")
+    private int visualIdentityCap;
 
     // Điểm cố định cho mỗi loại signal (không có phép tính weight/confidence)
     private static final Map<String, Integer> SIGNAL_SCORES = Map.ofEntries(
@@ -120,11 +128,12 @@ public class RiskScoringService {
             Map.entry("HEARTBEAT_STALE", 5),
             Map.entry("NETWORK_INSTABILITY", 5),
             Map.entry("SESSION_RECOVERY", 3),
-            // Category VISUAL_IDENTITY
+            // Nhóm VISUAL_IDENTITY
             Map.entry("FACE_NOT_DETECTED", 20),
+            Map.entry("NO_CAMERA", 20),
             Map.entry("MULTIPLE_FACES", 25),
             Map.entry("FACE_SPOOFING_SUSPECTED", 25),
-            Map.entry("FACE_OBSTRUCTED_MASK", 18),
+            Map.entry("FACE_OBSTRUCTED_MASK", 0),
             Map.entry("EYES_OBSTRUCTED", 10),
             Map.entry("PARTIAL_FACE_VISIBLE", 10),
             Map.entry("FACE_TOO_FAR", 8),
@@ -176,6 +185,7 @@ public class RiskScoringService {
             Map.entry("NETWORK_INSTABILITY", "HEARTBEAT"),
             Map.entry("SESSION_RECOVERY", "HEARTBEAT"),
             Map.entry("FACE_NOT_DETECTED", "VISUAL_IDENTITY"),
+            Map.entry("NO_CAMERA", "VISUAL_IDENTITY"),
             Map.entry("MULTIPLE_FACES", "VISUAL_IDENTITY"),
             Map.entry("FACE_SPOOFING_SUSPECTED", "VISUAL_IDENTITY"),
             Map.entry("FACE_OBSTRUCTED_MASK", "VISUAL_IDENTITY"),
@@ -217,7 +227,8 @@ public class RiskScoringService {
             "CLIPBOARD", 25,
             "TECHNICAL", 25,
             "IDENTITY", 30,
-            "HEARTBEAT", 10
+            "HEARTBEAT", 10,
+            "VISUAL_IDENTITY", 40
     );
 
     @Transactional
@@ -234,7 +245,7 @@ public class RiskScoringService {
         int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
         int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
         int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
-        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), CATEGORY_CAPS.getOrDefault("VISUAL_IDENTITY", 40));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), visualIdentityCap);
 
         // Bước 3: Tính tổng
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
@@ -312,7 +323,7 @@ public class RiskScoringService {
         int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
         int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
         int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
-        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), CATEGORY_CAPS.getOrDefault("VISUAL_IDENTITY", 40));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), visualIdentityCap);
 
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
         int totalRisk = Math.min(100, behaviorScore + identityScore + visualIdentityScore);
@@ -385,7 +396,7 @@ public class RiskScoringService {
         if (signals == null || signals.isEmpty()) return 0;
 
         Long dedupWindow = "VISUAL_IDENTITY".equals(category)
-                ? 30L
+                ? visualIdentityDedupSeconds
                 : CATEGORY_DEDUP_SECONDS.getOrDefault(category, 0L);
 
         // Sắp xếp theo thời gian tạo tăng dần
@@ -400,7 +411,7 @@ public class RiskScoringService {
         // Xử lý đặc biệt cho IDENTITY: lấy điểm max (không clustering, mức session)
         if ("IDENTITY".equals(category)) {
             return sorted.stream()
-                    .mapToInt(s -> SIGNAL_SCORES.getOrDefault(normalizeSignalType(s.getSignalType()), 0))
+                    .mapToInt(s -> signalScore(s.getSignalType()))
                     .max()
                     .orElse(0);
         }
@@ -414,7 +425,7 @@ public class RiskScoringService {
         for (int i = 0; i < sorted.size(); i++) {
             FraudSignal signal = sorted.get(i);
             String signalType = normalizeSignalType(signal.getSignalType());
-            int signalScore = SIGNAL_SCORES.getOrDefault(signalType, 0);
+            int signalScore = signalScore(signalType);
             LocalDateTime signalTime = signal.getCreatedAt() != null ? signal.getCreatedAt() : LocalDateTime.MIN;
 
             if (clusterStartTime == null) {
@@ -444,7 +455,9 @@ public class RiskScoringService {
         totalScore += clusterMaxScore;
 
         // Áp dụng giới hạn category
-        int cap = CATEGORY_CAPS.getOrDefault(category, 100);
+        int cap = "VISUAL_IDENTITY".equals(category)
+                ? visualIdentityCap
+                : CATEGORY_CAPS.getOrDefault(category, 100);
         return Math.min(totalScore, cap);
     }
 
@@ -459,6 +472,12 @@ public class RiskScoringService {
             case "IP_ANOMALY" -> "IP_CHANGED";
             default -> normalized;
         };
+    }
+
+    private int signalScore(String signalType) {
+        String normalized = normalizeSignalType(signalType);
+        int fallback = SIGNAL_SCORES.getOrDefault(normalized, 0);
+        return riskSignalScoreProperties.resolve(normalized, fallback);
     }
 
     /**

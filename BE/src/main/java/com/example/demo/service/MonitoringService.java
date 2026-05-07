@@ -247,6 +247,11 @@ public class MonitoringService {
                 .map(this::toFraudSignalTimelineItem)
                 .toList();
 
+        List<MonitoringTimelineItem> warningRows = fraudWarningRepository.findByAttemptOrderByCreatedAtDesc(attempt)
+                .stream()
+                .map(this::toFraudWarningTimelineItem)
+                .toList();
+
         List<MonitoringTimelineItem> riskRows = riskScoreLogRepository.findByAttemptOrderByCreatedAtAsc(attempt)
                 .stream()
                 .map(snapshot -> MonitoringTimelineItem.builder()
@@ -261,7 +266,7 @@ public class MonitoringService {
                         .build())
                 .toList();
 
-        return java.util.stream.Stream.of(eventRows, signalRows, riskRows)
+        return java.util.stream.Stream.of(eventRows, signalRows, warningRows, riskRows)
                 .flatMap(List::stream)
                 .sorted(Comparator.comparing(MonitoringTimelineItem::getAt))
                 .toList();
@@ -280,6 +285,7 @@ public class MonitoringService {
         }
         // Cho phép cập nhật heartbeat ngay cả khi attempt đang PAUSED
         boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.IN_PROGRESS;
+        Boolean previousCameraOn = attempt.getCameraOn();
         if (allowFullUpdate) {
             attempt.setCameraOn(cameraOn);
             attempt.setMicOn(micOn);
@@ -287,6 +293,14 @@ public class MonitoringService {
         attempt.setDeviceCheckedAt(VietNamTime.now());
         attempt.setLastHeartbeatAt(VietNamTime.now());
         examAttemptRepository.save(attempt);
+        if (allowFullUpdate && Boolean.TRUE.equals(previousCameraOn) && Boolean.FALSE.equals(cameraOn)) {
+            examEventService.recordSystemSignal(
+                    attempt,
+                    "NO_CAMERA",
+                    "Camera đã tắt",
+                    SignalSeverity.HIGH
+            );
+        }
     }
 
     /**
@@ -397,8 +411,28 @@ public class MonitoringService {
                 .eventType(signal.getSignalType())
                 .severity(signal.getSeverity().name())
                 .confidence(signal.getConfidence())
+                .riskImpact(signal.getRiskImpact())
                 .evidence(signal.getEvidence())
                 .details(signal.getSignalType())
+                .category(signal.getCategory())
+                .build();
+    }
+
+    private MonitoringTimelineItem toFraudWarningTimelineItem(FraudWarning warning) {
+        return MonitoringTimelineItem.builder()
+                .type("FRAUD_WARNING")
+                .at(warning.getCreatedAt())
+                .eventType(warning.getWarningType())
+                .details(warning.getMessage() != null && !warning.getMessage().isBlank()
+                        ? warning.getMessage()
+                        : warning.getWarningType())
+                .severity(warning.getSeverity() != null ? warning.getSeverity().name() : null)
+                .confidence(warning.getConfidence())
+                .riskImpact(warning.getRiskImpact())
+                .evidence(warning.getEvidence())
+                .category(warning.getCategory() != null ? warning.getCategory().name() : null)
+                .reviewStatus(warning.getReviewStatus() != null ? warning.getReviewStatus().name() : null)
+                .source(warning.getSource())
                 .build();
     }
 
@@ -440,6 +474,7 @@ public class MonitoringService {
     // ============== AI Camera Dashboard Methods ==============
 
     private static final Set<String> AI_CAMERA_SIGNALS = Set.of(
+            "NO_CAMERA",
             "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
             "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
             "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
@@ -749,6 +784,7 @@ public class MonitoringService {
                 Map.entry("FACE_TURNED_AWAY", "Quay mặt đi"),
                 Map.entry("FACE_NOT_CENTERED", "Khuôn mặt lệch tâm"),
                 Map.entry("EYES_NOT_DETECTED", "Không phát hiện mắt"),
+                Map.entry("NO_CAMERA", "Camera đã tắt"),
                 Map.entry("VERY_LOW_LIGHTING", "Ánh sáng rất yếu"),
                 Map.entry("LOW_LIGHTING", "Ánh sáng yếu"),
                 Map.entry("OVEREXPOSED_FRAME", "Hình ảnh quá sáng"),

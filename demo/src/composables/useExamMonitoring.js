@@ -50,7 +50,7 @@ export function useExamMonitoring() {
     logRealtime(type, attemptId, event)
 
     // 1. Patch card (dashboard row)
-    if (attemptId && type !== 'FRAUD_WARNING_RECORDED') {
+    if (attemptId) {
       store.patchAttemptFromRealtime({ ...event, attemptId: event.attemptId || attemptId })
     }
 
@@ -86,6 +86,8 @@ export function useExamMonitoring() {
       type,
       severity: signal.severity || event.severity || event.riskLevel,
       confidence: signal.confidence,
+      riskImpact: event.riskImpact ?? signal.riskImpact,
+      riskScore: event.riskScore,
       message: event.message || signal.displayMessage,
       evidence: event.evidence || signal.evidence,
       source: event.source,
@@ -97,7 +99,17 @@ export function useExamMonitoring() {
   }
 
   function addSystemEventFromEvent(event, type, attemptId) {
-    const systemEventTypes = ['WARNING_SENT', 'ATTEMPT_STOPPED', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STARTED', 'ATTEMPT_JOINED']
+    const systemEventTypes = [
+      'WARNING_SENT',
+      'ATTEMPT_STOPPED',
+      'ATTEMPT_PAUSED',
+      'ATTEMPT_RESUMED',
+      'ATTEMPT_STARTED',
+      'ATTEMPT_JOINED',
+      'ATTEMPT_SUBMITTED',
+      'SUBMITTED',
+      'AUTO_SUBMITTED'
+    ]
     if (!systemEventTypes.includes(type)) return
     store.addEvent({
       attemptId,

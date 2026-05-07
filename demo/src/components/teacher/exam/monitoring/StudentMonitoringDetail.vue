@@ -192,26 +192,10 @@
           <!-- Risk summary -->
           <section class="smd-card">
             <div class="smd-card__head">
-              <h2 class="smd-card__title">Đánh giá rủi ro</h2>
-              <span
-                class="smd-level-badge"
-                :class="`smd-level-badge--${riskBand?.toLowerCase()?.replace('_', '-')}`"
-              >
-                {{ riskBandLabel }}
-              </span>
+              <h2 class="smd-card__title">Cấu phần rủi ro</h2>
             </div>
 
             <div class="smd-risk-summary">
-              <div class="smd-risk-big-wrap">
-                <span
-                  class="smd-risk-big"
-                  :style="{ color: riskColor }"
-                >
-                  {{ riskScore }}
-                </span>
-                <span class="smd-risk-max">/100</span>
-              </div>
-
               <div class="smd-breakdown">
                 <div class="smd-breakdown-row">
                   <span class="smd-breakdown-label">Screen leave</span>
@@ -243,35 +227,6 @@
             </div>
           </section>
 
-          <!-- Latest evidence -->
-          <section v-if="latestSignals.length" class="smd-card">
-            <div class="smd-card__head">
-              <h2 class="smd-card__title">Tín hiệu mới nhất</h2>
-            </div>
-
-            <div class="smd-evidence-list">
-              <article
-                v-for="signal in latestSignals"
-                :key="`${signal.signalType}-${signal.createdAt}`"
-                class="smd-evidence-item"
-              >
-                <div class="smd-evidence-item__head">
-                  <span class="smd-evidence-item__type">{{ getSignalLabel(signal.signalType) }}</span>
-                  <span class="smd-evidence-item__time">{{ formatTime(signal.occurredAt || signal.createdAt) }}</span>
-                </div>
-                <div v-if="signal.metadata && Object.keys(signal.metadata).length" class="smd-evidence-item__meta-keyvals">
-                  <span
-                    v-for="(val, key) in signal.metadata"
-                    :key="key"
-                    class="smd-evidence-kv"
-                  >
-                    <strong>{{ formatMetaKey(key) }}:</strong> {{ val }}
-                  </span>
-                </div>
-              </article>
-            </div>
-          </section>
-
           <!-- Timeline -->
           <section class="smd-card">
             <div class="smd-card__head">
@@ -293,7 +248,7 @@
               </div>
             </div>
 
-            <div v-if="timeline.length === 0" class="smd-empty">
+            <div v-if="filteredTimeline.length === 0" class="smd-empty">
               <LucideIcon name="clock" :size="24" />
               <p>Chưa có sự kiện nào</p>
             </div>
@@ -313,9 +268,6 @@
                   <p v-if="event.displayMessage || event.details" class="smd-event__msg">
                     {{ event.displayMessage || event.details }}
                   </p>
-                  <span v-if="event.riskImpact" class="smd-event__impact">
-                    +{{ event.riskImpact }} risk
-                  </span>
                 </div>
                 <time class="smd-event__time">{{ formatTime(event.at || event.timestamp || event.occurredAt) }}</time>
               </article>
@@ -365,6 +317,8 @@
                 :src="latestCameraFrameSrc"
                 alt="Khung hình camera thí sinh"
                 class="smd-camera__image"
+                decoding="async"
+                loading="eager"
               />
               <div
                 v-if="latestCameraVisualOverlay"
@@ -392,17 +346,14 @@
                 />
               </div>
               <div v-if="!latestCameraFrameSrc" class="smd-camera__empty">
-                <LucideIcon :name="attemptData.cameraOn ? 'videocam' : 'videocam_off'" :size="28" />
-                <p>{{ attemptData.cameraOn ? 'Chưa nhận khung hình camera' : 'Camera đang tắt' }}</p>
+                <LucideIcon :name="cameraFrameEmptyIcon" :size="28" />
+                <p>{{ cameraFrameEmptyText }}</p>
               </div>
             </div>
 
-            <div v-if="latestCameraVisualOverlay" class="smd-camera__summary">
-              <span
-                class="smd-camera__summary-chip"
-                :class="`smd-camera__summary-chip--${latestCameraVisualOverlay.tone}`"
-              >
-                {{ latestCameraVisualOverlay.label || latestCameraVisualOverlay.status }}
+            <div v-if="renderedCameraFrame" class="smd-camera__summary">
+              <span class="smd-camera__summary-chip">
+                Mặt: {{ renderedCameraFrame?.faceCount ?? '—' }}
               </span>
               <span class="smd-camera__summary-chip">
                 Mắt: {{ eyeStateLabel }}
@@ -414,19 +365,10 @@
 
             <div class="smd-camera__meta">
               <span>
-                <strong>Frame:</strong> {{ latestCameraFrame ? cameraFrameTimeLabel : '—' }}
+                <strong>Frame:</strong> {{ renderedCameraFrame ? cameraFrameTimeLabel : '—' }}
               </span>
-              <span v-if="latestCameraFrame?.faceCount != null">
-                <strong>Mặt:</strong> {{ latestCameraFrame.faceCount }}
-              </span>
-              <span v-if="latestCameraFrame?.frameQuality">
-                <strong>Ảnh:</strong> {{ latestCameraFrame.frameQuality }}
-              </span>
-              <span v-if="latestCameraFrame?.eyeState || latestCameraFrame?.eye_state">
-                <strong>Mắt:</strong> {{ eyeStateLabel }}
-              </span>
-              <span v-if="latestCameraFrame?.gazeDirection || latestCameraFrame?.gaze_direction">
-                <strong>Hướng nhìn:</strong> {{ gazeDirectionLabel }} / {{ gazeStatusLabel }}
+              <span>
+                <strong>Chất lượng:</strong> {{ renderedCameraFrame?.frameQuality || '—' }}
               </span>
             </div>
           </section>
@@ -667,7 +609,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated } from 'vue'
+import { ref, shallowRef, computed, watch, nextTick, onMounted, onUnmounted, onActivated } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import LucideIcon from '../../../common/LucideIcon.vue'
 import { useToast } from '../../../../composables/useToast'
@@ -698,6 +640,7 @@ const RISK_LEVEL_LABELS = {
 }
 const SIGNAL_LABELS = {
   // AI Camera Detection
+  NO_CAMERA: 'Camera tắt',
   FACE_NOT_DETECTED: 'Không có khuôn mặt',
   MULTIPLE_FACES: 'Nhiều khuôn mặt',
   FACE_SPOOFING_SUSPECTED: 'Nghi vấn giả mạo',
@@ -720,6 +663,8 @@ const SIGNAL_LABELS = {
   WINDOW_BLUR: 'Mất tiêu điểm',
   SCREEN_LEAVE: 'Rời màn hình',
   FULLSCREEN_VIOLATION: 'Thoát toàn màn hình',
+  FULLSCREEN_EVASION: 'Thoát toàn màn hình',
+  LONG_SCREEN_LEAVE: 'Rời màn hình lâu',
   CLIPBOARD_ABUSE: 'Clipboard bất thường',
   COPY_ATTEMPT: 'Sao chép',
   PASTE_ATTEMPT: 'Dán nội dung',
@@ -732,12 +677,16 @@ const SIGNAL_LABELS = {
   WARNING_SENT: 'Cảnh báo',
   ATTEMPT_PAUSED: 'Tạm dừng',
   ATTEMPT_RESUMED: 'Tiếp tục',
+  ATTEMPT_SUBMITTED: 'Đã nộp bài',
+  SUBMITTED: 'Đã nộp bài',
+  AUTO_SUBMITTED: 'Tự động nộp bài',
   ATTEMPT_STOPPED: 'Đình chỉ',
   RISK_UPDATED: 'Cập nhật rủi ro',
   NOTE: 'Ghi chú'
 }
 const EVENT_COLORS = {
   // AI Camera Detection - Critical
+  NO_CAMERA: 'var(--ds-danger)',
   FACE_NOT_DETECTED: 'var(--ds-danger)',
   MULTIPLE_FACES: 'var(--ds-danger)',
   FACE_SPOOFING_SUSPECTED: 'var(--ds-danger)',
@@ -761,6 +710,8 @@ const EVENT_COLORS = {
   WINDOW_BLUR: 'var(--ds-warning)',
   SCREEN_LEAVE: 'var(--ds-warning)',
   FULLSCREEN_VIOLATION: 'var(--ds-warning)',
+  FULLSCREEN_EVASION: 'var(--ds-warning)',
+  LONG_SCREEN_LEAVE: 'var(--ds-warning)',
   CLIPBOARD_ABUSE: 'var(--ds-danger)',
   COPY_ATTEMPT: 'var(--ds-danger)',
   PASTE_ATTEMPT: 'var(--ds-danger)',
@@ -773,6 +724,9 @@ const EVENT_COLORS = {
   WARNING_SENT: 'var(--ds-primary)',
   ATTEMPT_PAUSED: 'var(--ds-warning)',
   ATTEMPT_RESUMED: 'var(--ds-success)',
+  ATTEMPT_SUBMITTED: 'var(--ds-success)',
+  SUBMITTED: 'var(--ds-success)',
+  AUTO_SUBMITTED: 'var(--ds-success)',
   ATTEMPT_STOPPED: 'var(--ds-danger)',
   RISK_UPDATED: 'var(--ds-text-muted)',
   NOTE: 'var(--ds-text-muted)'
@@ -825,7 +779,9 @@ const newNote = ref('')
 const noteLoading = ref(false)
 const flagReviewNote = ref('')
 const flagActionLoading = ref('')
-const latestCameraFrame = ref(null)
+const latestCameraFrame = shallowRef(null)
+const renderedCameraFrame = shallowRef(null)
+const cameraFrameRenderError = ref('')
 const cameraClockTick = ref(Date.now())
 const cameraPreviewRef = ref(null)
 const cameraPreviewSize = ref({ width: 0, height: 0 })
@@ -836,6 +792,10 @@ let cameraClockTimer = null
 let cameraFramePollTimer = null
 let cameraPreviewResizeObserver = null
 let cameraPreviewResizeHandler = null
+let cameraFrameLastSignature = ''
+let cameraFrameFetchInFlight = false
+let cameraFrameRenderToken = 0
+let cameraFrameCommitRaf = null
 
 // ── Computed ───────────────────────────────────────────────────────
 const studentName = computed(() => {
@@ -916,10 +876,51 @@ const lastUpdatedLabel = computed(() => {
   }
 })
 
-const latestSignals = computed(() => riskData.value.latestSignals || [])
-const latestCameraFrameSrc = computed(() => latestCameraFrame.value?.imageBase64 || '')
+const AI_CAMERA_SIGNALS = [
+  'NO_CAMERA', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'FACE_SPOOFING_SUSPECTED',
+  'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
+  'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
+  'EYES_NOT_DETECTED', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
+  'VERY_BLURRY_FRAME', 'BLURRY_FRAME', 'EYE_BLINK_ANOMALY',
+  'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT'
+]
+const SCREEN_LEAVE_TIMELINE_TYPES = new Set([
+  'TAB_SWITCH',
+  'WINDOW_BLUR',
+  'SCREEN_LEAVE',
+  'EXIT_FULLSCREEN',
+  'FULLSCREEN_VIOLATION',
+  'FULLSCREEN_EVASION',
+  'LONG_SCREEN_LEAVE'
+])
+const CAMERA_SIGNAL_METADATA_KEYS = new Set([
+  'faceCount', 'face_count', 'faceDetected', 'face_detected',
+  'multipleFaces', 'multiple_faces', 'faceQuality', 'face_quality',
+  'eyeCount', 'eye_count', 'eyeState', 'eye_state',
+  'gazeDirection', 'gaze_direction', 'gazeOffScreen', 'gaze_off_screen',
+  'frameQuality', 'frame_quality', 'averageBrightness', 'average_brightness',
+  'visualOverlay', 'visual_overlay', 'imageWidth', 'imageHeight',
+  'faceBoxes', 'eyeBoxes', 'pupilPoints'
+])
+const TIMELINE_HIDDEN_TYPES = new Set(['RISK_SCORE', 'RISK_UPDATED'])
+const TIMELINE_WARNING_TYPES = new Set(['FRAUD_WARNING', 'WARNING', 'WARNING_SENT', 'CAMERA_PROCTORING'])
+
+const latestSignals = computed(() => {
+  const signals = Array.isArray(riskData.value.latestSignals) ? riskData.value.latestSignals : []
+  const seen = new Set()
+  const unique = []
+  for (const signal of signals) {
+    const type = normalizeSignalType(signal?.signalType || signal?.signal_type)
+    const key = type || String(signal?.id || signal?.createdAt || signal?.occurredAt || unique.length)
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(signal)
+  }
+  return unique.slice(0, 3)
+})
+const latestCameraFrameSrc = computed(() => renderedCameraFrame.value?.imageBase64 || '')
 const latestCameraVisualOverlay = computed(() => {
-  const frame = latestCameraFrame.value
+  const frame = renderedCameraFrame.value
   return projectCameraOverlay(
     frame?.visualOverlay || frame?.visual_overlay,
     cameraPreviewSize.value.width,
@@ -937,27 +938,56 @@ const cameraFrameIsFresh = computed(() => {
   const acked = latestCameraFrame.value?.acknowledged === true
     || latestCameraFrame.value?.accepted === true
     || latestCameraFrame.value?.transportStatus === 'ACKNOWLEDGED'
-  return cameraFrameAgeMs.value != null && cameraFrameAgeMs.value <= 20_000 && acked
+  return cameraFrameAgeMs.value != null && cameraFrameAgeMs.value <= 5_000 && acked
 })
 const cameraFrameStatusLabel = computed(() => {
   if (!attemptData.value.cameraOn) return 'Camera tắt'
+  const aiStatus = String(latestCameraFrame.value?.aiServiceStatus || latestCameraFrame.value?.status || '').toUpperCase()
+  if (aiStatus === 'NO_CAMERA') return 'Camera tắt'
+  if (aiStatus === 'AI_UNAVAILABLE') return 'AI lỗi'
+  if (aiStatus === 'AI_DISABLED') return 'AI tắt'
   if (!latestCameraFrame.value) return 'Chờ frame'
   return cameraFrameIsFresh.value ? 'Đang nhận' : 'Chậm cập nhật'
 })
 const cameraFrameBadgeClass = computed(() => {
   if (!attemptData.value.cameraOn) return 'smd-camera__badge--off'
+  const aiStatus = String(latestCameraFrame.value?.aiServiceStatus || latestCameraFrame.value?.status || '').toUpperCase()
+  if (aiStatus === 'NO_CAMERA') return 'smd-camera__badge--off'
+  if (aiStatus === 'AI_UNAVAILABLE') return 'smd-camera__badge--stale'
+  if (aiStatus === 'AI_DISABLED') return 'smd-camera__badge--wait'
   if (!latestCameraFrame.value) return 'smd-camera__badge--wait'
   return cameraFrameIsFresh.value ? 'smd-camera__badge--live' : 'smd-camera__badge--stale'
 })
+const cameraFrameEmptyText = computed(() => {
+  if (!attemptData.value.cameraOn) return 'Camera đang tắt'
+  const aiStatus = String(latestCameraFrame.value?.aiServiceStatus || latestCameraFrame.value?.status || '').toUpperCase()
+  if (aiStatus === 'NO_CAMERA') return 'Camera đang tắt'
+  if (aiStatus === 'AI_UNAVAILABLE') return 'AI tạm thời không khả dụng'
+  if (aiStatus === 'AI_DISABLED') return 'AI đang tắt theo cấu hình'
+  if (cameraFrameRenderError.value && !renderedCameraFrame.value) return cameraFrameRenderError.value
+  if (!renderedCameraFrame.value) {
+    return latestCameraFrame.value ? 'Đang chuẩn bị khung hình camera' : 'Chưa nhận khung hình camera'
+  }
+  return cameraFrameIsFresh.value ? 'Đang nhận khung hình mới' : 'Khung hình đang chậm cập nhật'
+})
+const cameraFrameEmptyIcon = computed(() => {
+  if (!attemptData.value.cameraOn) return 'videocam_off'
+  const aiStatus = String(latestCameraFrame.value?.aiServiceStatus || latestCameraFrame.value?.status || '').toUpperCase()
+  if (aiStatus === 'NO_CAMERA') return 'videocam_off'
+  if (aiStatus === 'AI_UNAVAILABLE') return 'alert-circle'
+  if (aiStatus === 'AI_DISABLED') return 'info'
+  if (cameraFrameRenderError.value && !renderedCameraFrame.value) return 'alert-triangle'
+  return 'videocam_off'
+})
 const cameraFrameTimeLabel = computed(() => {
-  const ts = latestCameraFrame.value?.capturedAt || latestCameraFrame.value?.issuedAt || latestCameraFrame.value?.receivedAt
+  const ts = renderedCameraFrame.value?.capturedAt || renderedCameraFrame.value?.issuedAt || renderedCameraFrame.value?.receivedAt
   return formatTime(ts)
 })
-const eyeStateLabel = computed(() => latestCameraFrame.value?.eyeState || latestCameraFrame.value?.eye_state || '—')
-const gazeDirectionLabel = computed(() => latestCameraFrame.value?.gazeDirection || latestCameraFrame.value?.gaze_direction || '—')
+const eyeStateLabel = computed(() => renderedCameraFrame.value?.eyeState || renderedCameraFrame.value?.eye_state || '—')
+const gazeDirectionLabel = computed(() => renderedCameraFrame.value?.gazeDirection || renderedCameraFrame.value?.gaze_direction || '—')
 const gazeStatusLabel = computed(() => {
-  if (latestCameraFrame.value?.gazeOffScreen || latestCameraFrame.value?.gaze_off_screen) return 'Off screen'
-  if (!latestCameraFrame.value) return '—'
+  if (renderedCameraFrame.value?.gazeOffScreen || renderedCameraFrame.value?.gaze_off_screen) return 'Off screen'
+  if (!renderedCameraFrame.value) return '—'
   return 'On screen'
 })
 
@@ -980,21 +1010,22 @@ const activeFlagStatusLabel = computed(() => {
 
 // Sorted & filtered timeline
 const sortedTimeline = computed(() => {
-  return [...timeline.value].sort((a, b) => {
+  const unique = new Map()
+  for (const rawItem of timeline.value || []) {
+    const item = normalizeTimelineItem(rawItem)
+    if (!item || TIMELINE_HIDDEN_TYPES.has(item.eventType)) continue
+    const key = makeEventKey(item)
+    const existing = unique.get(key)
+    if (!existing || preferTimelineItem(item, existing)) {
+      unique.set(key, item)
+    }
+  }
+  return [...unique.values()].sort((a, b) => {
     const aTime = new Date(a.at || a.timestamp || a.occurredAt || 0).getTime()
     const bTime = new Date(b.at || b.timestamp || b.occurredAt || 0).getTime()
     return bTime - aTime
-  }).map((item, i) => ({ ...item, _key: item.id || `${i}-${item.at}` }))
+  }).map((item, i) => ({ ...item, _key: item.id || makeEventKey(item) || `${i}-${item.at}` }))
 })
-
-const AI_CAMERA_SIGNALS = [
-  'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'FACE_SPOOFING_SUSPECTED',
-  'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
-  'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
-  'EYES_NOT_DETECTED', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
-  'VERY_BLURRY_FRAME', 'BLURRY_FRAME', 'EYE_BLINK_ANOMALY',
-  'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT'
-]
 
 const filteredTimeline = computed(() => {
   if (!timelineFilter.value) return sortedTimeline.value
@@ -1056,15 +1087,133 @@ function formatMetaKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
 }
 
+function normalizeSignalType(value) {
+  const text = String(value || '').trim()
+  return text ? text.toUpperCase() : ''
+}
+
+function getSignalMetadata(signal) {
+  const metadata = signal && typeof signal.metadata === 'object' && !Array.isArray(signal.metadata)
+    ? signal.metadata
+    : {}
+  const signalType = normalizeSignalType(signal?.signalType || signal?.signal_type)
+  const filtered = {}
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value == null || value === '') continue
+    if (signalType && AI_CAMERA_SIGNALS.includes(signalType) && CAMERA_SIGNAL_METADATA_KEYS.has(String(key))) {
+      continue
+    }
+    filtered[key] = value
+  }
+  return filtered
+}
+
+function normalizeTimelineItem(item = {}) {
+  const eventType = normalizeSignalType(item.eventType || item.type || item.warningType)
+  const at = item.at || item.timestamp || item.occurredAt || item.createdAt || item.issuedAt || null
+  const severity = normalizeSignalType(item.severity) || null
+  const confidence = item.confidence != null ? Number(item.confidence) : null
+  const riskImpact = item.riskImpact != null ? Number(item.riskImpact) : null
+  const category = normalizeSignalType(item.category) || null
+  const details = normalizeTimelineDetails(item, eventType)
+  const source = item.source || null
+  const bucketSize = timelineBucketSize(eventType, category)
+  const bucketAt = bucketSize > 0 ? Math.floor(new Date(at || 0).getTime() / bucketSize) * bucketSize : new Date(at || 0).getTime()
+  return {
+    ...item,
+    eventType,
+    at,
+    severity,
+    confidence,
+    riskImpact,
+    category,
+    details,
+    displayMessage: normalizeTimelineDisplayMessage(item, eventType),
+    source,
+    _bucketAt: bucketAt
+  }
+}
+
+function normalizeTimelineText(value) {
+  const text = String(value || '').trim()
+  return text || ''
+}
+
+function normalizeTimelineDetails(item = {}, eventType = '') {
+  const raw = normalizeTimelineText(item.displayMessage || item.details || item.message)
+  if (!raw) return ''
+  const label = normalizeTimelineText(getSignalLabel(eventType))
+  if (!label) return raw
+  if (raw === label) return ''
+  if (raw.toUpperCase() === eventType) return ''
+  return raw
+}
+
+function normalizeTimelineDisplayMessage(item = {}, eventType = '') {
+  const raw = normalizeTimelineText(item.displayMessage)
+  if (!raw) return ''
+  const label = normalizeTimelineText(getSignalLabel(eventType))
+  if (!label) return raw
+  if (raw === label) return ''
+  if (raw.toUpperCase() === eventType) return ''
+  return raw
+}
+
+function shouldCollapseTimelineEntry(eventType = '', category = '') {
+  return SCREEN_LEAVE_TIMELINE_TYPES.has(eventType)
+    || AI_CAMERA_SIGNALS.includes(eventType)
+    || TIMELINE_WARNING_TYPES.has(eventType)
+    || category === 'CAMERA_PROCTORING'
+}
+
+function timelineBucketSize(eventType = '', category = '') {
+  if (eventType === 'RISK_SCORE') return 0
+  if (eventType === 'RISK_UPDATED') return 0
+  if (shouldCollapseTimelineEntry(eventType, category)) return 15_000
+  return 1_000
+}
+
+function makeTimelineFingerprint(item = {}) {
+  const signalType = normalizeSignalType(item.eventType || item.type || '')
+  const atBucket = item._bucketAt != null ? String(item._bucketAt) : String(item.at || item.timestamp || item.occurredAt || '')
+  const category = normalizeSignalType(item.category) || ''
+  const collapse = shouldCollapseTimelineEntry(signalType, category)
+  const details = collapse ? '' : normalizeTimelineText(item.details || item.displayMessage)
+  const bucketCategory = collapse ? 'CAMERA_PROCTORING' : category
+  const severity = collapse ? '' : normalizeSignalType(item.severity) || ''
+  return [signalType, atBucket, bucketCategory, severity, details].join('|')
+}
+
 function makeEventKey(event) {
-  return `${event.eventType || event.type || ''}|${event.at || event.timestamp || ''}|${event.details || event.displayMessage || ''}`
+  return makeTimelineFingerprint(event)
+}
+
+function preferTimelineItem(candidate = {}, existing = {}) {
+  if (!existing) return true
+  if ((candidate.type || '').toUpperCase() === 'FRAUD_SIGNAL' && (existing.type || '').toUpperCase() !== 'FRAUD_SIGNAL') {
+    return true
+  }
+  if ((candidate.type || '').toUpperCase() === 'FRAUD_WARNING' && (existing.type || '').toUpperCase() === 'RISK_SCORE') {
+    return true
+  }
+  if (candidate.riskImpact != null && existing.riskImpact == null) {
+    return true
+  }
+  if (candidate.confidence != null && existing.confidence == null) {
+    return true
+  }
+  const candidateText = normalizeTimelineText(candidate.displayMessage || candidate.details)
+  const existingText = normalizeTimelineText(existing.displayMessage || existing.details)
+  return candidateText.length > existingText.length
 }
 
 function prependTimelineItem(item) {
-  const key = makeEventKey(item)
-  const exists = timeline.value.some(e => makeEventKey(e) === key)
+  const normalized = normalizeTimelineItem(item)
+  if (!normalized || TIMELINE_HIDDEN_TYPES.has(normalized.eventType)) return false
+  const key = makeEventKey(normalized)
+  const exists = timeline.value.some(e => makeEventKey(normalizeTimelineItem(e)) === key)
   if (exists) return false
-  timeline.value = [item, ...timeline.value]
+  timeline.value = [normalized, ...timeline.value]
   return true
 }
 
@@ -1109,27 +1258,165 @@ function startCameraPreviewObserver() {
   window.addEventListener('resize', cameraPreviewResizeHandler)
 }
 
-function handleCameraFrame(payload) {
+function getCameraFrameTimestamp(frame) {
+  const rawTs = frame?.receivedAt || frame?.issuedAt || frame?.capturedAt
+  if (!rawTs) return null
+  const ts = new Date(rawTs).getTime()
+  return Number.isFinite(ts) ? ts : null
+}
+
+function getCameraFrameAgeMs(frame = latestCameraFrame.value) {
+  const ts = getCameraFrameTimestamp(frame)
+  return ts == null ? null : Math.max(Date.now() - ts, 0)
+}
+
+function makeCameraFrameSignature(frame) {
+  if (!frame) return ''
+  const imageBase64 = frame.imageBase64 || frame.image_base64 || ''
+  const imageHint = imageBase64
+    ? `${imageBase64.length}:${imageBase64.slice(0, 24)}:${imageBase64.slice(-24)}`
+    : ''
+  const stableFrameKey = frame.frameId
+    || frame.frame_id
+    || frame.metadata?.frameId
+    || frame.metadata?.frame_id
+    || frame.capturedAt
+    || frame.captured_at
+    || imageHint
+    || frame.receivedAt
+    || frame.issuedAt
+    || ''
+  const signals = Array.isArray(frame.signals)
+    ? frame.signals.map(signal => signal?.signalType || signal?.signal_type || signal).join(',')
+    : ''
+  const warnings = Array.isArray(frame.warnings)
+    ? frame.warnings.map(warning => warning?.type || warning?.warningType || warning).join(',')
+    : ''
+  const overlayStatus = frame.visualOverlay?.status || frame.visual_overlay?.status || ''
+  return [
+    stableFrameKey,
+    frame.source || '',
+    frame.aiServiceStatus || frame.status || '',
+    frame.backendAnalysisReceived === true ? 'ai-ok' : 'ai-pending',
+    frame.faceCount ?? frame.face_count ?? '',
+    frame.eyeCount ?? frame.eye_count ?? '',
+    frame.faceDetected ?? frame.face_detected ?? '',
+    frame.multipleFaces ?? frame.multiple_faces ?? '',
+    frame.frameQuality || frame.frame_quality || '',
+    frame.eyeState || frame.eye_state || '',
+    frame.gazeDirection || frame.gaze_direction || '',
+    frame.gazeOffScreen ?? frame.gaze_off_screen ?? '',
+    overlayStatus,
+    signals,
+    warnings
+  ].join('|')
+}
+
+function scheduleRenderedCameraFrameCommit(frame, token) {
+  const commit = () => {
+    if (token !== cameraFrameRenderToken) return
+    renderedCameraFrame.value = frame || null
+    cameraFrameRenderError.value = ''
+  }
+
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    if (cameraFrameCommitRaf) {
+      window.cancelAnimationFrame(cameraFrameCommitRaf)
+    }
+    cameraFrameCommitRaf = window.requestAnimationFrame(() => {
+      cameraFrameCommitRaf = null
+      commit()
+    })
+    return
+  }
+
+  commit()
+}
+
+function cancelPendingCameraFrameRender({ clearRendered = false } = {}) {
+  cameraFrameRenderToken += 1
+  cameraFrameRenderError.value = ''
+  if (typeof window !== 'undefined' && cameraFrameCommitRaf) {
+    window.cancelAnimationFrame(cameraFrameCommitRaf)
+  }
+  cameraFrameCommitRaf = null
+  if (clearRendered) {
+    renderedCameraFrame.value = null
+  }
+}
+
+function renderCameraFrameWhenReady(frame) {
+  const src = frame?.imageBase64
+  if (!src) {
+    const token = ++cameraFrameRenderToken
+    scheduleRenderedCameraFrameCommit(frame || null, token)
+    return
+  }
+
+  const token = ++cameraFrameRenderToken
+  const image = new Image()
+  image.decoding = 'async'
+  image.loading = 'eager'
+  let committed = false
+
+  const commit = () => {
+    if (committed || token !== cameraFrameRenderToken) return
+    committed = true
+    scheduleRenderedCameraFrameCommit(frame, token)
+  }
+
+  const fallbackCommit = () => {
+    if (token !== cameraFrameRenderToken) return
+    cameraFrameRenderError.value = 'Frame camera mới chưa hiển thị được'
+  }
+
+  image.onload = commit
+  image.onerror = fallbackCommit
+  image.src = src
+
+  if (typeof image.decode === 'function') {
+    image.decode().then(commit).catch(fallbackCommit)
+  } else if (image.complete && image.naturalWidth > 0) {
+    commit()
+  }
+}
+
+function applyCameraFrame(payload) {
   if (!payload || String(payload.attemptId || '') !== String(attemptId.value)) return
-  latestCameraFrame.value = {
+  const normalized = {
     ...payload,
     receivedAt: payload.receivedAt || new Date().toISOString(),
     clientReceivedAt: new Date().toISOString()
   }
+  const signature = makeCameraFrameSignature(normalized)
+  if (signature && signature === cameraFrameLastSignature) {
+    return
+  }
+  cameraFrameLastSignature = signature
+  latestCameraFrame.value = normalized
+  cameraFrameRenderError.value = ''
+  renderCameraFrameWhenReady(normalized)
   if (attemptData.value.cameraOn !== true) {
     attemptData.value = { ...attemptData.value, cameraOn: true }
   }
 }
 
+function handleCameraFrame(payload) {
+  applyCameraFrame(payload)
+}
+
 async function loadLatestCameraFrame() {
-  if (!attemptId.value) return
+  if (!attemptId.value || cameraFrameFetchInFlight) return
+  cameraFrameFetchInFlight = true
   try {
     const frame = await fetchLatestCameraFrame(attemptId.value)
     if (frame && frame.available !== false) {
-      handleCameraFrame(frame)
+      applyCameraFrame(frame)
     }
   } catch {
     // best-effort fallback
+  } finally {
+    cameraFrameFetchInFlight = false
   }
 }
 
@@ -1149,6 +1436,10 @@ function connectCameraFrameStream(id) {
 function startCameraFramePolling() {
   if (cameraFramePollTimer) return
   cameraFramePollTimer = window.setInterval(() => {
+    const currentAgeMs = getCameraFrameAgeMs()
+    if (currentAgeMs != null && currentAgeMs < CAMERA_FRAME_POLL_MS * 1.5) {
+      return
+    }
     void loadLatestCameraFrame()
   }, CAMERA_FRAME_POLL_MS)
 }
@@ -1195,6 +1486,8 @@ function handleRealtimeUpdate(payload) {
     attemptData.value = { ...attemptData.value, status: 'IN_PROGRESS' }
   } else if (type === 'ATTEMPT_STOPPED') {
     attemptData.value = { ...attemptData.value, status: 'STOPPED' }
+  } else if (type === 'ATTEMPT_SUBMITTED' || type === 'SUBMITTED' || type === 'AUTO_SUBMITTED') {
+    attemptData.value = { ...attemptData.value, status: 'SUBMITTED' }
   }
 
   // Handle fraud signal
@@ -1222,6 +1515,7 @@ function handleRealtimeUpdate(payload) {
       severity: payload.severity,
       confidence: payload.confidence,
       category: payload.warningCategory,
+      riskImpact: payload.riskImpact,
       reviewStatus: payload.reviewStatus
     })
   }
@@ -1235,7 +1529,7 @@ function handleRealtimeUpdate(payload) {
   }
 
   // Handle system events
-  if (['WARNING_SENT', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED'].includes(type)) {
+  if (['WARNING_SENT', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED', 'ATTEMPT_SUBMITTED', 'SUBMITTED', 'AUTO_SUBMITTED'].includes(type)) {
     prependTimelineItem({
       eventType: type,
       at: payload.issuedAt || new Date().toISOString(),
@@ -1253,14 +1547,22 @@ async function loadTimeline() {
       eventType: timelineFilter.value || undefined
     })
     const apiItems = Array.isArray(result) ? result : (result?.items || [])
+    const normalizedExisting = (timeline.value || []).map(normalizeTimelineItem).filter(Boolean)
+    const existingKeys = new Set(normalizedExisting.map(item => makeEventKey(item)))
+    const newItems = apiItems
+      .map(normalizeTimelineItem)
+      .filter(item => item && !TIMELINE_HIDDEN_TYPES.has(item.eventType) && !existingKeys.has(makeEventKey(item)))
 
-    // Deduplicate: remove items already in timeline before adding from API
-    const existingKeys = new Set(timeline.value.map(e => makeEventKey(e)))
-    const newItems = apiItems.filter(item => !existingKeys.has(makeEventKey(item)))
+    const mergedByKey = new Map()
+    for (const item of [...normalizedExisting, ...newItems]) {
+      const key = makeEventKey(item)
+      const existing = mergedByKey.get(key)
+      if (!existing || preferTimelineItem(item, existing)) {
+        mergedByKey.set(key, item)
+      }
+    }
 
-    // Merge: keep realtime items + new API items sorted by time
-    const merged = [...timeline.value, ...newItems]
-    timeline.value = merged.sort((a, b) => {
+    timeline.value = [...mergedByKey.values()].sort((a, b) => {
       const aTime = new Date(a.at || a.timestamp || a.occurredAt || 0).getTime()
       const bTime = new Date(b.at || b.timestamp || b.occurredAt || 0).getTime()
       return bTime - aTime
@@ -1279,7 +1581,7 @@ async function loadNotes() {
     })
     notesTimeline.value = Array.isArray(result) ? result : (result?.items || [])
   } catch {
-    notesTimeline.value = []
+    // Keep the current note list on transient errors.
   }
 }
 
@@ -1288,8 +1590,6 @@ async function loadData() {
   isLoadingData.value = true
   error.value = ''
   stopCameraPreviewObserver()
-  // Reset timeline on fresh load to avoid duplication
-  timeline.value = []
   try {
     const [attemptResult, riskResult] = await Promise.allSettled([
       fetchAttemptDetail(attemptId.value),
@@ -1512,6 +1812,9 @@ watch(attemptId, (id, prev) => {
   if (id) {
     loading.value = true
     latestCameraFrame.value = null
+    cancelPendingCameraFrameRender({ clearRendered: true })
+    cameraFrameLastSignature = ''
+    cameraFrameFetchInFlight = false
     void loadData()
     subscribeToAttempt(id, handleRealtimeUpdate)
     connectCameraFrameStream(id)
@@ -1519,6 +1822,9 @@ watch(attemptId, (id, prev) => {
   } else {
     cameraRealtime.disconnect()
     stopCameraFramePolling()
+    cameraFrameLastSignature = ''
+    cameraFrameFetchInFlight = false
+    cancelPendingCameraFrameRender({ clearRendered: true })
   }
 }, { immediate: true })
 
@@ -1544,6 +1850,7 @@ onUnmounted(() => {
   cameraRealtime.disconnect()
   stopCameraFramePolling()
   stopCameraPreviewObserver()
+  cancelPendingCameraFrameRender({ clearRendered: true })
   if (cameraClockTimer) {
     window.clearInterval(cameraClockTimer)
     cameraClockTimer = null
@@ -1552,7 +1859,9 @@ onUnmounted(() => {
 
 onActivated(() => {
   // Reload data when navigating back to this page
-  loading.value = true
+  if (!attemptData.value?.id) {
+    loading.value = true
+  }
   void loadData()
   void loadLatestCameraFrame()
 })
@@ -1991,13 +2300,20 @@ onActivated(() => {
   border-radius: var(--ds-radius-md);
   background: var(--ds-surface-muted);
   border: 1px solid var(--ds-border);
+  contain: layout paint;
 }
 
 .smd-camera__image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .smd-camera-overlay {
@@ -2093,6 +2409,8 @@ onActivated(() => {
   flex-wrap: wrap;
   gap: var(--ds-space-2);
   margin-top: var(--ds-space-3);
+  min-height: 28px;
+  contain: layout paint;
 }
 
 .smd-camera__summary-chip {
@@ -2130,6 +2448,8 @@ onActivated(() => {
   margin-top: var(--ds-space-3);
   font-size: var(--ds-text-xs);
   color: var(--ds-text-secondary);
+  min-height: 56px;
+  contain: layout paint;
 }
 
 .smd-camera__meta > span {
@@ -2144,10 +2464,6 @@ onActivated(() => {
   line-height: 1.25;
 }
 
-.smd-camera__meta > span:last-child {
-  grid-column: 1 / -1;
-}
-
 .smd-camera__meta strong {
   color: var(--ds-text-muted);
   font-size: 10px;
@@ -2155,53 +2471,11 @@ onActivated(() => {
   letter-spacing: 0;
 }
 
-.smd-level-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: var(--ds-radius-sm);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.smd-level-badge--critical {
-  background: var(--ds-risk-critical-soft);
-  color: var(--ds-risk-critical);
-}
-
-.smd-level-badge--high-risk {
-  background: var(--ds-risk-high-soft);
-  color: var(--ds-risk-high);
-}
-
-.smd-level-badge--suspicious {
-  background: var(--ds-risk-moderate-soft);
-  color: var(--ds-risk-moderate);
-}
-
-.smd-level-badge--clean {
-  background: var(--ds-success-soft);
-  color: var(--ds-risk-clean);
-}
-
 /* ── Risk summary ───────────────────────────────────────────── */
 .smd-risk-summary {
   display: flex;
   flex-direction: column;
   gap: var(--ds-space-3);
-}
-
-.smd-risk-big-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: var(--ds-space-1);
-}
-
-.smd-risk-max {
-  font-size: var(--ds-text-lg);
-  color: var(--ds-text-muted);
-  font-weight: 600;
 }
 
 .smd-breakdown {
@@ -2564,10 +2838,6 @@ onActivated(() => {
 
   .smd-camera__meta {
     grid-template-columns: 1fr;
-  }
-
-  .smd-camera__meta > span:last-child {
-    grid-column: auto;
   }
 
   .smd-btn {

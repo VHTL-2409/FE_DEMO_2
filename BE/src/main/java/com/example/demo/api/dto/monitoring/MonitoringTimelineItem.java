@@ -16,10 +16,14 @@ public class MonitoringTimelineItem {
     private String eventType;
     private String details;
     private Integer riskScore;
+    private Integer riskImpact;
     private Boolean suspicious;
     private String severity;
     private Double confidence;
     private String riskLevel;
     private String evidence;
     private Map<String, Integer> breakdown;
+    private String category;
+    private String reviewStatus;
+    private String source;
 }

@@ -23,6 +23,7 @@ public class FraudWarningResponse {
     private String severity;
     private Double confidence;
     private String message;
+    private Integer riskImpact;
     private Object evidence;
     private String source;
     private List<Long> relatedAttemptIds;

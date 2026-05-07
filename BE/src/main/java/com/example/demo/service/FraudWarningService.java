@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ public class FraudWarningService {
     private final FraudSignalRepository fraudSignalRepository;
     private final ObjectMapper objectMapper;
     private final RealtimeNotificationService realtimeNotificationService;
+    private final FraudSignalService fraudSignalService;
 
     @Value("${demo.fraud.warning.dedup-minutes:10}")
     private long dedupMinutes;
@@ -49,6 +51,63 @@ public class FraudWarningService {
             String source,
             List<Long> relatedAttemptIds
     ) {
+        return recordWarningInternal(
+                exam,
+                attempt,
+                category,
+                warningType,
+                severity,
+                confidence,
+                message,
+                evidence,
+                source,
+                relatedAttemptIds,
+                Duration.ofMinutes(Math.max(dedupMinutes, 1))
+        );
+    }
+
+    @Transactional
+    public FraudWarning recordWarningWithDedupWindow(
+            Exam exam,
+            ExamAttempt attempt,
+            FraudWarningCategory category,
+            String warningType,
+            SignalSeverity severity,
+            double confidence,
+            String message,
+            Object evidence,
+            String source,
+            List<Long> relatedAttemptIds,
+            Duration dedupWindow
+    ) {
+        return recordWarningInternal(
+                exam,
+                attempt,
+                category,
+                warningType,
+                severity,
+                confidence,
+                message,
+                evidence,
+                source,
+                relatedAttemptIds,
+                dedupWindow == null || dedupWindow.isNegative() ? Duration.ZERO : dedupWindow
+        );
+    }
+
+    private FraudWarning recordWarningInternal(
+            Exam exam,
+            ExamAttempt attempt,
+            FraudWarningCategory category,
+            String warningType,
+            SignalSeverity severity,
+            double confidence,
+            String message,
+            Object evidence,
+            String source,
+            List<Long> relatedAttemptIds,
+            Duration dedupWindow
+    ) {
         if (exam == null) {
             throw new IllegalArgumentException("exam is required");
         }
@@ -57,18 +116,25 @@ public class FraudWarningService {
         }
         String normalizedType = normalizeType(warningType);
         String relatedIdsJson = writeRelatedAttemptIds(relatedAttemptIds, attempt);
-        LocalDateTime cutoff = VietNamTime.now().minusMinutes(Math.max(dedupMinutes, 1));
-        List<FraudWarning> existing = fraudWarningRepository.findRecentSimilar(
-                exam,
-                attempt,
-                category,
-                normalizedType,
-                source,
-                relatedIdsJson,
-                cutoff
-        );
-        if (!existing.isEmpty()) {
-            return existing.get(0);
+        Integer riskImpact = resolveWarningRiskImpact(normalizedType, evidence);
+        LocalDateTime now = VietNamTime.now();
+        Duration safeDedupWindow = dedupWindow == null || dedupWindow.isNegative()
+                ? Duration.ZERO
+                : dedupWindow;
+        if (!safeDedupWindow.isZero()) {
+            LocalDateTime cutoff = now.minus(safeDedupWindow);
+            List<FraudWarning> existing = fraudWarningRepository.findRecentSimilar(
+                    exam,
+                    attempt,
+                    category,
+                    normalizedType,
+                    source,
+                    relatedIdsJson,
+                    cutoff
+            );
+            if (!existing.isEmpty()) {
+                return existing.get(0);
+            }
         }
 
         FraudWarning warning = FraudWarning.builder()
@@ -80,12 +146,13 @@ public class FraudWarningService {
                 .severity(severity != null ? severity : SignalSeverity.MEDIUM)
                 .confidence(normalizeConfidence(confidence))
                 .message(message == null || message.isBlank() ? normalizedType : message.trim())
+                .riskImpact(riskImpact)
                 .evidence(writeJson(evidence == null ? Map.of() : evidence))
                 .source(source == null || source.isBlank() ? "fraud_warning" : source.trim())
                 .relatedAttemptIds(relatedIdsJson)
                 .reviewStatus(FraudWarningReviewStatus.NEEDS_REVIEW)
-                .createdAt(VietNamTime.now())
-                .updatedAt(VietNamTime.now())
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
         FraudWarning saved = fraudWarningRepository.save(warning);
         realtimeNotificationService.notifyFraudWarningRecorded(saved);
@@ -163,7 +230,8 @@ public class FraudWarningService {
         evidence.put("sourceSignalId", signal.getId());
         evidence.put("signalType", signal.getSignalType());
         evidence.put("signalCategory", signal.getCategory());
-        evidence.put("riskImpactIgnored", true);
+        evidence.put("riskImpact", signal.getRiskImpact());
+        evidence.put("riskImpactSource", "fraud_signal");
         evidence.put("rawEvidence", parseJsonOrRaw(signal.getEvidence()));
         FraudWarning warning = recordWarning(
                 attempt.getExam(),
@@ -182,6 +250,10 @@ public class FraudWarningService {
 
     public FraudWarningResponse toResponse(FraudWarning warning) {
         User student = warning.getStudent();
+        Object evidence = parseJsonOrRaw(warning.getEvidence());
+        Integer riskImpact = warning.getRiskImpact() != null
+                ? warning.getRiskImpact()
+                : resolveWarningRiskImpact(warning.getWarningType(), evidence);
         return FraudWarningResponse.builder()
                 .id(warning.getId())
                 .examId(warning.getExam() != null ? warning.getExam().getId() : null)
@@ -195,7 +267,8 @@ public class FraudWarningService {
                 .severity(warning.getSeverity() != null ? warning.getSeverity().name() : null)
                 .confidence(warning.getConfidence())
                 .message(warning.getMessage())
-                .evidence(parseJsonOrRaw(warning.getEvidence()))
+                .riskImpact(riskImpact)
+                .evidence(evidence)
                 .source(warning.getSource())
                 .relatedAttemptIds(readRelatedAttemptIds(warning.getRelatedAttemptIds()))
                 .reviewStatus(warning.getReviewStatus() != null ? warning.getReviewStatus().name() : null)
@@ -231,6 +304,7 @@ public class FraudWarningService {
 
     private boolean isCameraSignal(String type) {
         return Set.of(
+                "NO_CAMERA",
                 "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                 "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                 "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
@@ -289,6 +363,48 @@ public class FraudWarningService {
         } catch (Exception ex) {
             return raw;
         }
+    }
+
+    private Integer resolveWarningRiskImpact(String warningType, Object evidence) {
+        Integer explicit = extractRiskImpact(evidence);
+        if (explicit != null) {
+            return Math.max(0, explicit);
+        }
+        try {
+            return Math.max(0, fraudSignalService.descriptorFor(warningType).riskImpact());
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private Integer extractRiskImpact(Object evidence) {
+        if (!(evidence instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object value = firstPresent(map, "riskImpact", "risk_impact", "sourceSignalRiskImpact");
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null || String.valueOf(value).isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Object firstPresent(Map<?, ?> source, String... keys) {
+        if (source == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (source.containsKey(key) && source.get(key) != null) {
+                return source.get(key);
+            }
+        }
+        return null;
     }
 
     private Map<String, Long> countBy(List<FraudWarningResponse> warnings, java.util.function.Function<FraudWarningResponse, String> keyFn) {

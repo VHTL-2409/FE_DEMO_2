@@ -14,7 +14,7 @@
           :now-ms="nowMs"
           :is-syncing="isSyncing"
           :last-synced-label="lastSyncedLabel"
-          :require-camera-mic="requireCameraMic"
+          :require-camera-mic="cameraGateRequired"
           @support="openSupport"
         />
       </div>
@@ -38,17 +38,17 @@
           <div class="flex flex-wrap items-center gap-2 sm:justify-end">
             <span
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
-              :class="!cameraVerified ? 'bg-gray-500/10 text-gray-500 dark:text-gray-400' : cameraReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+              :class="cameraBadgeClass"
             >
               <LucideIcon name="videocam" class="text-[1rem]" />
-              Camera {{ !cameraVerified ? 'chưa kiểm tra' : cameraReady ? 'OK' : 'chưa OK' }}
+              Camera {{ cameraStatusText }}
             </span>
             <span
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
-              :class="!cameraVerified ? 'bg-gray-500/10 text-gray-500 dark:text-gray-400' : micReady ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'"
+              :class="micBadgeClass"
             >
               <LucideIcon name="mic" class="text-[1rem]" />
-              Mic {{ !cameraVerified ? 'chưa kiểm tra' : micReady ? 'OK' : 'chưa OK' }}
+              Mic {{ micStatusText }}
             </span>
             <button
               type="button"
@@ -99,7 +99,7 @@
           :is-before-start="!!startAtDate && nowMs < startAtDate.getTime()"
           :devices-ready="devicesReady"
           :devices-verified="devicesVerified"
-          :require-camera-mic="requireCameraMic"
+          :require-camera-mic="cameraGateRequired"
           @start="goToExamInterface"
         />
       </div>
@@ -108,7 +108,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useNotifications } from '../../composables/useNotifications'
 import { startAttempt } from '../../services/attemptService'
 import { getExamDetail } from '../../services/examService'
@@ -158,9 +158,20 @@ const endAtDate = computed(() => parseBackendDate(endAtRaw.value))
 const isEnded = computed(() => endAtDate.value ? nowMs.value > endAtDate.value.getTime() : false)
 
 const requireCameraMic = computed(() => {
+  if (examDetail.value?.requireCameraMic != null) {
+    return examDetail.value.requireCameraMic !== false
+  }
   if (route.query.requireCameraMic === 'false') return false
-  return examDetail.value?.requireCameraMic !== false
+  return true
 })
+const enableAiProctoring = computed(() => {
+  if (examDetail.value?.enableAiProctoring != null) {
+    return examDetail.value.enableAiProctoring === true
+  }
+  if (route.query.enableAiProctoring === 'true') return true
+  return false
+})
+const cameraGateRequired = computed(() => requireCameraMic.value || enableAiProctoring.value)
 
 /**
  * True when the camera has been verified.
@@ -176,8 +187,34 @@ const devicesVerified = computed(() =>
  * When requireCameraMic = false: still show status but allow starting if not checked.
  */
 const devicesReady = computed(() => {
-  if (!requireCameraMic.value) return true // not a hard requirement
+  if (!cameraGateRequired.value) return true // not a hard requirement
   return devicesVerified.value
+})
+const cameraStatusText = computed(() => {
+  if (!cameraGateRequired.value && !cameraVerified.value) return 'tùy chọn'
+  if (!cameraVerified.value) return 'chưa kiểm tra'
+  if (cameraReady.value) return 'OK'
+  return deviceError.value ? 'lỗi quyền' : 'chưa OK'
+})
+const micStatusText = computed(() => {
+  if (!cameraGateRequired.value && !cameraVerified.value) return 'tùy chọn'
+  if (!cameraVerified.value) return 'chưa kiểm tra'
+  if (micReady.value) return 'OK'
+  return 'chưa OK'
+})
+const cameraBadgeClass = computed(() => {
+  if (!cameraGateRequired.value && !cameraVerified.value) return 'bg-slate-500/10 text-slate-500 dark:text-slate-400'
+  if (!cameraVerified.value) return 'bg-gray-500/10 text-gray-500 dark:text-gray-400'
+  return cameraReady.value
+    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+    : 'bg-red-500/10 text-red-700 dark:text-red-400'
+})
+const micBadgeClass = computed(() => {
+  if (!cameraGateRequired.value && !cameraVerified.value) return 'bg-slate-500/10 text-slate-500 dark:text-slate-400'
+  if (!cameraVerified.value) return 'bg-gray-500/10 text-gray-500 dark:text-gray-400'
+  return micReady.value
+    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
 })
 
 const canStart = computed(() => {
@@ -192,6 +229,37 @@ const lastSyncedLabel = computed(() => {
     hour: '2-digit', minute: '2-digit', second: '2-digit'
   })
 })
+
+const enterExamFullscreen = async () => {
+  if (typeof document === 'undefined') return false
+  if (document.fullscreenElement || document.webkitFullscreenElement) return true
+  const target = document.documentElement
+  const request = target?.requestFullscreen || target?.webkitRequestFullscreen
+  if (!request) return false
+  try {
+    await request.call(target, { navigationUI: 'hide' })
+  } catch {
+    try {
+      await request.call(target)
+    } catch {
+      return false
+    }
+  }
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+}
+
+const exitExamFullscreen = async () => {
+  if (typeof document === 'undefined') return false
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) return false
+  const exit = document.exitFullscreen || document.webkitExitFullscreen
+  if (!exit) return false
+  try {
+    await exit.call(document)
+    return true
+  } catch {
+    return false
+  }
+}
 
 const refreshExamDetail = async () => {
   if (!examId.value) return
@@ -252,21 +320,31 @@ const checkDevices = async () => {
   }
 }
 
+watch(cameraGateRequired, (enabled, previous) => {
+  if (enabled && !previous && !cameraVerified.value) {
+    void checkDevices()
+    return
+  }
+  if (!enabled) {
+    cameraVerified.value = false
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = ''
+  }
+})
+
 const goToExamInterface = async () => {
   if (!examId.value) {
     toast.error('Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.')
     return
   }
 
-  await refreshExamDetail()
-
-  if (isEnded.value) {
-    toast.error('Bài thi đã kết thúc.')
-    return
-  }
-
   if (!canStart.value) {
-    if (!devicesVerified.value && requireCameraMic.value) {
+    if (isEnded.value) {
+      toast.error('Bài thi đã kết thúc.')
+      return
+    }
+    if (!devicesVerified.value && cameraGateRequired.value) {
       toast.error('Bạn cần bật camera để vào phòng thi.')
     } else if (startAtDate.value && nowMs.value < startAtDate.value.getTime()) {
       toast.error('Bài thi chưa bắt đầu.')
@@ -276,6 +354,30 @@ const goToExamInterface = async () => {
 
   isStarting.value = true
   try {
+    const fullscreenReady = await enterExamFullscreen()
+    if (!fullscreenReady) {
+      toast.warning('Trình duyệt chưa cho phép vào toàn màn hình. Hãy thử lại để bắt đầu bài thi.')
+      return
+    }
+
+    await refreshExamDetail()
+
+    if (isEnded.value) {
+      await exitExamFullscreen()
+      toast.error('Bài thi đã kết thúc.')
+      return
+    }
+
+    if (!canStart.value) {
+      await exitExamFullscreen()
+      if (!devicesVerified.value && cameraGateRequired.value) {
+        toast.error('Bạn cần bật camera để vào phòng thi.')
+      } else if (startAtDate.value && nowMs.value < startAtDate.value.getTime()) {
+        toast.error('Bài thi chưa bắt đầu.')
+      }
+      return
+    }
+
     const started = await startAttempt(examId.value)
     router.push({
       path: '/student/exam-interface',
@@ -288,6 +390,7 @@ const goToExamInterface = async () => {
       })
     })
   } catch {
+    await exitExamFullscreen()
     toast.error('Không thể bắt đầu bài thi lúc này.')
   } finally {
     isStarting.value = false
@@ -296,7 +399,14 @@ const goToExamInterface = async () => {
 
 onMounted(async () => {
   await refreshExamDetail()
-  await checkDevices()
+  if (cameraGateRequired.value) {
+    await checkDevices()
+  } else {
+    cameraVerified.value = false
+    cameraReady.value = false
+    micReady.value = false
+    deviceError.value = ''
+  }
   timerId = window.setInterval(() => { nowMs.value = Date.now() }, 1000)
   examRefreshTimerId = window.setInterval(refreshExamDetail, 15000)
 })

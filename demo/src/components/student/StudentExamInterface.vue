@@ -277,6 +277,38 @@
             <span class="ei-cam-transport__detail">{{ frameTransportDetail }}</span>
           </div>
         </div>
+        <div v-else-if="shouldCheckDevices" class="ei-cam-card">
+          <div class="ei-cam-header">
+            <div class="ei-cam-header__copy">
+              <span class="ei-cam-label">Thiết bị giám sát</span>
+              <span class="ei-cam-mode">{{ aiCameraAnalysisRequested ? 'AI giám sát' : 'Camera cơ bản' }}</span>
+            </div>
+          </div>
+          <div class="ei-cam-status">
+            <span class="ei-cam-status__chip" :class="cameraReady ? 'ei-cam-status__chip--on' : 'ei-cam-status__chip--off'">
+              Cam {{ cameraReady ? 'bật' : 'tắt' }}
+            </span>
+            <span class="ei-cam-status__chip" :class="micReady ? 'ei-cam-status__chip--on' : 'ei-cam-status__chip--off'">
+              Mic {{ micReady ? 'bật' : 'tắt' }}
+            </span>
+          </div>
+          <div class="ei-cam-transport" :class="deviceError ? 'ei-cam-transport--fail' : 'ei-cam-transport--pending'" role="status">
+            <span class="ei-cam-transport__label">{{ deviceError ? 'Lỗi camera' : 'Đang khởi tạo camera' }}</span>
+            <span class="ei-cam-transport__detail">{{ deviceError || (isCheckingDevices ? 'Đang chờ quyền truy cập camera' : 'Chưa nhận được luồng camera từ trình duyệt') }}</span>
+          </div>
+        </div>
+        <div v-else-if="!isPracticeExam" class="ei-cam-card">
+          <div class="ei-cam-header">
+            <div class="ei-cam-header__copy">
+              <span class="ei-cam-label">Thiết bị giám sát</span>
+              <span class="ei-cam-mode">Tắt theo cấu hình bài thi</span>
+            </div>
+          </div>
+          <div class="ei-cam-transport ei-cam-transport--idle" role="status">
+            <span class="ei-cam-transport__label">Chưa gửi frame</span>
+            <span class="ei-cam-transport__detail">Camera/AI đang tắt trong cấu hình, FE không khởi tạo stream và không gửi ảnh.</span>
+          </div>
+        </div>
 
         <!-- Progress card -->
         <div v-if="examSurfaceReady" class="ei-prog-card">
@@ -493,6 +525,7 @@ const focusLostAt = ref(null)
 const hiddenStartedAt = ref(null)
 const fullscreenExitStartedAt = ref(null)
 const fullscreenExitCount = ref(0)
+const multiMonitorDetected = ref(false)
 const questionEnteredAt = ref(Date.now())
 const reconnectCount = ref(0)
 const offlineStartedAt = ref(null)
@@ -531,6 +564,19 @@ const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
 const showFullscreenPrompt = ref(false)
 const isFullscreenActive = ref(false)
+
+const getFullscreenElement = () =>
+  document.fullscreenElement || document.webkitFullscreenElement || null
+
+const syncFullscreenState = () => {
+  const inFullscreen = Boolean(getFullscreenElement())
+  isFullscreenActive.value = inFullscreen
+  examSessionStore.setFullscreenState({ required: !isPracticeExam.value, active: inFullscreen })
+  showFullscreenPrompt.value = !isPracticeExam.value && !isSuspended.value && !inFullscreen && !allowConfirmedLeave.value
+  if (inFullscreen) fullscreenExitStartedAt.value = null
+  return inFullscreen
+}
+
 const questionById = computed(() => {
   const map = new Map()
   for (const question of questions.value) {
@@ -716,6 +762,10 @@ const toggleCamera = () => {
   if (!videoTrack) return
   videoTrack.enabled = !videoTrack.enabled
   cameraReady.value = videoTrack.enabled && videoTrack.readyState !== 'ended'
+  if (!cameraReady.value) {
+    stopAiFrameSampler()
+    stopCameraFrameStreamer()
+  }
   void syncDeviceStatusToBackend()
 }
 
@@ -759,7 +809,7 @@ const attachOptionalMicrophone = async (stream) => {
 }
 
 const checkDevices = async () => {
-  if (!shouldCheckDevices.value) { cameraReady.value = true; micReady.value = true; deviceError.value = ''; return }
+  if (!shouldCheckDevices.value) { cameraReady.value = false; micReady.value = false; deviceError.value = ''; return }
   if (!navigator?.mediaDevices?.getUserMedia) { cameraReady.value = false; micReady.value = false; deviceError.value = 'Trình duyệt không hỗ trợ.'; return }
   isCheckingDevices.value = true; deviceError.value = ''
   try {
@@ -790,6 +840,8 @@ const stopMediaStream = () => {
   if (deviceStatusInterval) { clearInterval(deviceStatusInterval); deviceStatusInterval = null }
   if (mediaStreamRef.value) { mediaStreamRef.value.getTracks().forEach(t => t.stop()); mediaStreamRef.value = null }
   if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
+  cameraReady.value = false
+  micReady.value = false
 }
 
 const attachCameraPreview = async (stream) => {
@@ -846,6 +898,7 @@ const buildCameraFramePayloadFromDrawable = (drawable, sourceWidth, sourceHeight
   ctx.drawImage(drawable, 0, 0, width, height)
   const videoTrack = getLiveVideoTrack()
   const frameId = nextCameraFrameId(captureSource)
+  const cameraOn = Boolean(cameraReady.value && videoTrack?.enabled !== false && videoTrack?.readyState !== 'ended')
   return {
     frameId,
     attemptId: attemptId.value,
@@ -855,10 +908,10 @@ const buildCameraFramePayloadFromDrawable = (drawable, sourceWidth, sourceHeight
       examId: examId.value,
       source: 'student_exam_interface',
       frameId,
-      cameraOn: cameraReady.value,
+      cameraOn,
       micOn: micReady.value,
       visibility: document.visibilityState || 'visible',
-      fullscreen: Boolean(document.fullscreenElement),
+      fullscreen: Boolean(getFullscreenElement()),
       questionIndex: currentIndex.value + 1,
       viewportWidth: window.innerWidth || null,
       viewportHeight: window.innerHeight || null,
@@ -1125,6 +1178,7 @@ const captureAndSendCameraFrame = async () => {
   cameraFrameInFlight.value = true
   try {
     await waitForCameraVideoFrame()
+    if (!cameraFrameStreamingEnabled.value) return
     const payload = await buildCameraFramePayload()
     if (!payload) {
       markFrameCaptureFailed('camera', 'Không tạo được frame từ camera')
@@ -1146,6 +1200,7 @@ const captureAndSendAiFrame = async () => {
   aiFrameInFlight.value = true
   try {
     await waitForCameraVideoFrame()
+    if (!aiFrameAnalysisEnabled.value) return
     const payload = await buildCameraFramePayload()
     if (!payload) {
       markFrameCaptureFailed('ai', 'Không tạo được frame AI từ camera')
@@ -1201,6 +1256,16 @@ watch(mediaStreamRef, async (stream) => {
   await attachCameraPreview(stream)
 })
 
+watch(shouldCheckDevices, (enabled) => {
+  if (!enabled) {
+    stopMediaStream()
+    return
+  }
+  if (!mediaStreamRef.value && !isSuspended.value) {
+    void checkDevices()
+  }
+})
+
 watch(cameraFrameStreamingEnabled, (enabled) => {
   if (enabled) startCameraFrameStreamer()
   else stopCameraFrameStreamer()
@@ -1232,6 +1297,13 @@ const handleRealtimeProctorMessage = (payload = {}) => {
 
   if (type === 'WARNING_SENT' || type === 'TEACHER_WARNING') {
     handleProctorActions(['WARNING_SENT'], payload)
+    return
+  }
+
+  if (type === 'MONITORING_CONFIG_UPDATED') {
+    applyExamConfigFromAttempt(payload)
+    syncFullscreenState()
+    checkMultiMonitor()
     return
   }
 
@@ -1281,10 +1353,10 @@ const buildDeviceFingerprintSeed = () => {
 }
 
 const getHeartbeatPayload = () => ({
-  fullscreen: Boolean(document.fullscreenElement), visibility: document.visibilityState || 'visible',
+  fullscreen: Boolean(getFullscreenElement()), visibility: document.visibilityState || 'visible',
   cameraOn: cameraReady.value, micOn: micReady.value,
   screenMetrics: { screenWidth: window.screen?.width || null, screenHeight: window.screen?.height || null,
-    availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null,
+    availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, isExtended: Boolean(window.screen?.isExtended === true), viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null,
     networkType: navigator.connection?.effectiveType || '', online: navigator.onLine !== false },
   telemetry: buildTelemetrySnapshot()
 })
@@ -1315,6 +1387,7 @@ const buildTelemetrySnapshot = (overrides = {}) => ({
   reconnectCount: reconnectCount.value,
   offlineDurationMs: lastOfflineDurationMs.value,
   networkType: navigator.connection?.effectiveType || '',
+  screenExtended: Boolean(window.screen?.isExtended === true),
   ...overrides
 })
 
@@ -1358,6 +1431,7 @@ const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDO
     WINDOW_BLUR: 'monitorBlur',
     LONG_SCREEN_LEAVE: 'monitorBlur',
     EXIT_FULLSCREEN: 'monitorExitFullscreen',
+    FULLSCREEN_EVASION: 'monitorFullscreenEvasion',
     COPY_ATTEMPT: 'monitorCopyPaste',
     PASTE_ATTEMPT: 'monitorCopyPaste',
     CUT_ATTEMPT: 'monitorCopyPaste',
@@ -1450,14 +1524,42 @@ const enforceDeviceAccess = async () => {
     return
   }
   await checkDevices()
-  if (!cameraReady.value) { isSuspended.value = true; suspensionMessage.value = deviceError.value || 'Cần cấp quyền camera.' }
+  if (shouldCheckDevices.value && !cameraReady.value) { isSuspended.value = true; suspensionMessage.value = deviceError.value || 'Cần cấp quyền camera.' }
 }
 
 const requestExamFullscreen = async () => {
-  if (isPracticeExam.value) return
-  if (!document.documentElement?.requestFullscreen) return
-  try { await document.documentElement.requestFullscreen(); isFullscreenActive.value = true; showFullscreenPrompt.value = false; examSessionStore.setFullscreenState({ required: true, active: true }) }
-  catch { showFullscreenPrompt.value = true }
+  if (isPracticeExam.value) return false
+  if (getFullscreenElement()) return syncFullscreenState()
+  const target = document.documentElement
+  const request = target?.requestFullscreen || target?.webkitRequestFullscreen
+  if (!request) {
+    showFullscreenPrompt.value = true
+    return false
+  }
+  try {
+    await request.call(target, { navigationUI: 'hide' })
+  } catch {
+    try {
+      await request.call(target)
+    } catch {
+      showFullscreenPrompt.value = true
+      return false
+    }
+  }
+  return syncFullscreenState()
+}
+
+const exitExamFullscreen = async () => {
+  if (typeof document === 'undefined') return false
+  if (!getFullscreenElement()) return false
+  const exit = document.exitFullscreen || document.webkitExitFullscreen
+  if (!exit) return false
+  try {
+    await exit.call(document)
+    return true
+  } catch {
+    return false
+  }
 }
 
 const syncAttemptStatus = async () => {
@@ -1473,6 +1575,7 @@ const syncAttemptStatus = async () => {
     }
     if (!isPracticeExam.value) {
       await refreshPhaseOneRisk()
+      checkMultiMonitor()
     }
   } catch { /* ignore */ }
 }
@@ -1530,18 +1633,22 @@ const handleWindowFocus = () => {
 }
 
 const handleFullscreenChange = () => {
-  const inFs = Boolean(document.fullscreenElement); isFullscreenActive.value = inFs; examSessionStore.setFullscreenState({ required: true, active: inFs })
-  if (!inFs) {
-    fullscreenExitStartedAt.value = Date.now()
-    fullscreenExitCount.value += 1
-  }
-  if (inFs) {
-    fullscreenExitStartedAt.value = null
+  const wasFullscreen = isFullscreenActive.value
+  const inFs = syncFullscreenState()
+  if (isPracticeExam.value) return
+  if (allowConfirmedLeave.value) {
     showFullscreenPrompt.value = false
     return
   }
-  showFullscreenPrompt.value = !isPracticeExam.value
-  void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình', VIOLATION_COOLDOWN_MS, {
+  if (inFs) {
+    checkMultiMonitor()
+    return
+  }
+  if (!wasFullscreen) return
+  fullscreenExitStartedAt.value = Date.now()
+  fullscreenExitCount.value += 1
+  const eventType = examConfig.value.monitorFullscreenEvasion !== false ? 'FULLSCREEN_EVASION' : 'EXIT_FULLSCREEN'
+  void reportViolation(eventType, 'Thoát toàn màn hình', VIOLATION_COOLDOWN_MS, {
     fullscreenExitCount: fullscreenExitCount.value,
     fullscreenReentryDelayMs: null
   })
@@ -1599,9 +1706,35 @@ const handleRightClick = (e) => { if (examConfig.value.monitorRightClick !== fal
 const handlePrintScreen = (e) => { if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) { e.preventDefault(); void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS) } }
 
 const checkMultiMonitor = () => {
-  if (examConfig.value.monitorMultiMonitor === false) return
-  const sw = window.screen?.width || 0; const sh = window.screen?.height || 0; const aw = window.screen?.availWidth || 0; const ah = window.screen?.availHeight || 0
-  if (sw > 0 && aw > 0 && (sw - aw > 100 || sh - ah > 100)) void reportViolation('MULTI_MONITOR', 'Nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS)
+  if (examConfig.value.monitorMultiMonitor === false) return false
+  const screen = window.screen || {}
+  const sw = screen.width || 0
+  const sh = screen.height || 0
+  const aw = screen.availWidth || 0
+  const ah = screen.availHeight || 0
+  const screenX = Number.isFinite(window.screenX) ? window.screenX : (Number.isFinite(window.screenLeft) ? window.screenLeft : 0)
+  const screenY = Number.isFinite(window.screenY) ? window.screenY : (Number.isFinite(window.screenTop) ? window.screenTop : 0)
+  const extendedByScreenApi = screen.isExtended === true
+  const extendedByGeometry = sw > 0 && aw > 0 && (sw - aw > 100 || sh - ah > 100)
+  const extendedDisplayDetected = extendedByScreenApi || extendedByGeometry
+  if (!extendedDisplayDetected) {
+    multiMonitorDetected.value = false
+    return false
+  }
+  if (multiMonitorDetected.value) return true
+  multiMonitorDetected.value = true
+  void reportViolation('MULTI_MONITOR', 'Phát hiện nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS, {
+    screenExtended: extendedByScreenApi,
+    screenWidth: sw || null,
+    screenHeight: sh || null,
+    availWidth: aw || null,
+    availHeight: ah || null,
+    screenX,
+    screenY,
+    viewportWidth: window.innerWidth || null,
+    viewportHeight: window.innerHeight || null
+  })
+  return true
 }
 
 const handleNetworkOffline = () => {
@@ -1693,6 +1826,8 @@ const autoSubmitOnTimeUp = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
+    allowConfirmedLeave.value = true
+    await exitExamFullscreen()
     router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
   } catch {
     showSubmitModal.value = false
@@ -1707,6 +1842,8 @@ const submitExamAction = async () => {
   try {
     const result = await submitAttempt(attemptId.value, buildSubmitPayload())
     showSubmitModal.value = false
+    allowConfirmedLeave.value = true
+    await exitExamFullscreen()
     router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
   } catch {
     showSubmitModal.value = false
@@ -1776,7 +1913,8 @@ const attachEventListeners = () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('blur', handleWindowBlur)
   window.addEventListener('focus', handleWindowFocus)
-  window.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
 
   document.addEventListener('contextmenu', handleRightClick)
   document.addEventListener('keydown', handlePrintScreen)
@@ -1785,14 +1923,14 @@ const attachEventListeners = () => {
   document.addEventListener('paste', handleCopyPaste)
   window.addEventListener('offline', handleNetworkOffline)
   window.addEventListener('online', handleNetworkOnline)
-  void checkMultiMonitor()
 }
 
 const removeEventListeners = () => {
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('blur', handleWindowBlur)
   window.removeEventListener('focus', handleWindowFocus)
-  window.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
 
   document.removeEventListener('contextmenu', handleRightClick)
   document.removeEventListener('keydown', handlePrintScreen)
@@ -1809,6 +1947,8 @@ onMounted(async () => {
   setupBlockBackButton()
   if (!isPracticeExam.value) {
     await syncAttemptStatus()
+    syncFullscreenState()
+    checkMultiMonitor()
     if (!isSuspended.value) {
       await enforceDeviceAccess()
     }
@@ -1845,9 +1985,10 @@ onBeforeRouteLeave(() => {
   }
 })
 
-const onConfirmLeave = () => {
+const onConfirmLeave = async () => {
   allowConfirmedLeave.value = true
   showLeaveConfirm.value = false
+  await exitExamFullscreen()
   router.push('/student/dashboard')
 }
 

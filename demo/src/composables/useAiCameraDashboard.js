@@ -19,11 +19,89 @@ function firstDefined(...values) {
   return values.find(value => value !== undefined && value !== null)
 }
 
+function normalizeSignalType(value) {
+  const text = String(value || '').trim()
+  return text ? text.toUpperCase() : ''
+}
+
+function uniqueSignalTypes(signals = []) {
+  const seen = new Set()
+  const unique = []
+  for (const signal of signals) {
+    const type = normalizeSignalType(signal)
+    if (!type || seen.has(type)) continue
+    seen.add(type)
+    unique.push(type)
+  }
+  return unique
+}
+
+function uniqueSignalEntries(entries = []) {
+  const seen = new Set()
+  const unique = []
+  for (const entry of entries) {
+    const type = normalizeSignalType(entry?.signalType || entry?.signal_type)
+    if (!type || seen.has(type)) continue
+    seen.add(type)
+    unique.push({ ...entry, signalType: type })
+  }
+  return unique
+}
+
+function upsertSignalEntry(entries = [], entry, limit = 10) {
+  const type = normalizeSignalType(entry?.signalType || entry?.signal_type)
+  if (!type) return uniqueSignalEntries(entries).slice(0, limit)
+  const normalized = { ...entry, signalType: type }
+  const next = uniqueSignalEntries(entries).filter(item =>
+    normalizeSignalType(item.signalType || item.signal_type) !== type
+  )
+  return [normalized, ...next].slice(0, limit)
+}
+
+function cameraAlertKey(alert = {}) {
+  const attemptId = firstDefined(alert.attemptId, alert.attempt_id)
+  const signalType = normalizeSignalType(firstDefined(alert.signalType, alert.signal_type, alert.warningType))
+  if (attemptId != null && signalType) return `${attemptId}:${signalType}`
+  return alert.id != null ? `id:${alert.id}` : ''
+}
+
+function dedupeRecentAlerts(alerts = []) {
+  const seen = new Set()
+  const unique = []
+  for (const alert of alerts) {
+    const key = cameraAlertKey(alert)
+    if (key && seen.has(key)) continue
+    if (key) seen.add(key)
+    unique.push(alert)
+  }
+  return unique
+}
+
+function upsertRecentAlert(alerts = [], alert) {
+  const key = cameraAlertKey(alert)
+  const remaining = key
+    ? alerts.filter(existing => cameraAlertKey(existing) !== key)
+    : alerts
+  return [alert, ...remaining].slice(0, 50)
+}
+
+function normalizeCameraStatus(camera = {}) {
+  const activeSignals = uniqueSignalTypes(camera.activeSignals || [])
+  const criticalSignals = uniqueSignalEntries(camera.criticalSignals || [])
+  return {
+    ...camera,
+    activeSignals,
+    criticalSignals,
+    alertCount: criticalSignals.length || Number(camera.alertCount || 0)
+  }
+}
+
 function extractAiCameraMetrics(signal = {}, event = {}) {
   const evidence = parseMaybeJson(signal.evidence || event.evidence)
   const signalEvidence = parseMaybeJson(evidence.signalEvidence)
-  const source = { ...evidence, ...signalEvidence, ...event }
+  const source = { ...evidence, ...signalEvidence, ...signal, ...event }
   const patch = {
+    riskImpact: firstDefined(source.riskImpact, source.risk_impact),
     eyeCount: firstDefined(source.eyeCount, source.eye_count),
     eyeState: firstDefined(source.eyeState, source.eye_state),
     eyeAspectRatio: firstDefined(source.eyeAspectRatio, source.eye_aspect_ratio),
@@ -75,15 +153,17 @@ export function useAiCameraDashboard(examId) {
       ])
 
       if (statusResult.status === 'fulfilled' && statusResult.value) {
-        cameraStatuses.value = Array.isArray(statusResult.value)
+        const students = Array.isArray(statusResult.value)
           ? statusResult.value
           : (statusResult.value.students || [])
+        cameraStatuses.value = students.map(normalizeCameraStatus)
       }
 
       if (alertsResult.status === 'fulfilled' && alertsResult.value) {
-        recentAlerts.value = Array.isArray(alertsResult.value)
+        const alerts = Array.isArray(alertsResult.value)
           ? alertsResult.value
           : (alertsResult.value.alerts || [])
+        recentAlerts.value = dedupeRecentAlerts(alerts)
       }
     } catch (err) {
       console.error('Failed to load camera data:', err)
@@ -106,6 +186,7 @@ export function useAiCameraDashboard(examId) {
             signalType: event.warningType,
             severity: event.severity,
             confidence: event.confidence,
+            riskImpact: event.riskImpact,
             occurredAt: event.issuedAt
           }
         : {}
@@ -117,18 +198,27 @@ export function useAiCameraDashboard(examId) {
 
     if (type === 'AI_CAMERA_SIGNAL' || type === 'FRAUD_SIGNAL_RECORDED' || (type === 'FRAUD_WARNING_RECORDED' && event.warningCategory === 'CAMERA_PROCTORING')) {
       // Update existing or add new
-      const signalType = signal.signalType
+      const signalType = normalizeSignalType(firstDefined(signal.signalType, signal.signal_type, event.warningType))
+      const severity = normalizeSignalType(signal.severity)
+      const alertSeverity = severity === 'CRITICAL' || severity === 'HIGH'
       const aiMetrics = extractAiCameraMetrics(signal, event)
+      const criticalEntry = {
+        signalType,
+        severity,
+        confidence: signal.confidence,
+        riskImpact: signal.riskImpact ?? event.riskImpact,
+        occurredAt: signal.occurredAt || event.issuedAt
+      }
 
       if (camera) {
         // Update existing camera status
-        if (!camera.activeSignals) camera.activeSignals = []
-        if (!camera.criticalSignals) camera.criticalSignals = []
+        camera.activeSignals = uniqueSignalTypes(camera.activeSignals || [])
+        camera.criticalSignals = uniqueSignalEntries(camera.criticalSignals || [])
         camera.cameraActive = true
         Object.assign(camera, aiMetrics)
 
-        if (!camera.activeSignals.includes(signalType)) {
-          camera.activeSignals.push(signalType)
+        if (signalType) {
+          camera.activeSignals = uniqueSignalTypes([...camera.activeSignals, signalType])
         }
 
         // Update risk score if provided
@@ -137,62 +227,53 @@ export function useAiCameraDashboard(examId) {
         }
 
         // Update status based on severity
-        if (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') {
-          camera.status = signal.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING'
-          camera.alertCount = (camera.alertCount || 0) + 1
-          camera.criticalSignals.push({
-            signalType,
-            severity: signal.severity,
-            confidence: signal.confidence,
-            occurredAt: signal.occurredAt || event.issuedAt
-          })
+        if (alertSeverity && signalType) {
+          camera.status = severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING'
+          camera.criticalSignals = upsertSignalEntry(camera.criticalSignals, criticalEntry)
+          camera.alertCount = camera.criticalSignals.length
         }
 
         camera.lastUpdate = new Date().toISOString()
-        cameraStatuses.value[existingIndex] = { ...camera }
+        cameraStatuses.value[existingIndex] = normalizeCameraStatus(camera)
       } else {
         // Add new camera status
+        const criticalSignals = alertSeverity && signalType ? [criticalEntry] : []
         const newCamera = {
           attemptId,
           studentName: event.student || event.studentName || 'Unknown',
           cameraActive: true,
-          status: signal.severity === 'CRITICAL' ? 'CRITICAL' :
-                 signal.severity === 'HIGH' ? 'WARNING' : 'OK',
-          riskScore: event.riskScore || 0,
-          alertCount: (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') ? 1 : 0,
-          activeSignals: [signalType],
+          status: severity === 'CRITICAL' ? 'CRITICAL' :
+                 severity === 'HIGH' ? 'WARNING' : 'OK',
+          riskScore: event.riskScore ?? 0,
+          alertCount: criticalSignals.length,
+          activeSignals: signalType ? [signalType] : [],
           ...aiMetrics,
-          criticalSignals: (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') ? [{
-            signalType,
-            severity: signal.severity,
-            confidence: signal.confidence,
-            occurredAt: signal.occurredAt || event.issuedAt
-          }] : [],
+          criticalSignals,
           lastUpdate: new Date().toISOString()
         }
-        cameraStatuses.value.push(newCamera)
+        cameraStatuses.value.push(normalizeCameraStatus(newCamera))
       }
 
       // Add to alerts
-      if (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') {
+      if (alertSeverity && signalType) {
         const newAlert = {
-          id: signal.id || Date.now(),
+          id: signal.id || event.id || Date.now(),
           attemptId,
           studentName: event.student || event.studentName,
           signalType,
-          severity: signal.severity,
+          severity,
           confidence: signal.confidence,
+          riskImpact: signal.riskImpact ?? event.riskImpact,
           createdAt: signal.occurredAt || event.issuedAt || new Date().toISOString()
         }
-        // Add to beginning, keep only last 50
-        recentAlerts.value = [newAlert, ...recentAlerts.value].slice(0, 50)
+        recentAlerts.value = upsertRecentAlert(recentAlerts.value, newAlert)
       }
     } else if (type === 'RISK_UPDATED' && attemptId) {
       // Update risk score only
       if (camera) {
         camera.riskScore = event.riskScore
         camera.lastUpdate = new Date().toISOString()
-        cameraStatuses.value[existingIndex] = { ...camera }
+        cameraStatuses.value[existingIndex] = normalizeCameraStatus(camera)
       }
     }
   }

@@ -131,6 +131,33 @@ describe('useExamMonitoring', () => {
     expect(store.liveAlerts).toHaveLength(0)
   })
 
+  it('patches submitted attempts from ATTEMPT_SUBMITTED without creating alerts', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    store.setCards([{ id: 401, attemptId: 401, student: 'student4', status: 'IN_PROGRESS', riskScore: 21 }])
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'ATTEMPT_SUBMITTED',
+      examId: 149,
+      attemptId: 401,
+      student: 'student4',
+      studentName: 'Student Four',
+      status: 'SUBMITTED',
+      submittedAt: '2026-05-07T10:10:00+07:00',
+      issuedAt: '2026-05-07T10:10:00+07:00'
+    })
+
+    expect(store.cards).toHaveLength(1)
+    expect(store.cards[0].status).toBe('SUBMITTED')
+    expect(store.cards[0].student).toBe('student4')
+    expect(store.liveEvents[0].eventType).toBe('ATTEMPT_SUBMITTED')
+    expect(store.liveAlerts).toHaveLength(0)
+  })
+
   it('updates attempt cards immediately from raw fraud-signal events', async () => {
     const { useExamMonitoring } = await import('./useExamMonitoring')
     const monitoring = useExamMonitoring()
@@ -154,6 +181,68 @@ describe('useExamMonitoring', () => {
     expect(store.cards[0].latestSignalType).toBe('TAB_SWITCH')
     expect(store.cards[0].lastSignalAt).toBe('2026-04-26T18:00:00+07:00')
     expect(store.liveAlerts[0].signalType).toBe('TAB_SWITCH')
+  })
+
+  it('propagates camera warning risk impact into cards and alerts', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    store.setCards([{ id: 501, attemptId: 501, student: 'student5', status: 'IN_PROGRESS', riskScore: 0 }])
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'FRAUD_WARNING_RECORDED',
+      examId: 149,
+      attemptId: 501,
+      student: 'student5',
+      studentName: 'Student Five',
+      warningCategory: 'CAMERA_PROCTORING',
+      warningType: 'FACE_OBSTRUCTED_MASK',
+      severity: 'HIGH',
+      riskImpact: 0,
+      issuedAt: '2026-05-07T10:12:00+07:00'
+    })
+
+    expect(store.cards[0].latestWarningType).toBe('FACE_OBSTRUCTED_MASK')
+    expect(store.cards[0].latestWarningRiskImpact).toBe(0)
+    expect(store.liveAlerts[0].riskImpact).toBe(0)
+  })
+
+  it('dedupes camera ai signal and warning alerts into one live alert', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    store.setCards([{ id: 601, attemptId: 601, student: 'student6', status: 'IN_PROGRESS', riskScore: 0 }])
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'FRAUD_SIGNAL_RECORDED',
+      examId: 149,
+      attemptId: 601,
+      student: 'student6',
+      signalType: 'FACE_NOT_DETECTED',
+      category: 'AI_CAMERA',
+      severity: 'HIGH',
+      issuedAt: '2026-05-07T10:13:00+07:00'
+    })
+    examHandler({
+      type: 'FRAUD_WARNING_RECORDED',
+      examId: 149,
+      attemptId: 601,
+      student: 'student6',
+      warningCategory: 'CAMERA_PROCTORING',
+      warningType: 'FACE_NOT_DETECTED',
+      severity: 'HIGH',
+      riskImpact: 20,
+      issuedAt: '2026-05-07T10:13:01+07:00'
+    })
+
+    expect(store.liveAlerts).toHaveLength(1)
+    expect(store.liveAlerts[0].signalType).toBe('FACE_NOT_DETECTED')
   })
 
   it('clears stale attempt subscriptions when switching monitored exam', async () => {

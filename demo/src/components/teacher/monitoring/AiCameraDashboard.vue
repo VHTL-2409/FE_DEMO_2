@@ -11,9 +11,9 @@
           <LucideIcon name="arrow-left" :size="18" />
         </button>
         <div>
-          <h1 class="ai-dashboard__title">AI Camera Dashboard</h1>
+          <h1 class="ai-dashboard__title">Giám sát camera AI</h1>
           <p class="ai-dashboard__subtitle">
-            {{ examTitle }} - Realtime monitoring
+            {{ examTitle }} · {{ connectionLabel }}
           </p>
         </div>
       </div>
@@ -77,59 +77,64 @@
       </div>
     </div>
 
-    <!-- Camera Grid -->
-    <div v-if="loading && !cameraStatuses.length" class="ai-dashboard__loading">
-      <div class="ai-dashboard__spinner" />
-      <p>Đang tải dữ liệu camera...</p>
-    </div>
+    <div class="ai-dashboard__content" :class="{ 'ai-dashboard__content--with-alerts': recentAlerts.length }">
+      <section class="ai-dashboard__main" aria-label="Danh sách camera">
+        <div v-if="loading && !cameraStatuses.length" class="ai-dashboard__loading">
+          <div class="ai-dashboard__spinner" />
+          <p>Đang tải dữ liệu camera...</p>
+        </div>
 
-    <div v-else-if="!filteredCameraStatuses.length" class="ai-dashboard__empty">
-      <LucideIcon name="camera-off" :size="48" />
-      <p>Không có dữ liệu camera</p>
-    </div>
+        <div v-else-if="!filteredCameraStatuses.length" class="ai-dashboard__empty">
+          <LucideIcon name="camera-off" :size="48" />
+          <p>Không có dữ liệu camera</p>
+        </div>
 
-    <div v-else class="ai-dashboard__grid">
-      <CameraStatusCard
-        v-for="camera in filteredCameraStatuses"
-        :key="camera.attemptId"
-        :camera="camera"
-        @click="openStudentDetail(camera)"
-      />
-    </div>
+        <div v-else class="ai-dashboard__grid">
+          <CameraStatusCard
+            v-for="camera in filteredCameraStatuses"
+            :key="camera.attemptId"
+            :camera="camera"
+            @click="openStudentDetail(camera)"
+          />
+        </div>
+      </section>
 
-    <!-- Alerts Panel -->
-    <aside v-if="recentAlerts.length" class="ai-dashboard__alerts">
-      <div class="ai-dashboard__alerts-header">
-        <h3>
-          <LucideIcon name="alert-triangle" :size="16" />
-          Cảnh báo gần đây
-        </h3>
-        <span class="ai-dashboard__alerts-count">{{ recentAlerts.length }}</span>
-      </div>
+      <aside v-if="recentAlerts.length" class="ai-dashboard__alerts">
+        <div class="ai-dashboard__alerts-header">
+          <h3>
+            <LucideIcon name="alert-triangle" :size="16" />
+            Cảnh báo gần đây
+          </h3>
+          <span class="ai-dashboard__alerts-count">{{ recentAlerts.length }}</span>
+        </div>
 
-      <div class="ai-dashboard__alerts-list">
-        <article
-          v-for="alert in recentAlerts"
-          :key="alert.id"
-          class="ai-dashboard__alert-item"
-          :class="`ai-dashboard__alert-item--${alert.severity?.toLowerCase()}`"
-        >
-          <div class="ai-dashboard__alert-info">
-            <span class="ai-dashboard__alert-student">{{ alert.studentName }}</span>
-            <span class="ai-dashboard__alert-signal">{{ alert.signalType }}</span>
-          </div>
-          <span class="ai-dashboard__alert-time">{{ formatTime(alert.createdAt) }}</span>
-          <button
-            type="button"
-            class="ai-dashboard__alert-dismiss"
-            title="Bỏ qua"
-            @click.stop="dismissAlertHandler(alert.id)"
+        <div class="ai-dashboard__alerts-list">
+          <article
+            v-for="alert in recentAlerts"
+            :key="alert.id"
+            class="ai-dashboard__alert-item"
+            :class="`ai-dashboard__alert-item--${alert.severity?.toLowerCase()}`"
           >
-            <LucideIcon name="x" :size="14" />
-          </button>
-        </article>
-      </div>
-    </aside>
+            <div class="ai-dashboard__alert-info">
+              <span class="ai-dashboard__alert-student">{{ alert.studentName }}</span>
+              <span class="ai-dashboard__alert-signal">{{ formatSignalType(alert.signalType) }}</span>
+              <span v-if="alert.riskImpact != null" class="ai-dashboard__alert-risk">
+                +{{ alert.riskImpact }} risk
+              </span>
+            </div>
+            <span class="ai-dashboard__alert-time">{{ formatTime(alert.createdAt) }}</span>
+            <button
+              type="button"
+              class="ai-dashboard__alert-dismiss"
+              title="Bỏ qua"
+              @click.stop="dismissAlertHandler(alert.id)"
+            >
+              <LucideIcon name="x" :size="14" />
+            </button>
+          </article>
+        </div>
+      </aside>
+    </div>
   </main>
 </template>
 
@@ -162,6 +167,11 @@ const {
   refreshData,
   dismissAlert
 } = useAiCameraDashboard(examId)
+
+const connectionLabel = computed(() => {
+  const mode = String(connectionMode.value || '').toLowerCase()
+  return isConnected.value || mode === 'websocket' ? 'Realtime' : 'Polling'
+})
 
 // Local state
 const statusFilter = ref('')
@@ -216,6 +226,34 @@ async function dismissAlertHandler(alertId) {
 
 function openStudentDetail(camera) {
   router.push(`/teacher/exams/${examId.value}/monitoring/student/${camera.attemptId}`)
+}
+
+function formatSignalType(signal) {
+  const labelMap = {
+    NO_CAMERA: 'Camera tắt',
+    FACE_NOT_DETECTED: 'Không thấy mặt',
+    MULTIPLE_FACES: 'Nhiều mặt',
+    FACE_SPOOFING_SUSPECTED: 'Nghi giả mạo',
+    FACE_OBSTRUCTED_MASK: 'Che mặt',
+    EYES_OBSTRUCTED: 'Mắt bị che',
+    EYES_NOT_DETECTED: 'Không thấy mắt',
+    EYES_CLOSED_PROLONGED: 'Nhắm mắt lâu',
+    GAZE_OFF_SCREEN: 'Nhìn lệch',
+    RAPID_EYE_MOVEMENT: 'Mắt đảo nhanh',
+    VERY_LOW_LIGHTING: 'Rất tối',
+    LOW_LIGHTING: 'Thiếu sáng',
+    OVEREXPOSED_FRAME: 'Cháy sáng',
+    VERY_BLURRY_FRAME: 'Rất mờ',
+    BLURRY_FRAME: 'Mờ',
+    FACE_TURNED_AWAY: 'Quay mặt đi',
+    PARTIAL_FACE_VISIBLE: 'Mặt không rõ',
+    SCREEN_REPLAY: 'Phát lại màn hình',
+    SCREEN_DISPLAY: 'Màn hình khác',
+    PRINTED_PHOTO: 'Ảnh in',
+    FLAT_IMAGE: 'Ảnh phẳng',
+    DEEPFAKE: 'Deepfake'
+  }
+  return labelMap[signal] || String(signal || '').replace(/_/g, ' ')
 }
 
 function formatTime(timestamp) {
@@ -433,6 +471,21 @@ function formatTime(timestamp) {
   border-color: var(--ds-primary);
 }
 
+.ai-dashboard__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-space-4);
+  align-items: start;
+}
+
+.ai-dashboard__content--with-alerts {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.ai-dashboard__main {
+  min-width: 0;
+}
+
 /* Grid */
 .ai-dashboard__grid {
   display: grid;
@@ -463,15 +516,13 @@ function formatTime(timestamp) {
 
 /* Alerts Panel */
 .ai-dashboard__alerts {
-  position: fixed;
-  right: var(--ds-space-4);
-  top: calc(80px + var(--ds-space-4));
-  width: 320px;
-  max-height: calc(100vh - 200px);
+  position: sticky;
+  top: var(--ds-space-4);
+  max-height: calc(100vh - 120px);
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-lg);
+  box-shadow: var(--ds-shadow-sm);
   overflow: hidden;
 }
 
@@ -509,7 +560,7 @@ function formatTime(timestamp) {
 }
 
 .ai-dashboard__alerts-list {
-  max-height: 400px;
+  max-height: calc(100vh - 190px);
   overflow-y: auto;
   padding: var(--ds-space-2);
 }
@@ -562,6 +613,17 @@ function formatTime(timestamp) {
   text-overflow: ellipsis;
 }
 
+.ai-dashboard__alert-risk {
+  width: fit-content;
+  padding: 1px 6px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
 .ai-dashboard__alert-time {
   color: var(--ds-text-muted);
   white-space: nowrap;
@@ -589,10 +651,18 @@ function formatTime(timestamp) {
 
 /* Responsive */
 @media (max-width: 1024px) {
+  .ai-dashboard__content,
+  .ai-dashboard__content--with-alerts {
+    grid-template-columns: 1fr;
+  }
+
   .ai-dashboard__alerts {
     position: static;
     width: 100%;
-    margin-top: var(--ds-space-4);
+  }
+
+  .ai-dashboard__alerts-list {
+    max-height: 360px;
   }
 }
 

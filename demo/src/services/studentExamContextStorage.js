@@ -40,7 +40,8 @@ export function buildWaitingRoomQuery(exam = {}) {
     startAt: toStringOrEmpty(exam.startTime || exam.startDate),
     endAt: toStringOrEmpty(exam.endTime || exam.endDate),
     className: toStringOrEmpty(exam.className),
-    requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true'
+    requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true',
+    enableAiProctoring: exam.enableAiProctoring === true ? 'true' : 'false'
   }
 }
 
@@ -93,7 +94,8 @@ export function writeWaitingRoomQuery(query) {
     startAt: toStringOrEmpty(query.startAt),
     endAt: toStringOrEmpty(query.endAt),
     className: toStringOrEmpty(query.className),
-    requireCameraMic: toStringOrEmpty(query.requireCameraMic || 'true')
+    requireCameraMic: toStringOrEmpty(query.requireCameraMic || 'true'),
+    enableAiProctoring: toStringOrEmpty(query.enableAiProctoring || 'false')
   })
 }
 
@@ -109,7 +111,8 @@ export function readWaitingRoomQuery() {
     startAt: toStringOrEmpty(value.startAt),
     endAt: toStringOrEmpty(value.endAt),
     className: toStringOrEmpty(value.className),
-    requireCameraMic: toStringOrEmpty(value.requireCameraMic || 'true')
+    requireCameraMic: toStringOrEmpty(value.requireCameraMic || 'true'),
+    enableAiProctoring: toStringOrEmpty(value.enableAiProctoring || 'false')
   }
 }
 

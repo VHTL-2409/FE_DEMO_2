@@ -286,15 +286,36 @@ function handleWaitingRoomEvent(event) {
       break
     }
 
+    case 'ATTEMPT_SUBMITTED':
+    case 'SUBMITTED':
+    case 'AUTO_SUBMITTED':
     case 'STUDENT_SUBMITTED':
     case 'EXAM_SUBMITTED':
+      {
+        const nextStudent = {
+          attemptId: event.attemptId,
+          studentName: event.studentName || event.student || 'Học sinh',
+          studentEmail: event.studentEmail || event.email || event.student?.email || '—',
+          status: 'Đã nộp',
+          joinedAt: event.startedAt || event.issuedAt || new Date().toISOString(),
+          submittedAt: event.submittedAt || event.issuedAt || new Date().toISOString()
+        }
+        if (event.riskScore != null) nextStudent.riskScore = event.riskScore
+        upsertStudent(nextStudent)
+      }
       updateStudentStatus(event.attemptId, 'Đã nộp')
       addFlashEvent(`${event.studentName || 'Học sinh'} đã nộp bài`)
       break
 
+    case 'ATTEMPT_PAUSED':
     case 'STUDENT_PAUSED':
       updateStudentStatus(event.attemptId, 'Tạm dừng')
       addFlashEvent(`${event.studentName || 'Học sinh'} bị tạm dừng`)
+      break
+
+    case 'ATTEMPT_RESUMED':
+      updateStudentStatus(event.attemptId, 'Đang thi')
+      addFlashEvent(`${event.studentName || 'Học sinh'} được tiếp tục`)
       break
 
     case 'RISK_UPDATED':

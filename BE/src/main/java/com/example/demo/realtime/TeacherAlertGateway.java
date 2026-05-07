@@ -92,6 +92,7 @@ public class TeacherAlertGateway {
                 .severity(warning.getSeverity() != null ? warning.getSeverity().name() : null)
                 .confidence(warning.getConfidence())
                 .message(warning.getMessage())
+                .riskImpact(warning.getRiskImpact())
                 .evidence(warning.getEvidence())
                 .source(warning.getSource())
                 .relatedAttemptIds(parseRelatedAttemptIds(warning.getRelatedAttemptIds()))
@@ -345,6 +346,53 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishAttemptSubmitted(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            Double score,
+            LocalDateTime startedAt,
+            LocalDateTime submittedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp,
+            String message
+    ) {
+        LocalDateTime issuedAt = LocalDateTime.now();
+        AlertPayload payload = AlertPayload.builder()
+                .type("ATTEMPT_SUBMITTED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName != null && !studentName.isBlank() ? studentName : student)
+                .email(email)
+                .studentCode(studentCode)
+                .status(status)
+                .score(score)
+                .riskScore(riskScore)
+                .riskLevel(riskLevel)
+                .startedAt(startedAt)
+                .submittedAt(submittedAt)
+                .deadlineAt(deadlineAt)
+                .remainingSeconds(remainingSeconds)
+                .cameraOn(cameraOn)
+                .micOn(micOn)
+                .clientIp(clientIp)
+                .message(message == null || message.isBlank() ? "Thi sinh da nop bai" : message)
+                .issuedAt(issuedAt)
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     public void publishDraftSaved(Long examId, Long attemptId, String student, Integer answeredCount, Long remainingSeconds) {
         AlertPayload payload = AlertPayload.builder()
             .type("DRAFT_SAVED")
@@ -417,6 +465,26 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/camera-frame", (Object) payload);
     }
 
+    public void publishMonitoringConfigUpdated(
+            Long examId,
+            Long attemptId,
+            boolean requireCameraMic,
+            boolean enableAiProctoring,
+            String message
+    ) {
+        AlertPayload payload = AlertPayload.builder()
+                .type("MONITORING_CONFIG_UPDATED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .requireCameraMic(requireCameraMic)
+                .enableAiProctoring(enableAiProctoring)
+                .message(message)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     @Getter
     @Builder
     @AllArgsConstructor
@@ -428,6 +496,7 @@ public class TeacherAlertGateway {
         private String studentName;
         private String email;
         private String studentCode;
+        private Double score;
         private Integer riskScore;
         private String riskLevel;
         private Integer answeredCount;
@@ -447,6 +516,7 @@ public class TeacherAlertGateway {
         private String source;
         private String evidence;
         private Double confidence;
+        private Integer riskImpact;
         private List<Long> relatedAttemptIds;
         private String message;
         private LocalDateTime issuedAt;
@@ -463,6 +533,8 @@ public class TeacherAlertGateway {
         private SignalInfo latestSignal;
         private ScoresBreakdown scores;
         private ActiveFlagInfo activeFlag;
+        private Boolean requireCameraMic;
+        private Boolean enableAiProctoring;
         private String imageBase64;
         private String capturedAt;
         private Boolean faceDetected;

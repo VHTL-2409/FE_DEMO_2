@@ -3,11 +3,15 @@
     class="camera-card"
     :class="`camera-card--${statusClass}`"
     @click="$emit('click')"
+    @keydown.enter.prevent="$emit('click')"
+    @keydown.space.prevent="$emit('click')"
+    role="button"
+    tabindex="0"
   >
     <!-- Header -->
     <div class="camera-card__header">
       <div class="camera-card__student">
-        <span class="camera-card__name">{{ camera.studentName || 'Unknown' }}</span>
+        <span class="camera-card__name">{{ camera.studentName || 'Chưa rõ' }}</span>
         <span class="camera-card__code">{{ camera.studentCode || '' }}</span>
       </div>
       <span
@@ -37,20 +41,12 @@
     <!-- Stats -->
     <div class="camera-card__stats">
       <div class="camera-card__stat">
-        <LucideIcon name="alert-triangle" :size="14" />
+        <LucideIcon name="alert-triangle" :size="14" title="Số cảnh báo" />
         <span>{{ camera.alertCount || 0 }}</span>
-      </div>
-      <div class="camera-card__stat">
-        <LucideIcon name="scan-face" :size="14" />
-        <span>{{ faceStatusText }}</span>
       </div>
       <div class="camera-card__stat">
         <LucideIcon name="eye" :size="14" />
         <span>{{ eyeStatusText }}</span>
-      </div>
-      <div class="camera-card__stat">
-        <LucideIcon name="focus" :size="14" />
-        <span>{{ gazeStatusText }}</span>
       </div>
       <div class="camera-card__stat">
         <LucideIcon name="sun" :size="14" />
@@ -59,25 +55,25 @@
     </div>
 
     <!-- Signals -->
-    <div v-if="camera.activeSignals?.length" class="camera-card__signals">
+    <div v-if="activeSignals.length" class="camera-card__signals">
       <span
-        v-for="signal in camera.activeSignals.slice(0, 3)"
+        v-for="signal in activeSignalsPreview"
         :key="signal"
         class="camera-card__signal-tag"
         :class="`camera-card__signal-tag--${getSignalSeverity(signal)}`"
       >
         {{ formatSignalType(signal) }}
       </span>
-      <span v-if="camera.activeSignals.length > 3" class="camera-card__signal-more">
-        +{{ camera.activeSignals.length - 3 }}
+      <span v-if="activeSignals.length > 3" class="camera-card__signal-more">
+        +{{ activeSignals.length - 3 }}
       </span>
     </div>
 
     <!-- Footer -->
     <div class="camera-card__footer">
       <span class="camera-card__time">{{ formatTimeAgo(camera.lastUpdate) }}</span>
-      <span v-if="camera.riskScore" class="camera-card__risk" :class="riskClass">
-        {{ camera.riskScore }}
+      <span class="camera-card__risk" :class="riskClass" title="Điểm rủi ro">
+        {{ Math.round(camera.riskScore || 0) }}/100
       </span>
     </div>
   </article>
@@ -114,30 +110,30 @@ const statusLabel = computed(() => {
 })
 
 const faceStatusText = computed(() => {
-  if (!props.camera.faceDetected) return 'No Face'
-  if (props.camera.multipleFaces) return 'Multi Face'
-  if (props.camera.faceQuality === 'GOOD') return 'Good'
-  if (props.camera.faceQuality === 'POOR') return 'Poor'
-  return props.camera.faceQuality || 'OK'
+  if (!props.camera.faceDetected) return 'Không thấy mặt'
+  if (props.camera.multipleFaces) return 'Nhiều mặt'
+  if (props.camera.faceQuality === 'GOOD') return 'Tốt'
+  if (props.camera.faceQuality === 'POOR') return 'Kém'
+  return props.camera.faceQuality || 'Ổn'
 })
 
 const lightStatusText = computed(() => {
   const brightness = props.camera.averageBrightness
-  if (!brightness) return 'N/A'
-  if (brightness < 40) return 'Very Dark'
-  if (brightness < 60) return 'Dark'
-  if (brightness > 240) return 'Too Bright'
-  return 'Good'
+  if (brightness == null) return 'Không rõ'
+  if (brightness < 40) return 'Rất tối'
+  if (brightness < 60) return 'Tối'
+  if (brightness > 240) return 'Quá sáng'
+  return 'Tốt'
 })
 
 const eyeStatusText = computed(() => {
-  if (!props.camera.faceDetected) return 'No eyes'
+  if (!props.camera.faceDetected) return 'Không có mắt'
   const state = String(props.camera.eyeState || '').toUpperCase()
-  if (state === 'CLOSED') return 'Closed'
-  if (state === 'PARTIAL') return 'Partial'
-  if (state === 'OPEN') return 'Open'
+  if (state === 'CLOSED') return 'Đóng'
+  if (state === 'PARTIAL') return 'Hở'
+  if (state === 'OPEN') return 'Mở'
   if (props.camera.eyeCount != null) {
-    return `${props.camera.eyeCount} eye${props.camera.eyeCount === 1 ? '' : 's'}`
+    return `${props.camera.eyeCount} mắt`
   }
   return '—'
 })
@@ -145,14 +141,14 @@ const eyeStatusText = computed(() => {
 const gazeStatusText = computed(() => {
   const direction = String(props.camera.gazeDirection || '').toUpperCase()
   const gazeOffScreen = props.camera.gazeOffScreen === true
-  if (!props.camera.faceDetected) return 'No gaze'
+  if (!props.camera.faceDetected) return 'Không xác định'
   if (gazeOffScreen && direction && direction !== 'CENTER') {
-    return direction
+    return 'Nhìn lệch'
   }
   if (direction && direction !== 'CENTER') {
-    return `${direction}`
+    return 'Lệch hướng'
   }
-  return 'Center'
+  return 'Chính giữa'
 })
 
 const riskClass = computed(() => {
@@ -162,9 +158,25 @@ const riskClass = computed(() => {
   return 'camera-card__risk--low'
 })
 
+const activeSignals = computed(() => {
+  const signals = Array.isArray(props.camera.activeSignals) ? props.camera.activeSignals : []
+  const seen = new Set()
+  const unique = []
+  for (const signal of signals) {
+    const type = String(signal || '').trim().toUpperCase()
+    if (!type || seen.has(type)) continue
+    seen.add(type)
+    unique.push(type)
+  }
+  return unique
+})
+
+const activeSignalsPreview = computed(() => activeSignals.value.slice(0, 3))
+
 // Methods
 function getSignalSeverity(signal) {
   const severityMap = {
+    NO_CAMERA: 'high',
     MULTIPLE_FACES: 'critical',
     FACE_SPOOFING_SUSPECTED: 'critical',
     FACE_NOT_DETECTED: 'high',
@@ -191,45 +203,46 @@ function getSignalSeverity(signal) {
 
 function formatSignalType(signal) {
   const labelMap = {
-    FACE_NOT_DETECTED: 'No Face',
-    MULTIPLE_FACES: 'Multi Face',
-    FACE_SPOOFING_SUSPECTED: 'Spoofing',
-    FACE_OBSTRUCTED_MASK: 'Mask',
-    EYES_OBSTRUCTED: 'Glasses',
-    PARTIAL_FACE_VISIBLE: 'Partial',
-    FACE_TOO_FAR: 'Too Far',
-    FACE_TOO_CLOSE: 'Too Close',
-    FACE_TURNED_AWAY: 'Turned Away',
-    FACE_NOT_CENTERED: 'Off Center',
-    EYES_NOT_DETECTED: 'No Eyes',
-    VERY_LOW_LIGHTING: 'Dark',
-    LOW_LIGHTING: 'Low Light',
-    OVEREXPOSED_FRAME: 'Overexposed',
-    VERY_BLURRY_FRAME: 'Very Blur',
-    BLURRY_FRAME: 'Blur',
-    EYE_BLINK_ANOMALY: 'Blink',
-    EYES_CLOSED_PROLONGED: 'Eyes Closed',
-    GAZE_OFF_SCREEN: 'Gaze Away',
-    RAPID_EYE_MOVEMENT: 'Rapid Eyes',
-    PRINTED_PHOTO: 'Printed Photo',
-    SCREEN_REPLAY: 'Replay',
+    NO_CAMERA: 'Camera tắt',
+    FACE_NOT_DETECTED: 'Không mặt',
+    MULTIPLE_FACES: 'Nhiều mặt',
+    FACE_SPOOFING_SUSPECTED: 'Giả mạo',
+    FACE_OBSTRUCTED_MASK: 'Khẩu trang',
+    EYES_OBSTRUCTED: 'Kính',
+    PARTIAL_FACE_VISIBLE: 'Che khuất',
+    FACE_TOO_FAR: 'Quá xa',
+    FACE_TOO_CLOSE: 'Quá gần',
+    FACE_TURNED_AWAY: 'Quay đi',
+    FACE_NOT_CENTERED: 'Lệch tâm',
+    EYES_NOT_DETECTED: 'Không mắt',
+    VERY_LOW_LIGHTING: 'Rất tối',
+    LOW_LIGHTING: 'Thiếu sáng',
+    OVEREXPOSED_FRAME: 'Cháy sáng',
+    VERY_BLURRY_FRAME: 'Rất mờ',
+    BLURRY_FRAME: 'Mờ',
+    EYE_BLINK_ANOMALY: 'Chớp mắt',
+    EYES_CLOSED_PROLONGED: 'Nhắm mắt',
+    GAZE_OFF_SCREEN: 'Nhìn lệch',
+    RAPID_EYE_MOVEMENT: 'Mắt đảo nhanh',
+    PRINTED_PHOTO: 'Ảnh in',
+    SCREEN_REPLAY: 'Phát lại',
     DEEPFAKE: 'Deepfake',
-    FLAT_IMAGE: 'Flat Image',
-    SCREEN_DISPLAY: 'Screen'
+    FLAT_IMAGE: 'Ảnh phẳng',
+    SCREEN_DISPLAY: 'Màn hình'
   }
   return labelMap[signal] || signal
 }
 
 function formatTimeAgo(timestamp) {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return 'Không rõ'
   const now = new Date()
   const date = new Date(timestamp)
   const diffMs = now - date
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
 
-  if (diffSec < 60) return `${diffSec}s ago`
-  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffSec < 60) return 'Vừa xong'
+  if (diffMin < 60) return `${diffMin} phút trước`
   return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 </script>
@@ -344,7 +357,7 @@ function formatTimeAgo(timestamp) {
 /* Stats */
 .camera-card__stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 

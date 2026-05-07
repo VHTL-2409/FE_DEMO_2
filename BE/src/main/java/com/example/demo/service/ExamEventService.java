@@ -169,6 +169,7 @@ public class ExamEventService {
         identityAnomalyService.onProctoringHeartbeat(attempt, normalizedFingerprint, clientIp);
 
         LocalDateTime now = VietNamTime.now();
+        Boolean previousCameraOn = attempt.getCameraOn();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
         attempt.setMicOn(request.getMicOn());
@@ -178,9 +179,14 @@ public class ExamEventService {
         }
         examAttemptRepository.save(attempt);
 
+        RiskScoreResponse noCameraRisk = null;
+        if (Boolean.TRUE.equals(previousCameraOn) && Boolean.FALSE.equals(request.getCameraOn())) {
+            noCameraRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+        }
+
         applyHeartbeatDerivedSignals(attempt, request);
 
-        return riskScoringService.recomputeRisk(attempt);
+        return noCameraRisk != null ? noCameraRisk : riskScoringService.recomputeRisk(attempt);
     }
 
     @Transactional
@@ -199,6 +205,7 @@ public class ExamEventService {
         identityAnomalyService.onProctoringHeartbeat(attempt, normalizedFingerprint, ipForDetection);
 
         LocalDateTime now = VietNamTime.now();
+        Boolean previousCameraOn = attempt.getCameraOn();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
         attempt.setMicOn(request.getMicOn());
@@ -208,9 +215,14 @@ public class ExamEventService {
         }
         examAttemptRepository.save(attempt);
 
+        RiskScoreResponse noCameraRisk = null;
+        if (Boolean.TRUE.equals(previousCameraOn) && Boolean.FALSE.equals(request.getCameraOn())) {
+            noCameraRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+        }
+
         applyHeartbeatDerivedSignals(attempt, request);
 
-        return riskScoringService.recomputeRisk(attempt);
+        return noCameraRisk != null ? noCameraRisk : riskScoringService.recomputeRisk(attempt);
     }
 
     @Transactional
