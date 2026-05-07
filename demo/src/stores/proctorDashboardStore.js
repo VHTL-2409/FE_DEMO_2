@@ -2,7 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
-const resolveAttemptId = (card) => card?.attemptId ?? card?.id
+const resolveAttemptId = (card) => {
+  const raw = card?.attemptId ?? card?.id
+  if (raw == null || raw === '') return raw
+  const numeric = Number(raw)
+  return Number.isFinite(numeric) ? numeric : raw
+}
 const normalizeTime = (value) => {
   if (!value) return 0
   const time = new Date(value).getTime()
@@ -125,7 +130,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
    * No full reload, no extra fetches. O(1) map lookup.
    */
   const patchAttemptFromRealtime = (event) => {
-    const attemptId = String(event.attemptId || event.id || '')
+    const attemptId = resolveAttemptId({ attemptId: event.attemptId ?? event.id })
     if (!attemptId) return false
 
     // Dedupe: skip if same event within window
@@ -140,19 +145,23 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     const existing = cardsMap.value[attemptId]
     const prevScore = existing?.riskScore
 
-    const patch = buildCardPatch(event)
+    const patch = compactPatch(buildCardPatch(event))
     if (existing) {
-      const idx = cards.value.findIndex(c => String(resolveAttemptId(c)) === attemptId)
+      const idx = cards.value.findIndex(c => String(resolveAttemptId(c)) === String(attemptId))
       if (idx >= 0) {
         if (patch.riskScore != null && prevScore != null && patch.riskScore !== prevScore) {
           previousRiskScores.value[attemptId] = prevScore
         }
-        cards.value[idx] = { ...existing, ...patch, attemptId }
+        const violationCount = shouldIncrementViolationCount(event)
+          ? Number(existing.violationCount || 0) + 1
+          : existing.violationCount
+        cards.value[idx] = { ...existing, ...patch, attemptId, violationCount }
       }
     } else {
       // New card — only push minimal data if we have enough info
       if (attemptId && (patch.riskScore != null || patch.student)) {
-        cards.value.push({ attemptId, ...patch })
+        const violationCount = shouldIncrementViolationCount(event) ? 1 : patch.violationCount
+        cards.value.push({ attemptId, ...patch, violationCount })
       }
     }
     lastUpdatedAt.value = now
@@ -168,7 +177,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
 
     return {
       examId: event.examId ?? event.sessionId,
-      attemptId: String(event.attemptId || event.id || ''),
+      attemptId: resolveAttemptId({ attemptId: event.attemptId ?? event.id }),
       student: event.student || event.studentName,
       riskScore: event.riskScore ?? event.scores?.totalScore,
       riskLevel: event.riskLevel,
@@ -180,7 +189,6 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       activeFlagId: event.activeFlag?.id ?? event.activeFlagId,
       activeFlagStatus: event.activeFlag?.status ?? event.activeFlagStatus,
       activeFlagTitle: event.activeFlag?.title ?? event.latestFlagTitle,
-      violationCount: existing => existing ? existing.violationCount + 1 : 1,
       lastSignalAt: occurredAt,
       lastRiskUpdatedAt: occurredAt,
       latestSignalType: signal.signalType || event.signalType,
@@ -191,6 +199,15 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       lastWarning: event.type === 'WARNING_SENT' ? event.message : undefined
     }
   }
+
+  const shouldIncrementViolationCount = (event) => {
+    const type = String(event?.type || event?.eventType || '').toUpperCase()
+    return type === 'FRAUD_SIGNAL_RECORDED' || Boolean(event?.signalType || event?.latestSignal?.signalType)
+  }
+
+  const compactPatch = (patch) => Object.fromEntries(
+    Object.entries(patch || {}).filter(([, value]) => value !== undefined)
+  )
 
   const upsertCard = (card) => {
     const cardAttemptId = resolveAttemptId(card)
@@ -338,7 +355,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     recentAlertKeys.set(key, now)
     const eventTime = normalizeTime(alert.issuedAt || alert.at || alert.timestamp || alert.ts) || now
     liveAlerts.value = [
-      { ...alert, signalType, id: `alert-${++alertIdCounter}`, ts: eventTime },
+      { ...alert, attemptId: resolveAttemptId({ attemptId: alert.attemptId }), signalType, id: `alert-${++alertIdCounter}`, ts: eventTime },
       ...liveAlerts.value
     ].slice(0, 200)
     if (alertIdCounter % 50 === 0) {
@@ -352,7 +369,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   const addEvent = (event) => {
     const eventTime = normalizeTime(event.issuedAt || event.at || event.timestamp || event.ts) || Date.now()
     liveEvents.value = [
-      { ...event, id: `event-${++eventIdCounter}`, ts: eventTime },
+      { ...event, attemptId: resolveAttemptId({ attemptId: event.attemptId }), id: `event-${++eventIdCounter}`, ts: eventTime },
       ...liveEvents.value
     ].slice(0, 200)
   }

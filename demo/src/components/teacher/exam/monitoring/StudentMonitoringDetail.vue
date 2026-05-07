@@ -283,9 +283,9 @@
                   aria-label="Lọc dòng thời gian"
                 >
                   <option value="">Tất cả</option>
+                  <option value="AI_CAMERA">AI Camera</option>
                   <option value="SCREEN_LEAVE">Screen leave</option>
                   <option value="CLIPBOARD">Clipboard</option>
-                  <option value="TECHNICAL">Kỹ thuật</option>
                   <option value="IDENTITY">Định danh</option>
                   <option value="WARNING">Cảnh báo</option>
                   <option value="NOTE">Ghi chú</option>
@@ -609,6 +609,25 @@ const RISK_LEVEL_LABELS = {
   CLEAN: 'Bình thường'
 }
 const SIGNAL_LABELS = {
+  // AI Camera Detection
+  FACE_NOT_DETECTED: 'Không có khuôn mặt',
+  MULTIPLE_FACES: 'Nhiều khuôn mặt',
+  FACE_SPOOFING_SUSPECTED: 'Nghi vấn giả mạo',
+  FACE_OBSTRUCTED_MASK: 'Khẩu trang che mặt',
+  EYES_OBSTRUCTED: 'Kính che mắt',
+  PARTIAL_FACE_VISIBLE: 'Mặt không đầy đủ',
+  FACE_TOO_FAR: 'Mặt quá xa',
+  FACE_TOO_CLOSE: 'Mặt quá gần',
+  FACE_TURNED_AWAY: 'Quay mặt đi',
+  FACE_NOT_CENTERED: 'Mặt lệch tâm',
+  EYES_NOT_DETECTED: 'Không phát hiện mắt',
+  // Lighting & Quality
+  VERY_LOW_LIGHTING: 'Ánh sáng rất yếu',
+  LOW_LIGHTING: 'Ánh sáng yếu',
+  OVEREXPOSED_FRAME: 'Ảnh quá sáng',
+  VERY_BLURRY_FRAME: 'Ảnh rất mờ',
+  BLURRY_FRAME: 'Ảnh mờ',
+  // Browser Events
   TAB_SWITCH: 'Chuyển tab',
   WINDOW_BLUR: 'Mất tiêu điểm',
   SCREEN_LEAVE: 'Rời màn hình',
@@ -617,7 +636,11 @@ const SIGNAL_LABELS = {
   COPY_ATTEMPT: 'Sao chép',
   PASTE_ATTEMPT: 'Dán nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools',
+  // Identity & Network
   IP_ANOMALY: 'IP bất thường',
+  DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
+  DUPLICATE_IP: 'IP trùng lặp',
+  // System Events
   WARNING_SENT: 'Cảnh báo',
   ATTEMPT_PAUSED: 'Tạm dừng',
   ATTEMPT_RESUMED: 'Tiếp tục',
@@ -626,6 +649,26 @@ const SIGNAL_LABELS = {
   NOTE: 'Ghi chú'
 }
 const EVENT_COLORS = {
+  // AI Camera Detection - Critical
+  FACE_NOT_DETECTED: 'var(--ds-danger)',
+  MULTIPLE_FACES: 'var(--ds-danger)',
+  FACE_SPOOFING_SUSPECTED: 'var(--ds-danger)',
+  FACE_OBSTRUCTED_MASK: 'var(--ds-danger)',
+  // AI Camera Detection - High
+  EYES_OBSTRUCTED: 'var(--ds-warning)',
+  PARTIAL_FACE_VISIBLE: 'var(--ds-warning)',
+  FACE_TOO_FAR: 'var(--ds-warning)',
+  FACE_TOO_CLOSE: 'var(--ds-info)',
+  FACE_TURNED_AWAY: 'var(--ds-warning)',
+  FACE_NOT_CENTERED: 'var(--ds-info)',
+  EYES_NOT_DETECTED: 'var(--ds-warning)',
+  // Lighting & Quality
+  VERY_LOW_LIGHTING: 'var(--ds-warning)',
+  LOW_LIGHTING: 'var(--ds-info)',
+  OVEREXPOSED_FRAME: 'var(--ds-info)',
+  VERY_BLURRY_FRAME: 'var(--ds-warning)',
+  BLURRY_FRAME: 'var(--ds-info)',
+  // Browser Events
   TAB_SWITCH: 'var(--ds-warning)',
   WINDOW_BLUR: 'var(--ds-warning)',
   SCREEN_LEAVE: 'var(--ds-warning)',
@@ -634,7 +677,11 @@ const EVENT_COLORS = {
   COPY_ATTEMPT: 'var(--ds-danger)',
   PASTE_ATTEMPT: 'var(--ds-danger)',
   DEVTOOLS_OPEN: 'var(--ds-danger)',
+  // Identity
   IP_ANOMALY: 'var(--ds-danger)',
+  DEVICE_FINGERPRINT_CHANGED: 'var(--ds-danger)',
+  DUPLICATE_IP: 'var(--ds-danger)',
+  // System Events
   WARNING_SENT: 'var(--ds-primary)',
   ATTEMPT_PAUSED: 'var(--ds-warning)',
   ATTEMPT_RESUMED: 'var(--ds-success)',
@@ -800,8 +847,22 @@ const sortedTimeline = computed(() => {
   }).map((item, i) => ({ ...item, _key: item.id || `${i}-${item.at}` }))
 })
 
+const AI_CAMERA_SIGNALS = [
+  'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'FACE_SPOOFING_SUSPECTED',
+  'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
+  'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
+  'EYES_NOT_DETECTED', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
+  'VERY_BLURRY_FRAME', 'BLURRY_FRAME'
+]
+
 const filteredTimeline = computed(() => {
   if (!timelineFilter.value) return sortedTimeline.value
+  if (timelineFilter.value === 'AI_CAMERA') {
+    return sortedTimeline.value.filter(e => {
+      const type = String(e.eventType || '').toUpperCase()
+      return AI_CAMERA_SIGNALS.includes(type)
+    })
+  }
   return sortedTimeline.value.filter(e => {
     const type = String(e.eventType || '').toUpperCase()
     return type === timelineFilter.value.toUpperCase()

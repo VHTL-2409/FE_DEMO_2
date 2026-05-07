@@ -14,11 +14,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service Phân tích Gian lận
- * Cung cấp các phương pháp phân tích gian lận toàn diện: đạo văn, thời gian, thống kê,
- * sinh trắc học, danh tiếng IP, và phân tích kết hợp toàn diện.
- *
- * Tất cả các response được thiết kế khớp chính xác với những gì Vue frontend mong đợi.
+ * Service Phân tích Gian lận cho thi trắc nghiệm.
+ * Cung cấp các phương pháp phân tích gian lận: đạo văn đáp án, thời gian, thống kê, danh tiếng IP,
+ * và phân tích kết hợp toàn diện.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,7 +29,7 @@ public class FraudAnalysisService {
     private final AnswerSimilarityService answerSimilarityService;
     private final ObjectMapper objectMapper;
 
-    // --- Phân tích đạo văn ---
+    // --- Phân tích đạo văn (so sánh đáp án) ---
 
     public PlagiarismAnalysisResponse analyzePlagiarismByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -116,7 +114,7 @@ public class FraudAnalysisService {
         return "Bat thuong nhe: can ghi nhan nhung khong can hanh dong ngay.";
     }
 
-    // --- Phân tích thời gian ---
+    // --- Phân tích thời gian (hành vi trong giờ thi) ---
 
     public TimingAnalysisResponse analyzeTimingByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -198,7 +196,7 @@ public class FraudAnalysisService {
         return map;
     }
 
-    // --- Phân tích thống kê ---
+    // --- Phân tích thống kê (phân tích điểm thi) ---
 
     public StatisticalAnalysisResponse analyzeStatisticalByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -288,28 +286,26 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Phân tích sinh trắc học ---
+    // --- Phân tích hành vi click (cho thi trắc nghiệm) ---
 
-    public BiometricsAnalysisResponse analyzeBiometricsByExam(Long examId) {
+    public BehaviorAnalysisResponse analyzeBehaviorByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found: " + examId));
-        return buildBiometricsResponse(exam, null);
+        return buildBehaviorResponse(exam, null);
     }
 
-    public BiometricsAnalysisResponse analyzeBiometricsByAttempt(Long attemptId) {
+    public BehaviorAnalysisResponse analyzeBehaviorByAttempt(Long attemptId) {
         ExamAttempt attempt = examAttemptRepository.findById(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found: " + attemptId));
-        return buildBiometricsResponse(attempt.getExam(), attempt);
+        return buildBehaviorResponse(attempt.getExam(), attempt);
     }
 
-    private BiometricsAnalysisResponse buildBiometricsResponse(Exam exam, ExamAttempt filterAttempt) {
+    private BehaviorAnalysisResponse buildBehaviorResponse(Exam exam, ExamAttempt filterAttempt) {
         List<ExamAttempt> attempts = filterSubmittedAttempts(exam);
         if (filterAttempt != null) {
             attempts = attempts.stream().filter(a -> a.getId().equals(filterAttempt.getId())).collect(Collectors.toList());
         }
 
-        Map<Long, BiometricsAnalysisResponse.TypingProfile> typingProfiles = new HashMap<>();
-        Map<Long, BiometricsAnalysisResponse.MouseProfile> mouseProfiles = new HashMap<>();
         Map<Long, List<String>> attemptAnomalies = new HashMap<>();
 
         for (ExamAttempt attempt : attempts) {
@@ -318,9 +314,10 @@ public class FraudAnalysisService {
 
             for (FraudSignal signal : signals) {
                 String type = signal.getSignalType();
-                if (type.startsWith("AI_") || type.equals("TYPING_PATTERN_MISMATCH")
-                        || type.equals("MOUSE_SIGNATURE_ANOMALY") || type.equals("AUTOMATED_INPUT_DETECTED")
-                        || type.equals("RHYTHM_ANOMALY") || type.equals("INTERRUPTION_PATTERN")) {
+                // Các signal liên quan đến hành vi trắc nghiệm
+                if (type.equals("AUTOMATED_INPUT_DETECTED")
+                        || type.equals("MOUSE_SIGNATURE_ANOMALY")
+                        || type.equals("INTERRUPTION_PATTERN")) {
                     anomalies.add(type);
                 }
             }
@@ -328,13 +325,7 @@ public class FraudAnalysisService {
             if (!anomalies.isEmpty()) {
                 attemptAnomalies.put(attempt.getId(), anomalies);
             }
-
-            typingProfiles.put(attempt.getId(), buildTypingProfile(signals));
-            mouseProfiles.put(attempt.getId(), buildMouseProfile(signals));
         }
-
-        BiometricsAnalysisResponse.TypingProfile globalTyping = aggregateTypingProfiles(typingProfiles.values());
-        BiometricsAnalysisResponse.MouseProfile globalMouse = aggregateMouseProfiles(mouseProfiles.values());
 
         List<String> allAnomalies = attemptAnomalies.values().stream()
                 .flatMap(List::stream)
@@ -342,127 +333,11 @@ public class FraudAnalysisService {
                 .sorted()
                 .collect(Collectors.toList());
 
-        return BiometricsAnalysisResponse.builder()
+        return BehaviorAnalysisResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
                 .totalAttempts(attempts.size())
-                .typingProfile(globalTyping)
-                .mouseProfile(globalMouse)
                 .anomalies(allAnomalies)
-                .build();
-    }
-
-    private BiometricsAnalysisResponse.TypingProfile buildTypingProfile(List<FraudSignal> signals) {
-        List<Double> dwellValues = new ArrayList<>();
-        List<Double> flightValues = new ArrayList<>();
-        List<Double> speedValues = new ArrayList<>();
-        for (FraudSignal s : signals) {
-            Map<String, Object> ev = parseEvidence(s.getEvidence());
-            if (ev == null) continue;
-            if (ev.containsKey("avgDwellMs")) {
-                dwellValues.add(toDouble(ev.get("avgDwellMs"), 0.0));
-                if (ev.containsKey("avgFlightMs")) {
-                    flightValues.add(toDouble(ev.get("avgFlightMs"), 0.0));
-                }
-                if (ev.containsKey("avgSpeedCpm")) {
-                    speedValues.add(toDouble(ev.get("avgSpeedCpm"), 0.0));
-                }
-            }
-        }
-        double avgDwell = dwellValues.isEmpty() ? 100.0 : dwellValues.stream().mapToDouble(Double::doubleValue).average().orElse(100.0);
-        double avgFlight = flightValues.isEmpty() ? avgDwell * 0.8 : flightValues.stream().mapToDouble(Double::doubleValue).average().orElse(avgDwell * 0.8);
-        double avgSpeed = speedValues.isEmpty() ? 350.0 : speedValues.stream().mapToDouble(Double::doubleValue).average().orElse(350.0);
-        double consistency = computeTypingConsistency(dwellValues, flightValues);
-        return BiometricsAnalysisResponse.TypingProfile.builder()
-                .avgSpeedCpm(Math.round(avgSpeed * 10.0) / 10.0)
-                .avgDwellTime(Math.round(avgDwell * 10.0) / 10.0)
-                .avgFlightTimeMs(Math.round(avgFlight * 10.0) / 10.0)
-                .consistencyScore(Math.round(consistency * 1000.0) / 1000.0)
-                .build();
-    }
-
-    private BiometricsAnalysisResponse.MouseProfile buildMouseProfile(List<FraudSignal> signals) {
-        List<Double> speedValues = new ArrayList<>();
-        int totalMovements = 0;
-        for (FraudSignal s : signals) {
-            Map<String, Object> ev = parseEvidence(s.getEvidence());
-            if (ev == null) continue;
-            if (ev.containsKey("avgSpeedPps")) {
-                speedValues.add(toDouble(ev.get("avgSpeedPps"), 0.0));
-            }
-            if (ev.containsKey("totalMovements")) {
-                totalMovements += toInt(ev.get("totalMovements"), 0);
-            }
-        }
-        double avgSpeed = speedValues.isEmpty() ? 200.0 : speedValues.stream().mapToDouble(Double::doubleValue).average().orElse(200.0);
-        return BiometricsAnalysisResponse.MouseProfile.builder()
-                .avgSpeedPps(Math.round(avgSpeed * 10.0) / 10.0)
-                .totalMovements(Math.max(totalMovements, signals.size() * 3))
-                .build();
-    }
-
-    private double computeTypingConsistency(List<Double> dwellValues, List<Double> flightValues) {
-        List<Double> allValues = new ArrayList<>();
-        allValues.addAll(dwellValues);
-        allValues.addAll(flightValues);
-        if (allValues.size() < 3) return 0.70;
-        double mean = allValues.stream().mapToDouble(Double::doubleValue).average().orElse(100.0);
-        double variance = allValues.stream().mapToDouble(v -> (v - mean) * (v - mean)).sum() / allValues.size();
-        double stdDev = Math.sqrt(variance);
-        if (mean == 0) return 0.70;
-        double cv = stdDev / mean;
-        return Math.round(Math.max(0, Math.min(1, 1.0 / (1.0 + cv)) * 1000.0) / 1000.0);
-    }
-
-    private Map<String, Object> parseEvidence(String evidenceJson) {
-        if (evidenceJson == null || evidenceJson.isBlank()) return null;
-        try {
-            return objectMapper.readValue(evidenceJson, Map.class);
-        } catch (JsonProcessingException e) {
-            return null;
-        }
-    }
-
-    private double toDouble(Object val, double fallback) {
-        if (val == null) return fallback;
-        if (val instanceof Number) return ((Number) val).doubleValue();
-        try { return Double.parseDouble(String.valueOf(val)); } catch (NumberFormatException e) { return fallback; }
-    }
-
-    private int toInt(Object val, int fallback) {
-        if (val == null) return fallback;
-        if (val instanceof Number) return ((Number) val).intValue();
-        try { return Integer.parseInt(String.valueOf(val)); } catch (NumberFormatException e) { return fallback; }
-    }
-
-    private BiometricsAnalysisResponse.TypingProfile aggregateTypingProfiles(Collection<BiometricsAnalysisResponse.TypingProfile> profiles) {
-        List<BiometricsAnalysisResponse.TypingProfile> list = new ArrayList<>(profiles);
-        if (list.isEmpty()) {
-            return BiometricsAnalysisResponse.TypingProfile.builder()
-                    .avgSpeedCpm(0).avgDwellTime(0).avgFlightTimeMs(0).consistencyScore(0).build();
-        }
-        double avgSpeed = list.stream().mapToDouble(BiometricsAnalysisResponse.TypingProfile::getAvgSpeedCpm).average().orElse(0);
-        double avgDwell = list.stream().mapToDouble(BiometricsAnalysisResponse.TypingProfile::getAvgDwellTime).average().orElse(0);
-        double avgFlight = list.stream().mapToDouble(BiometricsAnalysisResponse.TypingProfile::getAvgFlightTimeMs).average().orElse(0);
-        double avgConsistency = list.stream().mapToDouble(BiometricsAnalysisResponse.TypingProfile::getConsistencyScore).average().orElse(0);
-        return BiometricsAnalysisResponse.TypingProfile.builder()
-                .avgSpeedCpm(Math.round(avgSpeed * 10) / 10.0)
-                .avgDwellTime(Math.round(avgDwell * 10) / 10.0)
-                .avgFlightTimeMs(Math.round(avgFlight * 10) / 10.0)
-                .consistencyScore(Math.round(avgConsistency * 1000) / 1000.0)
-                .build();
-    }
-
-    private BiometricsAnalysisResponse.MouseProfile aggregateMouseProfiles(Collection<BiometricsAnalysisResponse.MouseProfile> profiles) {
-        List<BiometricsAnalysisResponse.MouseProfile> list = new ArrayList<>(profiles);
-        if (list.isEmpty()) {
-            return BiometricsAnalysisResponse.MouseProfile.builder().avgSpeedPps(0).totalMovements(0).build();
-        }
-        double avgSpeed = list.stream().mapToDouble(BiometricsAnalysisResponse.MouseProfile::getAvgSpeedPps).average().orElse(0);
-        long totalMovements = list.stream().mapToLong(BiometricsAnalysisResponse.MouseProfile::getTotalMovements).sum();
-        return BiometricsAnalysisResponse.MouseProfile.builder()
-                .avgSpeedPps(Math.round(avgSpeed * 10) / 10.0)
-                .totalMovements((int) totalMovements)
                 .build();
     }
 
@@ -549,7 +424,7 @@ public class FraudAnalysisService {
         PlagiarismAnalysisResponse plagiarism = buildPlagiarismResponse(exam, filterAttempt);
         TimingAnalysisResponse timing = buildTimingResponse(exam, filterAttempt);
         StatisticalAnalysisResponse statistical = buildStatisticalResponse(exam, filterAttempt);
-        BiometricsAnalysisResponse biometrics = buildBiometricsResponse(exam, filterAttempt);
+        BehaviorAnalysisResponse behavior = buildBehaviorResponse(exam, filterAttempt);
         IpReputationAnalysisResponse ipReputation = buildIpResponse(exam);
 
         List<ComprehensiveAnalysisResponse.FlaggedAttemptItem> flagged = new ArrayList<>();
@@ -574,7 +449,6 @@ public class FraudAnalysisService {
         }
         flagged.sort((a, b) -> Integer.compare(b.getRiskScore(), a.getRiskScore()));
 
-        // Server-side suspicious pattern detection per attempt
         List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> patterns = buildSuspiciousPatterns(attempts);
 
         return ComprehensiveAnalysisResponse.builder()
@@ -585,7 +459,7 @@ public class FraudAnalysisService {
                 .plagiarism(plagiarism)
                 .timing(timing)
                 .statistical(statistical)
-                .biometrics(biometrics)
+                .behavior(behavior)
                 .ipReputation(ipReputation)
                 .flaggedAttemptItems(flagged)
                 .suspiciousPatterns(patterns)
@@ -593,8 +467,7 @@ public class FraudAnalysisService {
     }
 
     /**
-     * Tính toán các mẫu hành vi đáng ngờ server-side từ fraud signals.
-     * Thay thế các PATTERN_RULES hardcoded trước đó ở FE.
+     * Tính toán các mẫu hành vi đáng ngờ cho thi trắc nghiệm.
      */
     private List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> buildSuspiciousPatterns(List<ExamAttempt> attempts) {
         List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> patterns = new ArrayList<>();
@@ -603,14 +476,6 @@ public class FraudAnalysisService {
             Map<String, Long> typeCounts = signals.stream()
                     .collect(Collectors.groupingBy(FraudSignal::getSignalType, Collectors.counting()));
 
-            addPatternIf(patterns, attempt, "TAB_SWITCH", "Chuyen tab nhieu lan",
-                    typeCounts.getOrDefault("TAB_SWITCH", 0L), 3L, 5L);
-            addPatternIf(patterns, attempt, "CLIPBOARD_ABUSE", "Co gang copy noi dung de thi",
-                    typeCounts.getOrDefault("CLIPBOARD_ABUSE", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "FULLSCREEN_VIOLATION", "Thoat che do toan man hinh",
-                    typeCounts.getOrDefault("FULLSCREEN_VIOLATION", 0L), 1L, 3L);
-            addPatternIf(patterns, attempt, "DEVTOOLS_OPEN", "Mo cong cu phat trien",
-                    typeCounts.getOrDefault("DEVTOOLS_OPEN", 0L), 1L, 2L);
             addPatternIf(patterns, attempt, "IP_ANOMALY", "Phat hien IP trung lap",
                     typeCounts.getOrDefault("IP_ANOMALY", 0L), 1L, 2L);
             addPatternIf(patterns, attempt, "SYNC_BEHAVIOR", "Hanh vi dong bo voi thi sinh khac",
@@ -619,6 +484,8 @@ public class FraudAnalysisService {
                     typeCounts.getOrDefault("TIMING_ANOMALY", 0L), 1L, 2L);
             addPatternIf(patterns, attempt, "ANSWER_SIMILARITY", "Tuong dong dap an cao voi thi sinh khac",
                     typeCounts.getOrDefault("ANSWER_SIMILARITY", 0L) + typeCounts.getOrDefault("EXACT_ANSWER_MATCH", 0L), 1L, 2L);
+            addPatternIf(patterns, attempt, "AUTOMATED_INPUT", "Phat hien input tu dong",
+                    typeCounts.getOrDefault("AUTOMATED_INPUT_DETECTED", 0L), 1L, 2L);
         }
         return patterns;
     }

@@ -17,7 +17,7 @@ public class ComprehensiveAnalysisResponse {
     private PlagiarismAnalysisResponse plagiarism;
     private TimingAnalysisResponse timing;
     private StatisticalAnalysisResponse statistical;
-    private BiometricsAnalysisResponse biometrics;
+    private BehaviorAnalysisResponse behavior;
     private IpReputationAnalysisResponse ipReputation;
     private List<FlaggedAttemptItem> flaggedAttemptItems;
     private List<SuspiciousPatternItem> suspiciousPatterns;

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +33,18 @@ public class AiAssistService {
     private final ExamAttemptRepository examAttemptRepository;
     private final FraudSignalService fraudSignalService;
     private final FraudSignalRepository fraudSignalRepository;
+    private final RiskScoringService riskScoringService;
 
     public AiAssistService(
             ExamAttemptRepository examAttemptRepository,
             FraudSignalService fraudSignalService,
-            FraudSignalRepository fraudSignalRepository
+            FraudSignalRepository fraudSignalRepository,
+            RiskScoringService riskScoringService
     ) {
         this.examAttemptRepository = examAttemptRepository;
         this.fraudSignalService = fraudSignalService;
         this.fraudSignalRepository = fraudSignalRepository;
+        this.riskScoringService = riskScoringService;
     }
 
     @Value("${app.ai-service.enabled:false}")
@@ -74,16 +78,41 @@ public class AiAssistService {
         if (request == null || request.getImageBase64() == null || request.getImageBase64().isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Thiếu ảnh frame để phân tích");
         }
-        Map<String, Object> response = postJson("/proctor/analyze/frame", request);
+        Map<String, Object> response = postJson("/proctor/analyze/frame", buildFramePayload(request));
         safeBridgeAiSignals(request.getAttemptId(), response, "frame");
         return response;
     }
 
     public Map<String, Object> analyzeBehavior(BehaviorAnalysisRequest request) {
         ensureEnabled();
-        Map<String, Object> response = postJson("/proctor/analyze/behavior", request);
+        Map<String, Object> response = postJson("/proctor/analyze/behavior", buildBehaviorPayload(request));
         safeBridgeAiSignals(request != null ? request.getAttemptId() : null, response, "behavior");
         return response;
+    }
+
+    private Map<String, Object> buildFramePayload(FrameAnalysisRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("attempt_id", request.getAttemptId());
+        payload.put("student_id", request.getStudentId());
+        payload.put("image_base64", request.getImageBase64());
+        payload.put("captured_at", request.getCapturedAt());
+        payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
+        return payload;
+    }
+
+    private Map<String, Object> buildBehaviorPayload(BehaviorAnalysisRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (request == null) {
+            return payload;
+        }
+        payload.put("attempt_id", request.getAttemptId());
+        payload.put("student_id", request.getStudentId());
+        payload.put("paste_length", request.getPasteLength() == null ? 0 : request.getPasteLength());
+        payload.put("tab_switch_count", request.getTabSwitchCount() == null ? 0 : request.getTabSwitchCount());
+        payload.put("idle_seconds", request.getIdleSeconds() == null ? 0 : request.getIdleSeconds());
+        payload.put("typing_intervals", request.getTypingIntervals() == null ? List.of() : request.getTypingIntervals());
+        payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
+        return payload;
     }
 
     public Map<String, Object> healthSummary() {
@@ -166,17 +195,21 @@ public class AiAssistService {
             return;
         }
 
-        List<String> flags = response.get("flags") instanceof List<?> rawFlags
-                ? rawFlags.stream().map(String::valueOf).toList()
-                : List.of();
-        Number confidence = response.get("confidence") instanceof Number n ? n : null;
-        double normalizedConfidence = confidence == null ? 0.82d : Math.max(0.1d, Math.min(1.0d, confidence.doubleValue()));
+        List<?> signals = response.get("signals") instanceof List<?> rawSignals ? rawSignals : List.of();
+        int bridgedCount = 0;
 
-        for (String flag : flags) {
-            String signalType = mapAiFlag(flag);
+        for (Object rawSignal : signals) {
+            if (!(rawSignal instanceof Map<?, ?> signalMap)) {
+                continue;
+            }
+            String signalType = normalizeSignalType(signalMap.get("signal_type"));
+            if (signalType == null) {
+                signalType = normalizeSignalType(signalMap.get("signalType"));
+            }
             if (signalType == null) {
                 continue;
             }
+
             if (fraudSignalRepository.countByAttemptAndSignalTypeAndCreatedAtAfter(
                     attempt,
                     signalType,
@@ -184,40 +217,111 @@ public class AiAssistService {
             ) > 0) {
                 continue;
             }
-            Map<String, Object> evidence = new LinkedHashMap<>();
-            evidence.put("source", "ai_" + source);
-            evidence.put("flag", flag);
-            evidence.put("capturedAt", response.get("capturedAt"));
-            evidence.put("summary", response.get("summary"));
-            evidence.put("response", response);
+
+            double confidence = normalizeConfidence(signalMap.get("confidence"), 0.82d);
+            SignalSeverity severity = parseSeverity(signalMap.get("severity"), severityForAiSignal(signalType));
+            Map<String, Object> evidence = buildAiEvidence(source, signalType, signalMap, response);
             fraudSignalService.recordServerSignal(
                     attempt,
                     signalType,
-                    severityForAiSignal(signalType),
-                    normalizedConfidence,
+                    severity,
+                    confidence,
                     evidence
             );
+            bridgedCount++;
+        }
+
+        if (bridgedCount > 0) {
+            riskScoringService.recomputeRisk(attempt);
+            response.put("bridgedSignalCount", bridgedCount);
         }
     }
 
-    private String mapAiFlag(String flag) {
-        if (flag == null || flag.isBlank()) {
+    private String normalizeSignalType(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) {
             return null;
         }
-        String normalized = flag.trim().toUpperCase();
-        return switch (normalized) {
-            case "MULTIPLE_FACES", "MULTI_FACE" -> "AI_MULTIPLE_FACES";
-            case "FACE_MISSING", "NO_FACE" -> "AI_FACE_MISSING";
-            case "PHONE_DETECTED", "MOBILE_PHONE" -> "AI_PHONE_DETECTED";
-            case "LOOKING_AWAY", "GAZE_AWAY" -> "AI_LOOKING_AWAY";
-            case "SPEAKING", "TALKING" -> "AI_SPEAKING_DETECTED";
-            default -> null;
-        };
+        return String.valueOf(value).trim().toUpperCase(Locale.ROOT);
+    }
+
+    private double normalizeConfidence(Object value, double defaultValue) {
+        if (value instanceof Number n) {
+            return Math.max(0.1d, Math.min(1.0d, n.doubleValue()));
+        }
+        try {
+            return Math.max(0.1d, Math.min(1.0d, Double.parseDouble(String.valueOf(value))));
+        } catch (Exception ignored) {
+            return defaultValue;
+        }
+    }
+
+    private SignalSeverity parseSeverity(Object value, SignalSeverity fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return SignalSeverity.valueOf(String.valueOf(value).trim().toUpperCase(Locale.ROOT));
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private Map<String, Object> buildAiEvidence(
+            String source,
+            String signalType,
+            Map<?, ?> signalMap,
+            Map<String, Object> response
+    ) {
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("source", "ai_" + source);
+        evidence.put("signalType", signalType);
+        evidence.put("aiStatus", response.get("status"));
+        evidence.put("signalEvidence", signalMap.get("evidence"));
+        copyIfPresent(evidence, response, "face_count", "faceCount");
+        copyIfPresent(evidence, response, "eye_count", "eyeCount");
+        copyIfPresent(evidence, response, "face_detected", "faceDetected");
+        copyIfPresent(evidence, response, "multiple_faces", "multipleFaces");
+        copyIfPresent(evidence, response, "face_quality", "faceQuality");
+        copyIfPresent(evidence, response, "frame_quality", "frameQuality");
+        copyIfPresent(evidence, response, "average_brightness", "averageBrightness");
+        copyIfPresent(evidence, response, "eye_state", "eyeState");
+        copyIfPresent(evidence, response, "eye_aspect_ratio", "eyeAspectRatio");
+        copyIfPresent(evidence, response, "blink_rate", "blinkRate");
+        copyIfPresent(evidence, response, "gaze_direction", "gazeDirection");
+        copyIfPresent(evidence, response, "gaze_off_screen", "gazeOffScreen");
+        copyIfPresent(evidence, response, "attention_score", "attentionScore");
+
+        Object diagnosticsObj = response.get("diagnostics");
+        if (diagnosticsObj instanceof Map<?, ?> diagnostics) {
+            Map<String, Object> compactDiagnostics = new LinkedHashMap<>();
+            copyIfPresent(compactDiagnostics, diagnostics, "cv_ready", "cvReady");
+            copyIfPresent(compactDiagnostics, diagnostics, "dnn_ready", "dnnReady");
+            copyIfPresent(compactDiagnostics, diagnostics, "detection_method", "detectionMethod");
+            copyIfPresent(compactDiagnostics, diagnostics, "image_width", "imageWidth");
+            copyIfPresent(compactDiagnostics, diagnostics, "image_height", "imageHeight");
+            copyIfPresent(compactDiagnostics, diagnostics, "face_locations", "faceLocations");
+            if (!compactDiagnostics.isEmpty()) {
+                evidence.put("diagnostics", compactDiagnostics);
+            }
+        }
+        return evidence;
+    }
+
+    private void copyIfPresent(Map<String, Object> target, Map<?, ?> source, String sourceKey, String targetKey) {
+        if (source.containsKey(sourceKey) && source.get(sourceKey) != null) {
+            target.put(targetKey, source.get(sourceKey));
+        }
     }
 
     private SignalSeverity severityForAiSignal(String signalType) {
         return switch (signalType) {
-            case "AI_MULTIPLE_FACES", "AI_PHONE_DETECTED" -> SignalSeverity.HIGH;
+            case "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE" ->
+                    SignalSeverity.CRITICAL;
+            case "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
+                    "FLAT_IMAGE", "SCREEN_DISPLAY", "GAZE_OFF_SCREEN" -> SignalSeverity.HIGH;
+            case "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE", "FACE_TOO_FAR", "FACE_TURNED_AWAY",
+                    "EYES_NOT_DETECTED", "LOW_LIGHTING", "EYE_BLINK_ANOMALY", "RAPID_EYE_MOVEMENT" ->
+                    SignalSeverity.MEDIUM;
             default -> SignalSeverity.MEDIUM;
         };
     }

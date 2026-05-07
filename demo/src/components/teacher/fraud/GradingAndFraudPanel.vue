@@ -6,7 +6,7 @@
         <LucideIcon name="shield_check" class="gf__header-icon" />
         <div>
           <h3 class="gf__title">Phan Tich Gian Lan &amp; Cham Diem</h3>
-          <p class="gf__subtitle">Phan tich nang cao: dao van, thoi gian, thong ke, sinh trac, IP</p>
+          <p class="gf__subtitle">Phan tich nang cao: dao van, thoi gian, thong ke, hanh vi, IP</p>
         </div>
       </div>
       <div class="gf__header-right">
@@ -61,11 +61,11 @@
           </div>
         </div>
 
-        <div class="gf__card gf__card--biometrics" @click="activeTab = 'biometrics'">
-          <LucideIcon name="fingerprint" />
+        <div class="gf__card gf__card--behavior" @click="activeTab = 'behavior'">
+          <LucideIcon name="mouse_pointer_click" />
           <div class="gf__card-content">
-            <span class="gf__card-number">{{ biometricsAnomalies.length }}</span>
-            <span class="gf__card-label">Bat thuong sinh trac</span>
+            <span class="gf__card-number">{{ behaviorAnomalies.length }}</span>
+            <span class="gf__card-label">Bat thuong hanh vi</span>
           </div>
         </div>
 
@@ -207,74 +207,16 @@
         </div>
       </div>
 
-      <!-- Tab Content: Biometrics -->
-      <div v-if="activeTab === 'biometrics'" class="gf__tab-content">
-        <div v-if="!biometricsData" class="gf__empty">
+      <!-- Tab Content: Behavior -->
+      <div v-if="activeTab === 'behavior'" class="gf__tab-content">
+        <div v-if="!behaviorData || behaviorAnomalies.length === 0" class="gf__empty">
           <LucideIcon name="check_circle" />
-          <p>Khong co du lieu sinh trac</p>
+          <p>Khong phat hien bat thuong hanh vi</p>
         </div>
-        <div v-else class="gf__biometrics-grid">
-          <!-- Typing Profile -->
-          <div class="gf__bio-card">
-            <h4 class="gf__bio-title">
-              <LucideIcon name="keyboard" /> Keystroke Dynamics
-            </h4>
-            <div class="gf__bio-metrics">
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">Toc do go</span>
-                <span class="gf__bio-value">{{ biometricsData.typingProfile?.avgSpeedCpm?.toFixed(0) || 0 }} cpm</span>
-              </div>
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">Dwell time TB</span>
-                <span class="gf__bio-value">{{ biometricsData.typingProfile?.avgDwellTime?.toFixed(0) || 0 }} ms</span>
-              </div>
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">Flight time TB</span>
-                <span class="gf__bio-value">{{ biometricsData.typingProfile?.avgFlightTimeMs?.toFixed(0) || 0 }} ms</span>
-              </div>
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">Do nhat quan</span>
-                <span
-                  class="gf__bio-value"
-                  :class="{
-                    'gf__bio-value--danger': biometricsData.typingProfile?.consistencyScore < 0.5,
-                    'gf__bio-value--warning': biometricsData.typingProfile?.consistencyScore < 0.7
-                  }"
-                >
-                  {{ formatPercent(biometricsData.typingProfile?.consistencyScore) }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <!-- Mouse Profile -->
-          <div class="gf__bio-card">
-            <h4 class="gf__bio-title">
-              <LucideIcon name="mouse" /> Mouse Patterns
-            </h4>
-            <div class="gf__bio-metrics">
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">Toc do TB</span>
-                <span class="gf__bio-value">{{ biometricsData.mouseProfile?.avgSpeedPps?.toFixed(0) || 0 }} pps</span>
-              </div>
-              <div class="gf__bio-metric">
-                <span class="gf__bio-label">So lan di chuyen</span>
-                <span class="gf__bio-value">{{ biometricsData.mouseProfile?.totalMovements || 0 }}</span>
-              </div>
-            </div>
-          </div>
-          <!-- Anomalies -->
-          <div class="gf__bio-card gf__bio-card--anomalies">
-            <h4 class="gf__bio-title">
-              <LucideIcon name="alert_triangle" /> Anomalies
-            </h4>
-            <div class="gf__bio-anomalies">
-              <div v-for="anomaly in biometricsAnomalies" :key="anomaly" class="gf__bio-anomaly">
-                {{ anomaly }}
-              </div>
-              <div v-if="!biometricsAnomalies.length" class="gf__bio-no-anomaly">
-                Khong phat hien bat thuong
-              </div>
-            </div>
+        <div v-else class="gf__behavior-list">
+          <div v-for="anomaly in behaviorAnomalies" :key="anomaly" class="gf__behavior-item">
+            <LucideIcon name="alert_triangle" class="gf__behavior-icon" />
+            <span class="gf__behavior-type">{{ anomaly }}</span>
           </div>
         </div>
       </div>
@@ -362,7 +304,7 @@
     <div v-else class="gf__empty-state">
       <LucideIcon name="search" />
       <h3>Chon bai thi de bat dau phan tich</h3>
-      <p>He thong se phan tich dao van, thoi gian, thong ke, sinh trac, va IP reputation</p>
+      <p>He thong se phan tich dao van, thoi gian, thong ke, hanh vi, va IP reputation</p>
     </div>
   </div>
 </template>
@@ -374,7 +316,7 @@ import {
   runPlagiarismAnalysis,
   runExamTimingAnalysis,
   runStatisticalAnalysis,
-  runExamBiometricsAnalysis,
+  runExamBehaviorAnalysis,
   runIpReputationAnalysis,
   runGradingByExam,
 } from '../../../services/fraudAnalysisService'
@@ -395,8 +337,8 @@ const exams = ref([])
 const plagiarismReports = ref([])
 const timingResults = ref([])
 const statisticalResults = ref([])
-const biometricsData = ref(null)
-const biometricsAnomalies = computed(() => biometricsData.value?.anomalies || [])
+const behaviorData = ref(null)
+const behaviorAnomalies = computed(() => behaviorData.value?.anomalies || [])
 const ipResults = ref([])
 const gradingResult = ref(null)
 
@@ -404,7 +346,7 @@ const hasResults = computed(() =>
   plagiarismReports.value.length > 0 ||
   timingResults.value.length > 0 ||
   statisticalResults.value.length > 0 ||
-  biometricsData.value !== null ||
+  behaviorData.value !== null ||
   ipResults.value.length > 0 ||
   gradingResult.value !== null
 )
@@ -413,7 +355,7 @@ const tabs = computed(() => [
   { id: 'plagiarism', label: 'Dao Van', icon: 'file_text', count: plagiarismReports.value.length },
   { id: 'timing', label: 'Thoi Gian', icon: 'timer', count: timingResults.value.length },
   { id: 'statistical', label: 'Thong Ke', icon: 'bar_chart_2', count: statisticalResults.value.length },
-  { id: 'biometrics', label: 'Sinh Trac', icon: 'fingerprint', count: biometricsAnomalies.value.length },
+  { id: 'behavior', label: 'Hanh Vi', icon: 'mouse_pointer_click', count: behaviorAnomalies.value.length },
   { id: 'ip', label: 'IP', icon: 'globe', count: ipResults.value.length },
   { id: 'grading', label: 'Cham Diem', icon: 'award', count: gradingResult.value ? 1 : 0 }
 ])
@@ -436,7 +378,7 @@ async function loadExam() {
   plagiarismReports.value = []
   timingResults.value = []
   statisticalResults.value = []
-  biometricsData.value = null
+  behaviorData.value = null
   ipResults.value = []
   gradingResult.value = null
 }
@@ -448,7 +390,7 @@ async function runFullAnalysis() {
   plagiarismReports.value = []
   timingResults.value = []
   statisticalResults.value = []
-  biometricsData.value = null
+  behaviorData.value = null
   ipResults.value = []
   gradingResult.value = null
 
@@ -465,9 +407,9 @@ async function runFullAnalysis() {
     const statResp = await runStatisticalAnalysis(selectedExamId.value)
     statisticalResults.value = statResp?.statisticalResults || []
 
-    loadingMessage.value = 'Dang phan tich sinh trac...'
-    const bioResp = await runExamBiometricsAnalysis(selectedExamId.value)
-    biometricsData.value = bioResp || null
+    loadingMessage.value = 'Dang phan tich hanh vi...'
+    const behaviorResp = await runExamBehaviorAnalysis(selectedExamId.value)
+    behaviorData.value = behaviorResp || null
 
     loadingMessage.value = 'Dang phan tich IP...'
     const ipResp = await runIpReputationAnalysis(selectedExamId.value)
@@ -850,66 +792,32 @@ function formatPercent(val) {
 .gf__stat-label { color: var(--color-text-muted, #6b7280); }
 .gf__stat-value { font-weight: 500; }
 
-/* Biometrics */
-.gf__biometrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+/* Behavior */
+.gf__behavior-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.gf__bio-card {
+.gf__behavior-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.75rem;
-  padding: 1rem;
+  border-radius: 0.5rem;
   background: var(--color-surface, #fff);
 }
 
-.gf__bio-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.gf__behavior-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-warning, #d97706);
 }
 
-.gf__bio-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.gf__bio-metric {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.gf__bio-label { color: var(--color-text-muted, #6b7280); }
-.gf__bio-value { font-weight: 500; }
-.gf__bio-value--danger { color: #dc2626; }
-.gf__bio-value--warning { color: #d97706; }
-
-.gf__bio-anomalies {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.gf__bio-anomaly {
-  padding: 0.375rem 0.75rem;
-  background: #fef3c7;
-  color: #92400e;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
+.gf__behavior-type {
   font-weight: 500;
-}
-
-.gf__bio-no-anomaly {
-  color: var(--color-text-muted, #6b7280);
   font-size: 0.875rem;
-  text-align: center;
-  padding: 1rem;
 }
 
 /* IP */

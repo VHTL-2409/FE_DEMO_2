@@ -41,9 +41,22 @@ class FrameAnalysisRequest(BaseModel):
 class FrameAnalysisResponse(BaseModel):
     status: str
     face_count: int
+    eye_count: int
+    face_detected: bool
+    multiple_faces: bool
+    face_quality: str
+    frame_quality: str
     average_brightness: float
     signals: list[FraudSignal] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
     diagnostics: dict[str, Any] = Field(default_factory=dict)
+    # Eye tracking and gaze analysis
+    eye_state: str | None = Field(default=None, description="OPEN, CLOSED, or PARTIAL")
+    eye_aspect_ratio: float | None = Field(default=None, description="Eye aspect ratio for blink detection")
+    blink_rate: float | None = Field(default=None, description="Blink rate per minute")
+    gaze_direction: str | None = Field(default=None, description="CENTER, LEFT, RIGHT, UP, DOWN")
+    gaze_off_screen: bool = Field(default=False, description="Whether gaze is off the exam screen")
+    attention_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Attention score 0-1")
 
 
 class BehaviorAnalysisRequest(BaseModel):

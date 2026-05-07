@@ -113,6 +113,7 @@
             v-model:monitorRapidQuestionSwitch="form.monitorRapidQuestionSwitch"
             v-model:monitorMultiMonitor="form.monitorMultiMonitor"
             v-model:requireCameraMic="form.requireCameraMic"
+            v-model:enableAiProctoring="form.enableAiProctoring"
           />
 
           </div><!-- end .ec-form-scroll -->
@@ -283,7 +284,8 @@ const form = reactive({
   monitorPrintScreen: true,
   monitorRapidQuestionSwitch: true,
   monitorMultiMonitor: true,
-  requireCameraMic: true
+  requireCameraMic: true,
+  enableAiProctoring: true
 })
 
 // Watch proctoringEnabled to reset related settings when disabled
@@ -302,6 +304,7 @@ watch(() => form.proctoringEnabled, (enabled) => {
     form.monitorPrintScreen = false
     form.monitorRapidQuestionSwitch = false
     form.monitorMultiMonitor = false
+    form.enableAiProctoring = false
   }
 })
 
@@ -675,6 +678,7 @@ function buildExamPayload() {
     monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
     monitorMultiMonitor: form.monitorMultiMonitor,
     requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
+    enableAiProctoring: form.proctoringEnabled ? form.enableAiProctoring : false,
     shuffleQuestions: form.shuffleQuestions,
     shuffleAnswers: form.shuffleAnswers,
     showScoreAfterSubmit: form.showScoreAfterSubmit

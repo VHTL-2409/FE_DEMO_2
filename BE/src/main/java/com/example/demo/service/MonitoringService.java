@@ -1,24 +1,15 @@
 package com.example.demo.service;
 
 import com.example.demo.api.dto.monitoring.AuditLogItem;
+import com.example.demo.api.dto.monitoring.CameraAlertResponse;
+import com.example.demo.api.dto.monitoring.CameraStatusResponse;
 import com.example.demo.api.dto.monitoring.MonitoringEventRequest;
 import com.example.demo.api.dto.monitoring.MonitoringEventResponse;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
 import com.example.demo.api.dto.monitoring.RiskScoreResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.common.VietNamTime;
-import com.example.demo.domain.entity.AttemptStatus;
-import com.example.demo.domain.entity.AutoPausedBy;
-import com.example.demo.domain.entity.ExamEvent;
-import com.example.demo.domain.entity.ExamAttempt;
-import com.example.demo.domain.entity.FraudSignal;
-import com.example.demo.domain.entity.MonitoringEvent;
-import com.example.demo.domain.entity.MonitoringEventType;
-import com.example.demo.domain.entity.RiskActionType;
-import com.example.demo.domain.entity.RiskLevel;
-import com.example.demo.domain.entity.RoleName;
-import com.example.demo.domain.entity.User;
-import com.example.demo.domain.entity.AuditLog;
+import com.example.demo.domain.entity.*;
 import com.example.demo.repository.AuditLogRepository;
 import com.example.demo.repository.ExamEventRepository;
 import com.example.demo.repository.ExamAttemptRepository;
@@ -32,8 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service giám sát phiên thi: quản lý events, timeline, các hành động của giám thị (pause/resume/stop/warning).
@@ -441,6 +432,242 @@ public class MonitoringService {
 
         if (!(isAdmin || (isTeacher && isExamTeacher))) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to manage this attempt");
+        }
+    }
+
+    // ============== AI Camera Dashboard Methods ==============
+
+    private static final Set<String> AI_CAMERA_SIGNALS = Set.of(
+            "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
+            "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
+            "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
+            "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
+            "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
+            "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
+            "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+            "FLAT_IMAGE", "SCREEN_DISPLAY"
+    );
+
+    /**
+     * Get camera status for all students in an exam.
+     */
+    public List<CameraStatusResponse> getCameraStatusByExam(Long examId) {
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamId(examId);
+        List<CameraStatusResponse> statuses = new ArrayList<>();
+
+        for (ExamAttempt attempt : attempts) {
+            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt);
+
+            // Filter AI camera signals
+            List<FraudSignal> aiSignals = signals.stream()
+                    .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
+                    .toList();
+
+            // Determine status
+            String status = determineCameraStatus(aiSignals, attempt.getCameraOn());
+            int alertCount = (int) aiSignals.stream()
+                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+                    .count();
+
+            // Get active signals
+            List<String> activeSignalTypes = aiSignals.stream()
+                    .map(FraudSignal::getSignalType)
+                    .distinct()
+                    .toList();
+
+            // Get critical signals with details
+            List<CameraStatusResponse.AiCameraSignal> criticalSignals = aiSignals.stream()
+                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+                    .limit(5)
+                    .map(s -> CameraStatusResponse.AiCameraSignal.builder()
+                            .signalType(s.getSignalType())
+                            .severity(s.getSeverity().name())
+                            .confidence(s.getConfidence())
+                            .occurredAt(s.getCreatedAt())
+                            .description(getSignalDescription(s.getSignalType()))
+                            .build())
+                    .toList();
+
+            CameraStatusResponse.CameraStatusResponseBuilder builder = CameraStatusResponse.builder()
+                    .attemptId(attempt.getId())
+                    .studentId(attempt.getStudent().getId())
+                    .studentName(attempt.getStudent().getUsername())
+                    .studentCode(attempt.getStudent().getStudentCode())
+                    .cameraActive(attempt.getCameraOn())
+                    .status(status)
+                    .alertCount(alertCount)
+                    .riskScore(attempt.getRiskScore())
+                    .activeSignals(activeSignalTypes)
+                    .criticalSignals(criticalSignals)
+                    .lastUpdate(latestAttemptUpdate(attempt));
+
+            // Extract quality metrics from latest signal
+            aiSignals.stream().findFirst().ifPresent(signal -> {
+                if (signal.getEvidence() != null) {
+                    try {
+                        Map<String, Object> evidence = parseEvidence(signal.getEvidence());
+                        if (evidence.containsKey("faceQuality")) {
+                            builder.faceQuality(String.valueOf(evidence.get("faceQuality")));
+                        }
+                        if (evidence.containsKey("frameQuality")) {
+                            builder.frameQuality(String.valueOf(evidence.get("frameQuality")));
+                        }
+                        if (evidence.containsKey("averageBrightness")) {
+                            Object brightness = evidence.get("averageBrightness");
+                            if (brightness instanceof Number) {
+                                builder.averageBrightness(((Number) brightness).doubleValue());
+                            }
+                        }
+                        if (evidence.containsKey("faceCount")) {
+                            builder.faceDetected(((Number) evidence.get("faceCount")).intValue() > 0);
+                            builder.multipleFaces(((Number) evidence.get("faceCount")).intValue() > 1);
+                        }
+                        if (evidence.containsKey("eyeCount")) {
+                            Object eyeCount = evidence.get("eyeCount");
+                            if (eyeCount instanceof Number) {
+                                builder.eyeCount(((Number) eyeCount).intValue());
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+
+            statuses.add(builder.build());
+        }
+
+        return statuses;
+    }
+
+    /**
+     * Get AI camera alerts for an exam.
+     */
+    public List<CameraAlertResponse> getCameraAlertsByExam(Long examId) {
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamId(examId);
+        List<CameraAlertResponse> alerts = new ArrayList<>();
+
+        for (ExamAttempt attempt : attempts) {
+            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt);
+            List<FraudSignal> aiSignals = signals.stream()
+                    .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
+                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+                    .limit(10)
+                    .toList();
+
+            for (FraudSignal signal : aiSignals) {
+                alerts.add(CameraAlertResponse.builder()
+                        .id(signal.getId())
+                        .attemptId(attempt.getId())
+                        .studentId(attempt.getStudent().getId())
+                        .studentName(attempt.getStudent().getUsername())
+                        .studentCode(attempt.getStudent().getStudentCode())
+                        .signalType(signal.getSignalType())
+                        .severity(signal.getSeverity().name())
+                        .confidence(signal.getConfidence())
+                        .description(getSignalDescription(signal.getSignalType()))
+                        .createdAt(signal.getCreatedAt())
+                        .build());
+            }
+        }
+
+        // Sort by creation time, newest first
+        alerts.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return alerts;
+    }
+
+    /**
+     * Acknowledge a camera alert.
+     */
+    public void acknowledgeCameraAlert(Long alertId, User actor) {
+        // Implementation depends on Alert entity structure
+        // For now, this is a placeholder
+    }
+
+    /**
+     * Dismiss a camera alert.
+     */
+    public void dismissCameraAlert(Long alertId, User actor) {
+        // Implementation depends on Alert entity structure
+        // For now, this is a placeholder
+    }
+
+    private String determineCameraStatus(List<FraudSignal> aiSignals, Boolean cameraOn) {
+        if (!Boolean.TRUE.equals(cameraOn)) {
+            return "NO_CAMERA";
+        }
+
+        boolean hasCritical = aiSignals.stream()
+                .anyMatch(s -> s.getSeverity() == SignalSeverity.CRITICAL);
+        if (hasCritical) {
+            return "CRITICAL";
+        }
+
+        boolean hasHigh = aiSignals.stream()
+                .anyMatch(s -> s.getSeverity() == SignalSeverity.HIGH);
+        if (hasHigh) {
+            return "WARNING";
+        }
+
+        boolean hasMedium = aiSignals.stream()
+                .anyMatch(s -> s.getSeverity() == SignalSeverity.MEDIUM);
+        if (hasMedium) {
+            return "WARNING";
+        }
+
+        return "OK";
+    }
+
+    private LocalDateTime latestAttemptUpdate(ExamAttempt attempt) {
+        if (attempt.getDeviceCheckedAt() != null) {
+            return attempt.getDeviceCheckedAt();
+        }
+        if (attempt.getLastHeartbeatAt() != null) {
+            return attempt.getLastHeartbeatAt();
+        }
+        return attempt.getStartedAt();
+    }
+
+    private String getSignalDescription(String signalType) {
+        Map<String, String> descriptions = Map.ofEntries(
+                Map.entry("FACE_NOT_DETECTED", "Không phát hiện khuôn mặt"),
+                Map.entry("MULTIPLE_FACES", "Nhiều khuôn mặt trong khung hình"),
+                Map.entry("FACE_SPOOFING_SUSPECTED", "Nghi vấn giả mạo khuôn mặt"),
+                Map.entry("FACE_OBSTRUCTED_MASK", "Khuôn mặt bị che bởi khẩu trang"),
+                Map.entry("EYES_OBSTRUCTED", "Mắt bị che bởi kính"),
+                Map.entry("PARTIAL_FACE_VISIBLE", "Khuôn mặt không hiển thị đầy đủ"),
+                Map.entry("FACE_TOO_FAR", "Khuôn mặt quá xa camera"),
+                Map.entry("FACE_TOO_CLOSE", "Khuôn mặt quá gần camera"),
+                Map.entry("FACE_TURNED_AWAY", "Quay mặt đi"),
+                Map.entry("FACE_NOT_CENTERED", "Khuôn mặt lệch tâm"),
+                Map.entry("EYES_NOT_DETECTED", "Không phát hiện mắt"),
+                Map.entry("VERY_LOW_LIGHTING", "Ánh sáng rất yếu"),
+                Map.entry("LOW_LIGHTING", "Ánh sáng yếu"),
+                Map.entry("OVEREXPOSED_FRAME", "Hình ảnh quá sáng"),
+                Map.entry("VERY_BLURRY_FRAME", "Hình ảnh rất mờ"),
+                Map.entry("BLURRY_FRAME", "Hình ảnh mờ"),
+                Map.entry("EYE_BLINK_ANOMALY", "Eye blink anomaly"),
+                Map.entry("EYES_CLOSED_PROLONGED", "Eyes closed for too long"),
+                Map.entry("GAZE_OFF_SCREEN", "Gaze off screen"),
+                Map.entry("RAPID_EYE_MOVEMENT", "Rapid eye movement"),
+                Map.entry("PRINTED_PHOTO", "Printed photo suspected"),
+                Map.entry("SCREEN_REPLAY", "Screen replay suspected"),
+                Map.entry("DEEPFAKE", "Deepfake suspected"),
+                Map.entry("FLAT_IMAGE", "Flat image suspected"),
+                Map.entry("SCREEN_DISPLAY", "Screen display suspected")
+        );
+        return descriptions.getOrDefault(signalType, signalType);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parseEvidence(String evidenceJson) {
+        if (evidenceJson == null || evidenceJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(evidenceJson, Map.class);
+        } catch (Exception ignored) {
+            return Map.of();
         }
     }
 }

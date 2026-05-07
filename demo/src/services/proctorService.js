@@ -17,6 +17,15 @@ export const reportProctorSignal = async (payload) => {
   return unwrapApiData(response)
 }
 
+export const analyzeProctorFrame = async (payload) => {
+  const response = await apiRequest('/api/v1/proctor/ai/frame', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
 export const fetchProctorRisk = async (attemptId) => {
   const response = await apiRequest(`/api/v1/proctor/attempts/${attemptId}/risk`, { suppressToast: true })
   return unwrapApiData(response)
@@ -41,6 +50,31 @@ export const reviewProctorFlag = async (flagId, payload) => {
   const response = await apiRequest(`/api/v1/proctor/flags/${flagId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
+  })
+  return unwrapApiData(response)
+}
+
+// AI Camera Monitoring APIs
+export const fetchCameraStatus = async (examId) => {
+  const response = await apiRequest(`/api/v1/proctor/exams/${examId}/camera-status`, { suppressToast: true })
+  return unwrapApiData(response)
+}
+
+export const fetchCameraAlerts = async (examId) => {
+  const response = await apiRequest(`/api/v1/proctor/exams/${examId}/camera-alerts`, { suppressToast: true })
+  return unwrapApiData(response)
+}
+
+export const acknowledgeCameraAlert = async (alertId) => {
+  const response = await apiRequest(`/api/v1/proctor/alerts/${alertId}/acknowledge`, {
+    method: 'POST'
+  })
+  return unwrapApiData(response)
+}
+
+export const dismissCameraAlert = async (alertId) => {
+  const response = await apiRequest(`/api/v1/proctor/alerts/${alertId}/dismiss`, {
+    method: 'POST'
   })
   return unwrapApiData(response)
 }

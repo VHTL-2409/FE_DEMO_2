@@ -136,6 +136,11 @@ const router = createRouter({
     { path: '/teacher/live-monitoring', component: () => import('./components/teacher/TeacherSelectExamUpdatedMenu.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     { path: '/teacher/live-monitoring/session', redirect: to => { if (to.query?.examId) return { path: `/teacher/exams/${to.query.examId}/monitoring` }; return '/teacher/live-monitoring' } },
     { path: '/teacher/live-monitoring/student-detail', component: () => import('./components/teacher/StudentViolationDetailMonitoring.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
+    {
+      path: '/teacher/exams/:examId/ai-camera',
+      component: () => import('./components/teacher/monitoring/AiCameraDashboard.vue'),
+      meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' }
+    },
     { path: '/teacher/profile', component: () => import('./components/teacher/TeacherProfile.vue'), meta: { requiresAuth: true, teacherOnly: true, layout: 'portal' } },
     {
       path: '/teacher/analytics',

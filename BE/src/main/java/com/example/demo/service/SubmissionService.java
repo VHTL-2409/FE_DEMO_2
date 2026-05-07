@@ -273,6 +273,10 @@ public class SubmissionService {
         return normalized;
     }
 
+    private static boolean monitoringFlagEnabled(Boolean value) {
+        return !Boolean.FALSE.equals(value);
+    }
+
     @Transactional(readOnly = true)
     public AttemptDetailResponse getAttemptDetail(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
@@ -311,6 +315,26 @@ public class SubmissionService {
                 .saveCount(attempt.getSaveCount())
                 .submitCount(attempt.getSubmitCount())
                 .fullscreenRequired(attempt.getFullscreenRequired())
+                .enableAiProctoring(Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring()))
+                .requireCameraMic(monitoringFlagEnabled(attempt.getExam().getRequireCameraMic()))
+                .monitorTabSwitch(monitoringFlagEnabled(attempt.getExam().getMonitorTabSwitch()))
+                .monitorBlur(monitoringFlagEnabled(attempt.getExam().getMonitorBlur()))
+                .monitorExitFullscreen(monitoringFlagEnabled(attempt.getExam().getMonitorExitFullscreen()))
+                .monitorCopyPaste(monitoringFlagEnabled(attempt.getExam().getMonitorCopyPaste()))
+                .monitorIdleTime(monitoringFlagEnabled(attempt.getExam().getMonitorIdleTime()))
+                .monitorDevtools(monitoringFlagEnabled(attempt.getExam().getMonitorDevtools()))
+                .monitorDuplicateIp(monitoringFlagEnabled(attempt.getExam().getMonitorDuplicateIp()))
+                .monitorFastSubmit(monitoringFlagEnabled(attempt.getExam().getMonitorFastSubmit()))
+                .monitorRightClick(monitoringFlagEnabled(attempt.getExam().getMonitorRightClick()))
+                .monitorPrintScreen(monitoringFlagEnabled(attempt.getExam().getMonitorPrintScreen()))
+                .monitorRapidQuestionSwitch(monitoringFlagEnabled(attempt.getExam().getMonitorRapidQuestionSwitch()))
+                .monitorMultiMonitor(monitoringFlagEnabled(attempt.getExam().getMonitorMultiMonitor()))
+                .monitorNetworkInstability(monitoringFlagEnabled(attempt.getExam().getMonitorNetworkInstability()))
+                .monitorSessionRecovery(monitoringFlagEnabled(attempt.getExam().getMonitorSessionRecovery()))
+                .monitorQuestionTimingAnomaly(monitoringFlagEnabled(attempt.getExam().getMonitorQuestionTimingAnomaly()))
+                .monitorAnswerChangeBurst(monitoringFlagEnabled(attempt.getExam().getMonitorAnswerChangeBurst()))
+                .monitorClipboardBurst(monitoringFlagEnabled(attempt.getExam().getMonitorClipboardBurst()))
+                .monitorFullscreenEvasion(monitoringFlagEnabled(attempt.getExam().getMonitorFullscreenEvasion()))
                 .build();
     }
 

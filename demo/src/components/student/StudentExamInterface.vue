@@ -351,6 +351,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
 import { updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionJson, parseQuestionOptions } from '../../services/questionService'
+import { analyzeProctorFrame } from '../../services/proctorService'
 import { useToast } from '../../composables/useToast'
 import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
 import { useExamProctoring } from '../../composables/useExamProctoring'
@@ -390,6 +391,7 @@ const examConfig = ref({
   monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: false,
   monitorPrintScreen: false, monitorRapidQuestionSwitch: false,
   monitorMultiMonitor: false, requireCameraMic: true,
+  enableAiProctoring: false,
   monitorNetworkInstability: true, monitorSessionRecovery: true,
   monitorQuestionTimingAnomaly: false, monitorAnswerChangeBurst: false,
   monitorClipboardBurst: false, monitorFullscreenEvasion: true
@@ -466,12 +468,16 @@ let timerId = null
 let blurGraceTimer = null
 let attemptStatusTimer = null
 let blockBackHandler = null
+let aiFrameInterval = null
 
 const VIOLATION_COOLDOWN_MS = 5000  // 5s - prevents rapid-fire duplicates during batch, backend handles score dedup
 const LONG_VIOLATION_COOLDOWN_MS = 10000  // 10s - longer cooldown for severe violations
 const BLUR_GRACE_MS = 1200
 const DEVTOOLS_GAP_PX = 160
 const LONG_SCREEN_LEAVE_THRESHOLD_MS = 30_000
+const AI_FRAME_INTERVAL_MS = 12_000
+const AI_FRAME_WIDTH = 320
+const AI_FRAME_JPEG_QUALITY = 0.55
 
 const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
@@ -539,8 +545,21 @@ const normalizeAnswerIdsForQuestion = (question, value) => {
 }
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
-const shouldCheckDevices = computed(() => !isPracticeExam.value && examConfig.value.requireCameraMic !== false)
+const shouldCheckDevices = computed(() => !isPracticeExam.value && (
+  examConfig.value.requireCameraMic !== false || examConfig.value.enableAiProctoring === true
+))
 const devicesReady = computed(() => cameraReady.value && micReady.value)
+const aiFrameInFlight = ref(false)
+const aiFrameSamplingEnabled = computed(() => {
+  const status = String(attemptStatus.value || '').toUpperCase()
+  return !isPracticeExam.value
+    && examConfig.value.enableAiProctoring === true
+    && Boolean(attemptId.value)
+    && !isSuspended.value
+    && (status === 'IN_PROGRESS' || status === 'ACTIVE')
+    && cameraReady.value
+    && Boolean(mediaStreamRef.value)
+})
 const examProgressStats = computed(() => {
   let answered = 0; let marked = 0; let skipped = 0; let notVisited = 0
   for (const question of questions.value) {
@@ -640,9 +659,10 @@ const checkDevices = async () => {
   if (!navigator?.mediaDevices?.getUserMedia) { cameraReady.value = false; micReady.value = false; deviceError.value = 'Trình duyệt không hỗ trợ.'; return }
   isCheckingDevices.value = true; deviceError.value = ''
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    const needsMic = examConfig.value.requireCameraMic !== false
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: needsMic })
     const vt = stream.getVideoTracks()[0]; const at = stream.getAudioTracks()[0]
-    cameraReady.value = Boolean(vt?.enabled); micReady.value = Boolean(at?.enabled)
+    cameraReady.value = Boolean(vt?.enabled); micReady.value = needsMic ? Boolean(at?.enabled) : true
     mediaStreamRef.value = stream
     deviceStatusInterval = setInterval(syncDeviceStatusToBackend, 15000)
     await syncDeviceStatusToBackend()
@@ -653,14 +673,74 @@ const checkDevices = async () => {
 }
 
 const stopMediaStream = () => {
+  stopAiFrameSampler()
   if (deviceStatusInterval) { clearInterval(deviceStatusInterval); deviceStatusInterval = null }
   if (mediaStreamRef.value) { mediaStreamRef.value.getTracks().forEach(t => t.stop()); mediaStreamRef.value = null }
   if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
 }
 
+const captureAndSendAiFrame = async () => {
+  if (!aiFrameSamplingEnabled.value || aiFrameInFlight.value) return
+  const video = cameraPreviewRef.value
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return
+
+  aiFrameInFlight.value = true
+  try {
+    const width = Math.min(AI_FRAME_WIDTH, video.videoWidth)
+    const height = Math.max(1, Math.round((video.videoHeight / video.videoWidth) * width))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0, width, height)
+    const imageBase64 = canvas.toDataURL('image/jpeg', AI_FRAME_JPEG_QUALITY)
+    await analyzeProctorFrame({
+      attemptId: attemptId.value,
+      imageBase64,
+      capturedAt: new Date().toISOString(),
+      metadata: {
+        examId: examId.value,
+        source: 'student_exam_interface',
+        cameraOn: cameraReady.value,
+        micOn: micReady.value,
+        visibility: document.visibilityState || 'visible',
+        fullscreen: Boolean(document.fullscreenElement),
+        questionIndex: currentIndex.value + 1,
+        viewportWidth: window.innerWidth || null,
+        viewportHeight: window.innerHeight || null
+      }
+    })
+  } catch {
+    // AI camera is advisory; keep the exam flow running if a sample fails.
+  } finally {
+    aiFrameInFlight.value = false
+  }
+}
+
+const startAiFrameSampler = () => {
+  if (aiFrameInterval || !aiFrameSamplingEnabled.value) return
+  void captureAndSendAiFrame()
+  aiFrameInterval = window.setInterval(() => {
+    void captureAndSendAiFrame()
+  }, AI_FRAME_INTERVAL_MS)
+}
+
+const stopAiFrameSampler = () => {
+  if (aiFrameInterval) {
+    window.clearInterval(aiFrameInterval)
+    aiFrameInterval = null
+  }
+}
+
 watch(mediaStreamRef, (stream) => {
   if (!stream) return
   nextTick(() => { if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = stream })
+})
+
+watch(aiFrameSamplingEnabled, (enabled) => {
+  if (enabled) startAiFrameSampler()
+  else stopAiFrameSampler()
 })
 
 const syncRiskState = (payload) => {
@@ -770,6 +850,37 @@ const buildTelemetrySnapshot = (overrides = {}) => ({
   ...overrides
 })
 
+const ATTEMPT_CONFIG_KEYS = [
+  'enableAiProctoring',
+  'requireCameraMic',
+  'monitorTabSwitch',
+  'monitorBlur',
+  'monitorExitFullscreen',
+  'monitorCopyPaste',
+  'monitorIdleTime',
+  'monitorDevtools',
+  'monitorDuplicateIp',
+  'monitorFastSubmit',
+  'monitorRightClick',
+  'monitorPrintScreen',
+  'monitorRapidQuestionSwitch',
+  'monitorMultiMonitor',
+  'monitorNetworkInstability',
+  'monitorSessionRecovery',
+  'monitorQuestionTimingAnomaly',
+  'monitorAnswerChangeBurst',
+  'monitorClipboardBurst',
+  'monitorFullscreenEvasion'
+]
+
+const applyExamConfigFromAttempt = (detail = {}) => {
+  const next = { ...examConfig.value }
+  for (const key of ATTEMPT_CONFIG_KEYS) {
+    if (typeof detail[key] === 'boolean') next[key] = detail[key]
+  }
+  examConfig.value = next
+}
+
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS, telemetry = {}) => {
   if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
   const cfg = examConfig.value
@@ -858,9 +969,10 @@ const enforceDeviceAccess = async () => {
   if (isPracticeExam.value) return
   if (mediaStreamRef.value) {
     const vt = mediaStreamRef.value.getVideoTracks()[0]; const at = mediaStreamRef.value.getAudioTracks()[0]
-    const ve = !vt || vt.readyState === 'ended'; const ae = !at || at.readyState === 'ended'
+    const needsMic = examConfig.value.requireCameraMic !== false
+    const ve = !vt || vt.readyState === 'ended'; const ae = needsMic && (!at || at.readyState === 'ended')
     if (ve || ae) { isSuspended.value = true; suspensionMessage.value = 'Camera hoặc micro đã bị thu hồi. Vui lòng tải lại trang.'; return }
-    cameraReady.value = Boolean(vt?.enabled); micReady.value = Boolean(at?.enabled)
+    cameraReady.value = Boolean(vt?.enabled); micReady.value = needsMic ? Boolean(at?.enabled) : true
     await syncDeviceStatusToBackend()
     return
   }
@@ -879,6 +991,7 @@ const syncAttemptStatus = async () => {
   if (!attemptId.value) return
   try {
     const detail = await getAttemptDetail(attemptId.value)
+    applyExamConfigFromAttempt(detail)
     applyAttemptStatus(detail?.status || 'IN_PROGRESS')
     if (typeof detail?.riskScore === 'number') examSessionStore.setRiskState({ riskScore: detail.riskScore, riskLevel: detail.riskLevel || examSessionStore.riskState.riskLevel, status: detail.status || attemptStatus.value })
     if (typeof detail?.remainingSeconds === 'number' && detail.remainingSeconds >= 0) {
@@ -1217,12 +1330,14 @@ onMounted(async () => {
   attachEventListeners()
   setupBlockBackButton()
   if (!isPracticeExam.value) {
-    await enforceDeviceAccess()
+    await syncAttemptStatus()
+    if (!isSuspended.value) {
+      await enforceDeviceAccess()
+    }
     if (attemptId.value && examId.value) {
       await startPhaseOneProctoring()
     }
     void connectProctorRealtime()
-    void syncAttemptStatus()
     attemptStatusTimer = setInterval(syncAttemptStatus, 30000)
   }
 
@@ -1234,6 +1349,7 @@ onMounted(async () => {
 onUnmounted(() => {
   removeEventListeners()
   teardownBlockBackButton()
+  stopAiFrameSampler()
   stopMediaStream()
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)

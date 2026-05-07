@@ -145,6 +145,35 @@ public class FraudSignalService {
             case "AI_PHONE_DETECTED" -> new SignalDescriptor("AI_PHONE_DETECTED", "IDENTITY", "Phát hiện điện thoại", 15, SignalSeverity.HIGH, 0.94);
             case "AI_LOOKING_AWAY" -> new SignalDescriptor("AI_LOOKING_AWAY", "IDENTITY", "Nhìn sang chỗ khác", 5, SignalSeverity.MEDIUM, 0.78);
             case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện nói chuyện", 10, SignalSeverity.MEDIUM, 0.75);
+            // New AI Camera Detection Signals
+            case "FACE_NOT_DETECTED" -> new SignalDescriptor("FACE_NOT_DETECTED", "AI_CAMERA", "Không phát hiện khuôn mặt", 20, SignalSeverity.HIGH, 0.90);
+            case "MULTIPLE_FACES" -> new SignalDescriptor("MULTIPLE_FACES", "AI_CAMERA", "Nhiều khuôn mặt trong khung hình", 25, SignalSeverity.CRITICAL, 0.97);
+            case "FACE_SPOOFING_SUSPECTED" -> new SignalDescriptor("FACE_SPOOFING_SUSPECTED", "AI_CAMERA", "Nghi vấn giả mạo khuôn mặt", 25, SignalSeverity.CRITICAL, 0.85);
+            case "FACE_OBSTRUCTED_MASK" -> new SignalDescriptor("FACE_OBSTRUCTED_MASK", "AI_CAMERA", "Khuôn mặt bị che bởi khẩu trang", 18, SignalSeverity.HIGH, 0.90);
+            case "EYES_OBSTRUCTED" -> new SignalDescriptor("EYES_OBSTRUCTED", "AI_CAMERA", "Mắt bị che bởi kính", 10, SignalSeverity.MEDIUM, 0.78);
+            case "PARTIAL_FACE_VISIBLE" -> new SignalDescriptor("PARTIAL_FACE_VISIBLE", "AI_CAMERA", "Khuôn mặt không hiển thị đầy đủ", 10, SignalSeverity.MEDIUM, 0.75);
+            case "FACE_TOO_FAR" -> new SignalDescriptor("FACE_TOO_FAR", "AI_CAMERA", "Khuôn mặt quá xa camera", 8, SignalSeverity.MEDIUM, 0.78);
+            case "FACE_TOO_CLOSE" -> new SignalDescriptor("FACE_TOO_CLOSE", "AI_CAMERA", "Khuôn mặt quá gần camera", 5, SignalSeverity.LOW, 0.70);
+            case "FACE_TURNED_AWAY" -> new SignalDescriptor("FACE_TURNED_AWAY", "AI_CAMERA", "Quay mặt đi", 10, SignalSeverity.MEDIUM, 0.75);
+            case "FACE_NOT_CENTERED" -> new SignalDescriptor("FACE_NOT_CENTERED", "AI_CAMERA", "Khuôn mặt lệch tâm", 5, SignalSeverity.LOW, 0.55);
+            case "EYES_NOT_DETECTED" -> new SignalDescriptor("EYES_NOT_DETECTED", "AI_CAMERA", "Không phát hiện mắt", 8, SignalSeverity.MEDIUM, 0.72);
+            case "VERY_LOW_LIGHTING" -> new SignalDescriptor("VERY_LOW_LIGHTING", "AI_CAMERA", "Ánh sáng rất yếu", 15, SignalSeverity.HIGH, 0.82);
+            case "LOW_LIGHTING" -> new SignalDescriptor("LOW_LIGHTING", "AI_CAMERA", "Ánh sáng yếu", 8, SignalSeverity.MEDIUM, 0.65);
+            case "OVEREXPOSED_FRAME" -> new SignalDescriptor("OVEREXPOSED_FRAME", "AI_CAMERA", "Hình ảnh quá sáng", 5, SignalSeverity.LOW, 0.58);
+            case "VERY_BLURRY_FRAME" -> new SignalDescriptor("VERY_BLURRY_FRAME", "AI_CAMERA", "Hình ảnh rất mờ", 15, SignalSeverity.HIGH, 0.85);
+            case "BLURRY_FRAME" -> new SignalDescriptor("BLURRY_FRAME", "AI_CAMERA", "Hình ảnh mờ", 5, SignalSeverity.LOW, 0.58);
+            // Eye Tracking Signals
+            case "EYE_BLINK_ANOMALY" -> new SignalDescriptor("EYE_BLINK_ANOMALY", "EYE_TRACKING", "Tần suất nháy mắt bất thường", 10, SignalSeverity.MEDIUM, 0.72);
+            case "EYES_CLOSED_PROLONGED" -> new SignalDescriptor("EYES_CLOSED_PROLONGED", "EYE_TRACKING", "Mắt nhắm lâu bất thường", 5, SignalSeverity.LOW, 0.65);
+            // Gaze Tracking Signals
+            case "GAZE_OFF_SCREEN" -> new SignalDescriptor("GAZE_OFF_SCREEN", "GAZE_TRACKING", "Nhìn ra ngoài màn hình", 12, SignalSeverity.HIGH, 0.78);
+            case "RAPID_EYE_MOVEMENT" -> new SignalDescriptor("RAPID_EYE_MOVEMENT", "GAZE_TRACKING", "Chuyển động mắt nhanh bất thường", 8, SignalSeverity.MEDIUM, 0.68);
+            // Deep Learning Spoofing Signals
+            case "PRINTED_PHOTO" -> new SignalDescriptor("PRINTED_PHOTO", "AI_SPOOFING", "Phát hiện ảnh in", 25, SignalSeverity.CRITICAL, 0.88);
+            case "SCREEN_REPLAY" -> new SignalDescriptor("SCREEN_REPLAY", "AI_SPOOFING", "Phát hiện phát lại màn hình", 25, SignalSeverity.CRITICAL, 0.75);
+            case "DEEPFAKE" -> new SignalDescriptor("DEEPFAKE", "AI_SPOOFING", "Nghi vấn Deepfake", 30, SignalSeverity.CRITICAL, 0.90);
+            case "FLAT_IMAGE" -> new SignalDescriptor("FLAT_IMAGE", "AI_SPOOFING", "Hình ảnh phẳng (không có chiều sâu)", 20, SignalSeverity.HIGH, 0.72);
+            case "SCREEN_DISPLAY" -> new SignalDescriptor("SCREEN_DISPLAY", "AI_SPOOFING", "Hình ảnh từ màn hình", 18, SignalSeverity.HIGH, 0.68);
             default -> new SignalDescriptor(normalized, "OTHER", normalized.replace("_", " "), 5, SignalSeverity.LOW, 0.6);
         };
     }

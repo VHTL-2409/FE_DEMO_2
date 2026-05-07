@@ -104,6 +104,7 @@
                 v-model:monitorRapidQuestionSwitch="form.monitorRapidQuestionSwitch"
                 v-model:monitorMultiMonitor="form.monitorMultiMonitor"
                 v-model:requireCameraMic="form.requireCameraMic"
+                v-model:enableAiProctoring="form.enableAiProctoring"
               />
             </div>
 
@@ -419,6 +420,7 @@ const form = reactive({
   monitorRapidQuestionSwitch: true,
   monitorMultiMonitor: true,
   requireCameraMic: true,
+  enableAiProctoring: false,
   questions: []
 })
 
@@ -493,7 +495,7 @@ const populateForm = (data) => {
   form.startTime = data.startTime || ''
   form.endTime = data.endTime || ''
   form.timezone = data.timezone || getBrowserTimezone()
-  form.proctoringEnabled = data.monitorTabSwitch || data.monitorBlur || data.monitorDevtools
+  form.proctoringEnabled = data.enableAiProctoring === true || data.monitorTabSwitch || data.monitorBlur || data.monitorDevtools
   form.monitorTabSwitch = data.monitorTabSwitch !== false
   form.monitorBlur = data.monitorBlur !== false
   form.monitorExitFullscreen = data.monitorExitFullscreen !== false
@@ -507,6 +509,7 @@ const populateForm = (data) => {
   form.monitorRapidQuestionSwitch = data.monitorRapidQuestionSwitch !== false
   form.monitorMultiMonitor = data.monitorMultiMonitor !== false
   form.requireCameraMic = data.requireCameraMic !== false
+  form.enableAiProctoring = data.enableAiProctoring === true
   hasUnsavedChanges = false
 }
 
@@ -535,7 +538,8 @@ const buildPayload = () => ({
   monitorPrintScreen: form.monitorPrintScreen,
   monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
   monitorMultiMonitor: form.monitorMultiMonitor,
-  requireCameraMic: form.requireCameraMic
+  requireCameraMic: form.requireCameraMic,
+  enableAiProctoring: form.enableAiProctoring
 })
 
 /**

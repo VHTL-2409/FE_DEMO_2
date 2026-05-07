@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class RealtimeNotificationService {
@@ -35,6 +36,7 @@ public class RealtimeNotificationService {
                 level,
                 breakdown
         );
+        notifyAiCameraSignal(attempt, signal);
     }
 
     public void notifyRiskUpdated(
@@ -120,6 +122,45 @@ public class RealtimeNotificationService {
             answeredCount,
             remainingSeconds
         );
+    }
+
+    // ============== AI Camera Notifications ==============
+
+    /**
+     * Notify AI Camera signal detected.
+     */
+    public void notifyAiCameraSignal(ExamAttempt attempt, FraudSignal signal) {
+        String signalType = signal.getSignalType();
+        // Only notify for AI camera signals
+        if (isAiCameraSignal(signalType)) {
+            teacherAlertGateway.publishAiCameraSignal(
+                    attempt.getExam().getId(),
+                    attempt.getId(),
+                    attempt.getStudent().getUsername(),
+                    signal
+            );
+        }
+    }
+
+    /**
+     * Notify AI Camera batch update.
+     */
+    public void notifyAiCameraBatchUpdate(Long examId, String summary) {
+        teacherAlertGateway.publishAiCameraBatchUpdate(examId, summary);
+    }
+
+    private boolean isAiCameraSignal(String signalType) {
+        if (signalType == null) return false;
+        return Set.of(
+                "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
+                "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
+                "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
+                "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
+                "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
+                "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
+                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                "FLAT_IMAGE", "SCREEN_DISPLAY"
+        ).contains(signalType);
     }
 
     private TeacherAlertGateway.AlertPayload.SignalInfo toSignalInfo(FraudSignal signal) {

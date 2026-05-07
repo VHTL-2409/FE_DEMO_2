@@ -63,7 +63,7 @@
               type="button"
               class="ec-toggle ec-toggle--sm"
               :class="localRules[rule.key] && 'ec-toggle--on'"
-              @click="localRules[rule.key] = !localRules[rule.key]"
+              @click="toggleRule(rule.key)"
             >
               <span class="ec-toggle__knob" />
             </button>
@@ -91,7 +91,8 @@ const props = defineProps({
   monitorPrintScreen: { type: Boolean, default: true },
   monitorRapidQuestionSwitch: { type: Boolean, default: true },
   monitorMultiMonitor: { type: Boolean, default: true },
-  requireCameraMic: { type: Boolean, default: true }
+  requireCameraMic: { type: Boolean, default: true },
+  enableAiProctoring: { type: Boolean, default: true }
 })
 
 const emit = defineEmits([
@@ -101,7 +102,7 @@ const emit = defineEmits([
   'update:monitorDuplicateIp', 'update:monitorFastSubmit',
   'update:monitorRightClick', 'update:monitorPrintScreen',
   'update:monitorRapidQuestionSwitch', 'update:monitorMultiMonitor',
-  'update:requireCameraMic'
+  'update:requireCameraMic', 'update:enableAiProctoring'
 ])
 
 const localEnabled = computed({
@@ -122,7 +123,8 @@ const localRules = reactive({
   monitorPrintScreen: props.monitorPrintScreen,
   monitorRapidQuestionSwitch: props.monitorRapidQuestionSwitch,
   monitorMultiMonitor: props.monitorMultiMonitor,
-  requireCameraMic: props.requireCameraMic
+  requireCameraMic: props.requireCameraMic,
+  enableAiProctoring: props.enableAiProctoring
 })
 
 const rules = [
@@ -138,8 +140,14 @@ const rules = [
   { key: 'monitorPrintScreen', icon: 'screenshot', color: 'muted', title: 'Chụp màn hình', desc: 'Phát hiện hành vi chụp màn hình' },
   { key: 'monitorRapidQuestionSwitch', icon: 'skip_next', color: 'info', title: 'Đổi câu nhanh', desc: 'Cảnh báo đổi câu hỏi liên tục với tốc độ bất thường' },
   { key: 'monitorMultiMonitor', icon: 'desktop_windows', color: 'danger', title: 'Đa màn hình', desc: 'Phát hiện nhiều màn hình hoặc chia đôi màn hình' },
-  { key: 'requireCameraMic', icon: 'videocam', color: 'primary', title: 'Yêu cầu camera/mic', desc: 'Bắt buộc bật camera và microphone trong suốt kỳ thi' }
+  { key: 'requireCameraMic', icon: 'videocam', color: 'primary', title: 'Yêu cầu camera/mic', desc: 'Bắt buộc bật camera và microphone trong suốt kỳ thi' },
+  { key: 'enableAiProctoring', icon: 'scan-face', color: 'danger', title: 'AI camera analysis', desc: 'Phân tích camera để ghi tín hiệu và tính điểm review' }
 ]
+
+const toggleRule = (key) => {
+  localRules[key] = !localRules[key]
+  emit(`update:${key}`, localRules[key])
+}
 
 const enableAll = () => {
   for (const rule of rules) {

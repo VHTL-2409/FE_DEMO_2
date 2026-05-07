@@ -176,6 +176,7 @@ const steps = ['Chọn cách tạo', 'Nhập đề', 'Lập lịch', 'Hoàn tấ
 const currentStep = 3
 const timeLimit = ref(Math.max(5, Math.min(480, Number.parseInt(String(route.query.durationMinutes || ''), 10) || 60)))
 const isSubmitting = ref(false)
+const loadedExam = ref(null)
 
 const durationPresets = [15, 30, 45, 60, 90, 120, 180]
 
@@ -333,7 +334,10 @@ const handleCreateAssignment = async () => {
       monitorPrintScreen: route.query.monitorPrintScreen !== 'false',
       monitorRapidQuestionSwitch: route.query.monitorRapidQuestionSwitch !== 'false',
       monitorMultiMonitor: route.query.monitorMultiMonitor !== 'false',
-      requireCameraMic: route.query.requireCameraMic === 'true'
+      requireCameraMic: route.query.requireCameraMic === 'true',
+      enableAiProctoring: route.query.enableAiProctoring != null
+        ? route.query.enableAiProctoring === 'true'
+        : loadedExam.value?.enableAiProctoring === true
     })
 
     const assignPayload = {
@@ -376,10 +380,12 @@ const handleCreateAssignment = async () => {
 }
 
 const loadExamForEdit = async () => {
-  if (!examId.value || !isEditMode.value) return
+  if (!examId.value) return
   try {
     const exam = await getExamDetail(examId.value)
     if (!exam) return
+    loadedExam.value = exam
+    if (!isEditMode.value) return
     if (exam.durationMinutes) {
       timeLimit.value = Math.max(5, Math.min(480, exam.durationMinutes))
     }

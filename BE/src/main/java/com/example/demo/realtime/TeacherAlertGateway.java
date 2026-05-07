@@ -56,6 +56,7 @@ public class TeacherAlertGateway {
                     .clipboardScore(breakdown.get("clipboardScore"))
                     .technicalScore(breakdown.get("technicalScore"))
                     .identityScore(breakdown.get("identityScore"))
+                    .visualIdentityScore(breakdown.get("visualIdentityScore"))
                     .heartbeatScore(breakdown.get("heartbeatScore"))
                     .totalScore(breakdown.get("totalScore"))
                     .build();
@@ -123,6 +124,7 @@ public class TeacherAlertGateway {
                     .clipboardScore(breakdown.get("clipboardScore"))
                     .technicalScore(breakdown.get("technicalScore"))
                     .identityScore(breakdown.get("identityScore"))
+                    .visualIdentityScore(breakdown.get("visualIdentityScore"))
                     .heartbeatScore(breakdown.get("heartbeatScore"))
                     .totalScore(breakdown.get("totalScore"))
                     .build();
@@ -226,6 +228,58 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/draft-updates", payload);
     }
 
+    // ============== AI Camera WebSocket Publishing ==============
+
+    /**
+     * Publish AI Camera signal event.
+     */
+    public void publishAiCameraSignal(
+            Long examId,
+            Long attemptId,
+            String student,
+            FraudSignal signal
+    ) {
+        AlertPayload.SignalInfo signalInfo = AlertPayload.SignalInfo.builder()
+                .id(signal.getId())
+                .signalType(signal.getSignalType())
+                .category(signal.getCategory())
+                .displayMessage(signal.getDisplayMessage())
+                .riskImpact(signal.getRiskImpact())
+                .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
+                .confidence(signal.getConfidence())
+                .evidence(signal.getEvidence())
+                .occurredAt(signal.getCreatedAt())
+                .metadata(parseMetadata(signal.getMetadata()))
+                .build();
+
+        AlertPayload payload = AlertPayload.builder()
+                .type("AI_CAMERA_SIGNAL")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(student)
+                .latestSignal(signalInfo)
+                .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
+                .issuedAt(LocalDateTime.now())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/camera-updates", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
+    /**
+     * Publish AI Camera batch update (for dashboard refresh).
+     */
+    public void publishAiCameraBatchUpdate(Long examId, String summary) {
+        AlertPayload payload = AlertPayload.builder()
+                .type("AI_CAMERA_BATCH_UPDATE")
+                .examId(examId)
+                .message(summary)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/camera-updates", payload);
+    }
+
     @Getter
     @Builder
     @AllArgsConstructor
@@ -240,6 +294,7 @@ public class TeacherAlertGateway {
         private Integer answeredCount;
         private Long remainingSeconds;
         private String status;
+        private String severity;
         private String actionTaken;
         private Map<String, Integer> breakdown;
         private Boolean reviewRequired;
@@ -276,6 +331,7 @@ public class TeacherAlertGateway {
             private Integer clipboardScore;
             private Integer technicalScore;
             private Integer identityScore;
+            private Integer visualIdentityScore;
             private Integer heartbeatScore;
             private Integer totalScore;
         }

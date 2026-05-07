@@ -43,4 +43,24 @@ public class AttemptDetailResponse {
     private Integer saveCount;
     private Integer submitCount;
     private Boolean fullscreenRequired;
+    private Boolean enableAiProctoring;
+    private Boolean requireCameraMic;
+    private Boolean monitorTabSwitch;
+    private Boolean monitorBlur;
+    private Boolean monitorExitFullscreen;
+    private Boolean monitorCopyPaste;
+    private Boolean monitorIdleTime;
+    private Boolean monitorDevtools;
+    private Boolean monitorDuplicateIp;
+    private Boolean monitorFastSubmit;
+    private Boolean monitorRightClick;
+    private Boolean monitorPrintScreen;
+    private Boolean monitorRapidQuestionSwitch;
+    private Boolean monitorMultiMonitor;
+    private Boolean monitorNetworkInstability;
+    private Boolean monitorSessionRecovery;
+    private Boolean monitorQuestionTimingAnomaly;
+    private Boolean monitorAnswerChangeBurst;
+    private Boolean monitorClipboardBurst;
+    private Boolean monitorFullscreenEvasion;
 }

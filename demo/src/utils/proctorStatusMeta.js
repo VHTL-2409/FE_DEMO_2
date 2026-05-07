@@ -38,6 +38,59 @@ const PATTERN_LEVEL_VISUAL = {
   low: { color: 'var(--ds-info)', bg: 'var(--ds-info-bg)', border: 'var(--ds-info-soft)' }
 }
 
+// AI Camera Detection Signal Labels
+export const AI_CAMERA_SIGNALS = {
+  FACE_NOT_DETECTED: { label: 'Không có khuôn mặt', severity: 'HIGH', icon: 'user-x' },
+  MULTIPLE_FACES: { label: 'Nhiều khuôn mặt', severity: 'CRITICAL', icon: 'users' },
+  FACE_SPOOFING_SUSPECTED: { label: 'Nghi vấn giả mạo', severity: 'CRITICAL', icon: 'shield-alert' },
+  FACE_OBSTRUCTED_MASK: { label: 'Khẩu trang che mặt', severity: 'HIGH', icon: 'mask' },
+  EYES_OBSTRUCTED: { label: 'Kính che mắt', severity: 'MEDIUM', icon: 'glasses' },
+  PARTIAL_FACE_VISIBLE: { label: 'Mặt không đầy đủ', severity: 'MEDIUM', icon: 'user-check' },
+  FACE_TOO_FAR: { label: 'Mặt quá xa camera', severity: 'MEDIUM', icon: 'minimize' },
+  FACE_TOO_CLOSE: { label: 'Mặt quá gần camera', severity: 'LOW', icon: 'maximize' },
+  FACE_TURNED_AWAY: { label: 'Quay mặt đi', severity: 'MEDIUM', icon: 'rotate-ccw' },
+  FACE_NOT_CENTERED: { label: 'Mặt lệch tâm', severity: 'LOW', icon: 'align-center' },
+  EYES_NOT_DETECTED: { label: 'Không phát hiện mắt', severity: 'MEDIUM', icon: 'eye-off' },
+  VERY_LOW_LIGHTING: { label: 'Ánh sáng rất yếu', severity: 'HIGH', icon: 'moon' },
+  LOW_LIGHTING: { label: 'Ánh sáng yếu', severity: 'MEDIUM', icon: 'cloudy' },
+  OVEREXPOSED_FRAME: { label: 'Ảnh quá sáng', severity: 'LOW', icon: 'sun' },
+  VERY_BLURRY_FRAME: { label: 'Ảnh rất mờ', severity: 'HIGH', icon: 'blur' },
+  BLURRY_FRAME: { label: 'Ảnh mờ', severity: 'LOW', icon: 'image' }
+}
+
+// Eye Tracking Signal Labels
+export const EYE_TRACKING_SIGNALS = {
+  EYE_BLINK_ANOMALY: { label: 'Nháy mắt bất thường', severity: 'MEDIUM', icon: 'eye' },
+  EYES_CLOSED_PROLONGED: { label: 'Mắt nhắm lâu', severity: 'LOW', icon: 'eye-off' }
+}
+
+// Gaze Tracking Signal Labels
+export const GAZE_TRACKING_SIGNALS = {
+  GAZE_OFF_SCREEN: { label: 'Nhìn ra ngoài màn hình', severity: 'HIGH', icon: 'external-link' },
+  RAPID_EYE_MOVEMENT: { label: 'Chuyển động mắt nhanh', severity: 'MEDIUM', icon: 'zap' }
+}
+
+// Deep Learning Spoofing Signal Labels
+export const SPOOFING_SIGNALS = {
+  PRINTED_PHOTO: { label: 'Ảnh in giả', severity: 'CRITICAL', icon: 'image' },
+  SCREEN_REPLAY: { label: 'Phát lại màn hình', severity: 'CRITICAL', icon: 'monitor' },
+  DEEPFAKE: { label: 'Deepfake', severity: 'CRITICAL', icon: 'alert-octagon' },
+  FLAT_IMAGE: { label: 'Hình ảnh phẳng', severity: 'HIGH', icon: 'square' },
+  SCREEN_DISPLAY: { label: 'Hình từ màn hình', severity: 'HIGH', icon: 'monitor' }
+}
+
+// Combine all AI signals
+export const ALL_AI_SIGNALS = {
+  ...AI_CAMERA_SIGNALS,
+  ...EYE_TRACKING_SIGNALS,
+  ...GAZE_TRACKING_SIGNALS,
+  ...SPOOFING_SIGNALS
+}
+
+export const AI_SIGNAL_LIST = Object.keys(ALL_AI_SIGNALS)
+
+export const AI_CAMERA_SIGNAL_LIST = Object.keys(AI_CAMERA_SIGNALS)
+
 export const resolveAttemptStatusToken = (rawStatus) => {
   const value = String(rawStatus || '').toUpperCase()
   if (!value) return 'UNKNOWN'
@@ -95,4 +148,93 @@ export const getInitialsFromName = (rawName) => {
   const last = parts[parts.length - 1] || ''
   const first = parts[0] || ''
   return (last.charAt(0) + (parts.length > 1 ? first.charAt(0) : '')).toUpperCase()
+}
+
+// AI Camera helper functions
+export const isAiCameraSignal = (signalType) => {
+  return signalType in AI_CAMERA_SIGNALS
+}
+
+export const getAiCameraSignalInfo = (signalType) => {
+  return AI_CAMERA_SIGNALS[signalType] || null
+}
+
+export const getAiCameraSignalLabel = (signalType) => {
+  return AI_CAMERA_SIGNALS[signalType]?.label || signalType
+}
+
+export const getAiCameraSignalSeverity = (signalType) => {
+  return AI_CAMERA_SIGNALS[signalType]?.severity || 'LOW'
+}
+
+export const getAiCameraSignalIcon = (signalType) => {
+  return AI_CAMERA_SIGNALS[signalType]?.icon || 'alert-triangle'
+}
+
+// Helper functions for Eye Tracking signals
+export const isEyeTrackingSignal = (signalType) => {
+  return signalType in EYE_TRACKING_SIGNALS
+}
+
+export const getEyeTrackingSignalInfo = (signalType) => {
+  return EYE_TRACKING_SIGNALS[signalType] || null
+}
+
+export const getEyeTrackingSignalLabel = (signalType) => {
+  return EYE_TRACKING_SIGNALS[signalType]?.label || signalType
+}
+
+// Helper functions for Gaze Tracking signals
+export const isGazeTrackingSignal = (signalType) => {
+  return signalType in GAZE_TRACKING_SIGNALS
+}
+
+export const getGazeTrackingSignalInfo = (signalType) => {
+  return GAZE_TRACKING_SIGNALS[signalType] || null
+}
+
+export const getGazeTrackingSignalLabel = (signalType) => {
+  return GAZE_TRACKING_SIGNALS[signalType]?.label || signalType
+}
+
+// Helper functions for Spoofing signals
+export const isSpoofingSignal = (signalType) => {
+  return signalType in SPOOFING_SIGNALS
+}
+
+export const getSpoofingSignalInfo = (signalType) => {
+  return SPOOFING_SIGNALS[signalType] || null
+}
+
+export const getSpoofingSignalLabel = (signalType) => {
+  return SPOOFING_SIGNALS[signalType]?.label || signalType
+}
+
+// Unified helper: get signal info from any category
+export const getSignalInfo = (signalType) => {
+  if (signalType in ALL_AI_SIGNALS) {
+    return ALL_AI_SIGNALS[signalType]
+  }
+  return null
+}
+
+export const getSignalLabel = (signalType) => {
+  if (signalType in ALL_AI_SIGNALS) {
+    return ALL_AI_SIGNALS[signalType].label
+  }
+  return signalType
+}
+
+export const getSignalSeverity = (signalType) => {
+  if (signalType in ALL_AI_SIGNALS) {
+    return ALL_AI_SIGNALS[signalType].severity
+  }
+  return 'LOW'
+}
+
+export const getSignalIcon = (signalType) => {
+  if (signalType in ALL_AI_SIGNALS) {
+    return ALL_AI_SIGNALS[signalType].icon
+  }
+  return 'alert-circle'
 }

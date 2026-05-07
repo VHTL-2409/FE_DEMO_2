@@ -126,7 +126,8 @@ const props = defineProps({
   monitorPrintScreen: { type: Boolean, default: true },
   monitorRapidQuestionSwitch: { type: Boolean, default: true },
   monitorMultiMonitor: { type: Boolean, default: true },
-  requireCameraMic: { type: Boolean, default: true }
+  requireCameraMic: { type: Boolean, default: true },
+  enableAiProctoring: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -143,7 +144,8 @@ const emit = defineEmits([
   'update:monitorPrintScreen',
   'update:monitorRapidQuestionSwitch',
   'update:monitorMultiMonitor',
-  'update:requireCameraMic'
+  'update:requireCameraMic',
+  'update:enableAiProctoring'
 ])
 
 const localFlags = reactive({
@@ -159,7 +161,8 @@ const localFlags = reactive({
   monitorPrintScreen: props.monitorPrintScreen,
   monitorRapidQuestionSwitch: props.monitorRapidQuestionSwitch,
   monitorMultiMonitor: props.monitorMultiMonitor,
-  requireCameraMic: props.requireCameraMic
+  requireCameraMic: props.requireCameraMic,
+  enableAiProctoring: props.enableAiProctoring
 })
 
 const localEnabled = computed({
@@ -180,7 +183,8 @@ const flagEmits = {
   monitorPrintScreen: (v) => emit('update:monitorPrintScreen', v),
   monitorRapidQuestionSwitch: (v) => emit('update:monitorRapidQuestionSwitch', v),
   monitorMultiMonitor: (v) => emit('update:monitorMultiMonitor', v),
-  requireCameraMic: (v) => emit('update:requireCameraMic', v)
+  requireCameraMic: (v) => emit('update:requireCameraMic', v),
+  enableAiProctoring: (v) => emit('update:enableAiProctoring', v)
 }
 
 const rules = [
@@ -196,7 +200,8 @@ const rules = [
   { key: 'monitorPrintScreen', label: 'Chụp màn hình', desc: 'Chặn chụp màn hình', icon: 'screenshot' },
   { key: 'monitorRapidQuestionSwitch', label: 'Đổi câu nhanh', desc: 'Phát hiện chuyển câu quá nhanh', icon: 'skip_next' },
   { key: 'monitorMultiMonitor', label: 'Đa màn hình', desc: 'Cảnh báo kết nối màn hình phụ', icon: 'desktop_windows' },
-  { key: 'requireCameraMic', label: 'Camera & Micro', desc: 'Yêu cầu bật camera và microphone', icon: 'videocam' }
+  { key: 'requireCameraMic', label: 'Camera & Micro', desc: 'Yêu cầu bật camera và microphone', icon: 'videocam' },
+  { key: 'enableAiProctoring', label: 'AI camera analysis', desc: 'Phân tích camera để ghi tín hiệu và tính điểm review', icon: 'scan-face' }
 ]
 
 const totalRules = rules.length
@@ -230,9 +235,9 @@ const summaryDesc = computed(() => {
 })
 
 const presets = [
-  { id: 'light', label: 'Nhẹ', color: 'success', icon: 'shield', flags: { monitorTabSwitch: false, monitorBlur: false, monitorExitFullscreen: false, monitorCopyPaste: false, monitorIdleTime: false, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false } },
-  { id: 'medium', label: 'Trung bình', color: 'warning', icon: 'verified_user', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: false, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false } },
-  { id: 'strict', label: 'Nghiêm ngặt', color: 'danger', icon: 'security', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: true, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: true, monitorPrintScreen: true, monitorRapidQuestionSwitch: true, monitorMultiMonitor: true, requireCameraMic: true } }
+  { id: 'light', label: 'Nhẹ', color: 'success', icon: 'shield', flags: { monitorTabSwitch: false, monitorBlur: false, monitorExitFullscreen: false, monitorCopyPaste: false, monitorIdleTime: false, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, enableAiProctoring: false } },
+  { id: 'medium', label: 'Trung bình', color: 'warning', icon: 'verified_user', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: false, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, enableAiProctoring: false } },
+  { id: 'strict', label: 'Nghiêm ngặt', color: 'danger', icon: 'security', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: true, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: true, monitorPrintScreen: true, monitorRapidQuestionSwitch: true, monitorMultiMonitor: true, requireCameraMic: true, enableAiProctoring: true } }
 ]
 
 const currentPreset = computed(() => {

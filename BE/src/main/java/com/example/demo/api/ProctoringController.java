@@ -3,6 +3,8 @@ package com.example.demo.api;
 import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.monitoring.EventBatchRequest;
 import com.example.demo.api.dto.monitoring.EventBatchResponse;
+import com.example.demo.api.dto.monitoring.CameraAlertResponse;
+import com.example.demo.api.dto.monitoring.CameraStatusResponse;
 import com.example.demo.api.dto.monitoring.HeartbeatRequest;
 import com.example.demo.api.dto.monitoring.MonitoringTimelineItem;
 import com.example.demo.api.dto.monitoring.MonitoringTimelinePage;
@@ -163,6 +165,31 @@ public class ProctoringController {
                     .build());
         }
         return ApiResponse.success(alerts);
+    }
+
+    // AI Camera Dashboard APIs
+    @GetMapping("/exams/{examId}/camera-status")
+    public ApiResponse<List<CameraStatusResponse>> getCameraStatus(@PathVariable Long examId) {
+        List<CameraStatusResponse> statuses = monitoringService.getCameraStatusByExam(examId);
+        return ApiResponse.success(statuses);
+    }
+
+    @GetMapping("/exams/{examId}/camera-alerts")
+    public ApiResponse<List<CameraAlertResponse>> getCameraAlerts(@PathVariable Long examId) {
+        List<CameraAlertResponse> alerts = monitoringService.getCameraAlertsByExam(examId);
+        return ApiResponse.success(alerts);
+    }
+
+    @PostMapping("/alerts/{alertId}/acknowledge")
+    public ApiResponse<Void> acknowledgeAlert(@PathVariable Long alertId) {
+        monitoringService.acknowledgeCameraAlert(alertId, currentUserService.requireCurrentUser());
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/alerts/{alertId}/dismiss")
+    public ApiResponse<Void> dismissAlert(@PathVariable Long alertId) {
+        monitoringService.dismissCameraAlert(alertId, currentUserService.requireCurrentUser());
+        return ApiResponse.success(null);
     }
 
     @PatchMapping("/flags/{flagId}")

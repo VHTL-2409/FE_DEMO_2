@@ -119,7 +119,33 @@ public class RiskScoringService {
             // Category HEARTBEAT
             Map.entry("HEARTBEAT_STALE", 5),
             Map.entry("NETWORK_INSTABILITY", 5),
-            Map.entry("SESSION_RECOVERY", 3)
+            Map.entry("SESSION_RECOVERY", 3),
+            // Category VISUAL_IDENTITY
+            Map.entry("FACE_NOT_DETECTED", 20),
+            Map.entry("MULTIPLE_FACES", 25),
+            Map.entry("FACE_SPOOFING_SUSPECTED", 25),
+            Map.entry("FACE_OBSTRUCTED_MASK", 18),
+            Map.entry("EYES_OBSTRUCTED", 10),
+            Map.entry("PARTIAL_FACE_VISIBLE", 10),
+            Map.entry("FACE_TOO_FAR", 8),
+            Map.entry("FACE_TOO_CLOSE", 5),
+            Map.entry("FACE_TURNED_AWAY", 10),
+            Map.entry("FACE_NOT_CENTERED", 5),
+            Map.entry("EYES_NOT_DETECTED", 8),
+            Map.entry("VERY_LOW_LIGHTING", 15),
+            Map.entry("LOW_LIGHTING", 8),
+            Map.entry("OVEREXPOSED_FRAME", 5),
+            Map.entry("VERY_BLURRY_FRAME", 15),
+            Map.entry("BLURRY_FRAME", 5),
+            Map.entry("EYE_BLINK_ANOMALY", 10),
+            Map.entry("EYES_CLOSED_PROLONGED", 5),
+            Map.entry("GAZE_OFF_SCREEN", 12),
+            Map.entry("RAPID_EYE_MOVEMENT", 8),
+            Map.entry("PRINTED_PHOTO", 25),
+            Map.entry("SCREEN_REPLAY", 25),
+            Map.entry("DEEPFAKE", 30),
+            Map.entry("FLAT_IMAGE", 20),
+            Map.entry("SCREEN_DISPLAY", 18)
     );
 
     // Nhóm category
@@ -148,7 +174,32 @@ public class RiskScoringService {
             Map.entry("IP_ANOMALY", "IDENTITY"),
             Map.entry("HEARTBEAT_STALE", "HEARTBEAT"),
             Map.entry("NETWORK_INSTABILITY", "HEARTBEAT"),
-            Map.entry("SESSION_RECOVERY", "HEARTBEAT")
+            Map.entry("SESSION_RECOVERY", "HEARTBEAT"),
+            Map.entry("FACE_NOT_DETECTED", "VISUAL_IDENTITY"),
+            Map.entry("MULTIPLE_FACES", "VISUAL_IDENTITY"),
+            Map.entry("FACE_SPOOFING_SUSPECTED", "VISUAL_IDENTITY"),
+            Map.entry("FACE_OBSTRUCTED_MASK", "VISUAL_IDENTITY"),
+            Map.entry("EYES_OBSTRUCTED", "VISUAL_IDENTITY"),
+            Map.entry("PARTIAL_FACE_VISIBLE", "VISUAL_IDENTITY"),
+            Map.entry("FACE_TOO_FAR", "VISUAL_IDENTITY"),
+            Map.entry("FACE_TOO_CLOSE", "VISUAL_IDENTITY"),
+            Map.entry("FACE_TURNED_AWAY", "VISUAL_IDENTITY"),
+            Map.entry("FACE_NOT_CENTERED", "VISUAL_IDENTITY"),
+            Map.entry("EYES_NOT_DETECTED", "VISUAL_IDENTITY"),
+            Map.entry("VERY_LOW_LIGHTING", "VISUAL_IDENTITY"),
+            Map.entry("LOW_LIGHTING", "VISUAL_IDENTITY"),
+            Map.entry("OVEREXPOSED_FRAME", "VISUAL_IDENTITY"),
+            Map.entry("VERY_BLURRY_FRAME", "VISUAL_IDENTITY"),
+            Map.entry("BLURRY_FRAME", "VISUAL_IDENTITY"),
+            Map.entry("EYE_BLINK_ANOMALY", "VISUAL_IDENTITY"),
+            Map.entry("EYES_CLOSED_PROLONGED", "VISUAL_IDENTITY"),
+            Map.entry("GAZE_OFF_SCREEN", "VISUAL_IDENTITY"),
+            Map.entry("RAPID_EYE_MOVEMENT", "VISUAL_IDENTITY"),
+            Map.entry("PRINTED_PHOTO", "VISUAL_IDENTITY"),
+            Map.entry("SCREEN_REPLAY", "VISUAL_IDENTITY"),
+            Map.entry("DEEPFAKE", "VISUAL_IDENTITY"),
+            Map.entry("FLAT_IMAGE", "VISUAL_IDENTITY"),
+            Map.entry("SCREEN_DISPLAY", "VISUAL_IDENTITY")
     );
 
     // Cửa sổ dedup theo category (giây)
@@ -183,10 +234,11 @@ public class RiskScoringService {
         int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
         int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
         int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), CATEGORY_CAPS.getOrDefault("VISUAL_IDENTITY", 40));
 
         // Bước 3: Tính tổng
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
-        int totalRisk = Math.min(100, behaviorScore + identityScore);
+        int totalRisk = Math.min(100, behaviorScore + identityScore + visualIdentityScore);
         RiskLevel level = resolveLevel(totalRisk);
 
         // Bước 4: Tạo breakdown
@@ -195,6 +247,7 @@ public class RiskScoringService {
         breakdown.put("clipboardScore", clipboardScore);
         breakdown.put("technicalScore", technicalScore);
         breakdown.put("identityScore", identityScore);
+        breakdown.put("visualIdentityScore", visualIdentityScore);
         breakdown.put("heartbeatScore", heartbeatScore);
         breakdown.put("behaviorScore", behaviorScore);
         breakdown.put("totalScore", totalRisk);
@@ -259,9 +312,10 @@ public class RiskScoringService {
         int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
         int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
         int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), CATEGORY_CAPS.getOrDefault("VISUAL_IDENTITY", 40));
 
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
-        int totalRisk = Math.min(100, behaviorScore + identityScore);
+        int totalRisk = Math.min(100, behaviorScore + identityScore + visualIdentityScore);
         RiskLevel level = resolveLevel(totalRisk);
 
         Map<String, Integer> breakdown = new LinkedHashMap<>();
@@ -269,6 +323,7 @@ public class RiskScoringService {
         breakdown.put("clipboardScore", clipboardScore);
         breakdown.put("technicalScore", technicalScore);
         breakdown.put("identityScore", identityScore);
+        breakdown.put("visualIdentityScore", visualIdentityScore);
         breakdown.put("heartbeatScore", heartbeatScore);
         breakdown.put("behaviorScore", behaviorScore);
         breakdown.put("totalScore", totalRisk);
@@ -299,6 +354,7 @@ public class RiskScoringService {
         result.put("TECHNICAL", 0);
         result.put("IDENTITY", 0);
         result.put("HEARTBEAT", 0);
+        result.put("VISUAL_IDENTITY", 0);
 
         // Nhóm signals theo category
         Map<String, List<FraudSignal>> signalsByCategory = new LinkedHashMap<>();
@@ -328,7 +384,9 @@ public class RiskScoringService {
     private int computeClusteredScore(String category, List<FraudSignal> signals) {
         if (signals == null || signals.isEmpty()) return 0;
 
-        Long dedupWindow = CATEGORY_DEDUP_SECONDS.getOrDefault(category, 0L);
+        Long dedupWindow = "VISUAL_IDENTITY".equals(category)
+                ? 30L
+                : CATEGORY_DEDUP_SECONDS.getOrDefault(category, 0L);
 
         // Sắp xếp theo thời gian tạo tăng dần
         List<FraudSignal> sorted = signals.stream()
@@ -544,6 +602,11 @@ public class RiskScoringService {
         if (breakdown.getOrDefault("identityScore", 0) > 0) {
             reasons.add("Phát hiện bất thường về định danh");
             evidence.add("IDENTITY: " + breakdown.get("identityScore") + " điểm");
+        }
+
+        if (breakdown.getOrDefault("visualIdentityScore", 0) > 0) {
+            reasons.add("Camera AI phat hien bat thuong khuon mat hoac huong nhin");
+            evidence.add("VISUAL_IDENTITY: " + breakdown.get("visualIdentityScore") + " diem");
         }
 
         String recommendedAction = switch (level) {

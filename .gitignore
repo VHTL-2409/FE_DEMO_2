@@ -6,6 +6,7 @@ docs/
 .venv-seed/
 docx_images/*
 pdf_page/*
+ai-service\app\schemas.py
 *.md
 .cursor/
 !TESTSPRITE.md
@@ -76,3 +77,4 @@ docs/
 skills/
 scripts/
 *.md
+ai-service/app/schemas.py

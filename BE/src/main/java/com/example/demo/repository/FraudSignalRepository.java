@@ -13,7 +13,11 @@ import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
 
 public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> {
+    List<FraudSignal> findByAttempt(ExamAttempt attempt);
+
     List<FraudSignal> findByAttemptOrderByCreatedAtAsc(ExamAttempt attempt);
+
+    List<FraudSignal> findByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
     Optional<FraudSignal> findTopByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
