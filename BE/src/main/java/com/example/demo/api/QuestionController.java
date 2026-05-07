@@ -7,6 +7,7 @@ import com.example.demo.api.dto.question.FilePreviewResponse;
 import com.example.demo.api.dto.question.PdfFilePreviewResponse;
 import com.example.demo.api.dto.question.XlsxFilePreviewResponse;
 import com.example.demo.api.dto.question.ImportQuestionsResponse;
+import com.example.demo.api.dto.question.QuestionDifficultySummaryResponse;
 import com.example.demo.api.dto.question.QuestionPreviewDto;
 import com.example.demo.api.dto.question.QuestionRequest;
 import com.example.demo.api.dto.question.QuestionResponse;
@@ -102,6 +103,7 @@ public class QuestionController {
                 .scoreWeight(q.getScoreWeight())
                 .type(q.getType() != null ? q.getType().name() : "SINGLE_CHOICE")
                 .options(parseOptionsForPreview(q.getOptions()))
+                .difficulty(q.getDifficulty())
                 .build()).toList();
         return ApiResponse.success(new FilePreviewResponse(parsed.size(), dtos));
     }
@@ -171,7 +173,23 @@ public class QuestionController {
                 .scoreWeight(q.getScoreWeight())
                 .type(q.getType() != null ? q.getType().name() : "SINGLE_CHOICE")
                 .options(parseOptionsForPreview(q.getOptions()))
+                .difficulty(q.getDifficulty())
                 .build();
+    }
+
+    @GetMapping("/api/exams/{examId}/questions/difficulty-summary")
+    public ApiResponse<QuestionDifficultySummaryResponse> difficultySummary(@PathVariable Long examId) {
+        Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
+        return ApiResponse.success(questionService.difficultySummary(exam));
+    }
+
+    @PostMapping("/api/exams/{examId}/questions/difficulty/analyze")
+    public ApiResponse<QuestionDifficultySummaryResponse> analyzeDifficulty(
+            @PathVariable Long examId,
+            @RequestParam(value = "overwrite", defaultValue = "false") boolean overwrite
+    ) {
+        Exam exam = examService.requireManageableExam(examId, currentUserService.requireCurrentUser());
+        return ApiResponse.success(questionService.analyzeDifficulty(exam, overwrite));
     }
 
     @PostMapping("/api/exams/{examId}/questions/import")
@@ -230,7 +248,8 @@ public class QuestionController {
                 "id", q.getId(),
                 "content", q.getContent() != null ? q.getContent().substring(0, Math.min(50, q.getContent().length())) : "null",
                 "type", q.getType(),
-                "scoreWeight", q.getScoreWeight()
+                "scoreWeight", q.getScoreWeight(),
+                "difficulty", q.getDifficulty()
             )).toList()
         ));
     }

@@ -42,13 +42,17 @@ export function useExamMonitoring() {
   function applyRealtimeEvent(event) {
     if (!event) return
     const type = String(event.type || '').toUpperCase()
-    const attemptId = String(event.attemptId || event.id || '')
-    if (!attemptId) return
+    const attemptId = type === 'FRAUD_WARNING_RECORDED'
+      ? String(event.attemptId || event.relatedAttemptIds?.[0] || '')
+      : String(event.attemptId || event.id || '')
+    if (!attemptId && type !== 'FRAUD_WARNING_RECORDED') return
 
     logRealtime(type, attemptId, event)
 
     // 1. Patch card (dashboard row)
-    store.patchAttemptFromRealtime(event)
+    if (attemptId && type !== 'FRAUD_WARNING_RECORDED') {
+      store.patchAttemptFromRealtime({ ...event, attemptId: event.attemptId || attemptId })
+    }
 
     // 2. Add alert (live alert panel)
     addAlertFromEvent(event, type, attemptId)
@@ -58,20 +62,42 @@ export function useExamMonitoring() {
   }
 
   function addAlertFromEvent(event, type, attemptId) {
+    const alertTypes = new Set([
+      'RISK_UPDATED',
+      'RISK_UPDATE',
+      'WARNING_SENT',
+      'FRAUD_SIGNAL_RECORDED',
+      'FRAUD_WARNING_RECORDED',
+      'SUSPICIOUS_ALERT',
+      'AI_CAMERA_SIGNAL',
+      'ATTEMPT_PAUSED',
+      'ATTEMPT_RESUMED',
+      'ATTEMPT_STOPPED'
+    ])
+    if (!alertTypes.has(type)) return
     const signal = event.latestSignal || {}
     store.addAlert({
-      attemptId,
-      signalType: signal.signalType || event.signalType || type,
+      warningId: event.warningId,
+      attemptId: event.attemptId || attemptId || null,
+      signalType: signal.signalType || event.signalType || event.warningType || type,
+      warningType: event.warningType,
+      category: event.warningCategory || signal.category || event.category,
+      warningCategory: event.warningCategory,
       type,
       severity: signal.severity || event.severity || event.riskLevel,
       confidence: signal.confidence,
-      evidence: signal.evidence,
+      message: event.message || signal.displayMessage,
+      evidence: event.evidence || signal.evidence,
+      source: event.source,
+      relatedAttemptIds: event.relatedAttemptIds || [],
+      reviewStatus: event.reviewStatus,
+      studentName: event.studentName || event.student,
       issuedAt: signal.occurredAt || event.issuedAt
     })
   }
 
   function addSystemEventFromEvent(event, type, attemptId) {
-    const systemEventTypes = ['WARNING_SENT', 'ATTEMPT_STOPPED', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED']
+    const systemEventTypes = ['WARNING_SENT', 'ATTEMPT_STOPPED', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STARTED', 'ATTEMPT_JOINED']
     if (!systemEventTypes.includes(type)) return
     store.addEvent({
       attemptId,

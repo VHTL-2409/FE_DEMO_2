@@ -343,6 +343,7 @@ import { ApiError } from '../../../../services/apiClient'
 import {
   getExamDetail,
   updateExam,
+  updateMonitoringConfig,
   publishExam,
   unpublishExam,
   archiveExam,
@@ -437,6 +438,13 @@ const canPublish = computed(() =>
   form.questions.length > 0
 )
 
+const examHasStarted = computed(() => {
+  const startTime = exam.value?.startTime
+  if (!startTime) return false
+  const start = new Date(startTime).getTime()
+  return Number.isFinite(start) && Date.now() >= start
+})
+
 watch(form, () => {
   hasUnsavedChanges = true
 }, { deep: true })
@@ -526,6 +534,23 @@ const buildPayload = () => ({
   shuffleAnswers: form.shuffleAnswers,
   showScoreAfterSubmit: form.showScoreAfterSubmit,
   maxAttempts: Number(form.maxAttempts) || 1,
+  monitorTabSwitch: form.monitorTabSwitch,
+  monitorBlur: form.monitorBlur,
+  monitorExitFullscreen: form.monitorExitFullscreen,
+  monitorCopyPaste: form.monitorCopyPaste,
+  monitorIdleTime: form.monitorIdleTime,
+  monitorDevtools: form.monitorDevtools,
+  monitorDuplicateIp: form.monitorDuplicateIp,
+  monitorFastSubmit: form.monitorFastSubmit,
+  monitorRightClick: form.monitorRightClick,
+  monitorPrintScreen: form.monitorPrintScreen,
+  monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
+  monitorMultiMonitor: form.monitorMultiMonitor,
+  requireCameraMic: form.requireCameraMic,
+  enableAiProctoring: form.enableAiProctoring
+})
+
+const buildMonitoringPayload = () => ({
   monitorTabSwitch: form.monitorTabSwitch,
   monitorBlur: form.monitorBlur,
   monitorExitFullscreen: form.monitorExitFullscreen,

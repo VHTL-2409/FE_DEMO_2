@@ -18,16 +18,20 @@
       </span>
     </div>
 
-    <!-- Camera Preview Placeholder -->
-    <div class="camera-card__preview">
-      <div v-if="camera.cameraActive" class="camera-card__video-placeholder">
-        <LucideIcon name="user" :size="32" />
-        <span class="camera-card__preview-text">Camera Active</span>
-      </div>
-      <div v-else class="camera-card__no-camera">
-        <LucideIcon name="camera-off" :size="32" />
-        <span class="camera-card__preview-text">No Camera</span>
-      </div>
+    <!-- Quick summary -->
+    <div class="camera-card__summary">
+      <span class="camera-card__summary-item">
+        <LucideIcon :name="camera.cameraActive ? 'videocam' : 'videocam_off'" :size="12" />
+        {{ camera.cameraActive ? 'Camera bật' : 'Không camera' }}
+      </span>
+      <span class="camera-card__summary-item">
+        <LucideIcon name="scan-face" :size="12" />
+        {{ faceStatusText }}
+      </span>
+      <span class="camera-card__summary-item">
+        <LucideIcon name="focus" :size="12" />
+        {{ gazeStatusText }}
+      </span>
     </div>
 
     <!-- Stats -->
@@ -39,6 +43,14 @@
       <div class="camera-card__stat">
         <LucideIcon name="scan-face" :size="14" />
         <span>{{ faceStatusText }}</span>
+      </div>
+      <div class="camera-card__stat">
+        <LucideIcon name="eye" :size="14" />
+        <span>{{ eyeStatusText }}</span>
+      </div>
+      <div class="camera-card__stat">
+        <LucideIcon name="focus" :size="14" />
+        <span>{{ gazeStatusText }}</span>
       </div>
       <div class="camera-card__stat">
         <LucideIcon name="sun" :size="14" />
@@ -116,6 +128,31 @@ const lightStatusText = computed(() => {
   if (brightness < 60) return 'Dark'
   if (brightness > 240) return 'Too Bright'
   return 'Good'
+})
+
+const eyeStatusText = computed(() => {
+  if (!props.camera.faceDetected) return 'No eyes'
+  const state = String(props.camera.eyeState || '').toUpperCase()
+  if (state === 'CLOSED') return 'Closed'
+  if (state === 'PARTIAL') return 'Partial'
+  if (state === 'OPEN') return 'Open'
+  if (props.camera.eyeCount != null) {
+    return `${props.camera.eyeCount} eye${props.camera.eyeCount === 1 ? '' : 's'}`
+  }
+  return '—'
+})
+
+const gazeStatusText = computed(() => {
+  const direction = String(props.camera.gazeDirection || '').toUpperCase()
+  const gazeOffScreen = props.camera.gazeOffScreen === true
+  if (!props.camera.faceDetected) return 'No gaze'
+  if (gazeOffScreen && direction && direction !== 'CENTER') {
+    return direction
+  }
+  if (direction && direction !== 'CENTER') {
+    return `${direction}`
+  }
+  return 'Center'
 })
 
 const riskClass = computed(() => {
@@ -285,35 +322,30 @@ function formatTimeAgo(timestamp) {
   color: var(--ds-text-muted);
 }
 
-/* Preview */
-.camera-card__preview {
-  aspect-ratio: 16 / 9;
-  border-radius: var(--ds-radius-md);
-  overflow: hidden;
-  background: var(--ds-gray-900);
-}
-
-.camera-card__video-placeholder,
-.camera-card__no-camera {
-  width: 100%;
-  height: 100%;
+/* Summary */
+.camera-card__summary {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ds-space-1);
-  color: var(--ds-gray-400);
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.camera-card__preview-text {
-  font-size: var(--ds-text-xs);
-  color: var(--ds-gray-500);
+.camera-card__summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-gray-100);
+  color: var(--ds-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 /* Stats */
 .camera-card__stats {
-  display: flex;
-  gap: var(--ds-space-3);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .camera-card__stat {
@@ -322,6 +354,17 @@ function formatTimeAgo(timestamp) {
   gap: 4px;
   font-size: var(--ds-text-xs);
   color: var(--ds-text-secondary);
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-gray-50);
+}
+
+.camera-card__stat span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Signals */

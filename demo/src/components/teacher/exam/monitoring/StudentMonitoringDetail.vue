@@ -347,6 +347,90 @@
 
         <!-- Right column: Review & Notes -->
         <aside class="smd-sidebar">
+          <!-- Camera stream -->
+          <section class="smd-card smd-camera">
+            <div class="smd-card__head">
+              <h2 class="smd-card__title">Camera thí sinh</h2>
+              <span
+                class="smd-camera__badge"
+                :class="cameraFrameBadgeClass"
+              >
+                {{ cameraFrameStatusLabel }}
+              </span>
+            </div>
+
+            <div ref="cameraPreviewRef" class="smd-camera__preview">
+              <img
+                v-if="latestCameraFrameSrc"
+                :src="latestCameraFrameSrc"
+                alt="Khung hình camera thí sinh"
+                class="smd-camera__image"
+              />
+              <div
+                v-if="latestCameraVisualOverlay"
+                class="smd-camera-overlay"
+                :class="`smd-camera-overlay--${latestCameraVisualOverlay.tone}`"
+              >
+                <span class="smd-camera-overlay__chip">{{ latestCameraVisualOverlay.label || latestCameraVisualOverlay.status }}</span>
+                <span
+                  v-for="(box, index) in latestCameraVisualOverlay.faceBoxes"
+                  :key="`face-${index}`"
+                  class="smd-camera-overlay__box smd-camera-overlay__box--face"
+                  :style="box.style"
+                />
+                <span
+                  v-for="(box, index) in latestCameraVisualOverlay.eyeBoxes"
+                  :key="`eye-${box.side || index}-${index}`"
+                  class="smd-camera-overlay__box smd-camera-overlay__box--eye"
+                  :style="box.style"
+                />
+                <span
+                  v-for="(point, index) in latestCameraVisualOverlay.pupilPoints"
+                  :key="`pupil-${point.side || index}-${index}`"
+                  class="smd-camera-overlay__pupil"
+                  :style="point.style"
+                />
+              </div>
+              <div v-if="!latestCameraFrameSrc" class="smd-camera__empty">
+                <LucideIcon :name="attemptData.cameraOn ? 'videocam' : 'videocam_off'" :size="28" />
+                <p>{{ attemptData.cameraOn ? 'Chưa nhận khung hình camera' : 'Camera đang tắt' }}</p>
+              </div>
+            </div>
+
+            <div v-if="latestCameraVisualOverlay" class="smd-camera__summary">
+              <span
+                class="smd-camera__summary-chip"
+                :class="`smd-camera__summary-chip--${latestCameraVisualOverlay.tone}`"
+              >
+                {{ latestCameraVisualOverlay.label || latestCameraVisualOverlay.status }}
+              </span>
+              <span class="smd-camera__summary-chip">
+                Mắt: {{ eyeStateLabel }}
+              </span>
+              <span class="smd-camera__summary-chip">
+                Nhìn: {{ gazeDirectionLabel }} / {{ gazeStatusLabel }}
+              </span>
+            </div>
+
+            <div class="smd-camera__meta">
+              <span>
+                <strong>Frame:</strong> {{ latestCameraFrame ? cameraFrameTimeLabel : '—' }}
+              </span>
+              <span v-if="latestCameraFrame?.faceCount != null">
+                <strong>Mặt:</strong> {{ latestCameraFrame.faceCount }}
+              </span>
+              <span v-if="latestCameraFrame?.frameQuality">
+                <strong>Ảnh:</strong> {{ latestCameraFrame.frameQuality }}
+              </span>
+              <span v-if="latestCameraFrame?.eyeState || latestCameraFrame?.eye_state">
+                <strong>Mắt:</strong> {{ eyeStateLabel }}
+              </span>
+              <span v-if="latestCameraFrame?.gazeDirection || latestCameraFrame?.gaze_direction">
+                <strong>Hướng nhìn:</strong> {{ gazeDirectionLabel }} / {{ gazeStatusLabel }}
+              </span>
+            </div>
+          </section>
+
           <!-- Review flag -->
           <section class="smd-card">
             <div class="smd-card__head">
@@ -583,13 +667,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, onActivated } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import LucideIcon from '../../../common/LucideIcon.vue'
 import { useToast } from '../../../../composables/useToast'
 import { useExamMonitoring } from '../../../../composables/useExamMonitoring'
+import { useRealtimeChannel } from '../../../../composables/useRealtimeChannel'
+import { projectCameraOverlay } from '../../../../utils/cameraOverlay.js'
 import {
   fetchAttemptDetail,
+  fetchLatestCameraFrame,
   fetchProctorRisk,
   fetchProctorTimeline,
   reviewProctorFlag,
@@ -602,6 +689,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
+const CAMERA_FRAME_POLL_MS = 1000
 const RISK_LEVEL_LABELS = {
   CRITICAL: 'Nguy cơ cao',
   HIGH_RISK: 'Rủi ro cao',
@@ -694,6 +782,7 @@ const EVENT_COLORS = {
 const route = useRoute()
 const toast = useToast()
 const { subscribeToAttempt, unsubscribeFromAttempt, isConnected } = useExamMonitoring()
+const cameraRealtime = useRealtimeChannel()
 
 const attemptId = computed(() => route.params.attemptId)
 const examId = computed(() => route.params.examId)
@@ -736,9 +825,17 @@ const newNote = ref('')
 const noteLoading = ref(false)
 const flagReviewNote = ref('')
 const flagActionLoading = ref('')
+const latestCameraFrame = ref(null)
+const cameraClockTick = ref(Date.now())
+const cameraPreviewRef = ref(null)
+const cameraPreviewSize = ref({ width: 0, height: 0 })
 
 // Actions
 const actionLoading = ref('')
+let cameraClockTimer = null
+let cameraFramePollTimer = null
+let cameraPreviewResizeObserver = null
+let cameraPreviewResizeHandler = null
 
 // ── Computed ───────────────────────────────────────────────────────
 const studentName = computed(() => {
@@ -820,6 +917,49 @@ const lastUpdatedLabel = computed(() => {
 })
 
 const latestSignals = computed(() => riskData.value.latestSignals || [])
+const latestCameraFrameSrc = computed(() => latestCameraFrame.value?.imageBase64 || '')
+const latestCameraVisualOverlay = computed(() => {
+  const frame = latestCameraFrame.value
+  return projectCameraOverlay(
+    frame?.visualOverlay || frame?.visual_overlay,
+    cameraPreviewSize.value.width,
+    cameraPreviewSize.value.height,
+    { mirrorX: false }
+  )
+})
+const cameraFrameAgeMs = computed(() => {
+  const ts = latestCameraFrame.value?.receivedAt || latestCameraFrame.value?.issuedAt || latestCameraFrame.value?.capturedAt
+  if (!ts) return null
+  const age = cameraClockTick.value - new Date(ts).getTime()
+  return Number.isFinite(age) ? Math.max(age, 0) : null
+})
+const cameraFrameIsFresh = computed(() => {
+  const acked = latestCameraFrame.value?.acknowledged === true
+    || latestCameraFrame.value?.accepted === true
+    || latestCameraFrame.value?.transportStatus === 'ACKNOWLEDGED'
+  return cameraFrameAgeMs.value != null && cameraFrameAgeMs.value <= 20_000 && acked
+})
+const cameraFrameStatusLabel = computed(() => {
+  if (!attemptData.value.cameraOn) return 'Camera tắt'
+  if (!latestCameraFrame.value) return 'Chờ frame'
+  return cameraFrameIsFresh.value ? 'Đang nhận' : 'Chậm cập nhật'
+})
+const cameraFrameBadgeClass = computed(() => {
+  if (!attemptData.value.cameraOn) return 'smd-camera__badge--off'
+  if (!latestCameraFrame.value) return 'smd-camera__badge--wait'
+  return cameraFrameIsFresh.value ? 'smd-camera__badge--live' : 'smd-camera__badge--stale'
+})
+const cameraFrameTimeLabel = computed(() => {
+  const ts = latestCameraFrame.value?.capturedAt || latestCameraFrame.value?.issuedAt || latestCameraFrame.value?.receivedAt
+  return formatTime(ts)
+})
+const eyeStateLabel = computed(() => latestCameraFrame.value?.eyeState || latestCameraFrame.value?.eye_state || '—')
+const gazeDirectionLabel = computed(() => latestCameraFrame.value?.gazeDirection || latestCameraFrame.value?.gaze_direction || '—')
+const gazeStatusLabel = computed(() => {
+  if (latestCameraFrame.value?.gazeOffScreen || latestCameraFrame.value?.gaze_off_screen) return 'Off screen'
+  if (!latestCameraFrame.value) return '—'
+  return 'On screen'
+})
 
 // Breakdown from API returns Map<String, Integer> - access by signal type key
 const getBreakdownCount = (key) => {
@@ -852,7 +992,8 @@ const AI_CAMERA_SIGNALS = [
   'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
   'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
   'EYES_NOT_DETECTED', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
-  'VERY_BLURRY_FRAME', 'BLURRY_FRAME'
+  'VERY_BLURRY_FRAME', 'BLURRY_FRAME', 'EYE_BLINK_ANOMALY',
+  'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT'
 ]
 
 const filteredTimeline = computed(() => {
@@ -928,6 +1069,97 @@ function prependTimelineItem(item) {
 }
 
 // ── Realtime handler ───────────────────────────────────────────────
+function updateCameraPreviewSize() {
+  const element = cameraPreviewRef.value
+  if (!element) return
+  const rect = element.getBoundingClientRect()
+  cameraPreviewSize.value = {
+    width: Math.max(0, rect.width || 0),
+    height: Math.max(0, rect.height || 0)
+  }
+}
+
+function stopCameraPreviewObserver() {
+  if (cameraPreviewResizeObserver) {
+    cameraPreviewResizeObserver.disconnect()
+    cameraPreviewResizeObserver = null
+  }
+  if (cameraPreviewResizeHandler) {
+    window.removeEventListener('resize', cameraPreviewResizeHandler)
+    cameraPreviewResizeHandler = null
+  }
+}
+
+function startCameraPreviewObserver() {
+  stopCameraPreviewObserver()
+  updateCameraPreviewSize()
+  if (!cameraPreviewRef.value) return
+
+  if (typeof ResizeObserver !== 'undefined') {
+    cameraPreviewResizeObserver = new ResizeObserver(() => {
+      updateCameraPreviewSize()
+    })
+    cameraPreviewResizeObserver.observe(cameraPreviewRef.value)
+    return
+  }
+
+  cameraPreviewResizeHandler = () => {
+    updateCameraPreviewSize()
+  }
+  window.addEventListener('resize', cameraPreviewResizeHandler)
+}
+
+function handleCameraFrame(payload) {
+  if (!payload || String(payload.attemptId || '') !== String(attemptId.value)) return
+  latestCameraFrame.value = {
+    ...payload,
+    receivedAt: payload.receivedAt || new Date().toISOString(),
+    clientReceivedAt: new Date().toISOString()
+  }
+  if (attemptData.value.cameraOn !== true) {
+    attemptData.value = { ...attemptData.value, cameraOn: true }
+  }
+}
+
+async function loadLatestCameraFrame() {
+  if (!attemptId.value) return
+  try {
+    const frame = await fetchLatestCameraFrame(attemptId.value)
+    if (frame && frame.available !== false) {
+      handleCameraFrame(frame)
+    }
+  } catch {
+    // best-effort fallback
+  }
+}
+
+function connectCameraFrameStream(id) {
+  cameraRealtime.connect({
+    reconnectDelay: 5000,
+    topics: [
+      {
+        destination: `/topic/attempts/${id}/camera-frame`,
+        handler: handleCameraFrame
+      }
+    ]
+  })
+  void loadLatestCameraFrame()
+}
+
+function startCameraFramePolling() {
+  if (cameraFramePollTimer) return
+  cameraFramePollTimer = window.setInterval(() => {
+    void loadLatestCameraFrame()
+  }, CAMERA_FRAME_POLL_MS)
+}
+
+function stopCameraFramePolling() {
+  if (cameraFramePollTimer) {
+    window.clearInterval(cameraFramePollTimer)
+    cameraFramePollTimer = null
+  }
+}
+
 function handleRealtimeUpdate(payload) {
   if (!payload) return
   const payloadAttemptId = payload.attemptId ?? payload.id ?? payload.attempt?.id
@@ -981,6 +1213,19 @@ function handleRealtimeUpdate(payload) {
   }
 
   // Handle risk update — only update data, don't add timeline item to avoid flooding
+  if (type === 'FRAUD_WARNING_RECORDED') {
+    prependTimelineItem({
+      eventType: payload.warningType || 'WARNING',
+      at: payload.issuedAt || new Date().toISOString(),
+      details: payload.message || payload.warningType,
+      displayMessage: payload.message,
+      severity: payload.severity,
+      confidence: payload.confidence,
+      category: payload.warningCategory,
+      reviewStatus: payload.reviewStatus
+    })
+  }
+
   if (type === 'RISK_UPDATED') {
     if (payload.riskScore != null) {
       riskData.value = { ...riskData.value, riskScore: payload.riskScore }
@@ -1042,6 +1287,7 @@ async function loadData() {
   if (!attemptId.value) return
   isLoadingData.value = true
   error.value = ''
+  stopCameraPreviewObserver()
   // Reset timeline on fresh load to avoid duplication
   timeline.value = []
   try {
@@ -1067,6 +1313,8 @@ async function loadData() {
   } finally {
     isLoadingData.value = false
     loading.value = false
+    await nextTick()
+    startCameraPreviewObserver()
   }
 }
 
@@ -1263,8 +1511,14 @@ watch(attemptId, (id, prev) => {
   if (prev && prev !== id) unsubscribeFromAttempt(prev)
   if (id) {
     loading.value = true
+    latestCameraFrame.value = null
     void loadData()
     subscribeToAttempt(id, handleRealtimeUpdate)
+    connectCameraFrameStream(id)
+    startCameraFramePolling()
+  } else {
+    cameraRealtime.disconnect()
+    stopCameraFramePolling()
   }
 }, { immediate: true })
 
@@ -1279,14 +1533,28 @@ watch(timelinePageCount, count => {
   }
 })
 
+onMounted(() => {
+  cameraClockTimer = window.setInterval(() => {
+    cameraClockTick.value = Date.now()
+  }, 5000)
+})
+
 onUnmounted(() => {
   if (attemptId.value) unsubscribeFromAttempt(attemptId.value)
+  cameraRealtime.disconnect()
+  stopCameraFramePolling()
+  stopCameraPreviewObserver()
+  if (cameraClockTimer) {
+    window.clearInterval(cameraClockTimer)
+    cameraClockTimer = null
+  }
 })
 
 onActivated(() => {
   // Reload data when navigating back to this page
   loading.value = true
   void loadData()
+  void loadLatestCameraFrame()
 })
 </script>
 
@@ -1687,6 +1955,206 @@ onActivated(() => {
 }
 
 /* ── Level badge ─────────────────────────────────────────────── */
+.smd-camera__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-sm);
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+}
+
+.smd-camera__badge--live {
+  color: var(--ds-success);
+  background: var(--ds-success-soft);
+}
+
+.smd-camera__badge--wait,
+.smd-camera__badge--stale {
+  color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+
+.smd-camera__badge--off {
+  color: var(--ds-text-muted);
+  background: var(--ds-surface-muted);
+}
+
+.smd-camera__preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border);
+}
+
+.smd-camera__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.smd-camera-overlay {
+  --smd-camera-overlay-accent: var(--ds-success);
+  --smd-camera-overlay-chip-bg: rgba(21, 128, 61, 0.84);
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  color: var(--smd-camera-overlay-accent);
+}
+
+.smd-camera-overlay--warning {
+  --smd-camera-overlay-accent: var(--ds-warning);
+  --smd-camera-overlay-chip-bg: rgba(146, 64, 14, 0.84);
+}
+
+.smd-camera-overlay--danger {
+  --smd-camera-overlay-accent: var(--ds-danger);
+  --smd-camera-overlay-chip-bg: rgba(127, 29, 29, 0.84);
+}
+
+.smd-camera-overlay__chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 16px);
+  padding: 3px 8px;
+  border: 1px solid var(--smd-camera-overlay-accent);
+  border-radius: 9999px;
+  background: var(--smd-camera-overlay-chip-bg);
+  color: #fff;
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+}
+
+.smd-camera-overlay__box {
+  position: absolute;
+  border: 2px solid var(--smd-camera-overlay-accent);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 14px rgba(0, 0, 0, 0.22);
+}
+
+.smd-camera-overlay__box--face {
+  opacity: 0.72;
+}
+
+.smd-camera-overlay__box--eye {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.smd-camera-overlay__pupil {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--smd-camera-overlay-accent);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(0, 0, 0, 0.28);
+}
+
+.smd-camera__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
+  min-height: 100%;
+  padding: var(--ds-space-4);
+  color: var(--ds-text-muted);
+  text-align: center;
+}
+
+.smd-camera__empty p {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: 700;
+}
+
+.smd-camera__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-3);
+}
+
+.smd-camera__summary-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--ds-gray-100);
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.smd-camera__summary-chip--success {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.smd-camera__summary-chip--warning {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.smd-camera__summary-chip--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.smd-camera__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-3);
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+}
+
+.smd-camera__meta > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-gray-50);
+  line-height: 1.25;
+}
+
+.smd-camera__meta > span:last-child {
+  grid-column: 1 / -1;
+}
+
+.smd-camera__meta strong {
+  color: var(--ds-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .smd-level-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -2092,6 +2560,14 @@ onActivated(() => {
 
   .smd-actions {
     flex-direction: column;
+  }
+
+  .smd-camera__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .smd-camera__meta > span:last-child {
+    grid-column: auto;
   }
 
   .smd-btn {

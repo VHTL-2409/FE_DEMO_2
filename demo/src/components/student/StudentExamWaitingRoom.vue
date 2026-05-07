@@ -163,11 +163,11 @@ const requireCameraMic = computed(() => {
 })
 
 /**
- * True when devices have been verified to be working.
- * Always checked on mount — never bypassed even if requireCameraMic = false.
+ * True when the camera has been verified.
+ * Mic remains informational in this flow so a missing audio device does not block video capture.
  */
 const devicesVerified = computed(() =>
-  cameraVerified.value && cameraReady.value && micReady.value
+  cameraVerified.value && cameraReady.value
 )
 
 /**
@@ -219,19 +219,31 @@ const checkDevices = async () => {
   isCheckingDevices.value = true
   deviceError.value = ''
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    const videoTrack = stream.getVideoTracks()[0]
-    const audioTrack = stream.getAudioTracks()[0]
-    cameraReady.value = Boolean(videoTrack)
-    micReady.value = Boolean(audioTrack)
-    deviceError.value = ''
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    const videoTrack = videoStream.getVideoTracks()[0]
+    cameraReady.value = Boolean(videoTrack && videoTrack.readyState !== 'ended')
     cameraVerified.value = true
-    stream.getTracks().forEach((track) => track.stop())
+
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+      const audioTrack = audioStream.getAudioTracks()[0]
+      micReady.value = Boolean(audioTrack)
+      audioStream.getTracks().forEach((track) => track.stop())
+      deviceError.value = ''
+    } catch (audioError) {
+      micReady.value = false
+      deviceError.value = 'Camera đã sẵn sàng, nhưng micro chưa khả dụng. Vẫn có thể vào thi.'
+      if (audioError?.name === 'NotAllowedError') {
+        deviceError.value = 'Camera đã sẵn sàng, nhưng micro chưa được cấp quyền. Vẫn có thể vào thi.'
+      }
+    }
+
+    videoStream.getTracks().forEach((track) => track.stop())
   } catch (error) {
     cameraReady.value = false
     micReady.value = false
     deviceError.value = error?.name === 'NotAllowedError'
-      ? 'Bạn cần cấp quyền camera và micro để vào phòng thi.'
+      ? 'Bạn cần cấp quyền camera để vào phòng thi.'
       : 'Không thể truy cập camera/micro. Vui lòng kiểm tra thiết bị.'
     toast.error(deviceError.value)
     cameraVerified.value = true

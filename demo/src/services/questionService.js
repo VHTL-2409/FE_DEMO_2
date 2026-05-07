@@ -272,6 +272,21 @@ export const deleteQuestion = async (examId, questionId) => {
   return payload
 }
 
+export const fetchQuestionDifficultySummary = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/questions/difficulty-summary`, {
+    suppressToast: true
+  })
+  return unwrapApiData(payload)
+}
+
+export const analyzeQuestionDifficulty = async (examId, { overwrite = false } = {}) => {
+  const payload = await apiRequest(`/api/exams/${examId}/questions/difficulty/analyze?overwrite=${overwrite ? 'true' : 'false'}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
 /** Ghi toàn bộ câu hỏi form lên server (dùng khi xuất bản đề từ wizard tạo đề). */
 export async function persistExamQuestionsFromForm(examId, questions) {
   if (!examId || !Array.isArray(questions) || questions.length === 0) return

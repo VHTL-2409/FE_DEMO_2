@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -525,7 +526,7 @@ public class ExamImportService {
                 .scoreWeight(dto.getScoreWeight() != null ? dto.getScoreWeight() : 1.0)
                 .options(optionsJson)
                 .correctAnswer(dto.getCorrectAnswer() != null ? dto.getCorrectAnswer() : "")
-                .difficulty(dto.getDifficulty())
+                .difficulty(normalizeDifficulty(dto.getDifficulty()))
                 .build();
 
         // Set LaTeX content if available (from parsed PDF with math formulas)
@@ -543,6 +544,18 @@ public class ExamImportService {
         }
 
         return question;
+    }
+
+    private String normalizeDifficulty(String raw) {
+        if (raw != null && !raw.isBlank()) {
+            String value = Normalizer.normalize(raw.trim().toUpperCase(Locale.ROOT), Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")
+                    .replace('-', '_');
+            if (List.of("EASY", "DE", "LOW").contains(value)) return "EASY";
+            if (List.of("MEDIUM", "TRUNG_BINH", "TRUNG BINH", "TB", "NORMAL", "M").contains(value)) return "MEDIUM";
+            if (List.of("HARD", "KHO", "HIGH", "H").contains(value)) return "HARD";
+        }
+        return null;
     }
 
     private Exam resolveTargetExam(ExamImportSession session, @Nullable Exam exam, User actor) {

@@ -109,3 +109,29 @@ export async function runGradingByAttempt(attemptId) {
   })
   return unwrapApiData(payload)
 }
+
+export async function fetchFraudWarningsByExam(examId) {
+  const payload = await apiRequest(`${BASE}/warnings/exam/${examId}`, { suppressToast: true })
+  return unwrapApiData(payload)
+}
+
+export async function fetchFraudWarningsByAttempt(attemptId) {
+  const payload = await apiRequest(`${BASE}/warnings/attempts/${attemptId}`, { suppressToast: true })
+  return unwrapApiData(payload) || []
+}
+
+export async function reviewFraudWarning(warningId, reviewStatus, reviewNote = '') {
+  const payload = await apiRequest(`${BASE}/warnings/${warningId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ reviewStatus, reviewNote })
+  })
+  return unwrapApiData(payload)
+}
+
+export async function generateFraudWarningsForExam(examId) {
+  const payload = await apiRequest(`${BASE}/warnings/exam/${examId}/generate`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}

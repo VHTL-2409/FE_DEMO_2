@@ -814,6 +814,32 @@ function handleTeacherAlert(alert) {
   const studentName = alert.studentName || ''
 
   switch (type) {
+    case 'ATTEMPT_STARTED':
+    case 'ATTEMPT_JOINED': {
+      const displayName = alert.studentName || alert.student || 'Chưa có tên'
+      const eventType = type === 'ATTEMPT_JOINED' ? 'JOIN' : 'START'
+      store.upsertCard({
+        id: alert.attemptId,
+        attemptId: alert.attemptId,
+        examId: alert.examId || examId.value,
+        student: alert.student || displayName,
+        studentName: displayName,
+        email: alert.email,
+        studentCode: alert.studentCode,
+        status: alert.status || 'IN_PROGRESS',
+        riskScore: alert.riskScore ?? 0,
+        riskLevel: alert.riskLevel || 'CLEAN',
+        startedAt: alert.startedAt || alert.issuedAt,
+        deadlineAt: alert.deadlineAt,
+        remainingSeconds: alert.remainingSeconds,
+        cameraOn: alert.cameraOn,
+        micOn: alert.micOn,
+        clientIp: alert.clientIp,
+        lastSignalAt: alert.startedAt || alert.issuedAt
+      })
+      addEvent({ type: eventType, message: alert.message || 'Thí sinh đã vào phòng thi', studentName: displayName })
+      break
+    }
     case 'RISK_UPDATED': {
       const severity = alert.riskScore >= 80 ? 'HIGH' : alert.riskScore >= 30 ? 'MEDIUM' : 'LOW'
       pushAlert(buildAlert(alert, severity, alert.riskLevel, `${alert.recommendedAction || 'Rủi ro'}: ${alert.riskScore ?? 0}%`))
@@ -1024,8 +1050,8 @@ const relativeTime = (ts) => {
   if (diff < 86400) return `${Math.floor(diff / 3600)}g`
   return `${Math.floor(diff / 86400)}ng`
 }
-const eventTypeIcon = (type) => ({ ALERT: 'alert-triangle', WARN: 'alert-circle', PAUSE: 'pause', RESUME: 'play', INVALIDATE: 'x-circle', REFRESH: 'refresh-cw' }[type] || 'activity')
-const eventTypeColor = (type) => ({ ALERT: 'warn', WARN: 'warn', PAUSE: 'info', RESUME: 'success', INVALIDATE: 'danger', REFRESH: 'neutral' }[type] || 'neutral')
+const eventTypeIcon = (type) => ({ ALERT: 'alert-triangle', WARN: 'alert-circle', START: 'log-in', JOIN: 'log-in', PAUSE: 'pause', RESUME: 'play', INVALIDATE: 'x-circle', REFRESH: 'refresh-cw' }[type] || 'activity')
+const eventTypeColor = (type) => ({ ALERT: 'warn', WARN: 'warn', START: 'success', JOIN: 'success', PAUSE: 'info', RESUME: 'success', INVALIDATE: 'danger', REFRESH: 'neutral' }[type] || 'neutral')
 
 // ── Watchers ────────────────────────────────────────────────────────────
 watch(() => (route.path === '/teacher/live-monitoring/session' || route.path.startsWith('/teacher/exams/')) ? { ...route.query } : null, (q) => { if (q?.examId) writeMonitoringSessionQuery(q) }, { deep: true, immediate: true })

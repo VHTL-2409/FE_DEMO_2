@@ -200,6 +200,15 @@ export const updateExam = async (examId, {
   return unwrapApiData(payload)
 }
 
+export const updateMonitoringConfig = async (examId, payload = {}) => {
+  const response = await apiRequest(`/api/exams/${examId}/monitoring-config`, {
+    method: 'PATCH',
+    suppressToast: true,
+    body: JSON.stringify(payload)
+  })
+  return unwrapApiData(response)
+}
+
 export const getPracticeOptions = async () => {
   const payload = await apiRequest('/api/exams/practice-options', { suppressToast: true })
   return unwrapApiData(payload) || { maxQuestions: 50 }

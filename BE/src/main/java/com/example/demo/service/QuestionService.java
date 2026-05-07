@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.question.QuestionRequest;
 import com.example.demo.api.dto.question.QuestionResponse;
+import com.example.demo.api.dto.question.QuestionDifficultyItemDto;
+import com.example.demo.api.dto.question.QuestionDifficultySummaryResponse;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
@@ -19,10 +21,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,17 +36,20 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final QuestionPayloadHelper questionPayloadHelper;
     private final ExamAttemptRepository examAttemptRepository;
+    private final AiDifficultyAnalyzerService aiDifficultyAnalyzerService;
     private final ObjectMapper objectMapper;
 
     public QuestionService(
             QuestionRepository questionRepository,
             QuestionPayloadHelper questionPayloadHelper,
             ExamAttemptRepository examAttemptRepository,
+            AiDifficultyAnalyzerService aiDifficultyAnalyzerService,
             ObjectMapper objectMapper
     ) {
         this.questionRepository = questionRepository;
         this.questionPayloadHelper = questionPayloadHelper;
         this.examAttemptRepository = examAttemptRepository;
+        this.aiDifficultyAnalyzerService = aiDifficultyAnalyzerService;
         this.objectMapper = objectMapper;
     }
 
@@ -214,9 +221,7 @@ public class QuestionService {
         questionPayloadHelper.validateCorrectAnswerAgainstOptions(type, options, correctAnswer);
         String metadata = questionPayloadHelper.normalizeMetadata(request.getMetadata());
         String attachments = questionPayloadHelper.normalizeAttachments(request.getAttachments());
-        String difficulty = request.getDifficulty() == null || request.getDifficulty().isBlank()
-                ? null
-                : request.getDifficulty().trim().toUpperCase();
+        String difficulty = normalizeDifficultyOrThrow(request.getDifficulty());
 
         String latexContent = request.getLatexContent() == null || request.getLatexContent().isBlank()
                 ? null
@@ -248,12 +253,54 @@ public class QuestionService {
             .scoreWeight(question.getScoreWeight())
             .options(question.getOptions())
             .correctAnswer(includeCorrectAnswer ? question.getCorrectAnswer() : null)
-            .difficulty(question.getDifficulty())
+            .difficulty(normalizeDifficultyOrNull(question.getDifficulty()))
             .metadata(question.getMetadata())
             .attachments(question.getAttachments())
             .latexContent(question.getLatexContent())
             .latexOptions(question.getLatexOptions())
             .build();
+    }
+
+    @Transactional
+    public QuestionDifficultySummaryResponse analyzeDifficulty(Exam exam, boolean overwrite) {
+        List<Question> questions = questionRepository.findByExam(exam);
+        Map<Long, String> aiSuggestions = new LinkedHashMap<>();
+        List<Question> candidates = questions.stream()
+                .filter(q -> overwrite || normalizeDifficultyOrNull(q.getDifficulty()) == null)
+                .toList();
+
+        List<AiDifficultyAnalyzerService.QuestionInput> inputs = candidates.stream()
+                .map(this::toAiDifficultyInput)
+                .toList();
+        aiDifficultyAnalyzerService.analyzeBatch(inputs, (index, difficulty) -> {
+            if (index >= 0 && index < candidates.size()) {
+                aiSuggestions.put(candidates.get(index).getId(), difficulty);
+            }
+        });
+
+        int updated = 0;
+        for (Question question : candidates) {
+            String suggested = normalizeDifficultyOrNull(aiSuggestions.get(question.getId()));
+            String source = "AI";
+            if (suggested == null) {
+                suggested = ruleBasedDifficulty(question);
+                source = "RULE";
+            }
+            if (suggested != null && !Objects.equals(question.getDifficulty(), suggested)) {
+                question.setDifficulty(suggested);
+                updated++;
+            }
+            appendDifficultySource(question, source);
+        }
+        if (updated > 0) {
+            questionRepository.saveAll(candidates);
+        }
+        return buildDifficultySummary(exam, questionRepository.findByExam(exam));
+    }
+
+    @Transactional(readOnly = true)
+    public QuestionDifficultySummaryResponse difficultySummary(Exam exam) {
+        return buildDifficultySummary(exam, questionRepository.findByExam(exam));
     }
 
     private QuestionResponse toAttemptResponse(
@@ -274,7 +321,7 @@ public class QuestionService {
                 .scoreWeight(question.getScoreWeight())
                 .options(options)
                 .correctAnswer(includeCorrectAnswer ? question.getCorrectAnswer() : null)
-                .difficulty(question.getDifficulty())
+                .difficulty(normalizeDifficultyOrNull(question.getDifficulty()))
                 .metadata(question.getMetadata())
                 .attachments(question.getAttachments())
                 .latexContent(question.getLatexContent())
@@ -286,6 +333,159 @@ public class QuestionService {
         return !includeCorrectAnswer
                 && attemptId != null
                 && (Boolean.TRUE.equals(exam.getShuffleQuestions()) || Boolean.TRUE.equals(exam.getShuffleAnswers()));
+    }
+
+    private QuestionDifficultySummaryResponse buildDifficultySummary(Exam exam, List<Question> questions) {
+        long easy = questions.stream().filter(q -> "EASY".equals(normalizeDifficultyOrNull(q.getDifficulty()))).count();
+        long medium = questions.stream().filter(q -> "MEDIUM".equals(normalizeDifficultyOrNull(q.getDifficulty()))).count();
+        long hard = questions.stream().filter(q -> "HARD".equals(normalizeDifficultyOrNull(q.getDifficulty()))).count();
+        long unspecified = questions.size() - easy - medium - hard;
+        Map<String, Long> distribution = new LinkedHashMap<>();
+        distribution.put("EASY", easy);
+        distribution.put("MEDIUM", medium);
+        distribution.put("HARD", hard);
+        distribution.put("UNSPECIFIED", unspecified);
+        return QuestionDifficultySummaryResponse.builder()
+                .examId(exam.getId())
+                .examTitle(exam.getTitle())
+                .totalQuestions(questions.size())
+                .easyCount((int) easy)
+                .mediumCount((int) medium)
+                .hardCount((int) hard)
+                .unspecifiedCount((int) unspecified)
+                .distribution(distribution)
+                .questions(questions.stream()
+                        .map(q -> QuestionDifficultyItemDto.builder()
+                                .questionId(q.getId())
+                                .content(q.getContent())
+                                .difficulty(normalizeDifficultyOrNull(q.getDifficulty()))
+                                .source(extractDifficultySource(q))
+                                .build())
+                        .toList())
+                .build();
+    }
+
+    private String normalizeDifficultyOrThrow(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String normalized = normalizeDifficultyOrNull(raw);
+        if (normalized == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "difficulty must be EASY, MEDIUM or HARD");
+        }
+        return normalized;
+    }
+
+    private String normalizeDifficultyOrNull(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = Normalizer.normalize(raw.trim().toUpperCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replace('-', '_');
+        return switch (value) {
+            case "EASY", "DE", "DỄ", "E", "LOW" -> "EASY";
+            case "MEDIUM", "TRUNG_BINH", "TRUNG BÌNH", "TRUNG BINH", "TB", "M", "NORMAL" -> "MEDIUM";
+            case "HARD", "KHO", "KHÓ", "H", "HIGH" -> "HARD";
+            default -> null;
+        };
+    }
+
+    private String ruleBasedDifficulty(Question question) {
+        int contentLength = question.getContent() == null ? 0 : question.getContent().trim().length();
+        int optionCount = parseOptionCount(question.getOptions());
+        double weight = question.getScoreWeight() == null ? 1.0 : question.getScoreWeight();
+        if (contentLength <= 90 && optionCount <= 4 && weight <= 1.0) {
+            return "EASY";
+        }
+        if (contentLength >= 220 || weight >= 2.5 || optionCount > 4) {
+            return "HARD";
+        }
+        return "MEDIUM";
+    }
+
+    private AiDifficultyAnalyzerService.QuestionInput toAiDifficultyInput(Question question) {
+        List<AttemptOptionView> options = parseOptionsForDifficulty(question);
+        return new AiDifficultyAnalyzerService.QuestionInput(
+                question.getContent(),
+                optionText(options, 0),
+                optionText(options, 1),
+                optionText(options, 2),
+                optionText(options, 3)
+        );
+    }
+
+    private List<AttemptOptionView> parseOptionsForDifficulty(Question question) {
+        String rawOptions = question.getOptions();
+        if (rawOptions == null || rawOptions.isBlank()) {
+            return List.of();
+        }
+        try {
+            List<Object> parsed = objectMapper.readValue(rawOptions, new TypeReference<>() {});
+            List<AttemptOptionView> rows = new ArrayList<>();
+            for (int i = 0; i < parsed.size(); i++) {
+                Object rawItem = parsed.get(i);
+                if (rawItem instanceof Map<?, ?> rawMap) {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    rawMap.forEach((key, value) -> item.put(String.valueOf(key), value));
+                    rows.add(new AttemptOptionView(
+                            firstNonBlank(item.get("id"), displayOptionId(i)),
+                            firstNonBlank(item.get("text"), item.get("content"), item.get("label"), item.get("value"), "")
+                    ));
+                } else {
+                    rows.add(new AttemptOptionView(displayOptionId(i), String.valueOf(rawItem == null ? "" : rawItem)));
+                }
+            }
+            return rows;
+        } catch (JsonProcessingException ex) {
+            return List.of();
+        }
+    }
+
+    private String optionText(List<AttemptOptionView> options, int index) {
+        return index >= 0 && index < options.size() ? options.get(index).text() : "";
+    }
+
+    private int parseOptionCount(String rawOptions) {
+        if (rawOptions == null || rawOptions.isBlank()) {
+            return 0;
+        }
+        try {
+            List<Object> parsed = objectMapper.readValue(rawOptions, new TypeReference<>() {});
+            return parsed.size();
+        } catch (JsonProcessingException ex) {
+            return 0;
+        }
+    }
+
+    private void appendDifficultySource(Question question, String source) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        if (question.getMetadata() != null && !question.getMetadata().isBlank()) {
+            try {
+                metadata.putAll(objectMapper.readValue(question.getMetadata(), new TypeReference<Map<String, Object>>() {}));
+            } catch (JsonProcessingException ignored) {
+                metadata.put("rawMetadata", question.getMetadata());
+            }
+        }
+        metadata.put("difficultySource", source);
+        try {
+            question.setMetadata(objectMapper.writeValueAsString(metadata));
+        } catch (JsonProcessingException ignored) {
+            // Keep existing metadata if serialization unexpectedly fails.
+        }
+    }
+
+    private String extractDifficultySource(Question question) {
+        if (question.getMetadata() == null || question.getMetadata().isBlank()) {
+            return normalizeDifficultyOrNull(question.getDifficulty()) == null ? null : "MANUAL_OR_IMPORT";
+        }
+        try {
+            Map<String, Object> metadata = objectMapper.readValue(question.getMetadata(), new TypeReference<>() {});
+            Object source = metadata.get("difficultySource");
+            return source == null ? "MANUAL_OR_IMPORT" : String.valueOf(source);
+        } catch (JsonProcessingException ex) {
+            return "MANUAL_OR_IMPORT";
+        }
     }
 
     private List<Question> maybeShuffleQuestions(List<Question> questions, Exam exam, Long attemptId) {

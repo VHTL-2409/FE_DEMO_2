@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudSignal;
+import com.example.demo.domain.entity.FraudWarning;
 import com.example.demo.domain.entity.ProctorFlag;
 import com.example.demo.domain.entity.RiskActionType;
 import com.example.demo.domain.entity.RiskLevel;
@@ -37,6 +38,13 @@ public class RealtimeNotificationService {
                 breakdown
         );
         notifyAiCameraSignal(attempt, signal);
+    }
+
+    public void notifyFraudWarningRecorded(FraudWarning warning) {
+        if (warning == null || warning.getExam() == null) {
+            return;
+        }
+        teacherAlertGateway.publishFraudWarningRecorded(warning.getExam().getId(), warning);
     }
 
     public void notifyRiskUpdated(
@@ -111,6 +119,78 @@ public class RealtimeNotificationService {
                 attempt.getStudent().getUsername(),
                 attempt.getRiskScore(),
                 message
+        );
+    }
+
+    public void notifyAttemptStarted(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            LocalDateTime startedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        teacherAlertGateway.publishAttemptStarted(
+                examId,
+                attemptId,
+                student,
+                studentName,
+                email,
+                studentCode,
+                status,
+                startedAt,
+                deadlineAt,
+                remainingSeconds,
+                riskScore,
+                riskLevel,
+                cameraOn,
+                micOn,
+                clientIp
+        );
+    }
+
+    public void notifyAttemptJoined(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            LocalDateTime startedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        teacherAlertGateway.publishAttemptJoined(
+                examId,
+                attemptId,
+                student,
+                studentName,
+                email,
+                studentCode,
+                status,
+                startedAt,
+                deadlineAt,
+                remainingSeconds,
+                riskScore,
+                riskLevel,
+                cameraOn,
+                micOn,
+                clientIp
         );
     }
 

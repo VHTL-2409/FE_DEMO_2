@@ -37,6 +37,12 @@ public class AiAssistController {
         return ApiResponse.success(aiAssistService.analyzeFrame(request));
     }
 
+    @PostMapping("/api/v1/proctor/camera/frame")
+    public ApiResponse<Map<String, Object>> publishCameraFrame(@Valid @RequestBody FrameAnalysisRequest request) {
+        currentUserService.requireCurrentUser();
+        return ApiResponse.success(aiAssistService.publishCameraFrame(request));
+    }
+
     @PostMapping("/api/v1/proctor/ai/behavior")
     public ApiResponse<Map<String, Object>> analyzeBehavior(@RequestBody BehaviorAnalysisRequest request) {
         currentUserService.requireCurrentUser();

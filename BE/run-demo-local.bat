@@ -1,5 +1,6 @@
 @echo off
-set APP_AI_SERVICE_ENABLED=false
+if "%APP_AI_SERVICE_ENABLED%"=="" set APP_AI_SERVICE_ENABLED=true
+if "%APP_AI_SERVICE_BASE_URL%"=="" set APP_AI_SERVICE_BASE_URL=http://localhost:8090
 set APP_FRONTEND_BASE_URL=http://localhost:4173
 set APP_URL=http://localhost:8082
 set SPRING_PROFILES_ACTIVE=gmail

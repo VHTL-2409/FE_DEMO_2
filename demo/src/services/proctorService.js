@@ -26,6 +26,22 @@ export const analyzeProctorFrame = async (payload) => {
   return unwrapApiData(response)
 }
 
+export const sendProctorCameraFrame = async (payload) => {
+  const response = await apiRequest('/api/v1/proctor/camera/frame', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
+export const fetchLatestCameraFrame = async (attemptId) => {
+  const response = await apiRequest(`/api/v1/proctor/camera/frame/attempt/${attemptId}/latest`, {
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
 export const fetchProctorRisk = async (attemptId) => {
   const response = await apiRequest(`/api/v1/proctor/attempts/${attemptId}/risk`, { suppressToast: true })
   return unwrapApiData(response)

@@ -199,8 +199,12 @@ public class CsvQuestionParser {
 
     private String normalizeDifficulty(String fromFile) {
         if (fromFile != null && !fromFile.isBlank()) {
-            String d = fromFile.trim().toUpperCase(Locale.ROOT);
-            if (List.of("EASY", "MEDIUM", "HARD").contains(d)) return d;
+            String d = Normalizer.normalize(fromFile.trim().toUpperCase(Locale.ROOT), Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")
+                    .replace('-', '_');
+            if (List.of("EASY", "DE", "LOW").contains(d)) return "EASY";
+            if (List.of("MEDIUM", "TRUNG_BINH", "TRUNG BINH", "TB", "NORMAL", "M").contains(d)) return "MEDIUM";
+            if (List.of("HARD", "KHO", "HIGH", "H").contains(d)) return "HARD";
         }
         return null;
     }

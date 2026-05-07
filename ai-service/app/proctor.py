@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 import os
+import time
+from datetime import datetime
+from itertools import combinations
+from pathlib import Path
 from typing import Any
+from urllib.request import Request as UrlRequest, urlopen
 
 import numpy as np
 from PIL import Image
@@ -19,6 +25,15 @@ except Exception:
     FACE_LANDMARK_AVAILABLE = False
 
 
+logger = logging.getLogger(__name__)
+
+FACE_MODEL_DIR = Path(__file__).resolve().parent / "models"
+FACE_DNN_PROTO_NAME = "deploy.prototxt.txt"
+FACE_DNN_MODEL_NAME = "res10_300x300_ssd_iter_140000.caffemodel"
+FACE_DNN_PROTO_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
+FACE_DNN_MODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
+
+
 class ProctorAnalyzer:
     """Advanced Proctor Analyzer with Deep Learning-based Face Detection,
     Eye Tracking, and Spoofing Detection."""
@@ -30,17 +45,45 @@ class ProctorAnalyzer:
         self._profile_cascade = None
         self._dnn_net = None
         self._dnn_model_type = None
-        self._dnn_confidence_threshold = 0.5
+        self._dnn_confidence_threshold = self._env_float("AI_SERVICE_FACE_DETECTION_THRESHOLD", 0.55)
+        self._face_detector_backend = "UNAVAILABLE"
+        self._face_detector_error = None
+        self._face_model_auto_download = self._env_bool("AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD", True)
+        self._face_model_download_timeout = int(self._env_float("AI_SERVICE_FACE_MODEL_DOWNLOAD_TIMEOUT_SECONDS", 12))
         self._eye_landmarks = None
         self._face_landmark_detector = None
         self._spoofing_model = None
         self._spoofing_dl = False
+        self._tracking_state: dict[str, dict[str, Any]] = {}
+        self._tracking_state_ttl_seconds = 180
+        self._max_tracking_states = 256
+        self._gaze_required_frames = 3
+        self._gaze_required_ms = 2500
+        self._eye_closure_required_frames = 2
+        self._eye_closure_required_ms = 2000
 
         if cv2 is not None:
             self._init_haar_cascades()
             self._init_dnn_face_detection()
             self._init_eye_landmark_detector()
             self._init_spoofing_detector()
+        else:
+            self._face_detector_error = "OpenCV is not available"
+
+    def _env_bool(self, name: str, default: bool) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+    def _env_float(self, name: str, default: float) -> float:
+        raw = os.getenv(name)
+        if raw is None or raw.strip() == "":
+            return default
+        try:
+            return float(raw)
+        except ValueError:
+            return default
 
     def _init_haar_cascades(self) -> None:
         """Initialize Haar cascade classifiers."""
@@ -59,27 +102,99 @@ class ProctorAnalyzer:
     def _init_dnn_face_detection(self) -> None:
         """Initialize DNN-based face detection."""
         if not DNN_AVAILABLE:
+            self._face_detector_backend = "UNAVAILABLE"
+            self._face_detector_error = "OpenCV DNN is not available"
             return
 
+        model_dir = FACE_MODEL_DIR
+        model_dir.mkdir(parents=True, exist_ok=True)
+        proto_path = model_dir / FACE_DNN_PROTO_NAME
+        model_path = model_dir / FACE_DNN_MODEL_NAME
+
+        if self._face_model_auto_download:
+            self._ensure_face_model_files(proto_path, model_path)
+
         try:
-            base_dir = os.path.dirname(__file__)
-            prototxt_path = os.path.join(base_dir, "models", "deploy.prototxt.txt")
-            model_path = os.path.join(base_dir, "models", "res10_300x300_ssd_iter_140000.caffemodel")
-
-            if os.path.exists(prototxt_path) and os.path.exists(model_path):
-                self._dnn_net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
+            if self._is_valid_file(proto_path) and self._is_valid_file(model_path):
+                self._dnn_net = cv2.dnn.readNetFromCaffe(str(proto_path), str(model_path))
                 self._dnn_model_type = "CAFFE"
+                self._configure_dnn_net()
+                self._face_detector_backend = "DNN_CAFFE"
+                self._face_detector_error = None
                 return
 
-            dnn_proto = "opencv_face_detector.pbtxt"
-            dnn_model = "opencv_face_detector_uint8.pb"
-            if os.path.exists(dnn_proto) and os.path.exists(dnn_model):
-                self._dnn_net = cv2.dnn.readNetFromTensorflow(dnn_model, dnn_proto)
+            tf_proto = model_dir / "opencv_face_detector.pbtxt"
+            tf_model = model_dir / "opencv_face_detector_uint8.pb"
+            if self._is_valid_file(tf_proto) and self._is_valid_file(tf_model):
+                self._dnn_net = cv2.dnn.readNetFromTensorflow(str(tf_model), str(tf_proto))
                 self._dnn_model_type = "TENSORFLOW"
+                self._configure_dnn_net()
+                self._face_detector_backend = "DNN_TENSORFLOW"
+                self._face_detector_error = None
                 return
-        except Exception:
-            pass
+            self._face_detector_backend = "HAAR_FALLBACK"
+            self._face_detector_error = (
+                f"Missing face detector model files in {model_dir}. "
+                f"Expected {FACE_DNN_PROTO_NAME} and {FACE_DNN_MODEL_NAME}."
+            )
+        except Exception as exc:
+            self._dnn_net = None
+            self._dnn_model_type = None
+            self._face_detector_backend = "HAAR_FALLBACK"
+            self._face_detector_error = str(exc)
+            logger.warning("Failed to initialize DNN face detector: %s", exc)
 
+    def _configure_dnn_net(self) -> None:
+        if self._dnn_net is None:
+            return
+        try:
+            backend = getattr(cv2.dnn, "DNN_BACKEND_OPENCV", None)
+            target = getattr(cv2.dnn, "DNN_TARGET_CPU", None)
+            if backend is not None:
+                self._dnn_net.setPreferableBackend(backend)
+            if target is not None:
+                self._dnn_net.setPreferableTarget(target)
+        except Exception as exc:
+            logger.debug("Unable to configure DNN backend/target: %s", exc)
+
+    def _ensure_face_model_files(self, proto_path: Path, model_path: Path) -> None:
+        downloads = [
+            (FACE_DNN_PROTO_URL, proto_path, 1_000),
+            (FACE_DNN_MODEL_URL, model_path, 1_000_000),
+        ]
+        for url, path, min_bytes in downloads:
+            if self._is_valid_file(path, min_bytes=min_bytes):
+                continue
+            self._download_binary(url, path)
+
+    def _download_binary(self, url: str, target_path: Path) -> None:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = target_path.with_suffix(target_path.suffix + ".download")
+        try:
+            request = UrlRequest(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urlopen(request, timeout=self._face_model_download_timeout) as response, open(temp_path, "wb") as out_file:
+                while True:
+                    chunk = response.read(1024 * 64)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+            if not temp_path.exists() or temp_path.stat().st_size == 0:
+                raise ValueError("download returned an empty file")
+            temp_path.replace(target_path)
+            logger.info("Downloaded face detector model: %s", target_path.name)
+        except Exception as exc:
+            try:
+                if temp_path.exists():
+                    temp_path.unlink()
+            except Exception:
+                pass
+            logger.warning("Unable to download %s: %s", target_path.name, exc)
+
+    def _is_valid_file(self, path: Path, min_bytes: int = 1) -> bool:
+        try:
+            return path.exists() and path.is_file() and path.stat().st_size >= min_bytes
+        except Exception:
+            return False
         self._dnn_net = None
 
     def _init_eye_landmark_detector(self) -> None:
@@ -120,6 +235,21 @@ class ProctorAnalyzer:
     def dnn_ready(self) -> bool:
         return self._dnn_net is not None
 
+    def is_ready(self) -> bool:
+        return self.cv_ready() or self.dnn_ready()
+
+    def face_detector_status(self) -> dict[str, Any]:
+        return {
+            "ready": self.is_ready(),
+            "backend": getattr(self, "_face_detector_backend", "UNAVAILABLE"),
+            "dnnReady": self.dnn_ready(),
+            "cvReady": self.cv_ready(),
+            "modelType": getattr(self, "_dnn_model_type", None),
+            "error": getattr(self, "_face_detector_error", None),
+            "autoDownload": getattr(self, "_face_model_auto_download", False),
+            "modelDir": str(FACE_MODEL_DIR),
+        }
+
     def eye_landmark_ready(self) -> bool:
         return self._eye_landmarks and self._face_landmark_detector is not None
 
@@ -128,15 +258,16 @@ class ProctorAnalyzer:
 
     def analyze_frame(self, image_base64: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         """Comprehensive frame analysis including face detection, eye tracking, and spoofing detection."""
+        metadata = dict(metadata or {})
+        sample_time = self._resolve_sample_time(metadata)
+        tracking_key = self._resolve_tracking_key(metadata)
+
         image = self._decode_image(image_base64)
         rgb_array = np.array(image)
         gray = np.array(image.convert("L"))
 
         # Face detection
-        if self.dnn_ready():
-            face_count, face_locations = self._detect_faces_dnn(rgb_array, gray)
-        else:
-            face_count, face_locations = self._detect_faces_haar(gray)
+        face_count, face_locations, detection_method = self._detect_face_locations(rgb_array, gray)
 
         # Eye tracking with landmark detection
         eye_tracking = self._track_eyes(rgb_array, gray, face_locations)
@@ -156,6 +287,15 @@ class ProctorAnalyzer:
 
         # Gaze analysis
         gaze_analysis = self._analyze_gaze(eye_tracking, face_locations, gray.shape)
+        temporal_tracking = self._update_tracking_state(
+            tracking_key,
+            sample_time,
+            face_count,
+            eye_tracking,
+            gaze_analysis,
+        )
+        eye_tracking.update(temporal_tracking.get("eye_tracking", {}))
+        gaze_analysis.update(temporal_tracking.get("gaze_analysis", {}))
 
         signals = []
 
@@ -165,7 +305,7 @@ class ProctorAnalyzer:
                 "FACE_NOT_DETECTED", "HIGH", 0.92,
                 {"faceCount": 0, "reason": "No face found in frame",
                  "recommendation": "Ensure face is clearly visible and well-lit",
-                 "detectionMethod": "DNN" if self.dnn_ready() else "HAAR"}
+                 "detectionMethod": detection_method}
             ))
 
         elif (self.dnn_ready() or self.cv_ready()) and face_count > 1:
@@ -173,7 +313,7 @@ class ProctorAnalyzer:
                 "MULTIPLE_FACES", "CRITICAL", 0.98,
                 {"faceCount": face_count, "reason": f"{face_count} faces detected",
                  "recommendation": "Only one person should be in frame",
-                 "detectionMethod": "DNN" if self.dnn_ready() else "HAAR"}
+                 "detectionMethod": detection_method}
             ))
 
         elif (self.dnn_ready() or self.cv_ready()) and face_count == 1:
@@ -232,6 +372,7 @@ class ProctorAnalyzer:
         if eye_tracking.get("prolonged_eye_closure"):
             signals.append(self._signal("EYES_CLOSED_PROLONGED", "LOW", 0.65,
                 {"closureDuration": eye_tracking.get("closure_duration", 0),
+                 "closureDurationMs": eye_tracking.get("closure_duration_ms", 0),
                  "reason": "Eyes closed for extended period",
                  "recommendation": "Keep eyes open during exam"}))
 
@@ -240,6 +381,7 @@ class ProctorAnalyzer:
             signals.append(self._signal("GAZE_OFF_SCREEN", "HIGH", gaze_analysis["gaze_confidence"],
                 {"gazeDirection": gaze_analysis.get("primary_direction", "UNKNOWN"),
                  "duration": gaze_analysis.get("off_duration", 0),
+                 "durationMs": gaze_analysis.get("off_duration_ms", 0),
                  "reason": "Looking away from screen",
                  "recommendation": "Focus on the exam content"}))
 
@@ -306,16 +448,22 @@ class ProctorAnalyzer:
             "eye_state": eye_tracking.get("eye_state", "UNKNOWN"),
             "eye_aspect_ratio": eye_tracking.get("eye_aspect_ratio", 0),
             "blink_rate": eye_tracking.get("blink_rate", 0),
+            "eye_tracking_confidence": eye_tracking.get("tracking_confidence", 0.0),
+            "closure_duration_ms": eye_tracking.get("closure_duration_ms", 0),
             # Gaze analysis fields
             "gaze_direction": gaze_analysis.get("primary_direction", "CENTER"),
             "gaze_off_screen": gaze_analysis.get("gaze_off_screen", False),
             "attention_score": gaze_analysis.get("attention_score", 1.0),
+            "gaze_confidence": gaze_analysis.get("gaze_confidence", 0.0),
+            "off_screen_duration_ms": gaze_analysis.get("off_duration_ms", 0),
+            "visual_overlay": self._build_visual_overlay(rgb_array, face_locations, eye_tracking, gaze_analysis),
             "diagnostics": {
                 "cv_ready": self.cv_ready(),
                 "dnn_ready": self.dnn_ready(),
                 "eye_landmark_ready": self.eye_landmark_ready(),
                 "spoofing_dl_ready": self.spoofing_dl_ready(),
-                "detection_method": "DNN" if self.dnn_ready() else "HAAR",
+                "detection_method": detection_method,
+                "face_detector": self.face_detector_status(),
                 "image_width": int(rgb_array.shape[1]) if rgb_array.ndim >= 2 else 0,
                 "image_height": int(rgb_array.shape[0]) if rgb_array.ndim >= 2 else 0,
                 "face_locations": [list(loc) for loc in face_locations] if face_locations else [],
@@ -328,66 +476,396 @@ class ProctorAnalyzer:
             },
         }
 
+    def _build_visual_overlay(
+        self,
+        rgb_array: np.ndarray,
+        face_locations: list,
+        eye_tracking: dict,
+        gaze_analysis: dict,
+    ) -> dict[str, Any]:
+        image_height = int(rgb_array.shape[0]) if rgb_array.ndim >= 2 else 0
+        image_width = int(rgb_array.shape[1]) if rgb_array.ndim >= 2 else 0
+
+        face_boxes = []
+        for face in face_locations or []:
+            normalized = self._normalize_overlay_box(face)
+            if normalized is not None:
+                face_boxes.append(normalized)
+
+        eye_boxes = []
+        pupil_points = []
+        for side_key in ("left_eye", "right_eye"):
+            eye_detail = eye_tracking.get(side_key)
+            if not isinstance(eye_detail, dict):
+                continue
+
+            eye_box = self._normalize_overlay_box(eye_detail.get("box"))
+            if eye_box is not None:
+                eye_box["side"] = side_key.replace("_eye", "")
+                eye_boxes.append(eye_box)
+
+            pupil_point = self._normalize_overlay_point(eye_detail.get("pupil_center"))
+            if pupil_point is not None:
+                pupil_point["side"] = side_key.replace("_eye", "")
+                pupil_points.append(pupil_point)
+
+        if not pupil_points:
+            for index, point in enumerate(eye_tracking.get("landmarks") or []):
+                normalized_point = self._normalize_overlay_point(point)
+                if normalized_point is not None:
+                    normalized_point["side"] = f"eye_{index + 1}"
+                    pupil_points.append(normalized_point)
+
+        face_count = len(face_boxes)
+        eye_count = int(eye_tracking.get("eye_count") or len(eye_boxes) or 0)
+        eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
+        prolonged_eye_closure = bool(eye_tracking.get("prolonged_eye_closure"))
+        gaze_off_screen = bool(gaze_analysis.get("gaze_off_screen"))
+
+        status = "TRACKING"
+        label = "Đang theo dõi"
+        tone = "success"
+        if face_count == 0:
+            status = "NO_FACE"
+            label = "Không thấy mặt"
+            tone = "danger"
+        elif face_count > 1:
+            status = "MULTIPLE_FACES"
+            label = "Nhiều khuôn mặt"
+            tone = "danger"
+        elif eye_count == 0 or not eye_boxes:
+            status = "NO_EYES"
+            label = "Không thấy mắt"
+            tone = "warning"
+        elif gaze_off_screen:
+            status = "GAZE_AWAY"
+            label = "Nhìn lệch"
+            tone = "danger"
+        elif prolonged_eye_closure or eye_state == "CLOSED":
+            status = "EYES_CLOSED"
+            label = "Mắt nhắm"
+            tone = "warning"
+
+        return {
+            "imageWidth": image_width,
+            "imageHeight": image_height,
+            "faceBoxes": face_boxes,
+            "eyeBoxes": eye_boxes,
+            "pupilPoints": pupil_points,
+            "status": status,
+            "label": label,
+            "tone": tone,
+        }
+
+    def _normalize_overlay_box(self, box: Any) -> dict[str, Any] | None:
+        if isinstance(box, dict):
+            x = box.get("x", box.get("left"))
+            y = box.get("y", box.get("top"))
+            width = box.get("width", box.get("w"))
+            height = box.get("height", box.get("h"))
+        elif isinstance(box, (list, tuple)) and len(box) >= 4:
+            x, y, width, height = box[:4]
+        else:
+            return None
+
+        try:
+            x_i = int(round(float(x)))
+            y_i = int(round(float(y)))
+            width_i = int(round(float(width)))
+            height_i = int(round(float(height)))
+        except Exception:
+            return None
+
+        if width_i <= 0 or height_i <= 0:
+            return None
+
+        return {
+            "x": x_i,
+            "y": y_i,
+            "width": width_i,
+            "height": height_i,
+        }
+
+    def _normalize_overlay_point(self, point: Any) -> dict[str, Any] | None:
+        if isinstance(point, dict):
+            x = point.get("x", point.get("left"))
+            y = point.get("y", point.get("top"))
+        elif isinstance(point, (list, tuple)) and len(point) >= 2:
+            x, y = point[:2]
+        else:
+            return None
+
+        try:
+            return {
+                "x": int(round(float(x))),
+                "y": int(round(float(y))),
+            }
+        except Exception:
+            return None
+
     # === Advanced Eye Tracking ===
     def _track_eyes(self, rgb_array: np.ndarray, gray: np.ndarray, face_locations: list) -> dict:
-        """Advanced eye tracking with blink detection and eye state analysis."""
+        """Track eyes with OpenCV-only heuristics.
+
+        Haar cascades give eye boxes, then each eye ROI is inspected for a dark
+        pupil-like blob. Gaze signals are generated later by the temporal
+        tracker, so this method only reports per-frame measurements.
+        """
         result = {
             "eye_count": 0,
             "left_eye": None,
             "right_eye": None,
-            "eye_state": "OPEN",  # OPEN, CLOSED, PARTIAL
+            "eye_state": "UNKNOWN",  # OPEN, CLOSED, PARTIAL, UNKNOWN
             "blink_anomaly": False,
             "blink_rate": 0,
             "prolonged_eye_closure": False,
             "closure_duration": 0,
+            "closure_duration_ms": 0,
             "eye_aspect_ratio": 0,
-            "landmarks": []
+            "tracking_confidence": 0.0,
+            "raw_eye_count": 0,
+            "landmarks": [],
+            "pupil_positions": [],
         }
 
         if not face_locations or len(face_locations) != 1 or not self.cv_ready():
             return result
 
         (x, y, w, h) = face_locations[0]
+        frame_h, frame_w = gray.shape[:2]
+        x1, y1 = max(0, x), max(0, y)
+        x2, y2 = min(frame_w, x + w), min(frame_h, y + h)
+        face_w, face_h = x2 - x1, y2 - y1
+        if face_w <= 0 or face_h <= 0:
+            return result
 
-        # Detect eyes in upper half of face
-        roi = gray[y:y + int(h * 0.5), x:x + w]
-        eyes = self._eye_cascade.detectMultiScale(roi, 1.1, 5) if self._eye_cascade else []
+        upper_h = max(1, int(face_h * 0.58))
+        upper_roi = gray[y1:y1 + upper_h, x1:x2]
+        candidates = self._detect_eye_candidates(upper_roi, x1, y1, face_w, face_h)
+        merged_candidates = self._merge_eye_candidates(candidates)
+        selected_eyes = self._select_eye_pair(merged_candidates)
+        result["raw_eye_count"] = len(merged_candidates)
 
-        result["eye_count"] = len(eyes)
+        eye_details = [self._analyze_eye_roi(gray, box) for box in selected_eyes]
+        eye_details = [detail for detail in eye_details if detail is not None]
+        if not eye_details:
+            return result
 
-        if len(eyes) >= 2:
-            # Calculate eye aspect ratio (EAR) for blink detection
-            eye_points = []
-            for (ex, ey, ew, eh) in eyes[:2]:
-                eye_points.append((ex + ew//2, ey + eh//2))
-                eye_points.append((ex, ey))
-                eye_points.append((ex + ew, ey))
-                eye_points.append((ex, ey + eh))
-                eye_points.append((ex + ew, ey + eh))
+        eye_details.sort(key=lambda detail: detail["center"][0])
+        result["eye_count"] = len(eye_details)
+        result["landmarks"] = [detail["pupil_center"] for detail in eye_details]
+        result["pupil_positions"] = [
+            detail["normalized_pupil"] for detail in eye_details
+            if detail.get("pupil_confidence", 0.0) >= 0.15
+        ]
 
-            if len(eye_points) >= 10:
-                # Simple EAR approximation
-                vertical_1 = np.linalg.norm(np.array(eye_points[1]) - np.array(eye_points[5]))
-                vertical_2 = np.linalg.norm(np.array(eye_points[3]) - np.array(eye_points[7]))
-                horizontal = np.linalg.norm(np.array(eye_points[0]) - np.array(eye_points[6]))
+        if len(eye_details) >= 1:
+            result["left_eye"] = eye_details[0]
+        if len(eye_details) >= 2:
+            result["right_eye"] = eye_details[1]
 
-                ear = (vertical_1 + vertical_2) / (2.0 * horizontal + 1e-6)
-                result["eye_aspect_ratio"] = round(ear, 3)
-
-                # Detect blink (EAR < 0.2 typically indicates closed eyes)
-                if ear < 0.2:
-                    result["eye_state"] = "CLOSED"
-                    result["closure_duration"] = 1  # Would need temporal tracking
-                elif ear < 0.3:
-                    result["eye_state"] = "PARTIAL"
-                else:
-                    result["eye_state"] = "OPEN"
-
-        # Store landmark positions if available
-        if len(eyes) > 0:
-            result["landmarks"] = [(int(x + e[0] + e[2]//2), int(y + e[1] + e[3]//2)) for e in eyes]
+        aspect_values = [detail.get("aspect_ratio", 0.0) for detail in eye_details]
+        result["eye_aspect_ratio"] = round(float(np.mean(aspect_values)), 3) if aspect_values else 0
+        result["tracking_confidence"] = self._resolve_eye_tracking_confidence(eye_details)
+        result["eye_state"] = self._resolve_eye_state(eye_details)
 
         return result
+
+    def _detect_eye_candidates(
+        self,
+        upper_roi: np.ndarray,
+        offset_x: int,
+        offset_y: int,
+        face_w: int,
+        face_h: int,
+    ) -> list[tuple[int, int, int, int]]:
+        if upper_roi.size == 0 or self._eye_cascade is None or self._eye_cascade.empty():
+            return []
+
+        variants = [upper_roi]
+        try:
+            variants.append(cv2.equalizeHist(upper_roi))
+        except Exception:
+            pass
+        try:
+            variants.append(cv2.bilateralFilter(upper_roi, 5, 40, 40))
+        except Exception:
+            pass
+
+        candidates: list[tuple[int, int, int, int]] = []
+        for variant in variants:
+            for ex, ey, ew, eh in self._detect_with_cascade(variant, self._eye_cascade):
+                if ew <= 0 or eh <= 0:
+                    continue
+                rel_w = ew / max(face_w, 1)
+                rel_h = eh / max(face_h, 1)
+                aspect = eh / max(ew, 1)
+                center_y = ey + eh / 2
+                if rel_w < 0.08 or rel_w > 0.42:
+                    continue
+                if rel_h < 0.04 or rel_h > 0.28:
+                    continue
+                if aspect < 0.16 or aspect > 1.25:
+                    continue
+                if center_y < face_h * 0.10 or center_y > face_h * 0.62:
+                    continue
+                candidates.append((offset_x + int(ex), offset_y + int(ey), int(ew), int(eh)))
+        return candidates
+
+    def _merge_eye_candidates(self, eyes: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+        merged: list[tuple[int, int, int, int]] = []
+        for eye in sorted(eyes, key=lambda item: item[2] * item[3], reverse=True):
+            if eye[2] <= 0 or eye[3] <= 0:
+                continue
+            match_index = next(
+                (
+                    index for index, existing in enumerate(merged)
+                    if self._rect_iou(eye, existing) >= 0.35
+                    or self._rect_center_close(eye, existing)
+                ),
+                None,
+            )
+            if match_index is None:
+                merged.append(eye)
+            else:
+                merged[match_index] = self._union_rect(merged[match_index], eye)
+        return merged
+
+    def _select_eye_pair(self, candidates: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+        if len(candidates) <= 2:
+            return sorted(candidates, key=lambda item: item[0])
+
+        best_pair: tuple[tuple[int, int, int, int], tuple[int, int, int, int]] | None = None
+        best_score = float("-inf")
+        for left, right in combinations(candidates, 2):
+            lx, ly, lw, lh = left
+            rx, ry, rw, rh = right
+            lcx, lcy = lx + lw / 2, ly + lh / 2
+            rcx, rcy = rx + rw / 2, ry + rh / 2
+            horizontal_sep = abs(rcx - lcx)
+            vertical_delta = abs(rcy - lcy)
+            size_score = lw * lh + rw * rh
+            score = size_score + horizontal_sep * 8 - vertical_delta * 12
+            if score > best_score:
+                best_score = score
+                best_pair = (left, right)
+
+        return sorted(list(best_pair), key=lambda item: item[0]) if best_pair else []
+
+    def _analyze_eye_roi(self, gray: np.ndarray, eye_box: tuple[int, int, int, int]) -> dict[str, Any] | None:
+        ex, ey, ew, eh = eye_box
+        frame_h, frame_w = gray.shape[:2]
+        x1, y1 = max(0, ex), max(0, ey)
+        x2, y2 = min(frame_w, ex + ew), min(frame_h, ey + eh)
+        if x2 <= x1 or y2 <= y1:
+            return None
+
+        roi = gray[y1:y2, x1:x2]
+        if roi.size == 0:
+            return None
+
+        box_w, box_h = x2 - x1, y2 - y1
+        box_area = max(box_w * box_h, 1)
+        aspect_ratio = box_h / max(box_w, 1)
+        center_x, center_y = box_w / 2, box_h / 2
+        pupil_x, pupil_y = center_x, center_y
+        pupil_confidence = 0.0
+
+        try:
+            enhanced = cv2.equalizeHist(roi)
+            blurred = cv2.GaussianBlur(enhanced, (5, 5), 0)
+            _, threshold = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            margin_x = max(1, int(box_w * 0.08))
+            margin_y = max(1, int(box_h * 0.08))
+            mask = np.zeros_like(threshold)
+            mask[margin_y:box_h - margin_y or box_h, margin_x:box_w - margin_x or box_w] = 255
+            threshold = cv2.bitwise_and(threshold, mask)
+            kernel = np.ones((3, 3), np.uint8)
+            threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel)
+            threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel)
+
+            contours_raw = cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = contours_raw[0] if len(contours_raw) == 2 else contours_raw[1]
+            best: tuple[float, float, float] | None = None
+            for contour in contours:
+                area = float(cv2.contourArea(contour))
+                area_ratio = area / box_area
+                if area_ratio < 0.008 or area_ratio > 0.42:
+                    continue
+                bx, by, bw, bh = cv2.boundingRect(contour)
+                if bw <= 0 or bh <= 0:
+                    continue
+                shape_ratio = bw / max(bh, 1)
+                if shape_ratio < 0.25 or shape_ratio > 5.0:
+                    continue
+                moments = cv2.moments(contour)
+                if moments["m00"] == 0:
+                    cx, cy = bx + bw / 2, by + bh / 2
+                else:
+                    cx, cy = moments["m10"] / moments["m00"], moments["m01"] / moments["m00"]
+                center_penalty = abs(cx - center_x) / max(box_w, 1) + abs(cy - center_y) / max(box_h, 1)
+                score = area_ratio * 3.0 + max(0.0, 1.0 - center_penalty)
+                if best is None or score > best[0]:
+                    best = (score, cx, cy)
+
+            if best is not None:
+                _, pupil_x, pupil_y = best
+                contrast = float(np.std(roi)) / 64.0
+                pupil_confidence = max(0.15, min(0.95, best[0] * 0.45 + min(0.35, contrast)))
+            else:
+                _, _, min_loc, _ = cv2.minMaxLoc(blurred)
+                pupil_x, pupil_y = float(min_loc[0]), float(min_loc[1])
+                contrast = float(np.std(roi)) / 80.0
+                pupil_confidence = max(0.05, min(0.35, contrast))
+        except Exception:
+            pass
+
+        norm_x = max(0.0, min(1.0, pupil_x / max(box_w, 1)))
+        norm_y = max(0.0, min(1.0, pupil_y / max(box_h, 1)))
+        openness_score = max(0.0, min(1.0, (aspect_ratio - 0.16) / 0.42))
+        if openness_score < 0.18 and pupil_confidence < 0.35:
+            eye_state = "CLOSED"
+        elif openness_score < 0.35 or pupil_confidence < 0.22:
+            eye_state = "PARTIAL"
+        else:
+            eye_state = "OPEN"
+
+        return {
+            "box": [int(x1), int(y1), int(box_w), int(box_h)],
+            "center": [int(x1 + box_w / 2), int(y1 + box_h / 2)],
+            "pupil_center": [int(x1 + pupil_x), int(y1 + pupil_y)],
+            "normalized_pupil": {"x": round(norm_x, 3), "y": round(norm_y, 3)},
+            "pupil_confidence": round(float(pupil_confidence), 3),
+            "aspect_ratio": round(float(aspect_ratio), 3),
+            "openness_score": round(float(openness_score), 3),
+            "eye_state": eye_state,
+        }
+
+    def _resolve_eye_state(self, eye_details: list[dict[str, Any]]) -> str:
+        if not eye_details:
+            return "UNKNOWN"
+        if len(eye_details) == 1:
+            state = eye_details[0].get("eye_state", "UNKNOWN")
+            return "PARTIAL" if state == "OPEN" else state
+
+        openness = [float(detail.get("openness_score", 0.0)) for detail in eye_details]
+        pupil_confidence = [float(detail.get("pupil_confidence", 0.0)) for detail in eye_details]
+        average_open = float(np.mean(openness)) if openness else 0.0
+        average_confidence = float(np.mean(pupil_confidence)) if pupil_confidence else 0.0
+        if average_open < 0.18 and average_confidence < 0.35:
+            return "CLOSED"
+        if average_open < 0.35 or average_confidence < 0.25:
+            return "PARTIAL"
+        return "OPEN"
+
+    def _resolve_eye_tracking_confidence(self, eye_details: list[dict[str, Any]]) -> float:
+        if not eye_details:
+            return 0.0
+        pupil_confidence = [float(detail.get("pupil_confidence", 0.0)) for detail in eye_details]
+        open_scores = [float(detail.get("openness_score", 0.0)) for detail in eye_details]
+        eye_count_score = min(1.0, len(eye_details) / 2.0)
+        score = 0.45 * float(np.mean(pupil_confidence)) + 0.35 * float(np.mean(open_scores)) + 0.20 * eye_count_score
+        return round(max(0.0, min(1.0, score)), 3)
 
     # === Deep Learning-based Spoofing Detection ===
     def _detect_spoofing_deep(self, rgb_array: np.ndarray, gray: np.ndarray,
@@ -607,74 +1085,293 @@ class ProctorAnalyzer:
 
     # === Gaze Analysis ===
     def _analyze_gaze(self, eye_tracking: dict, face_locations: list, frame_shape: tuple) -> dict:
-        """Analyze gaze direction and attention patterns."""
+        """Analyze per-frame gaze direction from normalized pupil positions."""
         result = {
             "gaze_off_screen": False,
+            "gaze_off_screen_candidate": False,
             "gaze_confidence": 0.0,
             "primary_direction": "CENTER",
             "off_duration": 0,
+            "off_duration_ms": 0,
             "rapid_eye_movement": False,
             "movement_count": 0,
-            "attention_score": 1.0
+            "attention_score": 1.0,
+            "offset": {"x": 0.0, "y": 0.0},
         }
 
-        if not face_locations or eye_tracking.get("eye_count", 0) == 0:
+        if not face_locations or len(face_locations) != 1 or eye_tracking.get("eye_count", 0) == 0:
             return result
 
-        # Calculate gaze direction based on eye positions
-        landmarks = eye_tracking.get("landmarks", [])
-        if len(landmarks) < 2:
+        eye_samples = [
+            eye for eye in (eye_tracking.get("left_eye"), eye_tracking.get("right_eye"))
+            if isinstance(eye, dict) and isinstance(eye.get("normalized_pupil"), dict)
+        ]
+        eye_samples = [
+            eye for eye in eye_samples
+            if float(eye.get("pupil_confidence", 0.0)) >= 0.15
+        ]
+        if not eye_samples:
             return result
 
-        (x, y, w, h) = face_locations[0]
-        frame_h, frame_w = frame_shape[:2]
-        face_center_x = x + w // 2
-        face_center_y = y + h // 2
+        norm_x_values = [float(eye["normalized_pupil"].get("x", 0.5)) for eye in eye_samples]
+        norm_y_values = [float(eye["normalized_pupil"].get("y", 0.5)) for eye in eye_samples]
+        confidences = [float(eye.get("pupil_confidence", 0.0)) for eye in eye_samples]
+        avg_x = float(np.mean(norm_x_values))
+        avg_y = float(np.mean(norm_y_values))
+        offset_x = avg_x - 0.5
+        offset_y = avg_y - 0.5
+        sample_penalty = 0.15 if len(eye_samples) < 2 else 0.0
+        tracking_confidence = float(eye_tracking.get("tracking_confidence", 0.0))
+        gaze_confidence = max(
+            0.0,
+            min(0.98, 0.55 * float(np.mean(confidences)) + 0.45 * tracking_confidence - sample_penalty),
+        )
 
-        # Estimate gaze based on eye positions relative to face center
-        left_eye = landmarks[0] if len(landmarks) > 0 else None
-        right_eye = landmarks[1] if len(landmarks) > 1 else None
+        horizontal_threshold = 0.17
+        vertical_threshold = 0.18
+        direction = "CENTER"
+        if abs(offset_x) >= horizontal_threshold and abs(offset_x) >= abs(offset_y) * 0.85:
+            direction = "LEFT" if offset_x < 0 else "RIGHT"
+        elif abs(offset_y) >= vertical_threshold:
+            direction = "UP" if offset_y < 0 else "DOWN"
 
-        if left_eye and right_eye:
-            eye_mid_x = (left_eye[0] + right_eye[0]) / 2
-            eye_mid_y = (left_eye[1] + right_eye[1]) / 2
-
-            # Calculate offset from center
-            offset_x = (eye_mid_x - face_center_x) / (w / 2 + 1e-6)
-            offset_y = (eye_mid_y - face_center_y) / (h / 2 + 1e-6)
-
-            # Determine gaze direction
-            threshold = 0.3  # 30% offset threshold
-            if abs(offset_x) > threshold:
-                result["primary_direction"] = "LEFT" if offset_x < 0 else "RIGHT"
-                result["gaze_off_screen"] = True
-            elif abs(offset_y) > threshold:
-                result["primary_direction"] = "UP" if offset_y < 0 else "DOWN"
-                result["gaze_off_screen"] = True
-
-            # Calculate confidence based on eye visibility
-            eye_ear = eye_tracking.get("eye_aspect_ratio", 0)
-            if eye_ear > 0.2:
-                result["gaze_confidence"] = min(0.95, 0.5 + eye_ear * 2)
-            else:
-                result["gaze_confidence"] = 0.3  # Low confidence when eyes partially closed
-
-            # Calculate attention score
-            result["attention_score"] = round(1.0 - abs(offset_x) * 0.5 - abs(offset_y) * 0.5, 2)
-            result["attention_score"] = max(0.0, min(1.0, result["attention_score"]))
+        attention_score = 1.0 - (abs(offset_x) * 1.35 + abs(offset_y) * 1.15)
+        result.update({
+            "gaze_confidence": round(float(gaze_confidence), 3),
+            "primary_direction": direction,
+            "gaze_off_screen_candidate": direction != "CENTER" and gaze_confidence >= 0.50,
+            "attention_score": round(max(0.0, min(1.0, attention_score)), 2),
+            "offset": {"x": round(offset_x, 3), "y": round(offset_y, 3)},
+        })
 
         return result
 
+    def _update_tracking_state(
+        self,
+        tracking_key: str | None,
+        sample_time: float | None,
+        face_count: int,
+        eye_tracking: dict,
+        gaze_analysis: dict,
+    ) -> dict[str, dict[str, Any]]:
+        if not tracking_key:
+            return {"eye_tracking": {}, "gaze_analysis": {}}
+
+        now_ms = self._to_millis(sample_time)
+        self._ensure_tracking_state_defaults()
+        self._prune_tracking_state(now_ms)
+        state = self._tracking_state.get(tracking_key)
+        if state is None:
+            state = {
+                "last_seen_ms": now_ms,
+                "closed_since_ms": None,
+                "off_screen_since_ms": None,
+                "off_screen_direction": "CENTER",
+                "closed_streak": 0,
+                "off_screen_streak": 0,
+                "gaze_history": [],
+                "last_primary_direction": "CENTER",
+                "last_eye_state": "UNKNOWN",
+            }
+            self._tracking_state[tracking_key] = state
+
+        state["last_seen_ms"] = now_ms
+
+        if face_count != 1:
+            state["closed_since_ms"] = None
+            state["off_screen_since_ms"] = None
+            state["closed_streak"] = 0
+            state["off_screen_streak"] = 0
+            state["last_primary_direction"] = "CENTER"
+            state["last_eye_state"] = "UNKNOWN"
+            state["gaze_history"] = []
+            return {
+                "eye_tracking": {
+                    "closure_duration": 0,
+                    "closure_duration_ms": 0,
+                    "prolonged_eye_closure": False,
+                },
+                "gaze_analysis": {
+                    "gaze_off_screen": False,
+                    "off_duration": 0,
+                    "off_duration_ms": 0,
+                    "rapid_eye_movement": False,
+                    "movement_count": 0,
+                },
+            }
+
+        eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
+        is_closed = eye_state == "CLOSED"
+        if is_closed:
+            if state["closed_since_ms"] is None:
+                state["closed_since_ms"] = now_ms
+            state["closed_streak"] = int(state.get("closed_streak", 0)) + 1
+        else:
+            state["closed_since_ms"] = None
+            state["closed_streak"] = 0
+
+        closure_duration_ms = 0
+        prolonged_eye_closure = False
+        if state["closed_since_ms"] is not None:
+            closure_duration_ms = max(0, now_ms - int(state["closed_since_ms"]))
+            prolonged_eye_closure = (
+                state["closed_streak"] >= self._eye_closure_required_frames
+                or closure_duration_ms >= self._eye_closure_required_ms
+            )
+
+        current_direction = str(gaze_analysis.get("primary_direction", "CENTER")).upper()
+        candidate_off_screen = bool(gaze_analysis.get("gaze_off_screen_candidate"))
+        current_confidence = float(gaze_analysis.get("gaze_confidence", 0.0))
+        if candidate_off_screen and current_confidence >= 0.5:
+            if state["off_screen_since_ms"] is None or state["off_screen_direction"] != current_direction:
+                state["off_screen_since_ms"] = now_ms
+                state["off_screen_streak"] = 1
+                state["off_screen_direction"] = current_direction
+            else:
+                state["off_screen_streak"] = int(state.get("off_screen_streak", 0)) + 1
+        else:
+            state["off_screen_since_ms"] = None
+            state["off_screen_streak"] = 0
+            if current_direction == "CENTER":
+                state["off_screen_direction"] = "CENTER"
+
+        off_duration_ms = 0
+        gaze_off_screen = False
+        if state["off_screen_since_ms"] is not None:
+            off_duration_ms = max(0, now_ms - int(state["off_screen_since_ms"]))
+            gaze_off_screen = (
+                state["off_screen_streak"] >= self._gaze_required_frames
+                or off_duration_ms >= self._gaze_required_ms
+            )
+
+        gaze_history = state.setdefault("gaze_history", [])
+        gaze_history.append({
+            "direction": current_direction,
+            "confidence": round(current_confidence, 3),
+            "ts": now_ms,
+        })
+        gaze_history[:] = [item for item in gaze_history if now_ms - int(item["ts"]) <= 6000]
+        movement_count = 0
+        for index in range(1, len(gaze_history)):
+            prev_dir = str(gaze_history[index - 1].get("direction", "CENTER")).upper()
+            curr_dir = str(gaze_history[index].get("direction", "CENTER")).upper()
+            if prev_dir != "CENTER" and curr_dir != "CENTER" and prev_dir != curr_dir:
+                movement_count += 1
+        rapid_eye_movement = movement_count >= 3 and len(gaze_history) >= 4
+
+        attention_score = float(gaze_analysis.get("attention_score", 1.0))
+        if prolonged_eye_closure:
+            attention_score = min(attention_score, 0.35)
+        if gaze_off_screen:
+            attention_score = min(attention_score, 0.45)
+
+        state["last_primary_direction"] = current_direction
+        state["last_eye_state"] = eye_state
+
+        return {
+            "eye_tracking": {
+                "closure_duration": round(closure_duration_ms / 1000.0, 1),
+                "closure_duration_ms": int(closure_duration_ms),
+                "prolonged_eye_closure": prolonged_eye_closure,
+                "eye_state": "CLOSED" if prolonged_eye_closure else eye_state,
+            },
+            "gaze_analysis": {
+                "gaze_off_screen": gaze_off_screen,
+                "off_duration": round(off_duration_ms / 1000.0, 1),
+                "off_duration_ms": int(off_duration_ms),
+                "rapid_eye_movement": rapid_eye_movement,
+                "movement_count": movement_count,
+                "attention_score": round(max(0.0, min(1.0, attention_score)), 2),
+            },
+        }
+
+    def _ensure_tracking_state_defaults(self) -> None:
+        if not hasattr(self, "_tracking_state"):
+            self._tracking_state = {}
+        self._tracking_state_ttl_seconds = getattr(self, "_tracking_state_ttl_seconds", 180)
+        self._max_tracking_states = getattr(self, "_max_tracking_states", 256)
+        self._gaze_required_frames = getattr(self, "_gaze_required_frames", 3)
+        self._gaze_required_ms = getattr(self, "_gaze_required_ms", 2500)
+        self._eye_closure_required_frames = getattr(self, "_eye_closure_required_frames", 2)
+        self._eye_closure_required_ms = getattr(self, "_eye_closure_required_ms", 2000)
+
+    def _prune_tracking_state(self, now_ms: int) -> None:
+        if not self._tracking_state:
+            return
+        cutoff_ms = now_ms - int(self._tracking_state_ttl_seconds * 1000)
+        stale_keys = [
+            key for key, state in self._tracking_state.items()
+            if int(state.get("last_seen_ms", 0)) < cutoff_ms
+        ]
+        for key in stale_keys:
+            self._tracking_state.pop(key, None)
+
+        if len(self._tracking_state) <= self._max_tracking_states:
+            return
+
+        overflow = len(self._tracking_state) - self._max_tracking_states
+        ordered = sorted(
+            self._tracking_state.items(),
+            key=lambda item: int(item[1].get("last_seen_ms", 0)),
+        )
+        for key, _ in ordered[:overflow]:
+            self._tracking_state.pop(key, None)
+
+    def _resolve_tracking_key(self, metadata: dict[str, Any]) -> str | None:
+        for key in ("attempt_id", "attemptId", "session_id", "sessionId", "student_id", "studentId"):
+            value = metadata.get(key)
+            if value not in (None, ""):
+                return f"{key}:{value}"
+        return None
+
+    def _resolve_sample_time(self, metadata: dict[str, Any]) -> float | None:
+        captured_at = metadata.get("captured_at") or metadata.get("capturedAt")
+        if not captured_at:
+            return time.time()
+        if isinstance(captured_at, (int, float)):
+            return float(captured_at) / 1000.0 if captured_at > 10_000_000_000 else float(captured_at)
+        try:
+            normalized = str(captured_at).replace("Z", "+00:00")
+            return datetime.fromisoformat(normalized).timestamp()
+        except Exception:
+            return time.time()
+
+    def _to_millis(self, sample_time: float | None) -> int:
+        if sample_time is None:
+            return int(time.time() * 1000)
+        return int(sample_time * 1000)
+
     # === Face Detection Methods ===
-    def _detect_faces_dnn(self, rgb_array: np.ndarray, gray: np.ndarray) -> tuple:
+    def _detect_face_locations(self, rgb_array: np.ndarray, gray: np.ndarray) -> tuple[int, list[tuple[int, int, int, int]], str]:
+        if self.dnn_ready():
+            face_count, face_locations, used_haar_fallback = self._detect_faces_dnn(rgb_array, gray)
+            if face_count > 0:
+                if used_haar_fallback:
+                    return face_count, face_locations, "HAAR_FALLBACK"
+                return face_count, face_locations, self._dnn_model_type or "DNN"
+            if self.cv_ready():
+                haar_count, haar_locations = self._detect_faces_haar(gray)
+                if haar_count > 0:
+                    return haar_count, haar_locations, f"{self._dnn_model_type or 'DNN'}+HAAR"
+            return face_count, face_locations, self._dnn_model_type or "DNN"
+
+        if self.cv_ready():
+            face_count, face_locations = self._detect_faces_haar(gray)
+            return face_count, face_locations, "HAAR"
+
+        return 0, [], "UNAVAILABLE"
+
+    def _detect_faces_dnn(self, rgb_array: np.ndarray, gray: np.ndarray) -> tuple[int, list[tuple[int, int, int, int]], bool]:
         """Detect faces using DNN."""
         if not self.dnn_ready():
-            return self._detect_faces_haar(gray)
+            face_count, face_locations = self._detect_faces_haar(gray)
+            return face_count, face_locations, True
 
         try:
             h, w = gray.shape
+            bgr_array = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
             blob = cv2.dnn.blobFromImage(
-                cv2.resize(rgb_array, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+                cv2.resize(bgr_array, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0), swapRB=False, crop=False)
 
             self._dnn_net.setInput(blob)
             detections = self._dnn_net.forward()
@@ -689,21 +1386,108 @@ class ProctorAnalyzer:
                     y2 = int(detections[0, 0, i, 6] * h)
                     x1, y1 = max(0, x1), max(0, y1)
                     x2, y2 = min(w, x2), min(h, y2)
-                    faces.append((x1, y1, x2 - x1, y2 - y1))
+                    if x2 > x1 and y2 > y1:
+                        faces.append((x1, y1, x2 - x1, y2 - y1))
 
-            return len(faces), [tuple(f) for f in faces]
+            merged_faces = self._merge_face_locations([tuple(f) for f in faces])
+            return len(merged_faces), merged_faces, False
 
         except Exception:
-            return self._detect_faces_haar(gray)
+            logger.warning("DNN face detection failed, falling back to Haar", exc_info=True)
+            face_count, face_locations = self._detect_faces_haar(gray)
+            return face_count, face_locations, True
 
     def _detect_faces_haar(self, gray_image: np.ndarray) -> tuple:
         """Detect faces using Haar cascades."""
         if not self.cv_ready():
             return 0, []
 
-        faces = self._face_cascade.detectMultiScale(
-            gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
-        return len(faces), [tuple(f) for f in faces]
+        candidates: list[tuple[int, int, int, int]] = []
+        variants = [gray_image]
+        try:
+            equalized = cv2.equalizeHist(gray_image)
+            variants.append(equalized)
+        except Exception:
+            pass
+
+        for variant in variants:
+            candidates.extend(self._detect_with_cascade(variant, self._face_cascade))
+
+        # Frontal Haar misses many real webcam frames when the student turns
+        # slightly. Profile detection is advisory but useful as a fallback.
+        if self._profile_cascade is not None and not self._profile_cascade.empty():
+            for variant in variants:
+                candidates.extend(self._detect_with_cascade(variant, self._profile_cascade))
+                try:
+                    flipped = cv2.flip(variant, 1)
+                    frame_width = gray_image.shape[1]
+                    for (x, y, w, h) in self._detect_with_cascade(flipped, self._profile_cascade):
+                        candidates.append((max(0, frame_width - x - w), y, w, h))
+                except Exception:
+                    pass
+
+        faces = self._merge_face_locations(candidates)
+        return len(faces), faces
+
+    def _detect_with_cascade(self, gray_image: np.ndarray, cascade) -> list[tuple[int, int, int, int]]:
+        if cascade is None or cascade.empty():
+            return []
+        try:
+            detections = cascade.detectMultiScale(
+                gray_image,
+                scaleFactor=1.08,
+                minNeighbors=4,
+                minSize=(36, 36),
+            )
+            return [tuple(int(v) for v in face) for face in detections]
+        except Exception:
+            return []
+
+    def _merge_face_locations(self, faces: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+        merged: list[tuple[int, int, int, int]] = []
+        for face in sorted(faces, key=lambda f: f[2] * f[3], reverse=True):
+            if face[2] <= 0 or face[3] <= 0:
+                continue
+            match_index = next(
+                (
+                    index for index, existing in enumerate(merged)
+                    if self._rect_iou(face, existing) >= 0.28
+                    or self._rect_center_close(face, existing)
+                ),
+                None,
+            )
+            if match_index is None:
+                merged.append(face)
+            else:
+                merged[match_index] = self._union_rect(merged[match_index], face)
+        return merged
+
+    def _rect_iou(self, a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
+        ax1, ay1, aw, ah = a
+        bx1, by1, bw, bh = b
+        ax2, ay2 = ax1 + aw, ay1 + ah
+        bx2, by2 = bx1 + bw, by1 + bh
+        ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+        ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+        intersection = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+        if intersection == 0:
+            return 0.0
+        union = aw * ah + bw * bh - intersection
+        return intersection / union if union > 0 else 0.0
+
+    def _rect_center_close(self, a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
+        ax, ay, aw, ah = a
+        bx, by, bw, bh = b
+        acx, acy = ax + aw / 2, ay + ah / 2
+        bcx, bcy = bx + bw / 2, by + bh / 2
+        return abs(acx - bcx) <= max(aw, bw) * 0.25 and abs(acy - bcy) <= max(ah, bh) * 0.25
+
+    def _union_rect(self, a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+        ax1, ay1, aw, ah = a
+        bx1, by1, bw, bh = b
+        x1, y1 = min(ax1, bx1), min(ay1, by1)
+        x2, y2 = max(ax1 + aw, bx1 + bw), max(ay1 + ah, by1 + bh)
+        return x1, y1, x2 - x1, y2 - y1
 
     # === Occlusion Detection ===
     def _detect_occlusion(self, gray: np.ndarray, face_locations: list, eye_tracking: dict) -> dict:

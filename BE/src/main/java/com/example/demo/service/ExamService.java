@@ -606,6 +606,85 @@ public class ExamService {
         return toResponse(examRepository.save(exam));
     }
 
+    @Transactional
+    public ExamResponse updateMonitoringConfig(Long examId, ExamRequest request, User actor) {
+        Exam exam = requireManageableExam(examId, actor);
+        applyMonitoringConfig(exam, request);
+        return toResponse(examRepository.save(exam));
+    }
+
+    private void applyMonitoringConfig(Exam exam, ExamRequest request) {
+        if (exam == null || request == null) {
+            return;
+        }
+        if (request.getMonitorTabSwitch() != null) {
+            exam.setMonitorTabSwitch(request.getMonitorTabSwitch());
+        }
+        if (request.getMonitorBlur() != null) {
+            exam.setMonitorBlur(request.getMonitorBlur());
+        }
+        if (request.getMonitorExitFullscreen() != null) {
+            exam.setMonitorExitFullscreen(request.getMonitorExitFullscreen());
+        }
+        if (request.getMonitorCopyPaste() != null) {
+            exam.setMonitorCopyPaste(request.getMonitorCopyPaste());
+        }
+        if (request.getMonitorIdleTime() != null) {
+            exam.setMonitorIdleTime(request.getMonitorIdleTime());
+        }
+        if (request.getMonitorDevtools() != null) {
+            exam.setMonitorDevtools(request.getMonitorDevtools());
+        }
+        if (request.getMonitorDuplicateIp() != null) {
+            exam.setMonitorDuplicateIp(request.getMonitorDuplicateIp());
+        }
+        if (request.getMonitorFastSubmit() != null) {
+            exam.setMonitorFastSubmit(request.getMonitorFastSubmit());
+        }
+        if (request.getMonitorRightClick() != null) {
+            exam.setMonitorRightClick(request.getMonitorRightClick());
+        }
+        if (request.getMonitorPrintScreen() != null) {
+            exam.setMonitorPrintScreen(request.getMonitorPrintScreen());
+        }
+        if (request.getMonitorRapidQuestionSwitch() != null) {
+            exam.setMonitorRapidQuestionSwitch(request.getMonitorRapidQuestionSwitch());
+        }
+        if (request.getMonitorMultiMonitor() != null) {
+            exam.setMonitorMultiMonitor(request.getMonitorMultiMonitor());
+        }
+        if (request.getRequireCameraMic() != null) {
+            exam.setRequireCameraMic(request.getRequireCameraMic());
+        }
+        if (request.getMonitorNetworkInstability() != null) {
+            exam.setMonitorNetworkInstability(request.getMonitorNetworkInstability());
+        }
+        if (request.getMonitorSessionRecovery() != null) {
+            exam.setMonitorSessionRecovery(request.getMonitorSessionRecovery());
+        }
+        if (request.getMonitorQuestionTimingAnomaly() != null) {
+            exam.setMonitorQuestionTimingAnomaly(request.getMonitorQuestionTimingAnomaly());
+        }
+        if (request.getMonitorAnswerChangeBurst() != null) {
+            exam.setMonitorAnswerChangeBurst(request.getMonitorAnswerChangeBurst());
+        }
+        if (request.getMonitorClipboardBurst() != null) {
+            exam.setMonitorClipboardBurst(request.getMonitorClipboardBurst());
+        }
+        if (request.getMonitorFullscreenEvasion() != null) {
+            exam.setMonitorFullscreenEvasion(request.getMonitorFullscreenEvasion());
+        }
+        if (request.getMonitorAnswerSimilarity() != null) {
+            exam.setMonitorAnswerSimilarity(request.getMonitorAnswerSimilarity());
+        }
+        if (request.getMonitorIpFingerprintGraph() != null) {
+            exam.setMonitorIpFingerprintGraph(request.getMonitorIpFingerprintGraph());
+        }
+        if (request.getEnableAiProctoring() != null) {
+            exam.setEnableAiProctoring(request.getEnableAiProctoring());
+        }
+    }
+
     /**
      * Tạo đợt thi mới cho đề thi đã có (mở lại đề thi với thời gian khác).
      * Cập nhật Exam.startTime, endTime và tạo Assignment mới.

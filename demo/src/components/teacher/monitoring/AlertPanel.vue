@@ -47,6 +47,15 @@
         </select>
         <LucideIcon name="expand_more" class="ap__filter-arrow" />
       </div>
+      <div class="ap__filter-select-wrap">
+        <LucideIcon name="tag" class="ap__filter-icon" />
+        <select v-model="localCategory" class="ap__filter-select">
+          <option v-for="tab in categoryTabs" :key="tab.value" :value="tab.value">
+            {{ tab.label }} ({{ tab.count }})
+          </option>
+        </select>
+        <LucideIcon name="expand_more" class="ap__filter-arrow" />
+      </div>
     </div>
 
     <!-- Scrollable alert list -->
@@ -112,6 +121,9 @@
                   <span class="ap__alert-type-badge" :class="`ap__alert-type-badge--${severityColor(alert.severity || alert.riskBand)}`">
                     {{ alertTypeLabel(alert) }}
                   </span>
+                  <span v-if="alert.category || alert.warningCategory" class="ap__alert-category-badge">
+                    {{ categoryLabel(alert.category || alert.warningCategory) }}
+                  </span>
                 </div>
                 <p class="ap__alert-student">{{ alert.studentName || alert.studentEmail || alert.userName || '—' }}</p>
               </div>
@@ -170,6 +182,7 @@ const emit = defineEmits(['alert-click', 'dismiss', 'mark-all-read', 'load-more'
 
 const listEl = ref(null)
 const localSeverity = ref('ALL')
+const localCategory = ref('ALL')
 const soundEnabled = ref(false)
 
 // Track new alerts for flash animation
@@ -211,12 +224,21 @@ const displayCount = computed(() => {
   const filtered = localSeverity.value === 'ALL'
     ? props.alerts
     : props.alerts.filter(a => (a.severity || a.riskBand) === localSeverity.value)
-  return filtered.length
+  const categoryFiltered = localCategory.value === 'ALL'
+    ? filtered
+    : filtered.filter(a => (a.category || a.warningCategory || a.latestSignalCategory || 'UNCATEGORIZED') === localCategory.value)
+  return categoryFiltered.length
 })
 
 const displayedAlerts = computed(() => {
-  if (localSeverity.value === 'ALL') return props.alerts
-  return props.alerts.filter(a => (a.severity || a.riskBand) === localSeverity.value)
+  let alerts = props.alerts
+  if (localSeverity.value !== 'ALL') {
+    alerts = alerts.filter(a => (a.severity || a.riskBand) === localSeverity.value)
+  }
+  if (localCategory.value !== 'ALL') {
+    alerts = alerts.filter(a => (a.category || a.warningCategory || a.latestSignalCategory || 'UNCATEGORIZED') === localCategory.value)
+  }
+  return alerts
 })
 
 const hasCritical = computed(() =>
@@ -254,6 +276,39 @@ const severityTabs = computed(() => [
     count: props.alerts.filter(a => (a.severity || a.riskBand) === 'SUSPICIOUS').length
   }
 ])
+
+const categoryTabs = computed(() => {
+  const categoryOrder = [
+    ['ALL', 'Tất cả'],
+    ['ANSWER_PATTERN', 'Mẫu đáp án'],
+    ['TIMING_PATTERN', 'Thời gian'],
+    ['SYNCHRONIZATION', 'Đồng bộ'],
+    ['SESSION_INTEGRITY', 'Phiên thi'],
+    ['IDENTITY_NETWORK', 'Mạng/thiết bị'],
+    ['CAMERA_PROCTORING', 'Camera'],
+    ['POST_EXAM_STATISTICAL', 'Thống kê sau thi']
+  ]
+  return categoryOrder.map(([value, label]) => ({
+    value,
+    label,
+    count: value === 'ALL'
+      ? props.alerts.length
+      : props.alerts.filter(a => (a.category || a.warningCategory || a.latestSignalCategory || 'UNCATEGORIZED') === value).length
+  }))
+})
+
+const categoryLabel = (category) => {
+  const map = {
+    ANSWER_PATTERN: 'Mẫu đáp án',
+    TIMING_PATTERN: 'Thời gian',
+    SYNCHRONIZATION: 'Đồng bộ',
+    SESSION_INTEGRITY: 'Phiên thi',
+    IDENTITY_NETWORK: 'Mạng/thiết bị',
+    CAMERA_PROCTORING: 'Camera',
+    POST_EXAM_STATISTICAL: 'Thống kê sau thi'
+  }
+  return map[category] || category
+}
 
 const severityColor = (severity) => {
   const map = { CRITICAL: 'danger', HIGH_RISK: 'warning', SUSPICIOUS: 'caution', CLEAN: 'success' }
@@ -715,6 +770,18 @@ const groupedAlerts = computed(() => {
 }
 
 .dark .ap__alert-type-badge--default { background: var(--ds-gray-700); }
+
+.ap__alert-category-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 0.1rem 0.42rem;
+  border-radius: var(--ds-radius-full);
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--ds-info);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .ap__alert-student {
   font-size: 0.7rem;

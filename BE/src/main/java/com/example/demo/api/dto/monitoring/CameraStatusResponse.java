@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Response DTO for AI Camera Dashboard.
@@ -32,6 +33,16 @@ public class CameraStatusResponse {
     private String frameQuality;
     private Double averageBrightness;
     private Integer eyeCount;
+    private String eyeState;
+    private Double eyeAspectRatio;
+    private Double eyeTrackingConfidence;
+    private String gazeDirection;
+    private Boolean gazeOffScreen;
+    private Double gazeConfidence;
+    private Double attentionScore;
+    private Long closureDurationMs;
+    private Long offScreenDurationMs;
+    private Map<String, Object> visualOverlay;
 
     // Status summary
     private String status; // OK, WARNING, CRITICAL

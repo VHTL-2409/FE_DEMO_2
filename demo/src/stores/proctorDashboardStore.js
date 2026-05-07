@@ -52,6 +52,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     riskBand: 'ALL',
     status: 'ALL',
     timeRange: 'all',
+    category: 'ALL',
     reviewOnly: false
   })
 
@@ -98,6 +99,15 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       const timeMatches = matchesTimeRange(card, filters.value.timeRange)
       return nameMatches && statusMatches && riskMatches && reviewMatches && timeMatches
     })
+  })
+
+  const alertsByCategory = computed(() => {
+    return liveAlerts.value.reduce((groups, alert) => {
+      const category = alert.category || alert.warningCategory || alert.latestSignalCategory || 'UNCATEGORIZED'
+      if (!groups[category]) groups[category] = []
+      groups[category].push(alert)
+      return groups
+    }, {})
   })
 
   const setSelectedExam = (examId) => {
@@ -179,9 +189,23 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       examId: event.examId ?? event.sessionId,
       attemptId: resolveAttemptId({ attemptId: event.attemptId ?? event.id }),
       student: event.student || event.studentName,
+      studentName: event.studentName || event.student || event.studentCode,
+      email: event.email,
+      studentCode: event.studentCode,
       riskScore: event.riskScore ?? event.scores?.totalScore,
       riskLevel: event.riskLevel,
       status: event.status,
+      startedAt: event.startedAt,
+      submittedAt: event.submittedAt,
+      deadlineAt: event.deadlineAt,
+      remainingSeconds: event.remainingSeconds,
+      cameraOn: event.cameraOn,
+      micOn: event.micOn,
+      clientIp: event.clientIp,
+      deviceFingerprint: event.deviceFingerprint,
+      originalDeviceFingerprint: event.originalDeviceFingerprint,
+      saveCount: event.saveCount,
+      submitCount: event.submitCount,
       reviewRequired: event.reviewRequired,
       recommendedAction: event.recommendedAction,
       reasons: event.reasons,
@@ -196,12 +220,17 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       latestSignalCategory: signal.category,
       latestSignalDisplayMessage: signal.displayMessage,
       scores: event.scores,
-      lastWarning: event.type === 'WARNING_SENT' ? event.message : undefined
+      latestWarningCategory: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningCategory : undefined,
+      latestWarningType: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningType : undefined,
+      latestWarningReviewStatus: event.type === 'FRAUD_WARNING_RECORDED' ? event.reviewStatus : undefined,
+      lastWarning: event.type === 'WARNING_SENT' || event.type === 'FRAUD_WARNING_RECORDED' ? event.message : undefined,
+      lastWarningAt: event.type === 'FRAUD_WARNING_RECORDED' ? occurredAt : undefined
     }
   }
 
   const shouldIncrementViolationCount = (event) => {
     const type = String(event?.type || event?.eventType || '').toUpperCase()
+    if (type === 'FRAUD_WARNING_RECORDED') return false
     return type === 'FRAUD_SIGNAL_RECORDED' || Boolean(event?.signalType || event?.latestSignal?.signalType)
   }
 
@@ -307,6 +336,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       riskBand: 'ALL',
       status: 'ALL',
       timeRange: 'all',
+      category: 'ALL',
       reviewOnly: false
     }
   }
@@ -347,15 +377,17 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
   })
 
   const addAlert = (alert) => {
-    const signalType = alert.signalType || alert.type || ''
-    const key = `${alert.attemptId || ''}|${signalType}|${alert.severity || ''}`
+    const signalType = alert.signalType || alert.warningType || alert.type || ''
+    const category = alert.category || alert.warningCategory || alert.latestSignalCategory || ''
+    const relatedKey = Array.isArray(alert.relatedAttemptIds) ? alert.relatedAttemptIds.join(',') : ''
+    const key = `${alert.attemptId || ''}|${category}|${signalType}|${alert.severity || ''}|${relatedKey}`
     const now = Date.now()
     const lastSeen = recentAlertKeys.get(key)
     if (lastSeen && (now - lastSeen) < ALERT_DEDUPE_WINDOW_MS) return false
     recentAlertKeys.set(key, now)
     const eventTime = normalizeTime(alert.issuedAt || alert.at || alert.timestamp || alert.ts) || now
     liveAlerts.value = [
-      { ...alert, attemptId: resolveAttemptId({ attemptId: alert.attemptId }), signalType, id: `alert-${++alertIdCounter}`, ts: eventTime },
+      { ...alert, attemptId: resolveAttemptId({ attemptId: alert.attemptId }), signalType, category, id: `alert-${++alertIdCounter}`, ts: eventTime },
       ...liveAlerts.value
     ].slice(0, 200)
     if (alertIdCounter % 50 === 0) {
@@ -405,6 +437,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
     flagStats,
     liveAlerts,
     liveEvents,
+    alertsByCategory,
     patchAttemptFromRealtime,
     buildCardPatch,
     addAlert,

@@ -19,6 +19,7 @@ import com.example.demo.domain.entity.ProctorFlag;
 import com.example.demo.domain.entity.ProctorFlagStatus;
 import com.example.demo.repository.ProctorFlagRepository;
 import com.example.demo.service.CurrentUserService;
+import com.example.demo.service.AiAssistService;
 import com.example.demo.service.ExamEventService;
 import com.example.demo.service.MonitoringService;
 import com.example.demo.service.ProctorFlagService;
@@ -44,6 +45,7 @@ public class ProctoringController {
     private final MonitoringService monitoringService;
     private final ProctorFlagService proctorFlagService;
     private final ProctorFlagRepository proctorFlagRepository;
+    private final AiAssistService aiAssistService;
     private final CurrentUserService currentUserService;
 
     @PostMapping("/start")
@@ -178,6 +180,11 @@ public class ProctoringController {
     public ApiResponse<List<CameraAlertResponse>> getCameraAlerts(@PathVariable Long examId) {
         List<CameraAlertResponse> alerts = monitoringService.getCameraAlertsByExam(examId);
         return ApiResponse.success(alerts);
+    }
+
+    @GetMapping("/camera/frame/attempt/{attemptId}/latest")
+    public ApiResponse<Map<String, Object>> getLatestCameraFrame(@PathVariable Long attemptId) {
+        return ApiResponse.success(aiAssistService.getLatestCameraFrame(attemptId, currentUserService.requireCurrentUser()));
     }
 
     @PostMapping("/alerts/{alertId}/acknowledge")

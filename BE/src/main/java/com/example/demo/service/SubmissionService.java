@@ -39,6 +39,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -82,6 +84,7 @@ public class SubmissionService {
         }
         if (existing != null) {
             enforceIpConsistency(existing, normalizeClientIp(clientIp));
+            publishAttemptJoinedAfterCommit(existing);
             return toStartResponse(existing);
         }
 
@@ -105,8 +108,82 @@ public class SubmissionService {
                         .build());
 
         duplicateIpDetectionService.detect(saved);
+        publishAttemptStartedAfterCommit(saved);
 
         return toStartResponse(saved);
+    }
+
+    private void publishAttemptStartedAfterCommit(ExamAttempt attempt) {
+        publishAttemptPresenceAfterCommit(attempt, true);
+    }
+
+    private void publishAttemptJoinedAfterCommit(ExamAttempt attempt) {
+        publishAttemptPresenceAfterCommit(attempt, false);
+    }
+
+    private void publishAttemptPresenceAfterCommit(ExamAttempt attempt, boolean firstStart) {
+        Long examId = attempt.getExam().getId();
+        Long attemptId = attempt.getId();
+        String studentUsername = attempt.getStudent().getUsername();
+        String studentName = attempt.getStudent().getFullName();
+        String email = attempt.getStudent().getEmail();
+        String studentCode = attempt.getStudent().getStudentCode();
+        String status = attempt.getStatus() != null ? attempt.getStatus().name() : AttemptStatus.IN_PROGRESS.name();
+        LocalDateTime startedAt = attempt.getStartedAt();
+        LocalDateTime deadlineAt = submissionHelper.deadlineAt(attempt);
+        Long remainingSeconds = submissionHelper.remainingSeconds(attempt);
+        Integer riskScore = attempt.getRiskScore();
+        String riskLevel = attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : RiskLevel.CLEAN.name();
+        Boolean cameraOn = attempt.getCameraOn();
+        Boolean micOn = attempt.getMicOn();
+        String clientIp = attempt.getClientIp();
+
+        Runnable publish = firstStart
+                ? () -> realtimeNotificationService.notifyAttemptStarted(
+                        examId,
+                        attemptId,
+                        studentUsername,
+                        studentName,
+                        email,
+                        studentCode,
+                        status,
+                        startedAt,
+                        deadlineAt,
+                        remainingSeconds,
+                        riskScore,
+                        riskLevel,
+                        cameraOn,
+                        micOn,
+                        clientIp
+                )
+                : () -> realtimeNotificationService.notifyAttemptJoined(
+                        examId,
+                        attemptId,
+                        studentUsername,
+                        studentName,
+                        email,
+                        studentCode,
+                        status,
+                        startedAt,
+                        deadlineAt,
+                        remainingSeconds,
+                        riskScore,
+                        riskLevel,
+                        cameraOn,
+                        micOn,
+                        clientIp
+                );
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
     }
 
     @Transactional

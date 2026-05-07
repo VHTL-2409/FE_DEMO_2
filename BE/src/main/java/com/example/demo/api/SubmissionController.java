@@ -22,7 +22,6 @@ import com.example.demo.service.ExamService;
 import com.example.demo.service.SubmissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -67,7 +66,7 @@ public class SubmissionController {
 
     @PutMapping("/attempts/{attemptId}/draft-answers")
     public ApiResponse<DraftSaveResponse> saveDraft(@PathVariable Long attemptId,
-            @RequestBody @NotEmpty List<@Valid AnswerInput> answers,
+            @RequestBody List<@Valid AnswerInput> answers,
             HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
         currentUserService.requireStudentOrAdmin(student);

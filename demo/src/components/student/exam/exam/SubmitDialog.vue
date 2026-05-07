@@ -1,108 +1,108 @@
 <template>
-  <Teleport to="body">
-    <Transition name="submodal">
-      <div v-if="modelValue" class="sd-overlay" @click.self="$emit('update:modelValue', false)">
-        <div class="sd" role="dialog" aria-modal="true" aria-labelledby="submit-dialog-title">
-          <!-- Header -->
-          <div class="sd__header">
-            <div class="sd__header-icon">
-              <LucideIcon name="done_all" />
-            </div>
-            <div>
-              <h2 id="submit-dialog-title" class="sd__header-title">Xác nhận nộp bài</h2>
-              <p class="sd__header-sub">Vui lòng kiểm tra trước khi xác nhận</p>
-            </div>
+  <Modal
+    v-model="open"
+    :title="dialogTitle"
+    :subtitle="dialogSubtitle"
+    :persistent="isSubmitting"
+    size="md"
+  >
+    <template #header="{ titleId }">
+      <div class="sd__header" :class="{ 'sd__header--warning': isBlankSubmission }">
+        <div class="sd__header-icon" :class="{ 'sd__header-icon--warning': isBlankSubmission }">
+          <LucideIcon :name="isBlankSubmission ? 'warning' : 'done_all'" />
+        </div>
+        <div class="sd__header-copy">
+          <h2 :id="titleId" class="sd__header-title">{{ dialogTitle }}</h2>
+          <p class="sd__header-sub">{{ dialogSubtitle }}</p>
+        </div>
+      </div>
+    </template>
+
+    <div class="sd__body">
+      <div class="sd__summary-row">
+        <div class="sd__stat-card" :class="answeredCount > 0 ? 'sd__stat-card--ok' : 'sd__stat-card--warn'">
+          <div class="sd__stat-icon">
+            <LucideIcon :name="answeredCount > 0 ? 'check_circle' : 'radio_button_unchecked'" />
           </div>
-
-          <!-- Body -->
-          <div class="sd__body">
-            <!-- Stat cards -->
-            <div class="sd__summary-row">
-              <div class="sd__stat-card" :class="unansweredCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--ok'">
-                <div class="sd__stat-icon">
-                  <LucideIcon :name="unansweredCount > 0 ? 'radio_button_unchecked' : 'check_circle'" />
-                </div>
-                <div class="sd__stat-body">
-                  <p class="sd__stat-val" :class="unansweredCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--ok'">
-                    {{ answeredCount }}<span class="sd__stat-total">/{{ totalQuestions }}</span>
-                  </p>
-                  <p class="sd__stat-lbl">Đã trả lời</p>
-                </div>
-              </div>
-              <div class="sd__stat-card" :class="markedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
-                <div class="sd__stat-icon">
-                  <LucideIcon name="bookmark" />
-                </div>
-                <div class="sd__stat-body">
-                  <p class="sd__stat-val" :class="markedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
-                    {{ markedCount }}
-                  </p>
-                  <p class="sd__stat-lbl">Đánh dấu</p>
-                </div>
-              </div>
-              <div class="sd__stat-card" :class="skippedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
-                <div class="sd__stat-icon">
-                  <LucideIcon name="skip_next" />
-                </div>
-                <div class="sd__stat-body">
-                  <p class="sd__stat-val" :class="skippedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
-                    {{ skippedCount }}
-                  </p>
-                  <p class="sd__stat-lbl">Bỏ qua</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Warning if unanswered -->
-            <div v-if="unansweredCount > 0" class="sd__warning">
-              <LucideIcon name="warning" class="sd__warning-icon" />
-              <div class="sd__warning-text">
-                <p class="sd__warning-title">Còn câu chưa trả lời!</p>
-                <p class="sd__warning-desc">
-                  {{ unansweredCount }} câu chưa trả lời và {{ notVisitedCount }} câu chưa mở.
-                  Bạn có chắc muốn nộp bài?
-                </p>
-              </div>
-            </div>
-
-            <!-- Critical notice -->
-            <div class="sd__notice">
-              <LucideIcon name="lock" class="sd__notice-icon" />
-              <p>Sau khi nộp, bạn <strong>không thể thay đổi đáp án</strong>.</p>
-            </div>
+          <div class="sd__stat-body">
+            <p class="sd__stat-val" :class="answeredCount > 0 ? 'sd__stat-val--ok' : 'sd__stat-val--warn'">
+              {{ answeredCount }}<span class="sd__stat-total">/{{ totalQuestions }}</span>
+            </p>
+            <p class="sd__stat-lbl">Đã trả lời</p>
           </div>
+        </div>
 
-          <!-- Footer actions -->
-          <div class="sd__footer">
-            <button
-              type="button"
-              class="sd__btn sd__btn--cancel"
-              :disabled="isSubmitting"
-              @click="$emit('update:modelValue', false)"
-            >
-              <LucideIcon name="arrow_back" />
-              Tiếp tục làm bài
-            </button>
-            <button
-              type="button"
-              id="submit-exam-confirm"
-              class="sd__btn sd__btn--submit"
-              :class="{ 'sd__btn--all-done': unansweredCount === 0 && skippedCount === 0 }"
-              :disabled="isSubmitting"
-              @click="$emit('confirm')"
-            >
-              <LucideIcon name="progress_activity" v-if="isSubmitting" class="sd__spinner"/>
-              <LucideIcon name="check_circle" v-else />
-              {{ isSubmitting ? 'Đang nộp...' : 'Nộp bài ngay' }}
-            </button>
+        <div class="sd__stat-card" :class="markedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
+          <div class="sd__stat-icon">
+            <LucideIcon name="bookmark" />
+          </div>
+          <div class="sd__stat-body">
+            <p class="sd__stat-val" :class="markedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
+              {{ markedCount }}
+            </p>
+            <p class="sd__stat-lbl">Đánh dấu</p>
+          </div>
+        </div>
+
+        <div class="sd__stat-card" :class="skippedCount > 0 ? 'sd__stat-card--warn' : 'sd__stat-card--neutral'">
+          <div class="sd__stat-icon">
+            <LucideIcon name="skip_next" />
+          </div>
+          <div class="sd__stat-body">
+            <p class="sd__stat-val" :class="skippedCount > 0 ? 'sd__stat-val--warn' : 'sd__stat-val--muted'">
+              {{ skippedCount }}
+            </p>
+            <p class="sd__stat-lbl">Bỏ qua</p>
           </div>
         </div>
       </div>
-    </Transition>
-  </Teleport>
+
+      <div v-if="showWarning" class="sd__warning" :class="{ 'sd__warning--blank': isBlankSubmission }">
+        <LucideIcon name="warning" class="sd__warning-icon" />
+        <div>
+          <p class="sd__warning-title">{{ warningTitle }}</p>
+          <p class="sd__warning-desc">{{ warningDescription }}</p>
+        </div>
+      </div>
+
+      <div class="sd__notice">
+        <LucideIcon name="lock" class="sd__notice-icon" />
+        <p>Sau khi nộp, bạn <strong>không thể thay đổi đáp án</strong>.</p>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="sd__footer">
+        <button
+          type="button"
+          class="sd__btn sd__btn--cancel"
+          :disabled="isSubmitting"
+          @click="close"
+        >
+          <LucideIcon name="arrow_back" />
+          Tiếp tục làm bài
+        </button>
+        <button
+          id="submit-exam-confirm"
+          type="button"
+          class="sd__btn sd__btn--submit"
+          :class="{ 'sd__btn--all-done': isFullyAnswered, 'sd__btn--blank': isBlankSubmission }"
+          :disabled="isSubmitting"
+          @click="confirm"
+        >
+          <LucideIcon v-if="isSubmitting" name="progress_activity" class="sd__spinner" />
+          <LucideIcon v-else name="check_circle" />
+          {{ submitLabel }}
+        </button>
+      </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import Modal from '../../../ui/Modal.vue'
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   answeredCount: { type: Number, default: 0 },
@@ -114,96 +114,116 @@ const props = defineProps({
   isSubmitting: { type: Boolean, default: false }
 })
 
-defineEmits(['confirm', 'update:modelValue'])
+const emit = defineEmits(['confirm', 'update:modelValue'])
+
+const open = computed({
+  get: () => props.modelValue,
+  set: (value) => {
+    if (!value && props.isSubmitting) return
+    emit('update:modelValue', value)
+  }
+})
+
+const isBlankSubmission = computed(() => props.totalQuestions > 0 && props.answeredCount === 0)
+const isFullyAnswered = computed(() => props.totalQuestions > 0 && props.unansweredCount === 0 && props.skippedCount === 0)
+const showWarning = computed(() => props.unansweredCount > 0)
+
+const dialogTitle = computed(() =>
+  isBlankSubmission.value ? 'Bạn chưa trả lời câu nào' : 'Xác nhận nộp bài'
+)
+
+const dialogSubtitle = computed(() =>
+  isBlankSubmission.value
+    ? 'Bài sẽ được ghi nhận là chưa có đáp án.'
+    : 'Kiểm tra tiến độ trước khi xác nhận.'
+)
+
+const warningTitle = computed(() =>
+  isBlankSubmission.value ? 'Nộp bài trắng?' : 'Còn câu chưa trả lời'
+)
+
+const warningDescription = computed(() => {
+  if (isBlankSubmission.value) {
+    return `Bạn đang nộp bài với 0/${props.totalQuestions} câu đã trả lời. Chỉ xác nhận nếu bạn chắc chắn muốn kết thúc bài thi.`
+  }
+  return `Còn ${props.unansweredCount} câu chưa trả lời, trong đó ${props.notVisitedCount} câu chưa mở.`
+})
+
+const submitLabel = computed(() => {
+  if (props.isSubmitting) return 'Đang nộp...'
+  return isBlankSubmission.value ? 'Nộp bài trắng' : 'Nộp bài ngay'
+})
+
+const close = () => {
+  if (props.isSubmitting) return
+  emit('update:modelValue', false)
+}
+
+const confirm = () => {
+  if (props.isSubmitting) return
+  emit('confirm')
+}
 </script>
 
-
 <style scoped>
-/* ─── Overlay ─────────────────────────────────────────────────────────── */
-.sd-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.68);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-/* ─── Modal ───────────────────────────────────────────────────────────── */
-.sd {
-  background: var(--ds-surface);
-  border: 2px solid var(--ds-border);
-  border-radius: var(--ds-radius-2xl);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 500px;
-  overflow: hidden;
-}
-
-.dark .sd {
-  border-color: var(--ds-border-strong);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-}
-
-/* ─── Header ──────────────────────────────────────────────────────────── */
 .sd__header {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
-  padding: 1.25rem;
-  border-bottom: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-}
-
-.dark .sd__header {
-  background: var(--ds-gray-800);
-  border-bottom-color: var(--ds-border-strong);
 }
 
 .sd__header-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--ds-radius-xl);
-  background: linear-gradient(135deg, var(--ds-success), #059669);
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  color: white;
+  background: linear-gradient(135deg, var(--ds-success), #059669);
+  border-radius: var(--ds-radius-xl);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
 
+.sd__header-icon--warning {
+  background: linear-gradient(135deg, var(--ds-warning), #d97706);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.28);
+}
+
+.sd__header-copy {
+  min-width: 0;
+}
+
 .sd__header-title {
+  margin: 0 0 0.25rem;
+  color: var(--ds-text);
   font-family: var(--ds-font-display);
   font-size: 1.125rem;
   font-weight: 900;
-  color: var(--ds-text);
-  margin: 0 0 0.25rem;
+  line-height: 1.25;
 }
 
-.dark .sd__header-title { color: #f1f5f9; }
+.sd__header--warning .sd__header-title {
+  color: var(--ds-warning);
+}
 
 .sd__header-sub {
-  font-size: 0.775rem;
-  color: var(--ds-text-muted);
   margin: 0;
+  color: var(--ds-text-muted);
+  font-size: 0.8rem;
   font-weight: 500;
+  line-height: 1.45;
 }
 
-/* ─── Body ─────────────────────────────────────────────────────────────── */
 .sd__body {
-  padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
 }
 
-/* Stat cards */
 .sd__summary-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.625rem;
 }
 
@@ -211,10 +231,10 @@ defineEmits(['confirm', 'update:modelValue'])
   display: flex;
   align-items: center;
   gap: 0.625rem;
+  min-width: 0;
   padding: 0.75rem;
-  border-radius: var(--ds-radius-xl);
   border: 1.5px solid;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  border-radius: var(--ds-radius-xl);
 }
 
 .sd__stat-card--ok {
@@ -223,8 +243,8 @@ defineEmits(['confirm', 'update:modelValue'])
 }
 
 .sd__stat-card--warn {
-  background: rgba(234, 179, 8, 0.08);
-  border-color: rgba(234, 179, 8, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .sd__stat-card--neutral {
@@ -232,208 +252,245 @@ defineEmits(['confirm', 'update:modelValue'])
   border-color: var(--ds-border);
 }
 
-.dark .sd__stat-card--neutral { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+.dark .sd__stat-card--neutral {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+}
 
 .sd__stat-icon {
-  font-size: 1.125rem;
-  flex-shrink: 0;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
+  color: var(--ds-text-muted);
+  font-size: 1.125rem;
 }
 
-.sd__stat-card--ok .sd__stat-icon { color: var(--ds-success); }
-.sd__stat-card--warn .sd__stat-icon { color: var(--ds-warning); }
-.sd__stat-card--neutral .sd__stat-icon { color: var(--ds-text-muted); }
+.sd__stat-card--ok .sd__stat-icon {
+  color: var(--ds-success);
+}
 
-.sd__stat-body { display: flex; flex-direction: column; gap: 0.125rem; }
+.sd__stat-card--warn .sd__stat-icon {
+  color: var(--ds-warning);
+}
+
+.sd__stat-body {
+  min-width: 0;
+}
 
 .sd__stat-val {
+  margin: 0;
+  color: var(--ds-text);
   font-family: var(--ds-font-display);
-  font-size: 1.375rem;
+  font-size: 1.35rem;
   font-weight: 900;
   line-height: 1;
-  color: var(--ds-text);
 }
 
-.dark .sd__stat-val { color: #f1f5f9; }
+.sd__stat-val--ok {
+  color: var(--ds-success);
+}
 
-.sd__stat-val--ok { color: var(--ds-success); }
-.sd__stat-val--warn { color: var(--ds-warning); }
-.sd__stat-val--muted { color: var(--ds-text-muted); }
+.sd__stat-val--warn {
+  color: var(--ds-warning);
+}
+
+.sd__stat-val--muted {
+  color: var(--ds-text-muted);
+}
 
 .sd__stat-total {
   font-size: 0.875rem;
-  font-weight: 600;
-  opacity: 0.7;
+  font-weight: 700;
+  opacity: 0.72;
 }
 
 .sd__stat-lbl {
-  font-size: 0.6rem;
-  font-weight: 700;
+  margin: 0.2rem 0 0;
   color: var(--ds-text-muted);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.15;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0;
 }
 
-/* Warning */
-.sd__warning {
+.sd__warning,
+.sd__notice {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
   border-radius: var(--ds-radius-xl);
-  background: rgba(234, 179, 8, 0.08);
-  border: 1.5px solid rgba(234, 179, 8, 0.3);
+}
+
+.sd__warning {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1.5px solid rgba(245, 158, 11, 0.3);
+}
+
+.sd__warning--blank {
+  background: var(--ds-danger-soft);
+  border-color: rgba(220, 38, 38, 0.28);
 }
 
 .sd__warning-icon {
-  font-size: 1.25rem;
-  color: var(--ds-warning);
-  flex-shrink: 0;
+  flex: 0 0 auto;
   margin-top: 0.1rem;
+  color: var(--ds-warning);
+  font-size: 1.2rem;
 }
 
-.sd__warning-text { display: flex; flex-direction: column; gap: 0.25rem; }
+.sd__warning--blank .sd__warning-icon {
+  color: var(--ds-danger);
+}
 
 .sd__warning-title {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--ds-warning);
   margin: 0;
-  line-height: 1.2;
+  color: var(--ds-warning);
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.sd__warning--blank .sd__warning-title {
+  color: var(--ds-danger);
 }
 
 .sd__warning-desc {
-  font-size: 0.75rem;
+  margin: 0.25rem 0 0;
   color: var(--ds-text-secondary);
-  margin: 0;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
-/* Notice */
 .sd__notice {
-  display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--ds-radius-xl);
   background: var(--ds-gray-50);
   border: 1px solid var(--ds-border);
 }
 
-.dark .sd__notice { background: var(--ds-gray-800); border-color: var(--ds-border-strong); }
+.dark .sd__notice {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+}
 
 .sd__notice-icon {
-  font-size: 1rem;
+  flex: 0 0 auto;
   color: var(--ds-danger);
-  flex-shrink: 0;
+  font-size: 1rem;
 }
 
 .sd__notice p {
-  font-size: 0.8rem;
-  color: var(--ds-text-secondary);
   margin: 0;
+  color: var(--ds-text-secondary);
+  font-size: 0.8rem;
   font-weight: 500;
   line-height: 1.4;
 }
 
-.sd__notice strong { color: var(--ds-danger); font-weight: 800; }
+.sd__notice strong {
+  color: var(--ds-danger);
+  font-weight: 900;
+}
 
-/* ─── Footer ────────────────────────────────────────────────────────────── */
 .sd__footer {
   display: flex;
   gap: 0.625rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-}
-
-.dark .sd__footer {
-  background: var(--ds-gray-800);
-  border-top-color: var(--ds-border-strong);
+  width: 100%;
 }
 
 .sd__btn {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 1;
   gap: 0.5rem;
+  min-height: 52px;
   padding: 0.875rem 1rem;
   border-radius: var(--ds-radius-xl);
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  border: none;
   font-family: inherit;
-  min-height: 52px;
-  letter-spacing: 0.01em;
+  font-size: 0.875rem;
+  font-weight: 850;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.sd__btn:active:not(:disabled) { transform: scale(0.98); }
+.sd__btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
 
-/* Cancel */
+.sd__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
 .sd__btn--cancel {
-  background: var(--ds-surface);
   color: var(--ds-text);
+  background: var(--ds-surface);
   border: 1.5px solid var(--ds-border);
 }
-
-.dark .sd__btn--cancel { background: var(--ds-gray-700); border-color: var(--ds-border-strong); color: var(--ds-gray-200); }
 
 .sd__btn--cancel:hover:not(:disabled) {
   background: var(--ds-gray-100);
   border-color: var(--ds-gray-300);
 }
 
-.dark .sd__btn--cancel:hover:not(:disabled) { background: var(--ds-gray-600); }
-
-/* Submit — most prominent, danger/final action */
 .sd__btn--submit {
-  background: linear-gradient(135deg, var(--ds-danger) 0%, #b91c1c 100%);
   color: white;
+  background: linear-gradient(135deg, var(--ds-danger) 0%, #b91c1c 100%);
+  border: 1.5px solid transparent;
   box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
 }
 
 .sd__btn--submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5);
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.45);
+  transform: translateY(-1px);
 }
 
-/* When all done — green to celebrate */
 .sd__btn--all-done {
   background: linear-gradient(135deg, var(--ds-success) 0%, #059669 100%);
-  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.32);
 }
 
 .sd__btn--all-done:hover:not(:disabled) {
-  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.5);
+  background: linear-gradient(135deg, var(--ds-success) 0%, #047857 100%);
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.45);
 }
 
-.sd__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.sd__btn--blank {
+  background: linear-gradient(135deg, var(--ds-danger) 0%, #991b1b 100%);
+}
 
-.sd__spinner { animation: sdSpin 1s linear infinite; }
+.sd__spinner {
+  animation: sdSpin 1s linear infinite;
+}
 
 @keyframes sdSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ─── Transition ───────────────────────────────────────────────────────── */
-.submodal-enter-active { animation: sdFadeIn 0.2s ease-out; }
-.submodal-leave-active { animation: sdFadeIn 0.15s ease-in reverse; }
+@media (max-width: 520px) {
+  .sd__summary-row {
+    grid-template-columns: 1fr;
+  }
 
-@keyframes sdFadeIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  .sd__footer {
+    flex-direction: column-reverse;
+  }
 }
-</style>
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
 }
+</style>

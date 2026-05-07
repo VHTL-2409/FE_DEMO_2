@@ -1,6 +1,7 @@
 package com.example.demo.realtime;
 
 import com.example.demo.domain.entity.FraudSignal;
+import com.example.demo.domain.entity.FraudWarning;
 import com.example.demo.domain.entity.RiskLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -77,12 +78,57 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishFraudWarningRecorded(Long examId, FraudWarning warning) {
+        Long attemptId = warning.getAttempt() != null ? warning.getAttempt().getId() : null;
+        AlertPayload payload = AlertPayload.builder()
+                .type("FRAUD_WARNING_RECORDED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(warning.getStudent() != null ? warning.getStudent().getUsername() : null)
+                .studentName(warning.getStudent() != null ? warning.getStudent().getFullName() : null)
+                .warningId(warning.getId())
+                .warningCategory(warning.getCategory() != null ? warning.getCategory().name() : null)
+                .warningType(warning.getWarningType())
+                .severity(warning.getSeverity() != null ? warning.getSeverity().name() : null)
+                .confidence(warning.getConfidence())
+                .message(warning.getMessage())
+                .evidence(warning.getEvidence())
+                .source(warning.getSource())
+                .relatedAttemptIds(parseRelatedAttemptIds(warning.getRelatedAttemptIds()))
+                .reviewStatus(warning.getReviewStatus() != null ? warning.getReviewStatus().name() : null)
+                .issuedAt(warning.getCreatedAt())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        if (attemptId != null) {
+            messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+        }
+    }
+
     private java.util.Map<String, Object> parseMetadata(String metadataJson) {
         if (metadataJson == null || metadataJson.isBlank()) return java.util.Map.of();
         try {
             return objectMapper.readValue(metadataJson, java.util.Map.class);
         } catch (Exception e) {
             return java.util.Map.of();
+        }
+    }
+
+    private List<Long> parseRelatedAttemptIds(String relatedAttemptIdsJson) {
+        if (relatedAttemptIdsJson == null || relatedAttemptIdsJson.isBlank()) return List.of();
+        try {
+            List<String> raw = objectMapper.readValue(relatedAttemptIdsJson, List.class);
+            return raw.stream()
+                    .map(value -> {
+                        try {
+                            return Long.valueOf(String.valueOf(value));
+                        } catch (NumberFormatException ex) {
+                            return null;
+                        }
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        } catch (Exception e) {
+            return List.of();
         }
     }
 
@@ -215,6 +261,90 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishAttemptStarted(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            LocalDateTime startedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        LocalDateTime issuedAt = LocalDateTime.now();
+        AlertPayload payload = AlertPayload.builder()
+                .type("ATTEMPT_STARTED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName != null && !studentName.isBlank() ? studentName : student)
+                .email(email)
+                .studentCode(studentCode)
+                .status(status)
+                .riskScore(riskScore)
+                .riskLevel(riskLevel)
+                .startedAt(startedAt)
+                .deadlineAt(deadlineAt)
+                .remainingSeconds(remainingSeconds)
+                .cameraOn(cameraOn)
+                .micOn(micOn)
+                .clientIp(clientIp)
+                .message("Thi sinh da vao phong thi")
+                .issuedAt(issuedAt)
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
+    public void publishAttemptJoined(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            String status,
+            LocalDateTime startedAt,
+            LocalDateTime deadlineAt,
+            Long remainingSeconds,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        LocalDateTime issuedAt = LocalDateTime.now();
+        AlertPayload payload = AlertPayload.builder()
+                .type("ATTEMPT_JOINED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName != null && !studentName.isBlank() ? studentName : student)
+                .email(email)
+                .studentCode(studentCode)
+                .status(status)
+                .riskScore(riskScore)
+                .riskLevel(riskLevel)
+                .startedAt(startedAt)
+                .deadlineAt(deadlineAt)
+                .remainingSeconds(remainingSeconds)
+                .cameraOn(cameraOn)
+                .micOn(micOn)
+                .clientIp(clientIp)
+                .message("Thi sinh da vao phong thi")
+                .issuedAt(issuedAt)
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     public void publishDraftSaved(Long examId, Long attemptId, String student, Integer answeredCount, Long remainingSeconds) {
         AlertPayload payload = AlertPayload.builder()
             .type("DRAFT_SAVED")
@@ -280,6 +410,13 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/exams/" + examId + "/camera-updates", payload);
     }
 
+    public void publishCameraFrame(Long examId, Long attemptId, Map<String, Object> payload) {
+        if (attemptId == null || payload == null) {
+            return;
+        }
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/camera-frame", (Object) payload);
+    }
+
     @Getter
     @Builder
     @AllArgsConstructor
@@ -289,6 +426,8 @@ public class TeacherAlertGateway {
         private Long attemptId;
         private String student;
         private String studentName;
+        private String email;
+        private String studentCode;
         private Integer riskScore;
         private String riskLevel;
         private Integer answeredCount;
@@ -301,11 +440,35 @@ public class TeacherAlertGateway {
         private String recommendedAction;
         private List<String> reasons;
         private List<String> evidenceSummary;
+        private Long warningId;
+        private String warningCategory;
+        private String warningType;
+        private String reviewStatus;
+        private String source;
+        private String evidence;
+        private Double confidence;
+        private List<Long> relatedAttemptIds;
         private String message;
         private LocalDateTime issuedAt;
+        private LocalDateTime startedAt;
+        private LocalDateTime submittedAt;
+        private LocalDateTime deadlineAt;
+        private Boolean cameraOn;
+        private Boolean micOn;
+        private String clientIp;
+        private String deviceFingerprint;
+        private String originalDeviceFingerprint;
+        private Integer saveCount;
+        private Integer submitCount;
         private SignalInfo latestSignal;
         private ScoresBreakdown scores;
         private ActiveFlagInfo activeFlag;
+        private String imageBase64;
+        private String capturedAt;
+        private Boolean faceDetected;
+        private Integer faceCount;
+        private String frameQuality;
+        private Double averageBrightness;
 
         @Getter
         @Builder

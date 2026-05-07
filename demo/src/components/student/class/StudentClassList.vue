@@ -11,7 +11,7 @@
           <p class="scl__subtitle">Xem và quản lý các lớp học bạn đã tham gia</p>
         </div>
       </div>
-      <button type="button" class="scl__btn scl__btn--primary" @click="showJoinModal = true">
+      <button type="button" class="scl__btn scl__btn--primary" @click="openJoinModal">
         <LucideIcon name="add" />
         Tham gia lớp
       </button>
@@ -100,7 +100,7 @@
           <LucideIcon name="refresh" />
           Thử lại
         </button>
-        <button type="button" class="scl__btn scl__btn--primary" @click="showJoinModal = true">
+        <button type="button" class="scl__btn scl__btn--primary" @click="openJoinModal">
           <LucideIcon name="add" />
           Tham gia lớp học
         </button>
@@ -119,7 +119,7 @@
           <LucideIcon name="rotate-ccw" />
           Xóa bộ lọc
         </button>
-        <button type="button" class="scl__btn scl__btn--primary" @click="showJoinModal = true">
+        <button type="button" class="scl__btn scl__btn--primary" @click="openJoinModal">
           <LucideIcon name="add" />
           Tham gia lớp học
         </button>
@@ -231,97 +231,99 @@
     />
 
     <!-- Class Detail Modal -->
-    <Transition name="modal">
-      <div v-if="showDetailModal" class="scl__modal-overlay" @click.self="showDetailModal = false">
-        <div class="scl__modal">
-          <div class="scl__modal-header">
-            <div class="scl__modal-icon">
-              <LucideIcon name="groups" />
-            </div>
-            <div class="scl__modal-title-wrap">
-              <h2 class="scl__modal-title">{{ selectedClass?.name }}</h2>
-              <p class="scl__modal-subtitle" v-if="selectedClass?.teacherName">
-                Giáo viên: {{ selectedClass.teacherName }}
-              </p>
-            </div>
-            <button type="button" class="scl__modal-close" @click="showDetailModal = false">
-              <LucideIcon name="x" />
-            </button>
+    <Modal v-model="showDetailModal" size="md">
+      <template #header="{ titleId }">
+        <div class="scl__modal-header">
+          <div class="scl__modal-icon">
+            <LucideIcon name="groups" />
           </div>
-
-          <div class="scl__modal-body">
-            <div class="scl__modal-hero">
-              <div class="scl__modal-hero-icon">
-                <LucideIcon name="school" />
-              </div>
-              <div class="scl__modal-hero-content">
-                <p class="scl__modal-hero-label">Tổng quan lớp học</p>
-                <p class="scl__modal-hero-value">{{ selectedClass?.name }}</p>
-              </div>
-            </div>
-
-            <p v-if="selectedClass?.description" class="scl__modal-desc">
-              {{ selectedClass.description }}
+          <div class="scl__modal-title-wrap">
+            <h2 :id="titleId" class="scl__modal-title">{{ selectedClass?.name }}</h2>
+            <p v-if="selectedClass?.teacherName" class="scl__modal-subtitle">
+              Giáo viên: {{ selectedClass.teacherName }}
             </p>
-            <p v-else class="scl__modal-desc scl__modal-desc--muted">
-              Giáo viên chưa thêm mô tả cho lớp học này.
-            </p>
-
-            <!-- Class Info -->
-            <div class="scl__modal-info">
-              <div class="scl__modal-info-item" v-if="selectedClass?.subject">
-                <LucideIcon name="book" />
-                <span>{{ selectedClass.subject }}</span>
-              </div>
-              <div class="scl__modal-info-item">
-                <LucideIcon name="users" />
-                <span>{{ selectedClass?.studentCount || 0 }} học sinh</span>
-              </div>
-              <div class="scl__modal-info-item" v-if="selectedClass?.teacherName">
-                <LucideIcon name="graduation-cap" />
-                <span>{{ selectedClass.teacherName }}</span>
-              </div>
-              <div class="scl__modal-info-item" v-if="selectedClass?.updatedAt">
-                <LucideIcon name="calendar-days" />
-                <span>Cập nhật {{ formatDate(selectedClass.updatedAt) }}</span>
-              </div>
-            </div>
-
-            <!-- Class Code -->
-            <div class="scl__modal-code">
-              <p class="scl__modal-code-label">Mã lớp</p>
-              <div class="scl__modal-code-box">
-                <span class="scl__modal-code-value">{{ selectedClass?.classCode || selectedClass?.code }}</span>
-                <button type="button" class="scl__modal-copy-btn" @click="copyClassCode" title="Sao chép mã">
-                  <LucideIcon :name="copied ? 'check' : 'copy'" />
-                </button>
-              </div>
-              <p class="scl__modal-code-help">Bạn có thể chia sẻ mã này cho bạn cùng lớp khi giáo viên cho phép tự tham gia.</p>
-            </div>
-          </div>
-
-          <div class="scl__modal-footer">
-            <button
-              type="button"
-              class="scl__btn scl__btn--danger"
-              :disabled="leavingClassId === selectedClass?.id"
-              @click="handleLeaveClass"
-            >
-              <LucideIcon v-if="leavingClassId !== selectedClass?.id" name="log-out" />
-              <span v-if="leavingClassId === selectedClass?.id">Đang rời lớp...</span>
-              <span v-else>Rời lớp</span>
-            </button>
-            <button type="button" class="scl__btn scl__btn--outline" @click="copyClassCode" :disabled="!selectedClass?.classCode">
-              <LucideIcon :name="copied ? 'check' : 'copy'" />
-              {{ copied ? 'Đã sao chép' : 'Sao chép mã lớp' }}
-            </button>
-            <button type="button" class="scl__btn scl__btn--outline" @click="showDetailModal = false">
-              Đóng
-            </button>
           </div>
         </div>
+      </template>
+
+      <div class="scl__modal-body">
+        <div class="scl__modal-hero">
+          <div class="scl__modal-hero-icon">
+            <LucideIcon name="school" />
+          </div>
+          <div class="scl__modal-hero-content">
+            <p class="scl__modal-hero-label">Tổng quan lớp học</p>
+            <p class="scl__modal-hero-value">{{ selectedClass?.name }}</p>
+          </div>
+        </div>
+
+        <p v-if="selectedClass?.description" class="scl__modal-desc">
+          {{ selectedClass.description }}
+        </p>
+        <p v-else class="scl__modal-desc scl__modal-desc--muted">
+          Giáo viên chưa thêm mô tả cho lớp học này.
+        </p>
+
+        <!-- Class Info -->
+        <div class="scl__modal-info">
+          <div v-if="selectedClass?.subject" class="scl__modal-info-item">
+            <LucideIcon name="book" />
+            <span>{{ selectedClass.subject }}</span>
+          </div>
+          <div class="scl__modal-info-item">
+            <LucideIcon name="users" />
+            <span>{{ selectedClass?.studentCount || 0 }} học sinh</span>
+          </div>
+          <div v-if="selectedClass?.teacherName" class="scl__modal-info-item">
+            <LucideIcon name="graduation-cap" />
+            <span>{{ selectedClass.teacherName }}</span>
+          </div>
+          <div v-if="selectedClass?.updatedAt" class="scl__modal-info-item">
+            <LucideIcon name="calendar-days" />
+            <span>Cập nhật {{ formatDate(selectedClass.updatedAt) }}</span>
+          </div>
+        </div>
+
+        <!-- Class Code -->
+        <div class="scl__modal-code">
+          <p class="scl__modal-code-label">Mã lớp</p>
+          <div class="scl__modal-code-box">
+            <span class="scl__modal-code-value">{{ selectedClass?.classCode || selectedClass?.code }}</span>
+            <button type="button" class="scl__modal-copy-btn" @click="copyClassCode" title="Sao chép mã">
+              <LucideIcon :name="copied ? 'check' : 'copy'" />
+            </button>
+          </div>
+          <p class="scl__modal-code-help">Bạn có thể chia sẻ mã này cho bạn cùng lớp khi giáo viên cho phép tự tham gia.</p>
+        </div>
       </div>
-    </Transition>
+
+      <template #footer>
+        <div class="scl__modal-footer">
+          <button
+            type="button"
+            class="scl__btn scl__btn--danger"
+            :disabled="leavingClassId === selectedClass?.id"
+            @click="handleLeaveClass"
+          >
+            <LucideIcon v-if="leavingClassId !== selectedClass?.id" name="log-out" />
+            <span v-if="leavingClassId === selectedClass?.id">Đang rời lớp...</span>
+            <span v-else>Rời lớp</span>
+          </button>
+          <button
+            type="button"
+            class="scl__btn scl__btn--outline"
+            :disabled="!selectedClass?.classCode"
+            @click="copyClassCode"
+          >
+            <LucideIcon :name="copied ? 'check' : 'copy'" />
+            {{ copied ? 'Đã sao chép' : 'Sao chép mã lớp' }}
+          </button>
+          <button type="button" class="scl__btn scl__btn--outline" @click="showDetailModal = false">
+            Đóng
+          </button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -331,6 +333,7 @@ import { getMyClasses, leaveClass } from '../../../services/classService'
 import { ApiError } from '../../../services/apiClient'
 import { useToast } from '../../../composables/useToast'
 import LucideIcon from '../../common/LucideIcon.vue'
+import Modal from '../../ui/Modal.vue'
 import StudentJoinClassModal from './StudentJoinClassModal.vue'
 
 const toast = useToast()
@@ -443,7 +446,13 @@ const formatDate = (value) => {
       })
 }
 
+const openJoinModal = () => {
+  showDetailModal.value = false
+  showJoinModal.value = true
+}
+
 const openClassDetail = (cls) => {
+  showJoinModal.value = false
   selectedClass.value = cls
   showDetailModal.value = true
   copied.value = false
@@ -1259,37 +1268,11 @@ onMounted(loadClasses)
   background: #dc2626;
 }
 
-/* Modal */
-.scl__modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.56);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.5rem;
-}
-
-.scl__modal {
-  background: var(--ds-surface);
-  border-radius: var(--ds-radius-2xl);
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.25);
-}
-
-.dark .scl__modal { background: var(--ds-gray-800); }
-
 .scl__modal-header {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--ds-border);
 }
-
-.dark .scl__modal-header { border-bottom-color: var(--ds-border-strong); }
 
 .scl__modal-icon {
   width: 48px;
@@ -1305,6 +1288,7 @@ onMounted(loadClasses)
 
 .scl__modal-title-wrap {
   flex: 1;
+  min-width: 0;
 }
 
 .scl__modal-title {
@@ -1322,26 +1306,7 @@ onMounted(loadClasses)
   margin: 0.25rem 0 0;
 }
 
-.scl__modal-close {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: var(--ds-gray-100);
-  border-radius: var(--ds-radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--ds-text-muted);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  flex-shrink: 0;
-}
-
-.dark .scl__modal-close { background: var(--ds-gray-700); color: var(--ds-text-muted); }
-.scl__modal-close:hover { background: var(--ds-gray-200); color: var(--ds-text); }
-
 .scl__modal-body {
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -1478,30 +1443,11 @@ onMounted(loadClasses)
 }
 
 .scl__modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--ds-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
-}
-
-.dark .scl__modal-footer { border-top-color: var(--ds-border-strong); }
-
-/* Modal Transitions */
-.modal-enter-active,
-.modal-leave-active {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .scl__modal,
-.modal-leave-to .scl__modal {
-  transform: scale(0.95);
+  width: 100%;
 }
 
 /* Responsive */
@@ -1534,9 +1480,3 @@ onMounted(loadClasses)
   }
 }
 </style>
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

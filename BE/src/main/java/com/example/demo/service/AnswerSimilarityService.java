@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.FraudWarningCategory;
 import com.example.demo.domain.entity.SignalSeverity;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.ExamAttemptRepository;
@@ -31,7 +32,7 @@ public class AnswerSimilarityService {
 
     private final ExamAttemptRepository examAttemptRepository;
     private final AnswerRepository answerRepository;
-    private final FraudSignalService fraudSignalService;
+    private final FraudWarningService fraudWarningService;
 
     @Value("${demo.anti-cheat.answer-similarity-threshold:0.85}")
     private double similarityThreshold;
@@ -216,16 +217,19 @@ public class AnswerSimilarityService {
             evidence.put("similarity", pair.similarity());
             evidence.put("commonQuestions", pair.commonQuestions());
             evidence.put("sameAnswers", pair.sameAnswers());
-            fraudSignalService.recordServerSignal(attempt1, "ANSWER_SIMILARITY", SignalSeverity.HIGH, pair.similarity(), evidence);
-
-            Map<String, Object> peerEvidence = new LinkedHashMap<>();
-            peerEvidence.put("source", "answer_similarity");
-            peerEvidence.put("peerStudent", pair.student1());
-            peerEvidence.put("similarity", pair.similarity());
-            peerEvidence.put("commonQuestions", pair.commonQuestions());
-            peerEvidence.put("sameAnswers", pair.sameAnswers());
-            fraudSignalService.recordServerSignal(attempt2, "ANSWER_SIMILARITY", SignalSeverity.HIGH, pair.similarity(), peerEvidence);
-            recorded += 2;
+            fraudWarningService.recordWarning(
+                    exam,
+                    null,
+                    FraudWarningCategory.ANSWER_PATTERN,
+                    "ANSWER_SIMILARITY",
+                    pair.similarity() >= 0.95 ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
+                    pair.similarity(),
+                    "Nghi van trung mau dap an giua 2 thi sinh",
+                    evidence,
+                    "answer_similarity",
+                    List.of(attempt1.getId(), attempt2.getId())
+            );
+            recorded++;
         }
         return recorded;
     }

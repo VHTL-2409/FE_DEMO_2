@@ -102,7 +102,7 @@ public class ExamController {
 
     @PatchMapping("/{examId}/monitoring-config")
     public ApiResponse<ExamResponse> updateMonitoringConfig(@PathVariable Long examId, @RequestBody ExamRequest request) {
-        return ApiResponse.success(examService.updateExam(examId, request, currentUserService.requireCurrentUser()));
+        return ApiResponse.success(examService.updateMonitoringConfig(examId, request, currentUserService.requireCurrentUser()));
     }
 
     @DeleteMapping("/{examId}")

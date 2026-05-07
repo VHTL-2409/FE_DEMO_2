@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class FraudSignal(BaseModel):
@@ -31,10 +31,15 @@ class OcrProcessResponse(BaseModel):
 
 
 class FrameAnalysisRequest(BaseModel):
-    attempt_id: int | None = None
-    student_id: int | None = None
-    image_base64: str = Field(max_length=10_000_000)  # ~7.5 MB base64
-    captured_at: str | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    attempt_id: int | None = Field(default=None, validation_alias=AliasChoices("attempt_id", "attemptId"))
+    student_id: int | None = Field(default=None, validation_alias=AliasChoices("student_id", "studentId"))
+    image_base64: str = Field(
+        max_length=10_000_000,
+        validation_alias=AliasChoices("image_base64", "imageBase64"),
+    )  # ~7.5 MB base64
+    captured_at: str | None = Field(default=None, validation_alias=AliasChoices("captured_at", "capturedAt"))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -50,22 +55,32 @@ class FrameAnalysisResponse(BaseModel):
     signals: list[FraudSignal] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     diagnostics: dict[str, Any] = Field(default_factory=dict)
+    visual_overlay: dict[str, Any] = Field(default_factory=dict)
     # Eye tracking and gaze analysis
     eye_state: str | None = Field(default=None, description="OPEN, CLOSED, or PARTIAL")
     eye_aspect_ratio: float | None = Field(default=None, description="Eye aspect ratio for blink detection")
     blink_rate: float | None = Field(default=None, description="Blink rate per minute")
+    eye_tracking_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    closure_duration_ms: int | None = Field(default=None, ge=0)
     gaze_direction: str | None = Field(default=None, description="CENTER, LEFT, RIGHT, UP, DOWN")
     gaze_off_screen: bool = Field(default=False, description="Whether gaze is off the exam screen")
+    gaze_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    off_screen_duration_ms: int | None = Field(default=None, ge=0)
     attention_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Attention score 0-1")
 
 
 class BehaviorAnalysisRequest(BaseModel):
-    attempt_id: int | None = None
-    student_id: int | None = None
-    paste_length: int = 0
-    tab_switch_count: int = 0
-    idle_seconds: int = 0
-    typing_intervals: list[int] = Field(default_factory=list)
+    model_config = ConfigDict(populate_by_name=True)
+
+    attempt_id: int | None = Field(default=None, validation_alias=AliasChoices("attempt_id", "attemptId"))
+    student_id: int | None = Field(default=None, validation_alias=AliasChoices("student_id", "studentId"))
+    paste_length: int = Field(default=0, validation_alias=AliasChoices("paste_length", "pasteLength"))
+    tab_switch_count: int = Field(default=0, validation_alias=AliasChoices("tab_switch_count", "tabSwitchCount"))
+    idle_seconds: int = Field(default=0, validation_alias=AliasChoices("idle_seconds", "idleSeconds"))
+    typing_intervals: list[int] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("typing_intervals", "typingIntervals"),
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

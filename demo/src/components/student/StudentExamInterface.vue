@@ -75,42 +75,50 @@
     </Transition>
 
     <!-- ── Unified Modal (warning / error / success / info) ── -->
-    <Transition name="ei-fade">
-      <div v-if="modal.show" class="ei-modal-overlay" @click.self="closeModal">
-        <div class="ei-modal" :class="`ei-modal--${modal.type}`">
-          <div class="ei-modal__header">
-            <div class="ei-modal__icon" :class="`ei-modal__icon--${modal.type}`">
-              <LucideIcon :name="modalIcon" size="20" />
-            </div>
-            <div>
-              <h2 class="ei-modal__title">{{ modal.title }}</h2>
-              <p v-if="modal.subtitle" class="ei-modal__sub">{{ modal.subtitle }}</p>
-            </div>
+    <Modal
+      v-model="modal.show"
+      :title="modal.title"
+      :subtitle="modal.subtitle"
+      size="md"
+      @close="closeModal"
+    >
+      <template #header="{ titleId }">
+        <div class="ei-modal__header">
+          <div class="ei-modal__icon" :class="`ei-modal__icon--${modal.type}`">
+            <LucideIcon :name="modalIcon" size="20" />
           </div>
-          <div class="ei-modal__body">
-            <p class="ei-modal__msg">{{ modal.message }}</p>
-          </div>
-          <div class="ei-modal__actions">
-            <button
-              v-if="modal.type !== 'success' && modal.type !== 'info'"
-              type="button"
-              class="ei-modal__cancel"
-              @click="closeModal"
-            >
-              Đóng
-            </button>
-            <button
-              type="button"
-              class="ei-modal__confirm"
-              :class="`ei-modal__confirm--${modal.type}`"
-              @click="handleModalConfirm"
-            >
-              {{ modal.confirmLabel || 'Đã hiểu' }}
-            </button>
+          <div class="ei-modal__header-copy">
+            <h2 :id="titleId" class="ei-modal__title">{{ modal.title }}</h2>
+            <p v-if="modal.subtitle" class="ei-modal__sub">{{ modal.subtitle }}</p>
           </div>
         </div>
+      </template>
+
+      <div class="ei-modal__body">
+        <p class="ei-modal__msg">{{ modal.message }}</p>
       </div>
-    </Transition>
+
+      <template #footer>
+        <div class="ei-modal__actions">
+          <button
+            v-if="modal.type !== 'success' && modal.type !== 'info'"
+            type="button"
+            class="ei-modal__cancel"
+            @click="closeModal"
+          >
+            Đóng
+          </button>
+          <button
+            type="button"
+            class="ei-modal__confirm"
+            :class="`ei-modal__confirm--${modal.type}`"
+            @click="handleModalConfirm"
+          >
+            {{ modal.confirmLabel || 'Đã hiểu' }}
+          </button>
+        </div>
+      </template>
+    </Modal>
 
     <!-- ── Suspended Overlay ─────────────────────────────── -->
     <Transition name="ei-fade">
@@ -222,10 +230,12 @@
 
       <!-- Right: Sidebar -->
       <aside class="ei-sidebar">
-        <!-- Camera preview -->
         <div v-if="shouldCheckDevices && mediaStreamRef" class="ei-cam-card">
           <div class="ei-cam-header">
-            <span class="ei-cam-label">Camera của bạn</span>
+            <div class="ei-cam-header__copy">
+              <span class="ei-cam-label">Thiết bị giám sát</span>
+              <span class="ei-cam-mode">{{ aiCameraAnalysisRequested ? 'AI giám sát' : 'Camera cơ bản' }}</span>
+            </div>
             <div class="ei-cam-actions">
               <button
                 type="button"
@@ -249,11 +259,22 @@
               </button>
             </div>
           </div>
-          <div class="ei-cam-preview">
-            <video ref="cameraPreviewRef" autoplay playsinline muted class="ei-cam-video" :class="{ 'ei-cam-video--hidden': !cameraReady }" />
-            <div v-if="!cameraReady" class="ei-cam-off">
-              <LucideIcon name="videocam_off" size="24" />
-            </div>
+
+          <div class="ei-cam-status">
+            <span class="ei-cam-status__chip" :class="cameraReady ? 'ei-cam-status__chip--on' : 'ei-cam-status__chip--off'">
+              Cam {{ cameraReady ? 'bật' : 'tắt' }}
+            </span>
+            <span class="ei-cam-status__chip" :class="micReady ? 'ei-cam-status__chip--on' : 'ei-cam-status__chip--off'">
+              Mic {{ micReady ? 'bật' : 'tắt' }}
+            </span>
+            <span class="ei-cam-status__chip ei-cam-status__chip--info">
+              {{ aiCameraAnalysisRequested ? 'AI 1 fps' : 'Camera 1 fps' }}
+            </span>
+          </div>
+
+          <div class="ei-cam-transport" :class="frameTransportToneClass" role="status">
+            <span class="ei-cam-transport__label">{{ frameTransportLabel }}</span>
+            <span class="ei-cam-transport__detail">{{ frameTransportDetail }}</span>
           </div>
         </div>
 
@@ -318,6 +339,10 @@
       </aside>
     </main>
 
+    <div class="ei-camera-capture" aria-hidden="true">
+      <video ref="cameraPreviewRef" autoplay playsinline muted class="ei-camera-capture__video" tabindex="-1" />
+    </div>
+
     <!-- ── Submit Modal ────────────────────────────────── -->
     <SubmitDialog
       v-model="showSubmitModal"
@@ -351,7 +376,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
 import { updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionJson, parseQuestionOptions } from '../../services/questionService'
-import { analyzeProctorFrame } from '../../services/proctorService'
+import { analyzeProctorFrame, sendProctorCameraFrame } from '../../services/proctorService'
 import { useToast } from '../../composables/useToast'
 import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
 import { useExamProctoring } from '../../composables/useExamProctoring'
@@ -363,6 +388,7 @@ import { parseBackendDate } from '../../utils/dateUtils.js'
 import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
 import MathDisplay from '../shared/MathDisplay.vue'
+import Modal from '../ui/Modal.vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 import SubmitDialog from './exam/exam/SubmitDialog.vue'
 
@@ -414,13 +440,30 @@ const modal = ref({
 const modalIconMap = { warning: 'warning', error: 'error', success: 'check_circle', info: 'info' }
 const modalIcon = computed(() => modalIconMap[modal.value.type] || 'info')
 
+const closeAllTransientModals = () => {
+  if (modal.value.show) lastModalShownAt = 0
+  modal.value.show = false
+  showSubmitModal.value = false
+  showLeaveConfirm.value = false
+}
+
 const showModal = (cfg) => {
   const now = Date.now()
   // Prevent showing if modal is already displayed or within cooldown
   if (modal.value.show) return
   if (now - lastModalShownAt < MODAL_COOLDOWN_MS) return
+  closeAllTransientModals()
   lastModalShownAt = now
-  modal.value = { show: true, ...cfg }
+  modal.value = {
+    show: true,
+    type: 'info',
+    title: '',
+    subtitle: '',
+    message: '',
+    confirmLabel: '',
+    onConfirm: null,
+    ...cfg
+  }
 }
 
 const closeModal = () => {
@@ -430,10 +473,9 @@ const closeModal = () => {
 }
 
 const handleModalConfirm = () => {
-  if (typeof modal.value.onConfirm === 'function') {
-    modal.value.onConfirm()
-  }
-  modal.value.show = false
+  const onConfirm = modal.value.onConfirm
+  closeModal()
+  if (typeof onConfirm === 'function') onConfirm()
 }
 
 const answers = ref({})
@@ -469,15 +511,21 @@ let blurGraceTimer = null
 let attemptStatusTimer = null
 let blockBackHandler = null
 let aiFrameInterval = null
+let cameraFrameInterval = null
+let cameraFrameSequence = 0
 
 const VIOLATION_COOLDOWN_MS = 5000  // 5s - prevents rapid-fire duplicates during batch, backend handles score dedup
 const LONG_VIOLATION_COOLDOWN_MS = 10000  // 10s - longer cooldown for severe violations
 const BLUR_GRACE_MS = 1200
 const DEVTOOLS_GAP_PX = 160
 const LONG_SCREEN_LEAVE_THRESHOLD_MS = 30_000
-const AI_FRAME_INTERVAL_MS = 12_000
-const AI_FRAME_WIDTH = 320
-const AI_FRAME_JPEG_QUALITY = 0.55
+// Keep AI face checks close to the teacher camera stream cadence.
+const AI_FRAME_INTERVAL_MS = 1_000
+const CAMERA_FRAME_INTERVAL_MS = 1_000
+const FRAME_SEND_RETRY_DELAY_MS = 250
+const FRAME_SEND_MAX_ATTEMPTS = 2
+const AI_FRAME_WIDTH = 480
+const AI_FRAME_JPEG_QUALITY = 0.6
 
 const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
@@ -548,18 +596,43 @@ const currentQuestion = computed(() => questions.value[currentIndex.value] || nu
 const shouldCheckDevices = computed(() => !isPracticeExam.value && (
   examConfig.value.requireCameraMic !== false || examConfig.value.enableAiProctoring === true
 ))
-const devicesReady = computed(() => cameraReady.value && micReady.value)
 const aiFrameInFlight = ref(false)
-const aiFrameSamplingEnabled = computed(() => {
+const cameraFrameInFlight = ref(false)
+const cameraFrameTransport = ref({
+  phase: 'idle',
+  captured: false,
+  sent: false,
+  acknowledged: false,
+  frameId: '',
+  lastCapturedAt: '',
+  lastSentAt: '',
+  lastAckAt: '',
+  lastSendError: '',
+  lastPayloadSize: 0,
+  lastCaptureSource: '',
+  lastMode: '',
+  lastAckStatus: '',
+  lastAckMessage: ''
+})
+const aiCameraAnalysisRequested = computed(() =>
+  examConfig.value.enableAiProctoring === true
+)
+const cameraFrameTransportEnabled = computed(() => {
   const status = String(attemptStatus.value || '').toUpperCase()
   return !isPracticeExam.value
-    && examConfig.value.enableAiProctoring === true
     && Boolean(attemptId.value)
     && !isSuspended.value
     && (status === 'IN_PROGRESS' || status === 'ACTIVE')
     && cameraReady.value
     && Boolean(mediaStreamRef.value)
+    && shouldCheckDevices.value
 })
+const cameraFrameStreamingEnabled = computed(() =>
+  cameraFrameTransportEnabled.value && !aiCameraAnalysisRequested.value
+)
+const aiFrameAnalysisEnabled = computed(() =>
+  cameraFrameTransportEnabled.value && aiCameraAnalysisRequested.value
+)
 const examProgressStats = computed(() => {
   let answered = 0; let marked = 0; let skipped = 0; let notVisited = 0
   for (const question of questions.value) {
@@ -642,7 +715,7 @@ const toggleCamera = () => {
   const videoTrack = mediaStreamRef.value?.getVideoTracks()[0]
   if (!videoTrack) return
   videoTrack.enabled = !videoTrack.enabled
-  cameraReady.value = videoTrack.enabled
+  cameraReady.value = videoTrack.enabled && videoTrack.readyState !== 'ended'
   void syncDeviceStatusToBackend()
 }
 
@@ -654,64 +727,436 @@ const toggleMic = () => {
   void syncDeviceStatusToBackend()
 }
 
+const requestCameraStream = async () => {
+  return navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+}
+
+const getLiveVideoTrack = () => {
+  const tracks = mediaStreamRef.value?.getVideoTracks?.() || []
+  return tracks.find(track => track && track.readyState !== 'ended') || null
+}
+
+const attachOptionalMicrophone = async (stream) => {
+  if (!stream || examConfig.value.requireCameraMic === false) {
+    micReady.value = true
+    return stream
+  }
+  try {
+    const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+    const audioTrack = audioStream.getAudioTracks()[0]
+    if (audioTrack) {
+      const combined = new MediaStream([...stream.getVideoTracks(), audioTrack])
+      micReady.value = Boolean(audioTrack.enabled)
+      return combined
+    }
+    micReady.value = false
+    deviceError.value = 'Camera đã bật, nhưng chưa nhận được micro.'
+  } catch {
+    micReady.value = false
+    deviceError.value = 'Camera đã bật, nhưng trình duyệt chưa cấp được micro.'
+  }
+  return stream
+}
+
 const checkDevices = async () => {
   if (!shouldCheckDevices.value) { cameraReady.value = true; micReady.value = true; deviceError.value = ''; return }
   if (!navigator?.mediaDevices?.getUserMedia) { cameraReady.value = false; micReady.value = false; deviceError.value = 'Trình duyệt không hỗ trợ.'; return }
   isCheckingDevices.value = true; deviceError.value = ''
   try {
-    const needsMic = examConfig.value.requireCameraMic !== false
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: needsMic })
-    const vt = stream.getVideoTracks()[0]; const at = stream.getAudioTracks()[0]
-    cameraReady.value = Boolean(vt?.enabled); micReady.value = needsMic ? Boolean(at?.enabled) : true
-    mediaStreamRef.value = stream
+    const stream = await requestCameraStream()
+    const vt = stream.getVideoTracks()[0]
+    if (!vt) {
+      stream.getTracks().forEach(t => t.stop())
+      throw new Error('NO_VIDEO_TRACK')
+    }
+    const finalStream = await attachOptionalMicrophone(stream)
+    cameraReady.value = Boolean(vt.enabled && vt.readyState !== 'ended')
+    mediaStreamRef.value = finalStream
     deviceStatusInterval = setInterval(syncDeviceStatusToBackend, 15000)
     await syncDeviceStatusToBackend()
   } catch (error) {
     cameraReady.value = false; micReady.value = false
-    deviceError.value = error?.name === 'NotAllowedError' ? 'Cần cấp quyền camera và micro.' : 'Không truy cập được thiết bị.'
+    deviceError.value = error?.name === 'NotAllowedError'
+      ? 'Cần cấp quyền camera.'
+      : error?.message === 'NO_VIDEO_TRACK'
+        ? 'Không tìm thấy camera khả dụng.'
+        : 'Không truy cập được camera.'
   } finally { isCheckingDevices.value = false }
 }
 
 const stopMediaStream = () => {
   stopAiFrameSampler()
+  stopCameraFrameStreamer()
   if (deviceStatusInterval) { clearInterval(deviceStatusInterval); deviceStatusInterval = null }
   if (mediaStreamRef.value) { mediaStreamRef.value.getTracks().forEach(t => t.stop()); mediaStreamRef.value = null }
   if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
 }
 
-const captureAndSendAiFrame = async () => {
-  if (!aiFrameSamplingEnabled.value || aiFrameInFlight.value) return
+const attachCameraPreview = async (stream) => {
+  if (!stream) return
+  await nextTick()
   const video = cameraPreviewRef.value
-  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return
+  if (!video) return
+  video.srcObject = stream
+  try {
+    await video.play()
+  } catch {
+    // autoplay can be denied on some browsers; frame capture will retry once metadata is available
+  }
+}
 
+const waitForCameraVideoFrame = async () => {
+  const video = cameraPreviewRef.value
+  if (!video) return Boolean(getLiveVideoTrack())
+  if (!video.srcObject && mediaStreamRef.value) video.srcObject = mediaStreamRef.value
+  if (video.readyState >= 2 && video.videoWidth && video.videoHeight) return true
+  try {
+    await video.play()
+  } catch {
+    // muted inline playback should normally be allowed; capture will retry on the next tick
+  }
+  if (video.readyState >= 2 && video.videoWidth && video.videoHeight) return true
+  return new Promise((resolve) => {
+    let timer = null
+    const onReady = () => {
+      if (timer) window.clearTimeout(timer)
+      video.removeEventListener('loadeddata', onReady)
+      video.removeEventListener('playing', onReady)
+      resolve(Boolean(video.videoWidth && video.videoHeight))
+    }
+    timer = window.setTimeout(() => {
+      video.removeEventListener('loadeddata', onReady)
+      video.removeEventListener('playing', onReady)
+      resolve(false)
+    }, 700)
+    video.addEventListener('loadeddata', onReady, { once: true })
+    video.addEventListener('playing', onReady, { once: true })
+  })
+}
+
+const buildCameraFramePayloadFromDrawable = (drawable, sourceWidth, sourceHeight, captureSource) => {
+  if (!drawable || !sourceWidth || !sourceHeight) return null
+  const width = Math.min(AI_FRAME_WIDTH, sourceWidth)
+  const height = Math.max(1, Math.round((sourceHeight / sourceWidth) * width))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.drawImage(drawable, 0, 0, width, height)
+  const videoTrack = getLiveVideoTrack()
+  const frameId = nextCameraFrameId(captureSource)
+  return {
+    frameId,
+    attemptId: attemptId.value,
+    imageBase64: canvas.toDataURL('image/jpeg', AI_FRAME_JPEG_QUALITY),
+    capturedAt: new Date().toISOString(),
+    metadata: {
+      examId: examId.value,
+      source: 'student_exam_interface',
+      frameId,
+      cameraOn: cameraReady.value,
+      micOn: micReady.value,
+      visibility: document.visibilityState || 'visible',
+      fullscreen: Boolean(document.fullscreenElement),
+      questionIndex: currentIndex.value + 1,
+      viewportWidth: window.innerWidth || null,
+      viewportHeight: window.innerHeight || null,
+      aiEnabled: aiCameraAnalysisRequested.value,
+      enableAiProctoring: examConfig.value.enableAiProctoring === true,
+      requireCameraMic: examConfig.value.requireCameraMic !== false,
+      aiAnalysisReason: examConfig.value.enableAiProctoring === true ? 'AI_PROCTORING' : 'CAMERA_REQUIRED',
+      captureSource,
+      sourceWidth,
+      sourceHeight,
+      trackEnabled: videoTrack?.enabled ?? null,
+      trackReadyState: videoTrack?.readyState || null
+    }
+  }
+}
+
+const nextCameraFrameId = (captureSource) => {
+  cameraFrameSequence += 1
+  const attemptKey = attemptId.value || 'unknown'
+  const sourceKey = captureSource || 'capture'
+  return `frame-${attemptKey}-${Date.now()}-${cameraFrameSequence}-${sourceKey}`
+}
+
+const estimateFramePayloadBytes = (payload) => {
+  if (!payload) return 0
+  try {
+    return new Blob([JSON.stringify(payload)]).size
+  } catch {
+    try {
+      return JSON.stringify(payload).length
+    } catch {
+      return 0
+    }
+  }
+}
+
+const updateCameraFrameTransport = (patch) => {
+  cameraFrameTransport.value = {
+    ...cameraFrameTransport.value,
+    ...patch
+  }
+}
+
+const formatFrameBytes = (bytes) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`
+}
+
+const normalizeFrameSendError = (error) => {
+  if (!error) return 'Không gửi được frame'
+  const status = error?.status
+  if (status === 0) return 'Không kết nối được BE'
+  const payloadMessage = error?.payload?.message || error?.payload?.error || error?.payload?.userMessage
+  const message = payloadMessage || error?.message || 'Không gửi được frame'
+  return status ? `HTTP ${status}: ${message}` : message
+}
+
+const canRetryFrameSend = (error, attemptIndex) => {
+  if (attemptIndex >= FRAME_SEND_MAX_ATTEMPTS - 1) return false
+  const status = error?.status
+  return status === 0 || status === 401 || error?.name === 'TypeError'
+}
+
+const sendFrameTransportRequest = async (payload, mode) => {
+  const primarySender = mode === 'ai' ? analyzeProctorFrame : sendProctorCameraFrame
+  let lastError = null
+
+  for (let attemptIndex = 0; attemptIndex < FRAME_SEND_MAX_ATTEMPTS; attemptIndex += 1) {
+    try {
+      updateCameraFrameTransport({
+        phase: 'sent',
+        sent: true,
+        lastSentAt: new Date().toISOString(),
+        lastMode: mode
+      })
+      const ack = await primarySender(payload)
+      const isAcked = Boolean(ack && (ack.accepted === true || ack.acknowledged === true || ack.transportStatus === 'ACKNOWLEDGED'))
+      if (!isAcked) {
+        throw new Error('BE không trả ACK frame')
+      }
+      updateCameraFrameTransport({
+        phase: 'acknowledged',
+        captured: true,
+        sent: true,
+        acknowledged: true,
+        lastAckAt: ack.receivedAt || new Date().toISOString(),
+        lastAckStatus: ack.transportStatus || 'ACKNOWLEDGED',
+        lastAckMessage: ack.transportMessage || ack.message || ack.status || '',
+        lastSendError: '',
+        lastMode: mode,
+        lastPayloadSize: ack.payloadBytes || estimateFramePayloadBytes(payload),
+        frameId: ack.frameId || payload.frameId || ''
+      })
+      return ack
+    } catch (error) {
+      lastError = error
+      if (!canRetryFrameSend(error, attemptIndex)) break
+      await new Promise((resolve) => window.setTimeout(resolve, FRAME_SEND_RETRY_DELAY_MS))
+    }
+  }
+
+  if (mode === 'ai') {
+    try {
+      updateCameraFrameTransport({
+        phase: 'sent',
+        sent: true,
+        lastSentAt: new Date().toISOString(),
+        lastMode: 'camera'
+      })
+      const ack = await sendProctorCameraFrame(payload)
+      const isAcked = Boolean(ack && (ack.accepted === true || ack.acknowledged === true || ack.transportStatus === 'ACKNOWLEDGED'))
+      if (isAcked) {
+        updateCameraFrameTransport({
+          phase: 'acknowledged',
+          captured: true,
+          sent: true,
+          acknowledged: true,
+          lastAckAt: ack.receivedAt || new Date().toISOString(),
+          lastAckStatus: ack.transportStatus || 'ACKNOWLEDGED',
+          lastAckMessage: ack.transportMessage || ack.message || ack.status || '',
+          lastSendError: '',
+          lastMode: 'camera',
+          lastPayloadSize: ack.payloadBytes || estimateFramePayloadBytes(payload),
+          frameId: ack.frameId || payload.frameId || ''
+        })
+        return ack
+      }
+      lastError = new Error('BE không trả ACK frame')
+    } catch (fallbackError) {
+      lastError = fallbackError
+    }
+  }
+
+  updateCameraFrameTransport({
+    phase: 'failed',
+    captured: true,
+    sent: true,
+    acknowledged: false,
+    lastSendError: normalizeFrameSendError(lastError),
+    lastMode: mode,
+    lastPayloadSize: estimateFramePayloadBytes(payload)
+  })
+  throw lastError || new Error('Không gửi được frame')
+}
+
+const frameTransportLabel = computed(() => {
+  switch (cameraFrameTransport.value.phase) {
+    case 'captured':
+      return 'Đã chụp'
+    case 'sent':
+      return 'Đang gửi'
+    case 'acknowledged':
+      return 'BE đã nhận'
+    case 'failed':
+      return 'Lỗi gửi frame'
+    default:
+      return 'Chưa gửi'
+  }
+})
+
+const frameTransportDetail = computed(() => {
+  const state = cameraFrameTransport.value
+  if (state.phase === 'failed') {
+    return state.lastSendError || 'Không gửi được frame'
+  }
+  if (state.phase === 'acknowledged') {
+    const parts = []
+    if (state.lastAckAt) {
+      try {
+        parts.push(`ACK ${new Date(state.lastAckAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`)
+      } catch {
+        parts.push('ACK')
+      }
+    }
+    if (state.lastPayloadSize) parts.push(formatFrameBytes(state.lastPayloadSize))
+    if (state.lastCaptureSource) parts.push(state.lastCaptureSource)
+    return parts.join(' · ') || 'Khung hình đã được BE xác nhận'
+  }
+  if (state.phase === 'sent') {
+    return state.lastPayloadSize ? `${formatFrameBytes(state.lastPayloadSize)} · đang chờ ACK` : 'Đang chờ ACK'
+  }
+  if (state.phase === 'captured') {
+    return state.lastCaptureSource ? `Nguồn: ${state.lastCaptureSource}` : 'Đã chụp xong'
+  }
+  return 'Chưa có frame mới'
+})
+
+const frameTransportToneClass = computed(() => {
+  switch (cameraFrameTransport.value.phase) {
+    case 'acknowledged':
+      return 'ei-cam-transport--ok'
+    case 'failed':
+      return 'ei-cam-transport--fail'
+    case 'sent':
+      return 'ei-cam-transport--pending'
+    case 'captured':
+      return 'ei-cam-transport--captured'
+    default:
+      return 'ei-cam-transport--idle'
+  }
+})
+
+const markFrameCapturedForSend = (payload, mode) => {
+  updateCameraFrameTransport({
+    phase: 'captured',
+    captured: true,
+    sent: false,
+    acknowledged: false,
+    frameId: payload.frameId || '',
+    lastCapturedAt: payload.capturedAt || new Date().toISOString(),
+    lastPayloadSize: estimateFramePayloadBytes(payload),
+    lastCaptureSource: payload.metadata?.captureSource || 'unknown',
+    lastMode: mode,
+    lastAckStatus: '',
+    lastAckMessage: '',
+    lastSendError: ''
+  })
+}
+
+const markFrameCaptureFailed = (mode, message) => {
+  updateCameraFrameTransport({
+    phase: 'failed',
+    captured: false,
+    sent: false,
+    acknowledged: false,
+    lastMode: mode,
+    lastSendError: message || 'Không lấy được frame từ camera'
+  })
+}
+
+const buildCameraFramePayloadFromVideo = () => {
+  const video = cameraPreviewRef.value
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return null
+  return buildCameraFramePayloadFromDrawable(video, video.videoWidth, video.videoHeight, 'video_element')
+}
+
+const buildCameraFramePayloadFromTrack = async () => {
+  const videoTrack = getLiveVideoTrack()
+  if (!videoTrack || typeof window.ImageCapture !== 'function') return null
+  try {
+    const imageCapture = new window.ImageCapture(videoTrack)
+    const bitmap = await imageCapture.grabFrame()
+    try {
+      return buildCameraFramePayloadFromDrawable(bitmap, bitmap.width, bitmap.height, 'image_capture')
+    } finally {
+      bitmap?.close?.()
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.debug('[StudentExamInterface] ImageCapture frame grab failed', error)
+    }
+    return null
+  }
+}
+
+const buildCameraFramePayload = async () => {
+  return buildCameraFramePayloadFromVideo() || await buildCameraFramePayloadFromTrack()
+}
+
+const captureAndSendCameraFrame = async () => {
+  if (!cameraFrameStreamingEnabled.value || cameraFrameInFlight.value) return
+  cameraFrameInFlight.value = true
+  try {
+    await waitForCameraVideoFrame()
+    const payload = await buildCameraFramePayload()
+    if (!payload) {
+      markFrameCaptureFailed('camera', 'Không tạo được frame từ camera')
+      return
+    }
+    markFrameCapturedForSend(payload, 'camera')
+    await sendFrameTransportRequest(payload, 'camera')
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[StudentExamInterface] Camera frame send failed', error)
+    }
+  } finally {
+    cameraFrameInFlight.value = false
+  }
+}
+
+const captureAndSendAiFrame = async () => {
+  if (!aiFrameAnalysisEnabled.value || aiFrameInFlight.value) return
   aiFrameInFlight.value = true
   try {
-    const width = Math.min(AI_FRAME_WIDTH, video.videoWidth)
-    const height = Math.max(1, Math.round((video.videoHeight / video.videoWidth) * width))
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(video, 0, 0, width, height)
-    const imageBase64 = canvas.toDataURL('image/jpeg', AI_FRAME_JPEG_QUALITY)
-    await analyzeProctorFrame({
-      attemptId: attemptId.value,
-      imageBase64,
-      capturedAt: new Date().toISOString(),
-      metadata: {
-        examId: examId.value,
-        source: 'student_exam_interface',
-        cameraOn: cameraReady.value,
-        micOn: micReady.value,
-        visibility: document.visibilityState || 'visible',
-        fullscreen: Boolean(document.fullscreenElement),
-        questionIndex: currentIndex.value + 1,
-        viewportWidth: window.innerWidth || null,
-        viewportHeight: window.innerHeight || null
-      }
-    })
-  } catch {
+    await waitForCameraVideoFrame()
+    const payload = await buildCameraFramePayload()
+    if (!payload) {
+      markFrameCaptureFailed('ai', 'Không tạo được frame AI từ camera')
+      return
+    }
+    markFrameCapturedForSend(payload, 'ai')
+    await sendFrameTransportRequest(payload, 'ai')
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[StudentExamInterface] AI camera frame send failed', error)
+    }
     // AI camera is advisory; keep the exam flow running if a sample fails.
   } finally {
     aiFrameInFlight.value = false
@@ -719,7 +1164,7 @@ const captureAndSendAiFrame = async () => {
 }
 
 const startAiFrameSampler = () => {
-  if (aiFrameInterval || !aiFrameSamplingEnabled.value) return
+  if (aiFrameInterval || !aiFrameAnalysisEnabled.value) return
   void captureAndSendAiFrame()
   aiFrameInterval = window.setInterval(() => {
     void captureAndSendAiFrame()
@@ -733,12 +1178,35 @@ const stopAiFrameSampler = () => {
   }
 }
 
-watch(mediaStreamRef, (stream) => {
-  if (!stream) return
-  nextTick(() => { if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = stream })
+const startCameraFrameStreamer = () => {
+  if (cameraFrameInterval || !cameraFrameStreamingEnabled.value) return
+  void captureAndSendCameraFrame()
+  cameraFrameInterval = window.setInterval(() => {
+    void captureAndSendCameraFrame()
+  }, CAMERA_FRAME_INTERVAL_MS)
+}
+
+const stopCameraFrameStreamer = () => {
+  if (cameraFrameInterval) {
+    window.clearInterval(cameraFrameInterval)
+    cameraFrameInterval = null
+  }
+}
+
+watch(mediaStreamRef, async (stream) => {
+  if (!stream) {
+    if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
+    return
+  }
+  await attachCameraPreview(stream)
 })
 
-watch(aiFrameSamplingEnabled, (enabled) => {
+watch(cameraFrameStreamingEnabled, (enabled) => {
+  if (enabled) startCameraFrameStreamer()
+  else stopCameraFrameStreamer()
+})
+
+watch(aiFrameAnalysisEnabled, (enabled) => {
   if (enabled) startAiFrameSampler()
   else stopAiFrameSampler()
 })
@@ -928,7 +1396,7 @@ const applyAttemptStatus = (status, message = '') => {
     isSuspended.value = true
     if (message) suspensionMessage.value = message
     else if (normalized === 'PAUSED') suspensionMessage.value = 'Phiên thi đang được tạm dừng để giám thị kiểm tra.'
-    showSubmitModal.value = false
+    closeAllTransientModals()
     stopMediaStream()
     return
   }
@@ -968,16 +1436,21 @@ const resumeFromPause = async (message = '') => {
 const enforceDeviceAccess = async () => {
   if (isPracticeExam.value) return
   if (mediaStreamRef.value) {
-    const vt = mediaStreamRef.value.getVideoTracks()[0]; const at = mediaStreamRef.value.getAudioTracks()[0]
-    const needsMic = examConfig.value.requireCameraMic !== false
-    const ve = !vt || vt.readyState === 'ended'; const ae = needsMic && (!at || at.readyState === 'ended')
-    if (ve || ae) { isSuspended.value = true; suspensionMessage.value = 'Camera hoặc micro đã bị thu hồi. Vui lòng tải lại trang.'; return }
-    cameraReady.value = Boolean(vt?.enabled); micReady.value = needsMic ? Boolean(at?.enabled) : true
+    const vt = mediaStreamRef.value.getVideoTracks()[0]
+    const at = mediaStreamRef.value.getAudioTracks()[0]
+    const ve = !vt || vt.readyState === 'ended'
+    if (ve) {
+      isSuspended.value = true
+      suspensionMessage.value = 'Camera đã bị thu hồi. Vui lòng tải lại trang.'
+      return
+    }
+    cameraReady.value = Boolean(vt?.enabled && vt.readyState !== 'ended')
+    micReady.value = at ? Boolean(at.enabled) : micReady.value
     await syncDeviceStatusToBackend()
     return
   }
   await checkDevices()
-  if (!devicesReady.value) { isSuspended.value = true; suspensionMessage.value = deviceError.value || 'Cần cấp quyền camera và micro.' }
+  if (!cameraReady.value) { isSuspended.value = true; suspensionMessage.value = deviceError.value || 'Cần cấp quyền camera.' }
 }
 
 const requestExamFullscreen = async () => {
@@ -1149,7 +1622,6 @@ const persistDraftToServer = async () => {
     const q = questionById.value.get(Number(questionId))
     return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
   })
-  if (!payload.length) return
   await saveDraftAnswers(attemptId.value, payload)
 }
 
@@ -1207,7 +1679,11 @@ const buildSubmitPayload = () => Object.entries(answers.value).filter(([, v]) =>
   return { questionId: Number(questionId), selectedAnswer: serializeAnswerValue(q, selectedAnswer) }
 })
 
-const openSubmitModal = () => { if (isSuspended.value) return; showSubmitModal.value = true }
+const openSubmitModal = () => {
+  if (isSuspended.value) return
+  closeAllTransientModals()
+  showSubmitModal.value = true
+}
 
 const autoSubmitOnTimeUp = async () => {
   if (!attemptId.value || isSuspended.value || isSubmitting.value) return
@@ -1219,6 +1695,7 @@ const autoSubmitOnTimeUp = async () => {
     showSubmitModal.value = false
     router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
   } catch {
+    showSubmitModal.value = false
     showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp tự động được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
   } finally { isSubmitting.value = false }
 }
@@ -1232,6 +1709,7 @@ const submitExamAction = async () => {
     showSubmitModal.value = false
     router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
   } catch {
+    showSubmitModal.value = false
     showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
   } finally { isSubmitting.value = false }
 }
@@ -1350,6 +1828,7 @@ onUnmounted(() => {
   removeEventListeners()
   teardownBlockBackButton()
   stopAiFrameSampler()
+  stopCameraFrameStreamer()
   stopMediaStream()
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)
@@ -1360,6 +1839,7 @@ onUnmounted(() => {
 
 onBeforeRouteLeave(() => {
   if (!allowConfirmedLeave.value) {
+    closeAllTransientModals()
     showLeaveConfirm.value = true
     return false
   }
@@ -1603,39 +2083,10 @@ const onCancelLeave = () => {
 }
 .ei-fs-warn__btn:hover { background: var(--ds-warning); color: white; }
 
-/* ── Unified Modal ──── */
-.ei-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  background: rgba(15, 23, 42, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.ei-modal {
-  max-width: 480px;
-  width: 100%;
-  background: var(--ds-surface);
-  border-radius: var(--ds-radius-2xl);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  overflow: hidden;
-  border: 2px solid var(--ds-border);
-}
-
-.ei-modal--warning { border-color: var(--ds-warning); }
-.ei-modal--error { border-color: var(--ds-danger); }
-.ei-modal--success { border-color: var(--ds-success); }
-.ei-modal--info { border-color: var(--ds-primary); }
-
 .ei-modal__header {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--ds-border);
 }
 
 .ei-modal__icon {
@@ -1646,6 +2097,10 @@ const onCancelLeave = () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.ei-modal__header-copy {
+  min-width: 0;
 }
 
 .ei-modal__icon--warning { background: var(--ds-warning-soft); color: var(--ds-warning); }
@@ -1661,9 +2116,20 @@ const onCancelLeave = () => {
   margin: 0;
 }
 
-.ei-modal__sub { font-size: 0.75rem; color: var(--ds-text-muted); margin: 0.25rem 0 0; }
+.dark .ei-modal__title {
+  color: #f1f5f9;
+}
 
-.ei-modal__body { padding: 1.125rem 1.5rem; }
+.ei-modal__sub {
+  margin: 0.25rem 0 0;
+  color: var(--ds-text-muted);
+  font-size: 0.75rem;
+}
+
+.ei-modal__body {
+  display: flex;
+  flex-direction: column;
+}
 
 .ei-modal__msg {
   font-size: 0.875rem;
@@ -1680,7 +2146,7 @@ const onCancelLeave = () => {
   display: flex;
   justify-content: flex-end;
   gap: 0.625rem;
-  padding: 0.75rem 1.5rem 1.25rem;
+  width: 100%;
 }
 
 .ei-modal__cancel {
@@ -1713,6 +2179,17 @@ const onCancelLeave = () => {
 .ei-modal__confirm--error { background: var(--ds-danger); }
 .ei-modal__confirm--success { background: var(--ds-success); }
 .ei-modal__confirm--info { background: var(--ds-primary); }
+
+@media (max-width: 520px) {
+  .ei-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .ei-modal__cancel,
+  .ei-modal__confirm {
+    width: 100%;
+  }
+}
 
 /* ── Suspended Overlay ──── */
 .ei-suspend-overlay {
@@ -1935,7 +2412,7 @@ const onCancelLeave = () => {
   background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-2xl);
-  overflow: hidden;
+  padding: 0.75rem;
   box-shadow: var(--ds-shadow-sm);
 }
 
@@ -1943,11 +2420,25 @@ const onCancelLeave = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--ds-border);
+  gap: 0.75rem;
+}
+
+.ei-cam-header__copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
 }
 
 .ei-cam-label { font-size: 0.68rem; font-weight: 700; color: var(--ds-text-muted); }
+.ei-cam-mode {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ds-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ei-cam-actions { display: flex; gap: 0.3rem; }
 
 .ei-cam-btn {
@@ -1966,31 +2457,93 @@ const onCancelLeave = () => {
 .ei-cam-btn--on:hover { background: rgba(22,163,74,0.2); }
 .ei-cam-btn--off:hover { background: var(--ds-gray-200); }
 
-.ei-cam-preview {
-  position: relative;
-  aspect-ratio: 4/3;
-  background: var(--ds-gray-900);
-  overflow: hidden;
+.ei-cam-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
 }
 
-.ei-cam-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
+.ei-cam-status__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.2rem 0.48rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.2;
 }
-.ei-cam-video--hidden { opacity: 0; }
 
-.ei-cam-off {
-  position: absolute;
-  inset: 0;
+.ei-cam-status__chip--on {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ei-cam-status__chip--off {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.ei-cam-status__chip--info {
+  background: var(--ds-info-soft);
+  color: var(--ds-info);
+}
+
+.ei-cam-transport {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: rgba(0,0,0,0.8);
-  color: var(--ds-gray-500);
+  gap: 0.2rem;
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-gray-50);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.ei-cam-transport__label {
+  font-weight: 800;
+  color: var(--ds-text);
+}
+
+.ei-cam-transport__detail {
+  color: var(--ds-text-muted);
+  word-break: break-word;
+}
+
+.ei-cam-transport--ok {
+  background: var(--ds-success-soft);
+}
+
+.ei-cam-transport--pending,
+.ei-cam-transport--captured {
+  background: var(--ds-warning-soft);
+}
+
+.ei-cam-transport--fail {
+  background: var(--ds-danger-soft);
+}
+
+.ei-cam-transport--idle {
+  background: var(--ds-gray-50);
+}
+
+.ei-camera-capture {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ei-camera-capture__video {
+  width: 1px;
+  height: 1px;
 }
 
 /* Progress card */

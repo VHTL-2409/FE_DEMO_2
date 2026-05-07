@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="FE_DEMO AI Service", version="0.2.0")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
+PROCTOR_FRAME_RATE_LIMIT = os.getenv("PROCTOR_FRAME_RATE_LIMIT", "600/minute")
 
 
 # ─── Rate limit exceeded handler ───────────────────────────────────────────────
@@ -148,7 +149,8 @@ async def health_detailed() -> dict:
         "status": "ok",
         "services": {
             "ocr": get_ocr_engine().is_ready(),
-            "proctor": get_proctor_analyzer().cv_ready(),
+            "proctor": get_proctor_analyzer().is_ready(),
+            "proctor_face_detector": get_proctor_analyzer().face_detector_status(),
             "question_generator": get_question_generator().is_available(),
             "essay_evaluator": get_essay_evaluator().is_available(),
             "performance_predictor": get_performance_predictor().is_available(),
@@ -185,15 +187,25 @@ async def process_ocr(
 
 # ─── Proctoring ───────────────────────────────────────────────────────────────
 @app.post("/proctor/analyze/frame", response_model=FrameAnalysisResponse, tags=["proctor"])
-@limiter.limit("60/minute")
+@limiter.limit(PROCTOR_FRAME_RATE_LIMIT)
 async def analyze_frame(
     request: Request,
     req: FrameAnalysisRequest,
     _api_key: str = Depends(verify_api_key),
 ) -> FrameAnalysisResponse:
     try:
+        metadata = dict(req.metadata or {})
+        if req.attempt_id is not None:
+            metadata.setdefault("attempt_id", req.attempt_id)
+            metadata.setdefault("attemptId", req.attempt_id)
+        if req.student_id is not None:
+            metadata.setdefault("student_id", req.student_id)
+            metadata.setdefault("studentId", req.student_id)
+        if req.captured_at:
+            metadata.setdefault("captured_at", req.captured_at)
+            metadata.setdefault("capturedAt", req.captured_at)
         return FrameAnalysisResponse.model_validate(
-            get_proctor_analyzer().analyze_frame(req.image_base64, req.metadata)
+            get_proctor_analyzer().analyze_frame(req.image_base64, metadata)
         )
     except Exception as exc:
         logger.error("Frame analysis failed", exc_info=True)

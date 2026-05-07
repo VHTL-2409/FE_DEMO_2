@@ -19,6 +19,7 @@ export {
   fetchProctorSessionAlerts,
   fetchProctorRisk,
   fetchProctorTimeline,
+  fetchLatestCameraFrame,
   reviewProctorFlag
 } from './proctorService'
 

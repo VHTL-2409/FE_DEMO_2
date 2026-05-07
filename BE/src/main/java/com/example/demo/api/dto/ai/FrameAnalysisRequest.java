@@ -9,6 +9,7 @@ import java.util.Map;
 @Getter
 @Setter
 public class FrameAnalysisRequest {
+    private String frameId;
     private Long attemptId;
     private Long studentId;
 

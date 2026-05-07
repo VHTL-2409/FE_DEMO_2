@@ -27,6 +27,12 @@
               Kiểm tra lại nội dung, đáp án và điểm số trước khi xuất bản đề thi.
             </p>
           </div>
+          <div v-if="localQuestions.length > 0" class="ec-qb-diff-summary">
+            <span class="ec-qb-diff-summary__chip ec-qb-diff-summary__chip--easy">Dễ {{ difficultyStats.EASY }}</span>
+            <span class="ec-qb-diff-summary__chip ec-qb-diff-summary__chip--medium">Trung bình {{ difficultyStats.MEDIUM }}</span>
+            <span class="ec-qb-diff-summary__chip ec-qb-diff-summary__chip--hard">Khó {{ difficultyStats.HARD }}</span>
+            <span v-if="difficultyStats.UNSPECIFIED" class="ec-qb-diff-summary__chip">Chưa chọn {{ difficultyStats.UNSPECIFIED }}</span>
+          </div>
           <div class="ec-qb-list__actions">
             <button
               v-if="localQuestions.length > 0"
@@ -84,6 +90,13 @@
                   {{ typeLabel(q.type) }}
                 </span>
                 <span
+                  v-if="difficultyLabel(q.difficulty)"
+                  class="ec-qb-diff-badge"
+                  :class="difficultyClass(q.difficulty)"
+                >
+                  {{ difficultyLabel(q.difficulty) }}
+                </span>
+                <span
                   v-if="sectionHeaderChip(q)"
                   class="ec-qb-sec-chip"
                   :title="q.section || q.sectionKind || ''"
@@ -125,6 +138,19 @@
                     @change="updateScore(i, $event)"
                   />
                 </div>
+                <label class="ec-qb-difficulty-control">
+                  <span class="ec-qb-meta-label">Độ khó:</span>
+                  <select
+                    class="ec-qb-difficulty-select"
+                    :value="q.difficulty || ''"
+                    @change="updateDifficulty(i, $event)"
+                  >
+                    <option value="">Chưa chọn</option>
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </label>
                 <button type="button" class="ec-qb-item__delete-btn" @click="removeQuestion(i)">
                   <LucideIcon name="delete" size="15" />
                   Xóa câu hỏi
@@ -318,6 +344,14 @@ const localQuestions = computed({
   set: (v) => emit('update:questions', v)
 })
 
+const difficultyStats = computed(() => {
+  return localQuestions.value.reduce((acc, question) => {
+    const key = normalizeDifficulty(question?.difficulty)
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, { EASY: 0, MEDIUM: 0, HARD: 0, UNSPECIFIED: 0 })
+})
+
 const isEssayType = (q) => {
   return q.type && q.type.toUpperCase().includes('ESSAY')
 }
@@ -354,6 +388,28 @@ const typeSlug = (type) => {
   if (t.includes('ESSAY')) return 'essay'
   if (t.includes('MULTI') || t.includes('MULTIPLE')) return 'multi'
   return 'mc'
+}
+
+function normalizeDifficulty(value) {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (normalized === 'EASY' || normalized === 'MEDIUM' || normalized === 'HARD') return normalized
+  return 'UNSPECIFIED'
+}
+
+function difficultyLabel(value) {
+  const normalized = normalizeDifficulty(value)
+  const map = {
+    EASY: 'Dễ',
+    MEDIUM: 'Trung bình',
+    HARD: 'Khó',
+    UNSPECIFIED: ''
+  }
+  return map[normalized] || ''
+}
+
+function difficultyClass(value) {
+  const normalized = normalizeDifficulty(value)
+  return `ec-qb-diff-badge--${normalized.toLowerCase()}`
 }
 
 /** Phần đề (import PDF/DOCX): nhóm + nhãn hiển thị */
@@ -733,6 +789,16 @@ const updateScore = (index, event) => {
   localQuestions.value = updated
 }
 
+const updateDifficulty = (index, event) => {
+  const updated = [...localQuestions.value]
+  updated[index] = {
+    ...updated[index],
+    difficulty: normalizeDifficulty(event.target.value) === 'UNSPECIFIED' ? '' : normalizeDifficulty(event.target.value),
+    _manualEdited: true,
+  }
+  localQuestions.value = updated
+}
+
 const updateEssayAnswer = (index, event) => {
   const updated = [...localQuestions.value]
   const nextQuestion = {
@@ -923,6 +989,39 @@ const onConfirmDeleteAll = () => {
   font-size: 0.75rem;
   color: var(--ds-text-muted);
   line-height: 1.5;
+}
+
+.ec-qb-diff-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.ec-qb-diff-summary__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--ds-surface-2, rgba(0, 0, 0, 0.04));
+  color: var(--ds-text-secondary);
+}
+
+.ec-qb-diff-summary__chip--easy {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.ec-qb-diff-summary__chip--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.ec-qb-diff-summary__chip--hard {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
 }
 
 .ec-qb-delete-all-btn {
@@ -1497,6 +1596,28 @@ const onConfirmDeleteAll = () => {
   color: var(--ds-info);
 }
 
+.ec-qb-diff-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.ec-qb-diff-badge--easy {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.ec-qb-diff-badge--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.ec-qb-diff-badge--hard {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
 .dark .ec-qb-type-badge--mc {
   background: rgba(129, 140, 248, 0.15);
   color: #a5b4fc;
@@ -1637,15 +1758,38 @@ const onConfirmDeleteAll = () => {
 
 .ec-qb-item__meta-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .ec-qb-item__score-control {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.ec-qb-difficulty-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ec-qb-difficulty-select {
+  min-width: 9rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font-size: 0.8rem;
+}
+
+.dark .ec-qb-difficulty-select {
+  background: var(--ds-gray-800);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-text);
 }
 
 .ec-qb-meta-label {

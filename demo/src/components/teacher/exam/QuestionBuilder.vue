@@ -115,6 +115,9 @@
               <p class="ec-qb-item__meta">
                 <span v-if="q.correctAnswer" class="ec-qb-item__correct">Đúng: {{ q.correctAnswer }}</span>
                 <span v-if="q.score">{{ q.score }} điểm</span>
+                <span v-if="q.difficulty" class="ec-qb-diff-chip" :class="`ec-qb-diff-chip--${q.difficulty.toLowerCase()}`">
+                  {{ q.difficulty === 'EASY' ? 'Dễ' : q.difficulty === 'HARD' ? 'Khó' : 'Trung bình' }}
+                </span>
               </p>
             </div>
             <button type="button" class="ec-qb-item__delete" @click="removeQuestion(i)">
@@ -344,6 +347,14 @@ const fileSizeLabel = computed(() => {
   return `${mb.toFixed(2)} MB`
 })
 
+const normalizeDifficultyValue = (value) => {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (['EASY', 'DE', 'DỄ', 'DỄ DÀNG', 'LOW'].includes(normalized)) return 'EASY'
+  if (['MEDIUM', 'TB', 'TRUNG BÌNH', 'TRUNG_BINH', 'NORMAL'].includes(normalized)) return 'MEDIUM'
+  if (['HARD', 'KHÓ', 'KHO', 'HIGH'].includes(normalized)) return 'HARD'
+  return ''
+}
+
 let localIdCounter = 1
 
 const removeQuestion = (index) => {
@@ -425,6 +436,7 @@ const parseFileClientSide = async (file) => {
           const optionCIndex = headers.findIndex(h => h === 'c' || h === 'option c' || h === 'câu c')
           const optionDIndex = headers.findIndex(h => h === 'd' || h === 'option d' || h === 'câu d')
           const scoreIndex = headers.findIndex(h => h.includes('điểm') || h.includes('score') || h.includes('weight'))
+          const difficultyIndex = headers.findIndex(h => h.includes('difficulty') || h.includes('độ khó') || h.includes('do kho') || h.includes('mức độ') || h.includes('level'))
 
           const questions = []
           for (let i = 1; i < lines.length; i++) {
@@ -458,7 +470,8 @@ const parseFileClientSide = async (file) => {
               correctAnswer,
               score,
               options,
-              type: 'SINGLE_CHOICE'
+              type: 'SINGLE_CHOICE',
+              difficulty: normalizeDifficultyValue(difficultyIndex >= 0 ? values[difficultyIndex] : '')
             })
           }
 
@@ -502,6 +515,7 @@ const parseFileClientSide = async (file) => {
             const questionIndex = headers.findIndex(h => h.includes('câu') || h.includes('content') || h.includes('question') || h === 'nội dung')
             const answerIndex = headers.findIndex(h => h.includes('đáp án') || h.includes('answer') || h.includes('correct') || h.includes('đúng'))
             const scoreIndex = headers.findIndex(h => h.includes('điểm') || h.includes('score') || h.includes('weight'))
+            const difficultyIndex = headers.findIndex(h => h.includes('difficulty') || h.includes('độ khó') || h.includes('do kho') || h.includes('mức độ') || h.includes('level'))
 
             const questions = []
             for (let i = 1; i < rows.length; i++) {
@@ -554,7 +568,8 @@ const parseFileClientSide = async (file) => {
                 correctAnswer,
                 score,
                 options,
-                type: 'SINGLE_CHOICE'
+                type: 'SINGLE_CHOICE',
+                difficulty: normalizeDifficultyValue(difficultyIndex >= 0 ? row[difficultyIndex] : '')
               })
             }
 
@@ -616,27 +631,29 @@ const handleImport = async () => {
       try {
         const previewResult = await previewImportFile(selectedFile.value)
         if (previewResult && Array.isArray(previewResult)) {
-          questions = previewResult.map((q) => ({
-            _localId: localIdCounter++,
-            content: q.content || q.question || q.text || '',
-            correctAnswer: q.correctAnswer || q.answer || q.correct || '',
-            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
-            options: Array.isArray(q.options)
-              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
-              : [],
-            type: q.type || 'SINGLE_CHOICE'
-          }))
+            questions = previewResult.map((q) => ({
+              _localId: localIdCounter++,
+              content: q.content || q.question || q.text || '',
+              correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+              score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+              options: Array.isArray(q.options)
+                ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+                : [],
+              type: q.type || 'SINGLE_CHOICE',
+              difficulty: normalizeDifficultyValue(q.difficulty)
+            }))
         } else if (previewResult && previewResult.questions) {
-          questions = previewResult.questions.map((q) => ({
-            _localId: localIdCounter++,
-            content: q.content || q.question || q.text || '',
-            correctAnswer: q.correctAnswer || q.answer || q.correct || '',
-            score: parseFloat(q.scoreWeight || q.score || q.points || 1),
-            options: Array.isArray(q.options)
-              ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
-              : [],
-            type: q.type || 'SINGLE_CHOICE'
-          }))
+            questions = previewResult.questions.map((q) => ({
+              _localId: localIdCounter++,
+              content: q.content || q.question || q.text || '',
+              correctAnswer: q.correctAnswer || q.answer || q.correct || '',
+              score: parseFloat(q.scoreWeight || q.score || q.points || 1),
+              options: Array.isArray(q.options)
+                ? q.options.map((o) => ({ id: o.id || o.key || 'A', text: o.text || o.value || '' }))
+                : [],
+              type: q.type || 'SINGLE_CHOICE',
+              difficulty: normalizeDifficultyValue(q.difficulty)
+            }))
         }
       } catch (apiErr) {
         console.warn('API preview failed, using file content directly:', apiErr)
@@ -1020,6 +1037,28 @@ const handleImport = async () => {
   margin-top: 0.375rem;
   font-size: 0.7rem;
   color: var(--ds-text-muted);
+  flex-wrap: wrap;
+}
+
+.ec-qb-diff-chip {
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--ds-radius-full);
+  font-weight: 700;
+}
+
+.ec-qb-diff-chip--easy {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.ec-qb-diff-chip--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.ec-qb-diff-chip--hard {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
 }
 
 .ec-qb-item__correct {

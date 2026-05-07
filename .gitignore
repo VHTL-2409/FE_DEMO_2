@@ -78,3 +78,6 @@ skills/
 scripts/
 *.md
 ai-service/app/schemas.py
+*.bat
+BE/run-demo-local.bat
+ai-service/tests/*

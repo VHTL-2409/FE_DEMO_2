@@ -4,6 +4,47 @@ import { fetchCameraStatus, fetchCameraAlerts, dismissCameraAlert } from '../ser
 const RECONNECT_DELAY_MS = 5000
 const POLL_INTERVAL_WHEN_DISCONNECTED_MS = 8000
 
+function parseMaybeJson(value) {
+  if (!value) return {}
+  if (typeof value === 'object') return value
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function firstDefined(...values) {
+  return values.find(value => value !== undefined && value !== null)
+}
+
+function extractAiCameraMetrics(signal = {}, event = {}) {
+  const evidence = parseMaybeJson(signal.evidence || event.evidence)
+  const signalEvidence = parseMaybeJson(evidence.signalEvidence)
+  const source = { ...evidence, ...signalEvidence, ...event }
+  const patch = {
+    eyeCount: firstDefined(source.eyeCount, source.eye_count),
+    eyeState: firstDefined(source.eyeState, source.eye_state),
+    eyeAspectRatio: firstDefined(source.eyeAspectRatio, source.eye_aspect_ratio),
+    eyeTrackingConfidence: firstDefined(source.eyeTrackingConfidence, source.eye_tracking_confidence),
+    closureDurationMs: firstDefined(source.closureDurationMs, source.closure_duration_ms),
+    gazeDirection: firstDefined(source.gazeDirection, source.gaze_direction),
+    gazeOffScreen: firstDefined(source.gazeOffScreen, source.gaze_off_screen),
+    gazeConfidence: firstDefined(source.gazeConfidence, source.gaze_confidence),
+    offScreenDurationMs: firstDefined(source.offScreenDurationMs, source.off_screen_duration_ms),
+    attentionScore: firstDefined(source.attentionScore, source.attention_score),
+    visualOverlay: firstDefined(source.visualOverlay, source.visual_overlay),
+    faceDetected: firstDefined(source.faceDetected, source.face_detected),
+    faceCount: firstDefined(source.faceCount, source.face_count),
+    multipleFaces: firstDefined(source.multipleFaces, source.multiple_faces),
+    faceQuality: firstDefined(source.faceQuality, source.face_quality),
+    frameQuality: firstDefined(source.frameQuality, source.frame_quality),
+    averageBrightness: firstDefined(source.averageBrightness, source.average_brightness)
+  }
+  return Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined))
+}
+
 export function useAiCameraDashboard(examId) {
   const loading = ref(false)
   const cameraStatuses = ref([])
@@ -59,21 +100,32 @@ export function useAiCameraDashboard(examId) {
     if (!attemptId) return
 
     const type = String(event.type || '').toUpperCase()
-    const signal = event.latestSignal || {}
+    const signal = event.latestSignal || (
+      type === 'FRAUD_WARNING_RECORDED' && event.warningCategory === 'CAMERA_PROCTORING'
+        ? {
+            signalType: event.warningType,
+            severity: event.severity,
+            confidence: event.confidence,
+            occurredAt: event.issuedAt
+          }
+        : {}
+    )
 
     // Find existing camera status or create new one
     const existingIndex = cameraStatuses.value.findIndex(c => c.attemptId === attemptId)
     const camera = existingIndex >= 0 ? cameraStatuses.value[existingIndex] : null
 
-    if (type === 'AI_CAMERA_SIGNAL' || type === 'FRAUD_SIGNAL_RECORDED') {
+    if (type === 'AI_CAMERA_SIGNAL' || type === 'FRAUD_SIGNAL_RECORDED' || (type === 'FRAUD_WARNING_RECORDED' && event.warningCategory === 'CAMERA_PROCTORING')) {
       // Update existing or add new
       const signalType = signal.signalType
+      const aiMetrics = extractAiCameraMetrics(signal, event)
 
       if (camera) {
         // Update existing camera status
         if (!camera.activeSignals) camera.activeSignals = []
         if (!camera.criticalSignals) camera.criticalSignals = []
         camera.cameraActive = true
+        Object.assign(camera, aiMetrics)
 
         if (!camera.activeSignals.includes(signalType)) {
           camera.activeSignals.push(signalType)
@@ -109,6 +161,7 @@ export function useAiCameraDashboard(examId) {
           riskScore: event.riskScore || 0,
           alertCount: (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') ? 1 : 0,
           activeSignals: [signalType],
+          ...aiMetrics,
           criticalSignals: (signal.severity === 'CRITICAL' || signal.severity === 'HIGH') ? [{
             signalType,
             severity: signal.severity,

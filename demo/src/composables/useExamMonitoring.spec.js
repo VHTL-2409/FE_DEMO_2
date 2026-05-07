@@ -71,6 +71,66 @@ describe('useExamMonitoring', () => {
     expect(store.liveEvents[0].eventType).toBe('WARNING_SENT')
   })
 
+  it('creates a new attempt card from ATTEMPT_STARTED events without treating it as an alert', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'ATTEMPT_STARTED',
+      examId: 149,
+      attemptId: 301,
+      student: 'student1',
+      studentName: 'Student One',
+      email: 'student1@example.com',
+      studentCode: 'S001',
+      status: 'IN_PROGRESS',
+      startedAt: '2026-05-07T10:00:00+07:00',
+      cameraOn: true,
+      micOn: true,
+      issuedAt: '2026-05-07T10:00:00+07:00'
+    })
+
+    expect(store.cards).toHaveLength(1)
+    expect(store.cards[0].attemptId).toBe(301)
+    expect(store.cards[0].status).toBe('IN_PROGRESS')
+    expect(store.liveEvents[0].eventType).toBe('ATTEMPT_STARTED')
+    expect(store.liveAlerts).toHaveLength(0)
+  })
+
+  it('handles ATTEMPT_JOINED events the same way as presence events', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'ATTEMPT_JOINED',
+      examId: 149,
+      attemptId: 302,
+      student: 'student2',
+      studentName: 'Student Two',
+      email: 'student2@example.com',
+      studentCode: 'S002',
+      status: 'IN_PROGRESS',
+      startedAt: '2026-05-07T10:05:00+07:00',
+      cameraOn: true,
+      micOn: true,
+      issuedAt: '2026-05-07T10:05:00+07:00'
+    })
+
+    expect(store.cards).toHaveLength(1)
+    expect(store.cards[0].attemptId).toBe(302)
+    expect(store.cards[0].status).toBe('IN_PROGRESS')
+    expect(store.liveEvents[0].eventType).toBe('ATTEMPT_JOINED')
+    expect(store.liveAlerts).toHaveLength(0)
+  })
+
   it('updates attempt cards immediately from raw fraud-signal events', async () => {
     const { useExamMonitoring } = await import('./useExamMonitoring')
     const monitoring = useExamMonitoring()

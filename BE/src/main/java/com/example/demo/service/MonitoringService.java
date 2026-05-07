@@ -14,6 +14,7 @@ import com.example.demo.repository.AuditLogRepository;
 import com.example.demo.repository.ExamEventRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
+import com.example.demo.repository.FraudWarningRepository;
 import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.RiskScoreLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class MonitoringService {
     private final MonitoringEventRepository monitoringEventRepository;
     private final ExamEventRepository examEventRepository;
     private final FraudSignalRepository fraudSignalRepository;
+    private final FraudWarningRepository fraudWarningRepository;
     private final RiskScoreLogRepository riskScoreLogRepository;
     private final ExamEventService examEventService;
     private final RealtimeNotificationService realtimeNotificationService;
@@ -462,30 +464,62 @@ public class MonitoringService {
             List<FraudSignal> aiSignals = signals.stream()
                     .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
                     .toList();
+            List<FraudWarning> cameraWarnings = fraudWarningRepository
+                    .findByAttemptAndCategoryOrderByCreatedAtDesc(attempt, FraudWarningCategory.CAMERA_PROCTORING);
 
             // Determine status
-            String status = determineCameraStatus(aiSignals, attempt.getCameraOn());
-            int alertCount = (int) aiSignals.stream()
-                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+            List<String> severities = new ArrayList<>();
+            aiSignals.stream()
+                    .map(FraudSignal::getSeverity)
+                    .filter(Objects::nonNull)
+                    .map(Enum::name)
+                    .forEach(severities::add);
+            cameraWarnings.stream()
+                    .map(FraudWarning::getSeverity)
+                    .filter(Objects::nonNull)
+                    .map(Enum::name)
+                    .forEach(severities::add);
+            String status = determineCameraStatus(severities, attempt.getCameraOn());
+            int alertCount = (int) severities.stream()
+                    .filter(s -> "CRITICAL".equals(s) || "HIGH".equals(s))
                     .count();
 
             // Get active signals
-            List<String> activeSignalTypes = aiSignals.stream()
-                    .map(FraudSignal::getSignalType)
+            List<String> activeSignalTypes = java.util.stream.Stream.concat(
+                            aiSignals.stream().map(FraudSignal::getSignalType),
+                            cameraWarnings.stream().map(FraudWarning::getWarningType)
+                    )
+                    .filter(Objects::nonNull)
                     .distinct()
                     .toList();
 
             // Get critical signals with details
-            List<CameraStatusResponse.AiCameraSignal> criticalSignals = aiSignals.stream()
-                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+            List<CameraStatusResponse.AiCameraSignal> criticalSignals = java.util.stream.Stream.concat(
+                            cameraWarnings.stream()
+                                    .filter(w -> w.getSeverity() == SignalSeverity.CRITICAL || w.getSeverity() == SignalSeverity.HIGH)
+                                    .map(w -> CameraStatusResponse.AiCameraSignal.builder()
+                                            .signalType(w.getWarningType())
+                                            .severity(w.getSeverity().name())
+                                            .confidence(w.getConfidence())
+                                            .occurredAt(w.getCreatedAt())
+                                            .description(w.getMessage() != null ? w.getMessage() : getSignalDescription(w.getWarningType()))
+                                            .build()),
+                            aiSignals.stream()
+                                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
+                                    .map(s -> CameraStatusResponse.AiCameraSignal.builder()
+                                            .signalType(s.getSignalType())
+                                            .severity(s.getSeverity().name())
+                                            .confidence(s.getConfidence())
+                                            .occurredAt(s.getCreatedAt())
+                                            .description(getSignalDescription(s.getSignalType()))
+                                            .build())
+                    )
+                    .sorted((a, b) -> {
+                        LocalDateTime left = a.getOccurredAt() == null ? LocalDateTime.MIN : a.getOccurredAt();
+                        LocalDateTime right = b.getOccurredAt() == null ? LocalDateTime.MIN : b.getOccurredAt();
+                        return right.compareTo(left);
+                    })
                     .limit(5)
-                    .map(s -> CameraStatusResponse.AiCameraSignal.builder()
-                            .signalType(s.getSignalType())
-                            .severity(s.getSeverity().name())
-                            .confidence(s.getConfidence())
-                            .occurredAt(s.getCreatedAt())
-                            .description(getSignalDescription(s.getSignalType()))
-                            .build())
                     .toList();
 
             CameraStatusResponse.CameraStatusResponseBuilder builder = CameraStatusResponse.builder()
@@ -504,34 +538,11 @@ public class MonitoringService {
             // Extract quality metrics from latest signal
             aiSignals.stream().findFirst().ifPresent(signal -> {
                 if (signal.getEvidence() != null) {
-                    try {
-                        Map<String, Object> evidence = parseEvidence(signal.getEvidence());
-                        if (evidence.containsKey("faceQuality")) {
-                            builder.faceQuality(String.valueOf(evidence.get("faceQuality")));
-                        }
-                        if (evidence.containsKey("frameQuality")) {
-                            builder.frameQuality(String.valueOf(evidence.get("frameQuality")));
-                        }
-                        if (evidence.containsKey("averageBrightness")) {
-                            Object brightness = evidence.get("averageBrightness");
-                            if (brightness instanceof Number) {
-                                builder.averageBrightness(((Number) brightness).doubleValue());
-                            }
-                        }
-                        if (evidence.containsKey("faceCount")) {
-                            builder.faceDetected(((Number) evidence.get("faceCount")).intValue() > 0);
-                            builder.multipleFaces(((Number) evidence.get("faceCount")).intValue() > 1);
-                        }
-                        if (evidence.containsKey("eyeCount")) {
-                            Object eyeCount = evidence.get("eyeCount");
-                            if (eyeCount instanceof Number) {
-                                builder.eyeCount(((Number) eyeCount).intValue());
-                            }
-                        }
-                    } catch (Exception ignored) {
-                    }
+                    applyCameraEvidence(builder, parseEvidence(signal.getEvidence()));
                 }
             });
+            cameraWarnings.stream().findFirst().ifPresent(warning ->
+                    applyCameraEvidence(builder, parseEvidence(warning.getEvidence())));
 
             statuses.add(builder.build());
         }
@@ -547,6 +558,28 @@ public class MonitoringService {
         List<CameraAlertResponse> alerts = new ArrayList<>();
 
         for (ExamAttempt attempt : attempts) {
+            List<FraudWarning> cameraWarnings = fraudWarningRepository
+                    .findByAttemptAndCategoryOrderByCreatedAtDesc(attempt, FraudWarningCategory.CAMERA_PROCTORING);
+            for (FraudWarning warning : cameraWarnings.stream()
+                    .filter(w -> w.getSeverity() == SignalSeverity.CRITICAL || w.getSeverity() == SignalSeverity.HIGH)
+                    .limit(10)
+                    .toList()) {
+                alerts.add(CameraAlertResponse.builder()
+                        .id(warning.getId())
+                        .attemptId(attempt.getId())
+                        .studentId(attempt.getStudent().getId())
+                        .studentName(attempt.getStudent().getUsername())
+                        .studentCode(attempt.getStudent().getStudentCode())
+                        .signalType(warning.getWarningType())
+                        .severity(warning.getSeverity().name())
+                        .confidence(warning.getConfidence())
+                        .description(warning.getMessage() != null ? warning.getMessage() : getSignalDescription(warning.getWarningType()))
+                        .acknowledged(warning.getReviewStatus() == FraudWarningReviewStatus.CONFIRMED)
+                        .dismissed(warning.getReviewStatus() == FraudWarningReviewStatus.DISMISSED)
+                        .createdAt(warning.getCreatedAt())
+                        .build());
+            }
+
             List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt);
             List<FraudSignal> aiSignals = signals.stream()
                     .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
@@ -591,30 +624,106 @@ public class MonitoringService {
         // For now, this is a placeholder
     }
 
-    private String determineCameraStatus(List<FraudSignal> aiSignals, Boolean cameraOn) {
+    private String determineCameraStatus(Collection<String> severities, Boolean cameraOn) {
         if (!Boolean.TRUE.equals(cameraOn)) {
             return "NO_CAMERA";
         }
 
-        boolean hasCritical = aiSignals.stream()
-                .anyMatch(s -> s.getSeverity() == SignalSeverity.CRITICAL);
+        boolean hasCritical = severities.stream().anyMatch("CRITICAL"::equals);
         if (hasCritical) {
             return "CRITICAL";
         }
 
-        boolean hasHigh = aiSignals.stream()
-                .anyMatch(s -> s.getSeverity() == SignalSeverity.HIGH);
+        boolean hasHigh = severities.stream().anyMatch("HIGH"::equals);
         if (hasHigh) {
             return "WARNING";
         }
 
-        boolean hasMedium = aiSignals.stream()
-                .anyMatch(s -> s.getSeverity() == SignalSeverity.MEDIUM);
+        boolean hasMedium = severities.stream().anyMatch("MEDIUM"::equals);
         if (hasMedium) {
             return "WARNING";
         }
 
         return "OK";
+    }
+
+    private void applyCameraEvidence(CameraStatusResponse.CameraStatusResponseBuilder builder, Map<String, Object> evidence) {
+        if (evidence == null || evidence.isEmpty()) {
+            return;
+        }
+        if (evidence.containsKey("faceQuality")) {
+            builder.faceQuality(String.valueOf(evidence.get("faceQuality")));
+        }
+        if (evidence.containsKey("frameQuality")) {
+            builder.frameQuality(String.valueOf(evidence.get("frameQuality")));
+        }
+        if (evidence.containsKey("averageBrightness")) {
+            Object brightness = evidence.get("averageBrightness");
+            if (brightness instanceof Number) {
+                builder.averageBrightness(((Number) brightness).doubleValue());
+            }
+        }
+        if (evidence.containsKey("faceCount")) {
+            Object faceCount = evidence.get("faceCount");
+            if (faceCount instanceof Number) {
+                builder.faceDetected(((Number) faceCount).intValue() > 0);
+                builder.multipleFaces(((Number) faceCount).intValue() > 1);
+            }
+        }
+        if (evidence.containsKey("eyeCount")) {
+            Object eyeCount = evidence.get("eyeCount");
+            if (eyeCount instanceof Number) {
+                builder.eyeCount(((Number) eyeCount).intValue());
+            }
+        }
+        if (evidence.containsKey("eyeState")) {
+            builder.eyeState(String.valueOf(evidence.get("eyeState")));
+        }
+        toDouble(evidence.get("eyeAspectRatio")).ifPresent(builder::eyeAspectRatio);
+        toDouble(evidence.get("eyeTrackingConfidence")).ifPresent(builder::eyeTrackingConfidence);
+        if (evidence.containsKey("gazeDirection")) {
+            builder.gazeDirection(String.valueOf(evidence.get("gazeDirection")));
+        }
+        if (evidence.containsKey("gazeOffScreen")) {
+            Object raw = evidence.get("gazeOffScreen");
+            builder.gazeOffScreen(raw instanceof Boolean ? (Boolean) raw : Boolean.parseBoolean(String.valueOf(raw)));
+        }
+        toDouble(evidence.get("gazeConfidence")).ifPresent(builder::gazeConfidence);
+        toDouble(evidence.get("attentionScore")).ifPresent(builder::attentionScore);
+        toLong(evidence.get("closureDurationMs")).ifPresent(builder::closureDurationMs);
+        toLong(evidence.get("offScreenDurationMs")).ifPresent(builder::offScreenDurationMs);
+        Object overlayCandidate = evidence.containsKey("visualOverlay") ? evidence.get("visualOverlay") : evidence.get("visual_overlay");
+        if (overlayCandidate instanceof Map<?, ?> overlay) {
+            builder.visualOverlay(new LinkedHashMap<>((Map<String, Object>) overlay));
+        }
+    }
+
+    private Optional<Double> toDouble(Object value) {
+        if (value instanceof Number number) {
+            return Optional.of(number.doubleValue());
+        }
+        if (value == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Double.parseDouble(String.valueOf(value)));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Long> toLong(Object value) {
+        if (value instanceof Number number) {
+            return Optional.of(number.longValue());
+        }
+        if (value == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Long.parseLong(String.valueOf(value)));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
     }
 
     private LocalDateTime latestAttemptUpdate(ExamAttempt attempt) {

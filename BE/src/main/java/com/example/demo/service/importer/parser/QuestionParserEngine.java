@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.text.Normalizer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -84,7 +85,7 @@ public class QuestionParserEngine {
                 .scoreWeight(dto.getScoreWeight() == null ? 1.0 : dto.getScoreWeight())
                 .options(questionPayloadHelper.normalizeOptions(writeJson(options), type))
                 .correctAnswer(correctAnswer)
-                .difficulty(dto.getDifficulty())
+                .difficulty(normalizeDifficulty(dto.getDifficulty()))
                 .metadata(questionPayloadHelper.normalizeMetadata(dto.getMetadata()))
                 .attachments(questionPayloadHelper.normalizeAttachments(dto.getAttachments()))
                 .build();
@@ -98,7 +99,7 @@ public class QuestionParserEngine {
                 .options(parseOptions(question.getOptions()))
                 .correctAnswer(question.getCorrectAnswer())
                 .scoreWeight(question.getScoreWeight())
-                .difficulty(question.getDifficulty())
+                .difficulty(normalizeDifficulty(question.getDifficulty()))
                 .metadata(question.getMetadata())
                 .attachments(question.getAttachments())
                 .parseConfidence(defaultConfidence(question))
@@ -126,10 +127,22 @@ public class QuestionParserEngine {
     }
 
     private double defaultConfidence(Question question) {
-        if (question.getDifficulty() != null && !question.getDifficulty().isBlank()) {
+        if (normalizeDifficulty(question.getDifficulty()) != null) {
             return 0.95;
         }
         return 0.85;
+    }
+
+    private String normalizeDifficulty(String fromFile) {
+        if (fromFile != null && !fromFile.isBlank()) {
+            String d = Normalizer.normalize(fromFile.trim().toUpperCase(Locale.ROOT), Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")
+                    .replace('-', '_');
+            if (List.of("EASY", "DE", "LOW").contains(d)) return "EASY";
+            if (List.of("MEDIUM", "TRUNG_BINH", "TRUNG BINH", "TB", "NORMAL", "M").contains(d)) return "MEDIUM";
+            if (List.of("HARD", "KHO", "HIGH", "H").contains(d)) return "HARD";
+        }
+        return null;
     }
 
     private List<ImportIssueDto> inspect(List<ImportPreviewQuestionDto> questions) {

@@ -138,8 +138,8 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LucideIcon from '../../common/LucideIcon.vue'
 import CameraStatusCard from './CameraStatusCard.vue'
-import { useAiCameraDashboard } from '../../../../composables/useAiCameraDashboard'
-import { useToast } from '../../../../composables/useToast'
+import { useAiCameraDashboard } from '../../../composables/useAiCameraDashboard'
+import { useToast } from '../../../composables/useToast'
 
 const route = useRoute()
 const router = useRouter()

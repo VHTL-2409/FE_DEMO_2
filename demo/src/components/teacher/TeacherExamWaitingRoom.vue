@@ -269,9 +269,22 @@ function handleWaitingRoomEvent(event) {
 
     case 'STUDENT_STARTED':
     case 'EXAM_STARTED':
+    case 'ATTEMPT_STARTED':
+    case 'ATTEMPT_JOINED': {
+      const displayName = event.studentName || event.student?.name || event.student || 'Học sinh'
+      upsertStudent({
+        attemptId: event.attemptId,
+        studentName: displayName,
+        studentEmail: event.studentEmail || event.email || event.student?.email || '—',
+        status: 'Đang thi',
+        riskScore: event.riskScore ?? 0,
+        joinedAt: event.startedAt || event.issuedAt || new Date().toISOString()
+      })
       updateStudentStatus(event.attemptId, 'Đang thi')
-      addFlashEvent(`${event.studentName || 'Học sinh'} đã bắt đầu làm bài`)
+      const isAttemptPresenceEvent = event.type === 'ATTEMPT_STARTED' || event.type === 'ATTEMPT_JOINED'
+      addFlashEvent(`${displayName} ${isAttemptPresenceEvent ? 'đã vào phòng thi' : 'đã bắt đầu làm bài'}`)
       break
+    }
 
     case 'STUDENT_SUBMITTED':
     case 'EXAM_SUBMITTED':

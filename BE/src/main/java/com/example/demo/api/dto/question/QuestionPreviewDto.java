@@ -13,4 +13,5 @@ public class QuestionPreviewDto {
     private double scoreWeight;
     private String type;
     private Object options;
+    private String difficulty;
 }

@@ -3,12 +3,12 @@
     <Transition name="ds-modal">
       <div
         v-if="modelValue"
-        class="ds-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="ds-modal-overlay fixed inset-0 z-[1000] flex items-center justify-center p-4"
         role="dialog"
         aria-modal="true"
-        :aria-labelledby="titleId"
-        @click.self="!persistent && close"
-        @keydown.esc="!persistent && close"
+        :aria-labelledby="title || $slots.header ? labelledBy : undefined"
+        @click.self="!persistent && close()"
+        @keydown.esc="!persistent && close()"
       >
         <div
           :class="['ds-modal-content rounded-[var(--ds-radius-2xl)] border bg-[var(--ds-surface)] shadow-[var(--ds-shadow-xl)]', sizeClass]"
@@ -18,8 +18,8 @@
           <!-- Header -->
           <div v-if="title || $slots.header" class="flex items-center justify-between gap-4 border-b border-[var(--ds-border)] px-6 py-4">
             <div>
-              <slot name="header">
-                <h2 :id="titleId" class="text-lg font-bold text-[var(--ds-text)]">{{ title }}</h2>
+              <slot name="header" :title-id="labelledBy" :title="title" :subtitle="subtitle">
+                <h2 :id="labelledBy" class="text-lg font-bold text-[var(--ds-text)]">{{ title }}</h2>
                 <p v-if="subtitle" class="mt-0.5 text-sm text-[var(--ds-text-muted)]">{{ subtitle }}</p>
               </slot>
             </div>
@@ -52,10 +52,13 @@
 <script setup>
 import { computed, ref, watch, nextTick, onUnmounted } from 'vue'
 
+defineOptions({ name: 'UiModal' })
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
+  labelId: { type: String, default: '' },
   size: { type: String, default: 'md', validator: (v) => ['sm', 'md', 'lg', 'xl', 'full'].includes(v) },
   persistent: { type: Boolean, default: false }
 })
@@ -64,6 +67,7 @@ const emit = defineEmits(['update:modelValue', 'close'])
 
 const dialogRef = ref(null)
 const titleId = `modal-title-${Math.random().toString(36).slice(2, 9)}`
+const labelledBy = computed(() => props.labelId || titleId)
 
 const sizeClass = computed(() => {
   const map = {
