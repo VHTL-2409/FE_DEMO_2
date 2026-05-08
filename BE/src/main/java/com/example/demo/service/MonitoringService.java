@@ -714,10 +714,18 @@ public class MonitoringService {
         if (evidence.containsKey("eyeState")) {
             builder.eyeState(String.valueOf(evidence.get("eyeState")));
         }
+        if (evidence.containsKey("eyeValid")) {
+            Object raw = evidence.get("eyeValid");
+            builder.eyeValid(raw instanceof Boolean ? (Boolean) raw : Boolean.parseBoolean(String.valueOf(raw)));
+        }
         toDouble(evidence.get("eyeAspectRatio")).ifPresent(builder::eyeAspectRatio);
         toDouble(evidence.get("eyeTrackingConfidence")).ifPresent(builder::eyeTrackingConfidence);
         if (evidence.containsKey("gazeDirection")) {
             builder.gazeDirection(String.valueOf(evidence.get("gazeDirection")));
+        }
+        if (evidence.containsKey("gazeValid")) {
+            Object raw = evidence.get("gazeValid");
+            builder.gazeValid(raw instanceof Boolean ? (Boolean) raw : Boolean.parseBoolean(String.valueOf(raw)));
         }
         if (evidence.containsKey("gazeOffScreen")) {
             Object raw = evidence.get("gazeOffScreen");

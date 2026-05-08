@@ -34,9 +34,11 @@ public class CameraStatusResponse {
     private Double averageBrightness;
     private Integer eyeCount;
     private String eyeState;
+    private Boolean eyeValid;
     private Double eyeAspectRatio;
     private Double eyeTrackingConfidence;
     private String gazeDirection;
+    private Boolean gazeValid;
     private Boolean gazeOffScreen;
     private Double gazeConfidence;
     private Double attentionScore;

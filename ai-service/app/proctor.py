@@ -24,6 +24,13 @@ except Exception:
     DNN_AVAILABLE = False
     FACE_LANDMARK_AVAILABLE = False
 
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+except Exception:
+    mp = None
+    MEDIAPIPE_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +59,21 @@ class ProctorAnalyzer:
         self._face_model_download_timeout = int(self._env_float("AI_SERVICE_FACE_MODEL_DOWNLOAD_TIMEOUT_SECONDS", 12))
         self._eye_landmarks = None
         self._face_landmark_detector = None
+        self._face_mesh = None
+        self._landmark_backend = "UNAVAILABLE"
+        self._landmark_error = None
         self._spoofing_model = None
         self._spoofing_dl = False
         self._tracking_state: dict[str, dict[str, Any]] = {}
         self._tracking_state_ttl_seconds = 180
         self._max_tracking_states = 256
+        self._face_issue_required_frames = 2
+        self._face_issue_required_ms = 1500
+        self._eye_missing_required_frames = 2
+        self._eye_missing_required_ms = 1500
+        self._face_position_required_frames = 2
+        self._face_position_required_ms = 1500
+        self._signal_dedup_ms = int(self._env_float("AI_SERVICE_SIGNAL_DEDUP_SECONDS", 10) * 1000)
         self._gaze_required_frames = 3
         self._gaze_required_ms = 2500
         self._eye_closure_required_frames = 2
@@ -198,17 +215,41 @@ class ProctorAnalyzer:
         self._dnn_net = None
 
     def _init_eye_landmark_detector(self) -> None:
-        """Initialize eye landmark detector (if available)."""
-        # Try to use dlib or OpenCV's face module if available
+        """Initialize optional landmark detector for eye/iris tracking."""
+        self._eye_landmarks = False
+        self._face_landmark_detector = None
+        self._face_mesh = None
+        self._landmark_backend = "UNAVAILABLE"
+        self._landmark_error = None
+
+        if MEDIAPIPE_AVAILABLE and mp is not None:
+            try:
+                self._face_mesh = mp.solutions.face_mesh.FaceMesh(
+                    static_image_mode=False,
+                    max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                )
+                self._eye_landmarks = True
+                self._landmark_backend = "MEDIAPIPE_FACE_MESH"
+                return
+            except Exception as exc:
+                self._landmark_error = str(exc)
+
         if FACE_LANDMARK_AVAILABLE:
             try:
-                # OpenCV's face module provides face landmark detection
+                # OpenCV face module requires contrib runtime and a model file.
                 self._face_landmark_detector = cv2.face.createFacemarkLBF()
                 self._eye_landmarks = True
-            except Exception:
-                self._eye_landmarks = False
-        else:
-            self._eye_landmarks = False
+                self._landmark_backend = "OPENCV_FACE_MODULE"
+                return
+            except Exception as exc:
+                self._landmark_error = str(exc)
+
+        self._eye_landmarks = False
+        if self._landmark_error is None:
+            self._landmark_error = "No landmark backend available"
 
     def _init_spoofing_detector(self) -> None:
         """Initialize deep learning-based spoofing detector."""
@@ -248,10 +289,22 @@ class ProctorAnalyzer:
             "error": getattr(self, "_face_detector_error", None),
             "autoDownload": getattr(self, "_face_model_auto_download", False),
             "modelDir": str(FACE_MODEL_DIR),
+            "landmarkBackend": getattr(self, "_landmark_backend", "UNAVAILABLE"),
+            "landmarkReady": self.eye_landmark_ready(),
+            "landmarkError": getattr(self, "_landmark_error", None),
+        }
+
+    def landmark_status(self) -> dict[str, Any]:
+        return {
+            "ready": self.eye_landmark_ready(),
+            "backend": getattr(self, "_landmark_backend", "UNAVAILABLE"),
+            "mediapipeAvailable": MEDIAPIPE_AVAILABLE,
+            "opencvFaceModuleAvailable": FACE_LANDMARK_AVAILABLE,
+            "error": getattr(self, "_landmark_error", None),
         }
 
     def eye_landmark_ready(self) -> bool:
-        return self._eye_landmarks and self._face_landmark_detector is not None
+        return bool(self._eye_landmarks and (self._face_mesh is not None or self._face_landmark_detector is not None))
 
     def spoofing_dl_ready(self) -> bool:
         return self._spoofing_dl and self._spoofing_model is not None
@@ -290,36 +343,54 @@ class ProctorAnalyzer:
 
         # Gaze analysis
         gaze_analysis = self._analyze_gaze(eye_tracking, face_locations, gray.shape)
+        frame_quality = self._assess_frame_quality(average_brightness, variance)
+        face_quality = self._assess_face_quality(face_count, eye_tracking["eye_count"], average_brightness, variance)
+        quality_gate = self._build_quality_gate(
+            face_count,
+            face_locations,
+            gray.shape,
+            average_brightness,
+            variance,
+            eye_tracking,
+            gaze_analysis,
+            occlusion_result,
+            position_analysis,
+        )
         temporal_tracking = self._update_tracking_state(
             tracking_key,
             sample_time,
             face_count,
             eye_tracking,
             gaze_analysis,
+            quality_gate,
+            position_analysis,
         )
         eye_tracking.update(temporal_tracking.get("eye_tracking", {}))
         gaze_analysis.update(temporal_tracking.get("gaze_analysis", {}))
+        stability = temporal_tracking.get("stability", {})
 
         signals = []
 
         # === FACE DETECTION SIGNALS ===
-        if (self.dnn_ready() or self.cv_ready()) and face_count == 0:
+        if (self.dnn_ready() or self.cv_ready()) and face_count == 0 and stability.get("face_issue_stable", True):
             signals.append(self._signal(
                 "FACE_NOT_DETECTED", "HIGH", 0.92,
                 {"faceCount": 0, "reason": "No face found in frame",
                  "recommendation": "Ensure face is clearly visible and well-lit",
-                 "detectionMethod": detection_method}
+                 "detectionMethod": detection_method,
+                 "qualityGate": quality_gate}
             ))
 
-        elif (self.dnn_ready() or self.cv_ready()) and face_count > 1:
+        elif (self.dnn_ready() or self.cv_ready()) and face_count > 1 and stability.get("face_issue_stable", True):
             signals.append(self._signal(
                 "MULTIPLE_FACES", "CRITICAL", 0.98,
                 {"faceCount": face_count, "reason": f"{face_count} faces detected",
                  "recommendation": "Only one person should be in frame",
-                 "detectionMethod": detection_method}
+                 "detectionMethod": detection_method,
+                 "qualityGate": quality_gate}
             ))
 
-        elif (self.dnn_ready() or self.cv_ready()) and face_count == 1:
+        elif (self.dnn_ready() or self.cv_ready()) and face_count == 1 and stability.get("one_face_stable", True):
             face_size = face_locations[0][2] * face_locations[0][3] if face_locations else 0
             frame_size = gray.shape[0] * gray.shape[1]
             face_ratio = face_size / frame_size if frame_size > 0 else 0
@@ -327,11 +398,13 @@ class ProctorAnalyzer:
             if face_ratio < 0.03:
                 signals.append(self._signal("FACE_TOO_FAR", "MEDIUM", 0.80,
                     {"faceRatio": round(face_ratio * 100, 2),
-                     "reason": "Face is too small", "recommendation": "Move closer to camera"}))
+                     "reason": "Face is too small", "recommendation": "Move closer to camera",
+                     "qualityGate": quality_gate}))
             elif face_ratio > 0.5:
                 signals.append(self._signal("FACE_TOO_CLOSE", "LOW", 0.72,
                     {"faceRatio": round(face_ratio * 100, 2),
-                     "reason": "Face is too close", "recommendation": "Move back to show shoulders"}))
+                     "reason": "Face is too close", "recommendation": "Move back to show shoulders",
+                     "qualityGate": quality_gate}))
 
         # === SPOOFING DETECTION ===
         if spoofing_result["detected"]:
@@ -344,25 +417,45 @@ class ProctorAnalyzer:
             ))
 
         # === OCCLUSION DETECTION ===
-        if occlusion_result["mask_detected"]:
+        if (
+            occlusion_result["mask_detected"]
+            and quality_gate.get("face_size_reliable", False)
+            and quality_gate.get("lighting_reliable", False)
+            and quality_gate.get("sharpness_reliable", False)
+        ):
             signals.append(self._signal("FACE_OBSTRUCTED_MASK", "HIGH", 0.92,
                 {"reason": "Face mask detected", "recommendation": "Remove mask for verification"}))
 
-        if occlusion_result["sunglasses_detected"]:
+        if (
+            occlusion_result["sunglasses_detected"]
+            and quality_gate.get("face_size_reliable", False)
+            and quality_gate.get("lighting_reliable", False)
+            and quality_gate.get("sharpness_reliable", False)
+        ):
             signals.append(self._signal("EYES_OBSTRUCTED", "MEDIUM", 0.80,
                 {"reason": "Sunglasses or reflective glasses detected",
                  "recommendation": "Remove sunglasses for eye tracking"}))
 
-        if occlusion_result["partial_face"]:
+        if (
+            occlusion_result["partial_face"]
+            and quality_gate.get("lighting_reliable", False)
+            and quality_gate.get("sharpness_reliable", False)
+        ):
             signals.append(self._signal("PARTIAL_FACE_VISIBLE", "MEDIUM", 0.78,
                 {"reason": "Face partially visible or turned away",
                  "coverage": occlusion_result.get("coverage_percent", 0),
                  "recommendation": "Position face to show full front view"}))
 
         # === EYE TRACKING SIGNALS ===
-        if eye_tracking["eye_count"] == 0 and face_count == 1:
+        if (
+            eye_tracking["eye_count"] == 0
+            and face_count == 1
+            and quality_gate.get("eye_check_reliable", False)
+            and stability.get("eye_missing_stable", True)
+        ):
             signals.append(self._signal("EYES_NOT_DETECTED", "MEDIUM", 0.75,
-                {"reason": "Eyes not detectable", "recommendation": "Face the camera directly"}))
+                {"reason": "Eyes not detectable", "recommendation": "Face the camera directly",
+                 "qualityGate": quality_gate}))
 
         # Eye blink anomaly
         if eye_tracking.get("blink_anomaly"):
@@ -380,19 +473,21 @@ class ProctorAnalyzer:
                  "recommendation": "Keep eyes open during exam"}))
 
         # === GAZE TRACKING SIGNALS ===
-        if gaze_analysis["gaze_off_screen"]:
+        if gaze_analysis["gaze_off_screen"] and quality_gate.get("gaze_valid", False):
             signals.append(self._signal("GAZE_OFF_SCREEN", "HIGH", gaze_analysis["gaze_confidence"],
                 {"gazeDirection": gaze_analysis.get("primary_direction", "UNKNOWN"),
                  "duration": gaze_analysis.get("off_duration", 0),
                  "durationMs": gaze_analysis.get("off_duration_ms", 0),
                  "reason": "Looking away from screen",
-                 "recommendation": "Focus on the exam content"}))
+                 "recommendation": "Focus on the exam content",
+                 "qualityGate": quality_gate}))
 
-        if gaze_analysis["rapid_eye_movement"]:
+        if gaze_analysis["rapid_eye_movement"] and quality_gate.get("gaze_valid", False):
             signals.append(self._signal("RAPID_EYE_MOVEMENT", "MEDIUM", 0.68,
                 {"movementCount": gaze_analysis.get("movement_count", 0),
                  "reason": "Rapid eye movements detected",
-                 "recommendation": "Steady gaze expected"}))
+                 "recommendation": "Steady gaze expected",
+                 "qualityGate": quality_gate}))
 
         # === LIGHTING SIGNALS ===
         if average_brightness < 40:
@@ -424,17 +519,29 @@ class ProctorAnalyzer:
                  "recommendation": "Stabilize camera"}))
 
         # === POSITION SIGNALS ===
-        if position_analysis["face_turned"]:
+        if (
+            position_analysis["face_turned"]
+            and quality_gate.get("face_position_reliable", False)
+            and stability.get("face_turned_stable", True)
+        ):
             signals.append(self._signal("FACE_TURNED_AWAY", "MEDIUM", 0.78,
                 {"turnAngle": position_analysis.get("turn_angle", 0),
                  "reason": "Face is not facing camera directly",
-                 "recommendation": "Face the camera directly"}))
+                 "recommendation": "Face the camera directly",
+                 "qualityGate": quality_gate}))
 
-        if position_analysis["face_not_centered"]:
+        if position_analysis["face_not_centered"] and quality_gate.get("face_position_reliable", False):
             signals.append(self._signal("FACE_NOT_CENTERED", "LOW", 0.58,
                 {"centerOffset": position_analysis.get("center_offset", {}),
                  "reason": "Face is not centered in frame",
-                 "recommendation": "Center your face in the camera"}))
+                 "recommendation": "Center your face in the camera",
+                 "qualityGate": quality_gate}))
+
+        raw_signal_count = len(signals)
+        signals, signal_filter = self._filter_frame_signals(signals, tracking_key, sample_time)
+        if raw_signal_count != len(signals):
+            signal_filter["candidateCount"] = raw_signal_count
+            signal_filter["emittedCount"] = len(signals)
 
         return {
             "status": "DONE",
@@ -442,9 +549,11 @@ class ProctorAnalyzer:
             "eye_count": int(eye_tracking["eye_count"]),
             "face_detected": face_count > 0,
             "multiple_faces": face_count > 1,
-            "face_quality": self._assess_face_quality(face_count, eye_tracking["eye_count"], average_brightness, variance),
+            "face_quality": face_quality,
             "average_brightness": round(average_brightness, 2),
-            "frame_quality": self._assess_frame_quality(average_brightness, variance),
+            "frame_quality": frame_quality,
+            "eye_valid": bool(quality_gate.get("eye_valid", False)),
+            "gaze_valid": bool(quality_gate.get("gaze_valid", False)),
             "signals": signals,
             "warnings": self._generate_warnings(signals),
             # Eye tracking fields
@@ -475,6 +584,10 @@ class ProctorAnalyzer:
                 "position_analysis": position_analysis,
                 "eye_tracking": eye_tracking,
                 "gaze_analysis": gaze_analysis,
+                "quality_gate": quality_gate,
+                "stability": stability,
+                "signal_filter": signal_filter,
+                "landmark_status": self.landmark_status(),
                 "metadata": metadata or {},
             },
         }
@@ -606,6 +719,183 @@ class ProctorAnalyzer:
         except Exception:
             return None
 
+    def _build_quality_gate(
+        self,
+        face_count: int,
+        face_locations: list,
+        frame_shape: tuple,
+        average_brightness: float,
+        variance: float,
+        eye_tracking: dict,
+        gaze_analysis: dict,
+        occlusion_result: dict,
+        position_analysis: dict,
+    ) -> dict[str, Any]:
+        frame_h, frame_w = frame_shape[:2]
+        face_ratio = 0.0
+        if face_count == 1 and face_locations:
+            x, y, w, h = face_locations[0]
+            frame_size = max(frame_h * frame_w, 1)
+            face_ratio = max(0.0, (w * h) / frame_size)
+
+        lighting_reliable = average_brightness >= 42.0 and average_brightness <= 235.0
+        sharpness_reliable = variance >= 60.0
+        face_size_reliable = face_count == 1 and 0.03 <= face_ratio <= 0.55
+        not_obstructed = not (occlusion_result.get("mask_detected") or occlusion_result.get("sunglasses_detected"))
+        not_partial = not occlusion_result.get("partial_face", False)
+        tracking_confidence = float(eye_tracking.get("tracking_confidence", 0.0) or 0.0)
+        eye_count = int(eye_tracking.get("eye_count", 0) or 0)
+        eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
+        gaze_confidence = float(gaze_analysis.get("gaze_confidence", 0.0) or 0.0)
+
+        eye_check_reliable = bool(
+            face_size_reliable
+            and lighting_reliable
+            and sharpness_reliable
+            and not_obstructed
+            and not_partial
+        )
+        eye_valid = bool(eye_check_reliable and eye_count > 0 and tracking_confidence >= 0.25)
+        gaze_valid = bool(
+            eye_valid
+            and eye_count >= 2
+            and eye_state in {"OPEN", "PARTIAL"}
+            and gaze_confidence >= 0.25
+        )
+        face_position_reliable = bool(
+            face_count == 1
+            and face_size_reliable
+            and lighting_reliable
+            and sharpness_reliable
+            and not_partial
+        )
+        return {
+            "face_count": face_count,
+            "face_ratio": round(face_ratio, 4),
+            "lighting_reliable": lighting_reliable,
+            "sharpness_reliable": sharpness_reliable,
+            "face_size_reliable": face_size_reliable,
+            "eye_check_reliable": eye_check_reliable,
+            "eye_valid": eye_valid,
+            "gaze_valid": gaze_valid,
+            "face_position_reliable": face_position_reliable,
+            "occlusion_sensitive": not_obstructed,
+            "face_detected_stable": face_count > 0 and face_size_reliable,
+        }
+
+    def _canonical_signal_type(self, signal_type: Any) -> str | None:
+        text = self._normalize_text(signal_type)
+        if text is None:
+            return None
+        normalized = text.upper()
+        alias_map = {
+            "AI_MULTIPLE_FACES": "MULTIPLE_FACES",
+            "AI_FACE_MISSING": "FACE_NOT_DETECTED",
+            "AI_LOOKING_AWAY": "GAZE_OFF_SCREEN",
+            "AI_NO_CAMERA": "NO_CAMERA",
+            "AI_EYES_MISSING": "EYES_NOT_DETECTED",
+            "AI_FACE_TURNED": "FACE_TURNED_AWAY",
+        }
+        return alias_map.get(normalized, normalized)
+
+    def _signal_severity_rank(self, severity: Any) -> int:
+        text = self._normalize_text(severity)
+        if text is None:
+            return 0
+        rank_map = {
+            "CRITICAL": 4,
+            "HIGH": 3,
+            "MEDIUM": 2,
+            "LOW": 1,
+        }
+        return rank_map.get(text.upper(), 0)
+
+    def _signal_priority(self, signal: dict[str, Any]) -> int:
+        signal_type = self._canonical_signal_type(signal.get("signal_type"))
+        severity_rank = self._signal_severity_rank(signal.get("severity"))
+        confidence = float(signal.get("confidence", 0.0) or 0.0)
+        confidence_rank = int(round(max(0.0, min(1.0, confidence)) * 100))
+        type_rank_map = {
+            "MULTIPLE_FACES": 900,
+            "NO_CAMERA": 880,
+            "FACE_NOT_DETECTED": 860,
+            "FACE_SPOOFING_SUSPECTED": 850,
+            "GAZE_OFF_SCREEN": 700,
+            "FACE_TURNED_AWAY": 600,
+            "EYES_NOT_DETECTED": 550,
+        }
+        return type_rank_map.get(signal_type or "", 100) * 10_000 + severity_rank * 1_000 + confidence_rank
+
+    def _filter_frame_signals(
+        self,
+        signals: list[dict[str, Any]],
+        tracking_key: str | None,
+        sample_time: float | None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        if not signals:
+            return [], {"candidateCount": 0, "emittedCount": 0, "suppressedCount": 0, "suppressedTypes": []}
+
+        now_ms = self._to_millis(sample_time)
+        ordered = sorted(
+            [signal for signal in signals if isinstance(signal, dict)],
+            key=self._signal_priority,
+            reverse=True,
+        )
+
+        deduped: list[dict[str, Any]] = []
+        seen_types: set[str] = set()
+        for signal in ordered:
+            canonical_type = self._canonical_signal_type(signal.get("signal_type"))
+            if canonical_type is None:
+                continue
+            if canonical_type in seen_types:
+                continue
+            seen_types.add(canonical_type)
+            signal["signal_type"] = canonical_type
+            deduped.append(signal)
+
+        if not tracking_key:
+            return deduped, {
+                "candidateCount": len(signals),
+                "emittedCount": len(deduped),
+                "suppressedCount": len(signals) - len(deduped),
+                "suppressedTypes": [],
+            }
+
+        self._ensure_tracking_state_defaults()
+        state = self._tracking_state.get(tracking_key)
+        if state is None:
+            return deduped, {
+                "candidateCount": len(signals),
+                "emittedCount": len(deduped),
+                "suppressedCount": len(signals) - len(deduped),
+                "suppressedTypes": [],
+            }
+
+        last_emit_ms = state.setdefault("last_signal_emit_ms", {})
+        suppressed: list[str] = []
+        emitted: list[dict[str, Any]] = []
+        for signal in deduped:
+            signal_type = self._canonical_signal_type(signal.get("signal_type"))
+            if signal_type is None:
+                continue
+            last_seen = int(last_emit_ms.get(signal_type, 0) or 0)
+            dedup_window = int(self._signal_dedup_ms)
+            if last_seen and now_ms - last_seen < dedup_window:
+                suppressed.append(signal_type)
+                continue
+            last_emit_ms[signal_type] = now_ms
+            emitted.append(signal)
+
+        state["last_signal_emit_ms"] = last_emit_ms
+        return emitted, {
+            "candidateCount": len(signals),
+            "emittedCount": len(emitted),
+            "suppressedCount": len(signals) - len(emitted),
+            "suppressedTypes": suppressed,
+            "dedupWindowMs": int(self._signal_dedup_ms),
+        }
+
     # === Advanced Eye Tracking ===
     def _track_eyes(self, rgb_array: np.ndarray, gray: np.ndarray, face_locations: list) -> dict:
         """Track eyes with OpenCV-only heuristics.
@@ -629,9 +919,17 @@ class ProctorAnalyzer:
             "raw_eye_count": 0,
             "landmarks": [],
             "pupil_positions": [],
+            "tracking_method": "HAAR",
         }
 
-        if not face_locations or len(face_locations) != 1 or not self.cv_ready():
+        if not face_locations or len(face_locations) != 1:
+            return result
+
+        mesh_result = self._track_eyes_with_face_mesh(rgb_array, face_locations)
+        if mesh_result is not None:
+            return mesh_result
+
+        if not self.cv_ready():
             return result
 
         (x, y, w, h) = face_locations[0]
@@ -673,6 +971,113 @@ class ProctorAnalyzer:
         result["eye_state"] = self._resolve_eye_state(eye_details)
 
         return result
+
+    def _track_eyes_with_face_mesh(self, rgb_array: np.ndarray, face_locations: list) -> dict[str, Any] | None:
+        if self._face_mesh is None or not face_locations or len(face_locations) != 1:
+            return None
+
+        try:
+            results = self._face_mesh.process(rgb_array)
+        except Exception as exc:
+            logger.debug("FaceMesh eye tracking failed: %s", exc)
+            return None
+
+        if not results.multi_face_landmarks:
+            return None
+
+        face_landmarks = results.multi_face_landmarks[0].landmark
+        image_h, image_w = rgb_array.shape[:2]
+        eye_specs = [
+            ("left_eye", [362, 263, 387, 386, 385, 384, 398, 466], [474, 475, 476, 477]),
+            ("right_eye", [33, 133, 160, 159, 158, 157, 173, 246], [469, 470, 471, 472]),
+        ]
+        details: list[dict[str, Any]] = []
+
+        for eye_name, contour_indices, iris_indices in eye_specs:
+            contour_points = [
+                self._landmark_point(face_landmarks[index], image_w, image_h)
+                for index in contour_indices
+                if index < len(face_landmarks)
+            ]
+            contour_points = [point for point in contour_points if point is not None]
+            if not contour_points:
+                continue
+
+            iris_points = [
+                self._landmark_point(face_landmarks[index], image_w, image_h)
+                for index in iris_indices
+                if index < len(face_landmarks)
+            ]
+            iris_points = [point for point in iris_points if point is not None]
+
+            xs = [point[0] for point in contour_points]
+            ys = [point[1] for point in contour_points]
+            x1, y1 = max(0, min(xs)), max(0, min(ys))
+            x2, y2 = min(image_w, max(xs)), min(image_h, max(ys))
+            box_w = max(1, x2 - x1)
+            box_h = max(1, y2 - y1)
+            center_x = x1 + box_w / 2
+            center_y = y1 + box_h / 2
+
+            if iris_points:
+                pupil_x = float(np.mean([point[0] for point in iris_points]))
+                pupil_y = float(np.mean([point[1] for point in iris_points]))
+                pupil_confidence = 0.9
+            else:
+                pupil_x = center_x
+                pupil_y = center_y
+                pupil_confidence = 0.55
+
+            norm_x = max(0.0, min(1.0, (pupil_x - x1) / max(box_w, 1)))
+            norm_y = max(0.0, min(1.0, (pupil_y - y1) / max(box_h, 1)))
+            aspect_ratio = box_h / max(box_w, 1)
+            openness_score = max(0.0, min(1.0, (aspect_ratio - 0.10) / 0.28))
+            eye_state = "OPEN" if iris_points or openness_score >= 0.35 else ("PARTIAL" if openness_score >= 0.18 else "CLOSED")
+
+            details.append({
+                "box": [int(x1), int(y1), int(box_w), int(box_h)],
+                "center": [int(center_x), int(center_y)],
+                "pupil_center": [int(round(pupil_x)), int(round(pupil_y))],
+                "normalized_pupil": {"x": round(norm_x, 3), "y": round(norm_y, 3)},
+                "pupil_confidence": round(float(pupil_confidence), 3),
+                "aspect_ratio": round(float(aspect_ratio), 3),
+                "openness_score": round(float(openness_score), 3),
+                "eye_state": eye_state,
+            })
+
+        if not details:
+            return None
+
+        details.sort(key=lambda detail: detail["center"][0])
+        result = {
+            "eye_count": len(details),
+            "left_eye": details[0] if len(details) >= 1 else None,
+            "right_eye": details[1] if len(details) >= 2 else None,
+            "eye_state": self._resolve_eye_state(details),
+            "blink_anomaly": False,
+            "blink_rate": 0,
+            "prolonged_eye_closure": False,
+            "closure_duration": 0,
+            "closure_duration_ms": 0,
+            "eye_aspect_ratio": round(float(np.mean([detail.get("aspect_ratio", 0.0) for detail in details])), 3),
+            "tracking_confidence": round(max(0.5, self._resolve_eye_tracking_confidence(details)), 3),
+            "raw_eye_count": len(details),
+            "landmarks": [detail["pupil_center"] for detail in details],
+            "pupil_positions": [
+                detail["normalized_pupil"] for detail in details
+                if detail.get("pupil_confidence", 0.0) >= 0.15
+            ],
+            "tracking_method": "FACE_MESH",
+        }
+        return result
+
+    def _landmark_point(self, landmark: Any, image_width: int, image_height: int) -> tuple[int, int] | None:
+        try:
+            x = int(round(float(landmark.x) * image_width))
+            y = int(round(float(landmark.y) * image_height))
+            return x, y
+        except Exception:
+            return None
 
     def _detect_eye_candidates(
         self,
@@ -1156,9 +1561,22 @@ class ProctorAnalyzer:
         face_count: int,
         eye_tracking: dict,
         gaze_analysis: dict,
+        quality_gate: dict[str, Any] | None = None,
+        position_analysis: dict[str, Any] | None = None,
     ) -> dict[str, dict[str, Any]]:
         if not tracking_key:
-            return {"eye_tracking": {}, "gaze_analysis": {}}
+            return {
+                "eye_tracking": {},
+                "gaze_analysis": {},
+                "stability": {
+                    "face_issue_stable": True,
+                    "one_face_stable": True,
+                    "eye_missing_stable": True,
+                    "face_turned_stable": True,
+                    "stateful": False,
+                },
+                "signal_filter": {},
+            }
 
         now_ms = self._to_millis(sample_time)
         self._ensure_tracking_state_defaults()
@@ -1175,10 +1593,82 @@ class ProctorAnalyzer:
                 "gaze_history": [],
                 "last_primary_direction": "CENTER",
                 "last_eye_state": "UNKNOWN",
+                "face_status": "UNKNOWN",
+                "face_status_since_ms": None,
+                "face_status_streak": 0,
+                "eye_missing_since_ms": None,
+                "eye_missing_streak": 0,
+                "face_turned_since_ms": None,
+                "face_turned_streak": 0,
+                "last_signal_emit_ms": {},
             }
             self._tracking_state[tracking_key] = state
 
         state["last_seen_ms"] = now_ms
+        quality_gate = dict(quality_gate or {})
+        position_analysis = dict(position_analysis or {})
+
+        face_status = "ONE_FACE"
+        if face_count <= 0:
+            face_status = "NO_FACE"
+        elif face_count > 1:
+            face_status = "MULTIPLE_FACES"
+
+        if state.get("face_status") != face_status:
+            state["face_status"] = face_status
+            state["face_status_since_ms"] = now_ms
+            state["face_status_streak"] = 1
+        else:
+            state["face_status_streak"] = int(state.get("face_status_streak", 0)) + 1
+
+        face_issue_stable = face_count == 1 or (
+            state["face_status_streak"] >= self._face_issue_required_frames
+            or (state["face_status_since_ms"] is not None and now_ms - int(state["face_status_since_ms"]) >= self._face_issue_required_ms)
+        )
+        one_face_stable = face_count == 1
+
+        eye_check_reliable = bool(quality_gate.get("eye_check_reliable", False))
+        eye_missing_candidate = face_count == 1 and eye_tracking.get("eye_count", 0) == 0 and eye_check_reliable
+        if eye_missing_candidate:
+            if state["eye_missing_since_ms"] is None:
+                state["eye_missing_since_ms"] = now_ms
+                state["eye_missing_streak"] = 1
+            else:
+                state["eye_missing_streak"] = int(state.get("eye_missing_streak", 0)) + 1
+        else:
+            state["eye_missing_since_ms"] = None
+            state["eye_missing_streak"] = 0
+        eye_missing_stable = bool(
+            eye_missing_candidate
+            and (
+                state["eye_missing_streak"] >= self._eye_missing_required_frames
+                or (
+                    state["eye_missing_since_ms"] is not None
+                    and now_ms - int(state["eye_missing_since_ms"]) >= self._eye_missing_required_ms
+                )
+            )
+        )
+
+        face_turned_candidate = bool(position_analysis.get("face_turned")) and bool(quality_gate.get("face_position_reliable", False))
+        if face_turned_candidate:
+            if state["face_turned_since_ms"] is None:
+                state["face_turned_since_ms"] = now_ms
+                state["face_turned_streak"] = 1
+            else:
+                state["face_turned_streak"] = int(state.get("face_turned_streak", 0)) + 1
+        else:
+            state["face_turned_since_ms"] = None
+            state["face_turned_streak"] = 0
+        face_turned_stable = bool(
+            face_turned_candidate
+            and (
+                state["face_turned_streak"] >= self._face_position_required_frames
+                or (
+                    state["face_turned_since_ms"] is not None
+                    and now_ms - int(state["face_turned_since_ms"]) >= self._face_position_required_ms
+                )
+            )
+        )
 
         if face_count != 1:
             state["closed_since_ms"] = None
@@ -1201,6 +1691,14 @@ class ProctorAnalyzer:
                     "rapid_eye_movement": False,
                     "movement_count": 0,
                 },
+                "stability": {
+                    "face_issue_stable": face_issue_stable,
+                    "one_face_stable": one_face_stable,
+                    "eye_missing_stable": False,
+                    "face_turned_stable": False,
+                    "stateful": True,
+                },
+                "signal_filter": {},
             }
 
         eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
@@ -1286,6 +1784,14 @@ class ProctorAnalyzer:
                 "movement_count": movement_count,
                 "attention_score": round(max(0.0, min(1.0, attention_score)), 2),
             },
+            "stability": {
+                "face_issue_stable": face_issue_stable,
+                "one_face_stable": one_face_stable,
+                "eye_missing_stable": eye_missing_stable,
+                "face_turned_stable": face_turned_stable,
+                "stateful": True,
+            },
+            "signal_filter": {},
         }
 
     def _ensure_tracking_state_defaults(self) -> None:
@@ -1293,6 +1799,13 @@ class ProctorAnalyzer:
             self._tracking_state = {}
         self._tracking_state_ttl_seconds = getattr(self, "_tracking_state_ttl_seconds", 180)
         self._max_tracking_states = getattr(self, "_max_tracking_states", 256)
+        self._face_issue_required_frames = getattr(self, "_face_issue_required_frames", 2)
+        self._face_issue_required_ms = getattr(self, "_face_issue_required_ms", 1500)
+        self._eye_missing_required_frames = getattr(self, "_eye_missing_required_frames", 2)
+        self._eye_missing_required_ms = getattr(self, "_eye_missing_required_ms", 1500)
+        self._face_position_required_frames = getattr(self, "_face_position_required_frames", 2)
+        self._face_position_required_ms = getattr(self, "_face_position_required_ms", 1500)
+        self._signal_dedup_ms = getattr(self, "_signal_dedup_ms", 10_000)
         self._gaze_required_frames = getattr(self, "_gaze_required_frames", 3)
         self._gaze_required_ms = getattr(self, "_gaze_required_ms", 2500)
         self._eye_closure_required_frames = getattr(self, "_eye_closure_required_frames", 2)
@@ -1390,11 +1903,13 @@ class ProctorAnalyzer:
             "blink_rate": 0,
             "eye_tracking_confidence": 0.0,
             "closure_duration_ms": 0,
+            "eye_valid": False,
             "gaze_direction": "UNKNOWN",
             "gaze_off_screen": False,
             "gaze_confidence": 0.0,
             "off_screen_duration_ms": 0,
             "attention_score": 0.0,
+            "gaze_valid": False,
             "visual_overlay": {
                 "status": "NO_CAMERA",
                 "label": "Camera tắt",
@@ -1415,6 +1930,7 @@ class ProctorAnalyzer:
                 "image_width": 0,
                 "image_height": 0,
                 "face_locations": [],
+                "landmark_status": self.landmark_status(),
                 "spoofing_check": {
                     "detected": False,
                     "type": None,
@@ -1441,6 +1957,12 @@ class ProctorAnalyzer:
                     "primary_direction": "UNKNOWN",
                     "attention_score": 0.0,
                     "gaze_confidence": 0.0,
+                },
+                "quality_gate": {
+                    "eye_valid": False,
+                    "gaze_valid": False,
+                    "face_position_reliable": False,
+                    "face_size_reliable": False,
                 },
                 "camera_state": camera_state,
                 "metadata": metadata or {},

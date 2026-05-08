@@ -727,6 +727,8 @@ public class AiAssistService {
         Double brightness = asDouble(firstPresent(response, "average_brightness", "averageBrightness"));
         Integer eyeCount = asInteger(firstPresent(response, "eye_count", "eyeCount"));
         String eyeState = asUpperCaseString(firstPresent(response, "eye_state", "eyeState"));
+        Boolean eyeValid = asBoolean(firstPresent(response, "eye_valid", "eyeValid"));
+        Boolean gazeValid = asBoolean(firstPresent(response, "gaze_valid", "gazeValid"));
         Boolean gazeOffScreen = asBoolean(firstPresent(response, "gaze_off_screen", "gazeOffScreen"));
 
         if (!deriveCameraWarningsFromMetrics) {
@@ -754,6 +756,7 @@ public class AiAssistService {
         }
 
         if (faceCount != null && faceCount == 1
+                && !Boolean.FALSE.equals(eyeValid)
                 && ((eyeCount != null && eyeCount == 0)
                 || "EYES_NOT_VISIBLE".equals(faceQuality)
                 || "EYES_NOT_DETECTED".equals(eyeState))) {
@@ -765,7 +768,7 @@ public class AiAssistService {
             ));
         }
 
-        if (gazeOffScreen != null && gazeOffScreen) {
+        if (gazeOffScreen != null && gazeOffScreen && !Boolean.FALSE.equals(gazeValid)) {
             registerAiCameraSignal(signalsByType, buildSignalMap(
                     "GAZE_OFF_SCREEN",
                     SignalSeverity.HIGH,
@@ -1068,10 +1071,12 @@ public class AiAssistService {
         copyIfPresent(payload, response, "average_brightness", "averageBrightness");
         copyIfPresent(payload, response, "eye_count", "eyeCount");
         copyIfPresent(payload, response, "eye_state", "eyeState");
+        copyIfPresent(payload, response, "eye_valid", "eyeValid");
         copyIfPresent(payload, response, "eye_aspect_ratio", "eyeAspectRatio");
         copyIfPresent(payload, response, "eye_tracking_confidence", "eyeTrackingConfidence");
         copyIfPresent(payload, response, "closure_duration_ms", "closureDurationMs");
         copyIfPresent(payload, response, "attention_score", "attentionScore");
+        copyIfPresent(payload, response, "gaze_valid", "gazeValid");
         copyIfPresent(payload, response, "gaze_direction", "gazeDirection");
         copyIfPresent(payload, response, "gaze_off_screen", "gazeOffScreen");
         copyIfPresent(payload, response, "gaze_confidence", "gazeConfidence");
@@ -1208,7 +1213,7 @@ public class AiAssistService {
         if (value == null || String.valueOf(value).isBlank()) {
             return null;
         }
-        return String.valueOf(value).trim().toUpperCase(Locale.ROOT);
+        return FraudSignalTypeNormalizer.canonical(String.valueOf(value).trim());
     }
 
     private double normalizeConfidence(Object value, double defaultValue) {
@@ -1252,10 +1257,12 @@ public class AiAssistService {
         copyIfPresent(evidence, response, "frame_quality", "frameQuality");
         copyIfPresent(evidence, response, "average_brightness", "averageBrightness");
         copyIfPresent(evidence, response, "eye_state", "eyeState");
+        copyIfPresent(evidence, response, "eye_valid", "eyeValid");
         copyIfPresent(evidence, response, "eye_aspect_ratio", "eyeAspectRatio");
         copyIfPresent(evidence, response, "blink_rate", "blinkRate");
         copyIfPresent(evidence, response, "eye_tracking_confidence", "eyeTrackingConfidence");
         copyIfPresent(evidence, response, "closure_duration_ms", "closureDurationMs");
+        copyIfPresent(evidence, response, "gaze_valid", "gazeValid");
         copyIfPresent(evidence, response, "gaze_direction", "gazeDirection");
         copyIfPresent(evidence, response, "gaze_off_screen", "gazeOffScreen");
         copyIfPresent(evidence, response, "gaze_confidence", "gazeConfidence");

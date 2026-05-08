@@ -10,8 +10,14 @@ from app.proctor import ProctorAnalyzer
 from app.schemas import BehaviorAnalysisRequest, FrameAnalysisRequest
 
 
-def image_to_base64(color=(0, 0, 0)):
+def image_to_base64(color=(0, 0, 0), pattern=False):
     image = Image.new("RGB", (160, 120), color=color)
+    if pattern:
+        pixels = image.load()
+        for y in range(120):
+            for x in range(160):
+                value = 60 if ((x // 8) + (y // 8)) % 2 == 0 else 200
+                pixels[x, y] = (value, value, value)
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG")
     return base64.b64encode(buffer.getvalue()).decode("ascii")
@@ -168,7 +174,7 @@ class ProctorAnalyzerTests(unittest.TestCase):
 
     def test_gaze_off_screen_requires_multiple_samples(self):
         analyzer = FixedEyeAnalyzer(left_normalized=(0.20, 0.50), right_normalized=(0.18, 0.51))
-        frame = image_to_base64((128, 128, 128))
+        frame = image_to_base64((128, 128, 128), pattern=True)
 
         analyzer.analyze_frame(frame, {"attempt_id": 777, "captured_at": "2026-05-07T00:00:00Z"})
         analyzer.analyze_frame(frame, {"attempt_id": 777, "captured_at": "2026-05-07T00:00:01Z"})
@@ -180,6 +186,18 @@ class ProctorAnalyzerTests(unittest.TestCase):
         self.assertTrue(any(signal["signal_type"] == "GAZE_OFF_SCREEN" for signal in result["signals"]))
         self.assertEqual(result["visual_overlay"]["status"], "GAZE_AWAY")
         self.assertEqual(result["visual_overlay"]["tone"], "danger")
+
+    def test_repeated_off_screen_gaze_signal_is_throttled(self):
+        analyzer = FixedEyeAnalyzer(left_normalized=(0.20, 0.50), right_normalized=(0.18, 0.51))
+        frame = image_to_base64((128, 128, 128), pattern=True)
+
+        analyzer.analyze_frame(frame, {"attempt_id": 779, "captured_at": "2026-05-07T00:00:00Z"})
+        analyzer.analyze_frame(frame, {"attempt_id": 779, "captured_at": "2026-05-07T00:00:01Z"})
+        third = analyzer.analyze_frame(frame, {"attempt_id": 779, "captured_at": "2026-05-07T00:00:02Z"})
+        fourth = analyzer.analyze_frame(frame, {"attempt_id": 779, "captured_at": "2026-05-07T00:00:03Z"})
+
+        self.assertTrue(any(signal["signal_type"] == "GAZE_OFF_SCREEN" for signal in third["signals"]))
+        self.assertFalse(any(signal["signal_type"] == "GAZE_OFF_SCREEN" for signal in fourth["signals"]))
 
     def test_prolonged_eye_closure_requires_state(self):
         analyzer = FixedEyeAnalyzer(eye_state="CLOSED", tracking_confidence=0.7)
@@ -217,6 +235,16 @@ class ProctorAnalyzerTests(unittest.TestCase):
         self.assertEqual(behavior.paste_length, 12)
         self.assertEqual(behavior.tab_switch_count, 3)
         self.assertEqual(behavior.typing_intervals, [100, 120])
+
+    def test_no_face_warning_requires_stable_samples_for_attempts(self):
+        analyzer = NoFaceAnalyzer()
+        frame = image_to_base64((0, 0, 0))
+
+        first = analyzer.analyze_frame(frame, {"attempt_id": 900, "captured_at": "2026-05-07T00:00:00Z"})
+        second = analyzer.analyze_frame(frame, {"attempt_id": 900, "captured_at": "2026-05-07T00:00:01Z"})
+
+        self.assertFalse(any(signal["signal_type"] == "FACE_NOT_DETECTED" for signal in first["signals"]))
+        self.assertTrue(any(signal["signal_type"] == "FACE_NOT_DETECTED" for signal in second["signals"]))
 
     def test_haar_detection_merges_duplicate_boxes_from_multiple_passes(self):
         analyzer = NoFaceAnalyzer()

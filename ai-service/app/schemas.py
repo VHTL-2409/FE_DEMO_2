@@ -57,11 +57,13 @@ class FrameAnalysisResponse(BaseModel):
     diagnostics: dict[str, Any] = Field(default_factory=dict)
     visual_overlay: dict[str, Any] = Field(default_factory=dict)
     # Eye tracking and gaze analysis
+    eye_valid: bool = Field(default=False, description="Whether eye tracking is reliable for this frame")
     eye_state: str | None = Field(default=None, description="OPEN, CLOSED, or PARTIAL")
     eye_aspect_ratio: float | None = Field(default=None, description="Eye aspect ratio for blink detection")
     blink_rate: float | None = Field(default=None, description="Blink rate per minute")
     eye_tracking_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     closure_duration_ms: int | None = Field(default=None, ge=0)
+    gaze_valid: bool = Field(default=False, description="Whether gaze analysis is reliable for this frame")
     gaze_direction: str | None = Field(default=None, description="CENTER, LEFT, RIGHT, UP, DOWN")
     gaze_off_screen: bool = Field(default=False, description="Whether gaze is off the exam screen")
     gaze_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
