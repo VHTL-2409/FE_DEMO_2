@@ -40,7 +40,7 @@ import java.util.Map;
  *
  * Chấm điểm theo category với cửa sổ dedup:
  * - SCREEN_LEAVE (TAB_SWITCH=10, WINDOW_BLUR=8, EXIT_FULLSCREEN=15, LONG_SCREEN_LEAVE=25): tối đa 35 điểm, cửa sổ 60s
- * - CLIPBOARD (COPY=8, CUT=8, PASTE=10, LONG_PASTE=22): tối đa 25 điểm, cửa sổ 30s
+ * - CLIPBOARD (COPY_PASTE=10): tối đa 25 điểm, cửa sổ 30s
  * - TECHNICAL (RIGHT_CLICK=5, INSPECT=12, PRINT_SCREEN=15, DEVTOOLS=22): tối đa 25 điểm, cửa sổ 120s
  * - IDENTITY (DEVICE_CHANGE=20, DUPLICATE_IP=25, IP_GRAPH=30): tối đa 30 điểm, mức session
  * - HEARTBEAT (STALE=5, NETWORK=5, RECOVERY=3): tối đa 10 điểm, mức session
@@ -79,22 +79,37 @@ public class RiskScoringService {
     private int criticalMin;
 
     @Value("${demo.risk.dedup.screen-leave-seconds:60}")
-    private long screenLeaveDedupSeconds;
+    private long screenLeaveDedupSeconds = 60L;
 
     @Value("${demo.risk.dedup.clipboard-seconds:30}")
-    private long clipboardDedupSeconds;
+    private long clipboardDedupSeconds = 30L;
 
     @Value("${demo.risk.dedup.technical-seconds:120}")
-    private long technicalDedupSeconds;
+    private long technicalDedupSeconds = 120L;
 
     @Value("${demo.risk.snapshots.interval-seconds:60}")
-    private long snapshotIntervalSeconds;
+    private long snapshotIntervalSeconds = 60L;
 
     @Value("${demo.risk.dedup.visual-identity-seconds:30}")
-    private long visualIdentityDedupSeconds;
+    private long visualIdentityDedupSeconds = 30L;
+
+    @Value("${demo.risk.cap.screen-leave:35}")
+    private int screenLeaveCap = 35;
+
+    @Value("${demo.risk.cap.clipboard:25}")
+    private int clipboardCap = 25;
+
+    @Value("${demo.risk.cap.technical:25}")
+    private int technicalCap = 25;
+
+    @Value("${demo.risk.cap.identity:30}")
+    private int identityCap = 30;
+
+    @Value("${demo.risk.cap.heartbeat:10}")
+    private int heartbeatCap = 10;
 
     @Value("${demo.risk.cap.visual-identity:40}")
-    private int visualIdentityCap;
+    private int visualIdentityCap = 40;
 
     // Điểm cố định cho mỗi loại signal (không có phép tính weight/confidence)
     private static final Map<String, Integer> SIGNAL_SCORES = Map.ofEntries(
@@ -102,28 +117,19 @@ public class RiskScoringService {
             Map.entry("TAB_SWITCH", 10),
             Map.entry("WINDOW_BLUR", 8),
             Map.entry("EXIT_FULLSCREEN", 15),
-            Map.entry("FULLSCREEN_VIOLATION", 15),
             Map.entry("LONG_SCREEN_LEAVE", 25),
             // Category CLIPBOARD
-            Map.entry("COPY_ATTEMPT", 8),
-            Map.entry("CUT_ATTEMPT", 8),
-            Map.entry("PASTE_ATTEMPT", 10),
-            Map.entry("LONG_PASTE", 22),
-            Map.entry("CLIPBOARD_ABUSE", 10),
-            Map.entry("CLIPBOARD_BURST", 10),
+            Map.entry("COPY_PASTE", 10),
             // Category TECHNICAL
             Map.entry("RIGHT_CLICK", 5),
-            Map.entry("INSPECT_ATTEMPT", 12),
             Map.entry("PRINT_SCREEN", 15),
             Map.entry("DEVTOOLS_OPEN", 22),
-            Map.entry("DEVTOOLS_DETECTED", 22),
             // Category IDENTITY
             Map.entry("DEVICE_FINGERPRINT_CHANGED", 20),
             Map.entry("MULTIPLE_DEVICE_SESSION", 25),
             Map.entry("IP_CHANGED", 15),
             Map.entry("DUPLICATE_IP", 25),
             Map.entry("IP_FINGERPRINT_GRAPH", 30),
-            Map.entry("IP_ANOMALY", 25),
             // Category HEARTBEAT
             Map.entry("HEARTBEAT_STALE", 5),
             Map.entry("NETWORK_INSTABILITY", 5),
@@ -150,6 +156,8 @@ public class RiskScoringService {
             Map.entry("EYES_CLOSED_PROLONGED", 5),
             Map.entry("GAZE_OFF_SCREEN", 12),
             Map.entry("RAPID_EYE_MOVEMENT", 8),
+            Map.entry("AI_PHONE_DETECTED", 15),
+            Map.entry("AI_SPEAKING_DETECTED", 10),
             Map.entry("PRINTED_PHOTO", 25),
             Map.entry("SCREEN_REPLAY", 25),
             Map.entry("DEEPFAKE", 30),
@@ -162,25 +170,16 @@ public class RiskScoringService {
             Map.entry("TAB_SWITCH", "SCREEN_LEAVE"),
             Map.entry("WINDOW_BLUR", "SCREEN_LEAVE"),
             Map.entry("EXIT_FULLSCREEN", "SCREEN_LEAVE"),
-            Map.entry("FULLSCREEN_VIOLATION", "SCREEN_LEAVE"),
             Map.entry("LONG_SCREEN_LEAVE", "SCREEN_LEAVE"),
-            Map.entry("COPY_ATTEMPT", "CLIPBOARD"),
-            Map.entry("CUT_ATTEMPT", "CLIPBOARD"),
-            Map.entry("PASTE_ATTEMPT", "CLIPBOARD"),
-            Map.entry("LONG_PASTE", "CLIPBOARD"),
-            Map.entry("CLIPBOARD_ABUSE", "CLIPBOARD"),
-            Map.entry("CLIPBOARD_BURST", "CLIPBOARD"),
+            Map.entry("COPY_PASTE", "CLIPBOARD"),
             Map.entry("RIGHT_CLICK", "TECHNICAL"),
-            Map.entry("INSPECT_ATTEMPT", "TECHNICAL"),
             Map.entry("PRINT_SCREEN", "TECHNICAL"),
             Map.entry("DEVTOOLS_OPEN", "TECHNICAL"),
-            Map.entry("DEVTOOLS_DETECTED", "TECHNICAL"),
             Map.entry("DEVICE_FINGERPRINT_CHANGED", "IDENTITY"),
             Map.entry("MULTIPLE_DEVICE_SESSION", "IDENTITY"),
             Map.entry("IP_CHANGED", "IDENTITY"),
             Map.entry("DUPLICATE_IP", "IDENTITY"),
             Map.entry("IP_FINGERPRINT_GRAPH", "IDENTITY"),
-            Map.entry("IP_ANOMALY", "IDENTITY"),
             Map.entry("HEARTBEAT_STALE", "HEARTBEAT"),
             Map.entry("NETWORK_INSTABILITY", "HEARTBEAT"),
             Map.entry("SESSION_RECOVERY", "HEARTBEAT"),
@@ -205,30 +204,13 @@ public class RiskScoringService {
             Map.entry("EYES_CLOSED_PROLONGED", "VISUAL_IDENTITY"),
             Map.entry("GAZE_OFF_SCREEN", "VISUAL_IDENTITY"),
             Map.entry("RAPID_EYE_MOVEMENT", "VISUAL_IDENTITY"),
+            Map.entry("AI_PHONE_DETECTED", "VISUAL_IDENTITY"),
+            Map.entry("AI_SPEAKING_DETECTED", "VISUAL_IDENTITY"),
             Map.entry("PRINTED_PHOTO", "VISUAL_IDENTITY"),
             Map.entry("SCREEN_REPLAY", "VISUAL_IDENTITY"),
             Map.entry("DEEPFAKE", "VISUAL_IDENTITY"),
             Map.entry("FLAT_IMAGE", "VISUAL_IDENTITY"),
             Map.entry("SCREEN_DISPLAY", "VISUAL_IDENTITY")
-    );
-
-    // Cửa sổ dedup theo category (giây)
-    private static final Map<String, Long> CATEGORY_DEDUP_SECONDS = Map.of(
-            "SCREEN_LEAVE", 60L,
-            "CLIPBOARD", 30L,
-            "TECHNICAL", 120L,
-            "IDENTITY", 0L,    // mức session, không có cửa sổ dedup
-            "HEARTBEAT", 0L     // mức session, không có cửa sổ dedup
-    );
-
-    // Giới hạn tối đa theo category
-    private static final Map<String, Integer> CATEGORY_CAPS = Map.of(
-            "SCREEN_LEAVE", 35,
-            "CLIPBOARD", 25,
-            "TECHNICAL", 25,
-            "IDENTITY", 30,
-            "HEARTBEAT", 10,
-            "VISUAL_IDENTITY", 40
     );
 
     @Transactional
@@ -240,12 +222,12 @@ public class RiskScoringService {
         Map<String, Integer> categoryScores = computeCategoryScores(signals, now);
 
         // Bước 2: Giới hạn tối đa mỗi category
-        int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), CATEGORY_CAPS.getOrDefault("SCREEN_LEAVE", 35));
-        int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), CATEGORY_CAPS.getOrDefault("CLIPBOARD", 25));
-        int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
-        int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
-        int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
-        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), visualIdentityCap);
+        int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), categoryCap("SCREEN_LEAVE"));
+        int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), categoryCap("CLIPBOARD"));
+        int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), categoryCap("TECHNICAL"));
+        int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), categoryCap("IDENTITY"));
+        int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), categoryCap("HEARTBEAT"));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), categoryCap("VISUAL_IDENTITY"));
 
         // Bước 3: Tính tổng
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
@@ -318,12 +300,12 @@ public class RiskScoringService {
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
 
         Map<String, Integer> categoryScores = computeCategoryScores(signals, now);
-        int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), CATEGORY_CAPS.getOrDefault("SCREEN_LEAVE", 35));
-        int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), CATEGORY_CAPS.getOrDefault("CLIPBOARD", 25));
-        int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), CATEGORY_CAPS.getOrDefault("TECHNICAL", 25));
-        int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), CATEGORY_CAPS.getOrDefault("IDENTITY", 30));
-        int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), CATEGORY_CAPS.getOrDefault("HEARTBEAT", 10));
-        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), visualIdentityCap);
+        int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), categoryCap("SCREEN_LEAVE"));
+        int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), categoryCap("CLIPBOARD"));
+        int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), categoryCap("TECHNICAL"));
+        int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), categoryCap("IDENTITY"));
+        int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), categoryCap("HEARTBEAT"));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), categoryCap("VISUAL_IDENTITY"));
 
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
         int totalRisk = Math.min(100, behaviorScore + identityScore + visualIdentityScore);
@@ -395,9 +377,7 @@ public class RiskScoringService {
     private int computeClusteredScore(String category, List<FraudSignal> signals) {
         if (signals == null || signals.isEmpty()) return 0;
 
-        Long dedupWindow = "VISUAL_IDENTITY".equals(category)
-                ? visualIdentityDedupSeconds
-                : CATEGORY_DEDUP_SECONDS.getOrDefault(category, 0L);
+        long dedupWindow = categoryDedupSeconds(category);
 
         // Sắp xếp theo thời gian tạo tăng dần
         List<FraudSignal> sorted = signals.stream()
@@ -455,23 +435,34 @@ public class RiskScoringService {
         totalScore += clusterMaxScore;
 
         // Áp dụng giới hạn category
-        int cap = "VISUAL_IDENTITY".equals(category)
-                ? visualIdentityCap
-                : CATEGORY_CAPS.getOrDefault(category, 100);
-        return Math.min(totalScore, cap);
+        return Math.min(totalScore, categoryCap(category));
+    }
+
+    private long categoryDedupSeconds(String category) {
+        return switch (category) {
+            case "SCREEN_LEAVE" -> Math.max(0L, screenLeaveDedupSeconds);
+            case "CLIPBOARD" -> Math.max(0L, clipboardDedupSeconds);
+            case "TECHNICAL" -> Math.max(0L, technicalDedupSeconds);
+            case "VISUAL_IDENTITY" -> Math.max(0L, visualIdentityDedupSeconds);
+            case "IDENTITY", "HEARTBEAT" -> 0L;
+            default -> 0L;
+        };
+    }
+
+    private int categoryCap(String category) {
+        return switch (category) {
+            case "SCREEN_LEAVE" -> Math.max(0, screenLeaveCap);
+            case "CLIPBOARD" -> Math.max(0, clipboardCap);
+            case "TECHNICAL" -> Math.max(0, technicalCap);
+            case "IDENTITY" -> Math.max(0, identityCap);
+            case "HEARTBEAT" -> Math.max(0, heartbeatCap);
+            case "VISUAL_IDENTITY" -> Math.max(0, visualIdentityCap);
+            default -> 100;
+        };
     }
 
     private String normalizeSignalType(String signalType) {
-        if (signalType == null) return "";
-        String normalized = signalType.trim().toUpperCase();
-        // Aliases
-        return switch (normalized) {
-            case "BLUR" -> "WINDOW_BLUR";
-            case "COPY_PASTE" -> "CLIPBOARD_ABUSE";
-            case "INSPECT_ATTEMPT" -> "INSPECT_ATTEMPT";
-            case "IP_ANOMALY" -> "IP_CHANGED";
-            default -> normalized;
-        };
+        return FraudSignalTypeNormalizer.canonical(signalType);
     }
 
     private int signalScore(String signalType) {

@@ -210,17 +210,19 @@ public class FraudModelTrainer {
 
         // Signal counts by type
         Map<String, Long> signalCounts = signals.stream()
-                .collect(Collectors.groupingBy(FraudSignal::getSignalType, Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        signal -> FraudSignalTypeNormalizer.canonical(signal.getSignalType()),
+                        Collectors.counting()));
 
         features.put("tabSwitchCount", (double) signalCounts.getOrDefault("TAB_SWITCH", 0L));
         features.put("windowBlurCount", (double) signalCounts.getOrDefault("WINDOW_BLUR", 0L));
         features.put("fullscreenExitCount", (double) signalCounts.getOrDefault("EXIT_FULLSCREEN", 0L));
-        features.put("clipboardCount", (double) signalCounts.getOrDefault("CLIPBOARD_ABUSE", 0L));
+        features.put("clipboardCount", (double) signalCounts.getOrDefault("COPY_PASTE", 0L));
         features.put("devtoolsCount", (double) signalCounts.getOrDefault("DEVTOOLS_OPEN", 0L));
         features.put("duplicateIpCount", (double) signalCounts.getOrDefault("DUPLICATE_IP", 0L));
         features.put("deviceChangeCount", (double) signalCounts.getOrDefault("DEVICE_FINGERPRINT_CHANGED", 0L));
         features.put("aiAnomalyCount", (double) signalCounts.getOrDefault("AI_PHONE_DETECTED", 0L) +
-                signalCounts.getOrDefault("AI_MULTIPLE_FACES", 0L));
+                signalCounts.getOrDefault("MULTIPLE_FACES", 0L));
         features.put("totalSignals", (double) signals.size());
 
         // Severity counts

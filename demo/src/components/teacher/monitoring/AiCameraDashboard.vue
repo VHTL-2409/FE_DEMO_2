@@ -145,6 +145,7 @@ import LucideIcon from '../../common/LucideIcon.vue'
 import CameraStatusCard from './CameraStatusCard.vue'
 import { useAiCameraDashboard } from '../../../composables/useAiCameraDashboard'
 import { useToast } from '../../../composables/useToast'
+import { normalizeSignalType } from '../../../utils/proctorSignalTypes'
 
 const route = useRoute()
 const router = useRouter()
@@ -229,6 +230,7 @@ function openStudentDetail(camera) {
 }
 
 function formatSignalType(signal) {
+  const signalType = normalizeSignalType(signal)
   const labelMap = {
     NO_CAMERA: 'Camera tắt',
     FACE_NOT_DETECTED: 'Không thấy mặt',
@@ -253,7 +255,7 @@ function formatSignalType(signal) {
     FLAT_IMAGE: 'Ảnh phẳng',
     DEEPFAKE: 'Deepfake'
   }
-  return labelMap[signal] || String(signal || '').replace(/_/g, ' ')
+  return labelMap[signalType] || String(signalType || '').replace(/_/g, ' ')
 }
 
 function formatTime(timestamp) {

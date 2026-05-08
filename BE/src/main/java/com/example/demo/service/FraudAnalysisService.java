@@ -5,11 +5,10 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.*;
 import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,11 +24,60 @@ public class FraudAnalysisService {
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
     private final FraudSignalRepository fraudSignalRepository;
-    private final AnswerRepository answerRepository;
     private final AnswerSimilarityService answerSimilarityService;
     private final FraudWarningService fraudWarningService;
     private final QuestionRepository questionRepository;
-    private final ObjectMapper objectMapper;
+
+    @Value("${demo.fraud.analysis.plagiarism.high-similarity-threshold:0.95}")
+    private double plagiarismHighSimilarityThreshold;
+
+    @Value("${demo.fraud.analysis.plagiarism.medium-similarity-threshold:0.90}")
+    private double plagiarismMediumSimilarityThreshold;
+
+    @Value("${demo.fraud.analysis.plagiarism.time-correlation-seconds:300}")
+    private long plagiarismTimeCorrelationSeconds;
+
+    @Value("${demo.fraud.analysis.session.tab-switch.medium-threshold:5}")
+    private long tabSwitchMediumThreshold;
+
+    @Value("${demo.fraud.analysis.session.tab-switch.high-threshold:10}")
+    private long tabSwitchHighThreshold;
+
+    @Value("${demo.fraud.analysis.session.window-blur.medium-threshold:5}")
+    private long windowBlurMediumThreshold;
+
+    @Value("${demo.fraud.analysis.session.window-blur.high-threshold:15}")
+    private long windowBlurHighThreshold;
+
+    @Value("${demo.fraud.analysis.session.fullscreen-exit.medium-threshold:2}")
+    private long fullscreenExitMediumThreshold;
+
+    @Value("${demo.fraud.analysis.session.fullscreen-exit.high-threshold:5}")
+    private long fullscreenExitHighThreshold;
+
+    @Value("${demo.fraud.analysis.session.heartbeat.medium-threshold:3}")
+    private long heartbeatMediumThreshold;
+
+    @Value("${demo.fraud.analysis.session.heartbeat.high-threshold:10}")
+    private long heartbeatHighThreshold;
+
+    @Value("${demo.fraud.analysis.timing.fast-completion.medium-factor-seconds-per-question:15}")
+    private long fastCompletionMediumSecondsPerQuestion;
+
+    @Value("${demo.fraud.analysis.timing.fast-completion.high-factor-seconds-per-question:10}")
+    private long fastCompletionHighSecondsPerQuestion;
+
+    @Value("${demo.fraud.analysis.timing.fast-completion.medium-min-seconds:60}")
+    private long fastCompletionMediumMinSeconds;
+
+    @Value("${demo.fraud.analysis.timing.fast-completion.high-min-seconds:45}")
+    private long fastCompletionHighMinSeconds;
+
+    @Value("${demo.fraud.analysis.ip-reputation.medium-attempts:2}")
+    private int duplicateIpMediumAttempts;
+
+    @Value("${demo.fraud.analysis.ip-reputation.high-attempts:3}")
+    private int duplicateIpHighAttempts;
 
     // --- Phân tích đạo văn (so sánh đáp án) ---
 
@@ -98,23 +146,40 @@ public class FraudAnalysisService {
         if (a1 == null || a2 == null) return false;
         if (a1.getStartedAt() == null || a2.getStartedAt() == null) return false;
         long diffSeconds = Math.abs(java.time.Duration.between(a1.getStartedAt(), a2.getStartedAt()).getSeconds());
-        return diffSeconds <= 300;
+        return diffSeconds <= Math.max(plagiarismTimeCorrelationSeconds, 1L);
     }
 
     private String mapVerdict(double similarity) {
-        if (similarity >= 0.95) return "NGHIEM_TRONG";
-        if (similarity >= 0.90) return "CAO";
+        if (similarity >= highSimilarityThreshold()) return "NGHIEM_TRONG";
+        if (similarity >= mediumSimilarityThreshold()) return "CAO";
         return "TRUNG_BINH";
     }
 
     private String generateRecommendation(double similarity, boolean timeCorrelation) {
-        if (similarity >= 0.95 || (similarity >= 0.90 && timeCorrelation)) {
-            return "Canh cao: can xem xet ky luong va có the yeu cau thi lai.";
+        if (similarity >= highSimilarityThreshold() || (similarity >= mediumSimilarityThreshold() && timeCorrelation)) {
+            return "Cảnh báo cao: cần xem xét kỹ lưỡng và có thể yêu cầu thi lại.";
         }
-        if (similarity >= 0.90) {
-            return "Theo doi: nen giam sat them trong cac buoi thi tiep theo.";
+        if (similarity >= mediumSimilarityThreshold()) {
+            return "Theo dõi: nên giám sát thêm trong các buổi thi tiếp theo.";
         }
-        return "Bat thuong nhe: can ghi nhan nhung khong can hanh dong ngay.";
+        return "Bất thường nhẹ: cần ghi nhận nhưng chưa cần hành động ngay.";
+    }
+
+    private double highSimilarityThreshold() {
+        return normalizeSimilarityThreshold(plagiarismHighSimilarityThreshold, 0.95d);
+    }
+
+    private double mediumSimilarityThreshold() {
+        double high = highSimilarityThreshold();
+        double medium = normalizeSimilarityThreshold(plagiarismMediumSimilarityThreshold, 0.90d);
+        return Math.min(Math.max(0.0d, high - 0.01d), medium);
+    }
+
+    private double normalizeSimilarityThreshold(double value, double fallback) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return fallback;
+        }
+        return Math.max(0.0d, Math.min(1.0d, value));
     }
 
     // --- Phân tích thời gian (hành vi trong giờ thi) ---
@@ -142,46 +207,48 @@ public class FraudAnalysisService {
         for (ExamAttempt attempt : attempts) {
             List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
             Map<String, Long> eventCounts = signals.stream()
-                    .collect(Collectors.groupingBy(FraudSignal::getSignalType, Collectors.counting()));
+                    .collect(Collectors.groupingBy(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()), Collectors.counting()));
 
-            Long tabSwitchCount = eventCounts.getOrDefault("TAB_SWITCH", 0L);
-            Long blurCount = eventCounts.getOrDefault("WINDOW_BLUR", 0L);
-            Long exitFsCount = eventCounts.getOrDefault("EXIT_FULLSCREEN", 0L)
-                    + eventCounts.getOrDefault("FULLSCREEN_EVASION", 0L);
+            long tabSwitchCount = countSignals(eventCounts, "TAB_SWITCH");
+            long blurCount = countSignals(eventCounts, "WINDOW_BLUR");
+            long exitFsCount = countSignals(eventCounts, "EXIT_FULLSCREEN");
 
             if (tabSwitchCount > 0) {
                 items.add(TimingAnalysisResponse.TimingResultItem.builder()
                         .signalType("HIGH_TAB_SWITCH")
-                        .severity(tabSwitchCount > 10 ? "HIGH" : tabSwitchCount > 5 ? "MEDIUM" : "LOW")
+                        .severity(severityForCount(tabSwitchCount, tabSwitchMediumThreshold, tabSwitchHighThreshold).name())
                         .evidence(buildEvidenceMap("Số lần chuyển tab: " + tabSwitchCount, tabSwitchCount))
                         .timestampMs(attempt.getStartedAt() != null ? attempt.getStartedAt().toEpochSecond(java.time.ZoneOffset.UTC) * 1000 : null)
                         .build());
-                recordSessionIntegrityWarning(attempt, "HIGH_TAB_SWITCH", tabSwitchCount, "So lan chuyen tab: " + tabSwitchCount);
+                recordSessionIntegrityWarning(attempt, "HIGH_TAB_SWITCH", tabSwitchCount,
+                        "Số lần chuyển tab: " + tabSwitchCount, tabSwitchMediumThreshold, tabSwitchHighThreshold);
             }
             if (blurCount > 0) {
                 items.add(TimingAnalysisResponse.TimingResultItem.builder()
                         .signalType("EXCESSIVE_BLUR")
-                        .severity(blurCount > 15 ? "HIGH" : blurCount > 5 ? "MEDIUM" : "LOW")
+                        .severity(severityForCount(blurCount, windowBlurMediumThreshold, windowBlurHighThreshold).name())
                         .evidence(buildEvidenceMap("Số lần mất tiêu điểm cửa sổ: " + blurCount, blurCount))
                         .timestampMs(attempt.getStartedAt() != null ? attempt.getStartedAt().toEpochSecond(java.time.ZoneOffset.UTC) * 1000 : null)
                         .build());
-                recordSessionIntegrityWarning(attempt, "EXCESSIVE_BLUR", blurCount, "So lan mat focus: " + blurCount);
+                recordSessionIntegrityWarning(attempt, "EXCESSIVE_BLUR", blurCount,
+                        "Số lần mất focus: " + blurCount, windowBlurMediumThreshold, windowBlurHighThreshold);
             }
             if (exitFsCount > 0) {
                 items.add(TimingAnalysisResponse.TimingResultItem.builder()
                         .signalType("MULTIPLE_FULLSCREEN_EXIT")
-                        .severity(exitFsCount > 5 ? "HIGH" : exitFsCount > 2 ? "MEDIUM" : "LOW")
+                        .severity(severityForCount(exitFsCount, fullscreenExitMediumThreshold, fullscreenExitHighThreshold).name())
                         .evidence(buildEvidenceMap("Số lần thoát toàn màn hình: " + exitFsCount, exitFsCount))
                         .timestampMs(attempt.getStartedAt() != null ? attempt.getStartedAt().toEpochSecond(java.time.ZoneOffset.UTC) * 1000 : null)
                         .build());
-                recordSessionIntegrityWarning(attempt, "MULTIPLE_FULLSCREEN_EXIT", exitFsCount, "So lan thoat fullscreen: " + exitFsCount);
+                recordSessionIntegrityWarning(attempt, "MULTIPLE_FULLSCREEN_EXIT", exitFsCount,
+                        "Số lần thoát fullscreen: " + exitFsCount, fullscreenExitMediumThreshold, fullscreenExitHighThreshold);
             }
 
-            long heartbeatEventCount = eventCounts.getOrDefault("HEARTBEAT_STALE", 0L)
-                    + eventCounts.getOrDefault("NETWORK_INSTABILITY", 0L)
-                    + eventCounts.getOrDefault("SESSION_RECOVERY", 0L);
+            long heartbeatEventCount = countSignals(eventCounts, "HEARTBEAT_STALE", "NETWORK_INSTABILITY", "SESSION_RECOVERY");
             if (heartbeatEventCount > 0) {
-                recordSessionIntegrityWarning(attempt, "HEARTBEAT_OR_RECONNECT", heartbeatEventCount, "Bat thuong heartbeat/reconnect: " + heartbeatEventCount);
+                recordSessionIntegrityWarning(attempt, "HEARTBEAT_OR_RECONNECT", heartbeatEventCount,
+                        "Bất thường heartbeat/reconnect: " + heartbeatEventCount,
+                        heartbeatMediumThreshold, heartbeatHighThreshold);
             }
             recordFastCompletionWarning(exam, attempt);
 
@@ -210,6 +277,29 @@ public class FraudAnalysisService {
         return map;
     }
 
+    private SignalSeverity severityForCount(long count, long mediumThreshold, long highThreshold) {
+        long safeMedium = Math.max(mediumThreshold, 1L);
+        long safeHigh = Math.max(highThreshold, safeMedium + 1L);
+        long criticalThreshold = Math.max(safeHigh * 2L, safeMedium * 3L);
+        if (count >= criticalThreshold) return SignalSeverity.CRITICAL;
+        if (count >= safeHigh) return SignalSeverity.HIGH;
+        if (count >= safeMedium) return SignalSeverity.MEDIUM;
+        return SignalSeverity.LOW;
+    }
+
+    private long countSignals(Map<String, Long> counts, String... signalTypes) {
+        if (counts == null || counts.isEmpty() || signalTypes == null) {
+            return 0L;
+        }
+        long total = 0L;
+        for (String signalType : signalTypes) {
+            if (signalType != null) {
+                total += counts.getOrDefault(signalType, 0L);
+            }
+        }
+        return total;
+    }
+
     // --- Phân tích thống kê (phân tích điểm thi) ---
 
     public StatisticalAnalysisResponse analyzeStatisticalByExam(Long examId) {
@@ -229,90 +319,18 @@ public class FraudAnalysisService {
         if (filterAttempt != null) {
             attempts = attempts.stream().filter(a -> a.getId().equals(filterAttempt.getId())).collect(Collectors.toList());
         }
-
-        if (attempts.isEmpty()) {
-            return StatisticalAnalysisResponse.builder()
-                    .examId(exam.getId())
-                    .examTitle(exam.getTitle())
-                    .totalAttempts(0)
-                    .statisticalResults(List.of())
-                    .build();
-        }
-
-        List<Double> scores = attempts.stream()
-                .filter(a -> a.getScore() != null)
-                .map(a -> a.getScore())
-                .collect(Collectors.toList());
-
-        double mean = scores.isEmpty() ? 0 : scores.stream().mapToDouble(Double::doubleValue).sum() / scores.size();
-        double variance = scores.isEmpty() ? 0 : scores.stream().mapToDouble(s -> (s - mean) * (s - mean)).sum() / scores.size();
-        double stdDev = Math.sqrt(variance);
-        double min = scores.stream().mapToDouble(Double::doubleValue).min().orElse(0);
-        double max = scores.stream().mapToDouble(Double::doubleValue).max().orElse(0);
-
-        StatisticalAnalysisResponse.ScoreStats scoreStats = StatisticalAnalysisResponse.ScoreStats.builder()
-                .mean(Math.round(mean * 100.0) / 100.0)
-                .stdDev(Math.round(stdDev * 100.0) / 100.0)
-                .min(min)
-                .max(max)
-                .count(scores.size())
-                .build();
-
-        List<StatisticalAnalysisResponse.StatisticalResultItem> results = new ArrayList<>();
-
-        for (ExamAttempt a : attempts) {
-            if (a.getScore() == null) continue;
-            double score = a.getScore();
-
-            if (stdDev > 0 && Math.abs(score - mean) > 2 * stdDev) {
-                double zScore = Math.abs(score - mean) / stdDev;
-                results.add(StatisticalAnalysisResponse.StatisticalResultItem.builder()
-                        .signalType("OUTLIER_SCORE")
-                        .severity(zScore > 3 ? "HIGH" : "MEDIUM")
-                        .evidence(Map.of(
-                                "description", String.format("Điểm %.1f cách xa trung bình %.1f (%.1f độ lệch chuẩn)", score, mean, zScore),
-                                "zScore", Math.round(zScore * 100.0) / 100.0,
-                                "score", score,
-                                "mean", mean
-                        ))
-                        .build());
-                recordStatisticalWarning(exam, a, "OUTLIER_SCORE", zScore > 3 ? SignalSeverity.HIGH : SignalSeverity.MEDIUM, Map.of(
-                        "description", String.format("Diem %.1f cach xa trung binh %.1f (%.1f do lech chuan)", score, mean, zScore),
-                        "zScore", Math.round(zScore * 100.0) / 100.0,
-                        "score", score,
-                        "mean", mean
-                ));
-            }
-
-            if (isHighScoreFastCompletion(exam, a, mean, stdDev)) {
-                recordStatisticalWarning(exam, a, "HIGH_SCORE_FAST_TIME", SignalSeverity.MEDIUM, Map.of(
-                        "description", "Diem cao nhung thoi gian lam bai thap, can kiem tra lai.",
-                        "score", score,
-                        "mean", mean,
-                        "stdDev", stdDev,
-                        "durationSeconds", attemptDurationSeconds(a)
-                ));
-            }
-
-            if (Boolean.TRUE.equals(a.getSuspicious()) && a.getRiskScore() != null && a.getRiskScore() >= 61) {
-                results.add(StatisticalAnalysisResponse.StatisticalResultItem.builder()
-                        .signalType("HIGH_RISK_ATTEMPT")
-                        .severity(a.getRiskScore() >= 81 ? "HIGH" : "MEDIUM")
-                        .evidence(Map.of(
-                                "description", "Thí sinh có điểm risk cao (" + a.getRiskScore() + ") và điểm thi " + score,
-                                "riskScore", a.getRiskScore(),
-                                "score", score
-                        ))
-                        .build());
-            }
-        }
-
         return StatisticalAnalysisResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
                 .totalAttempts(attempts.size())
-                .scoreStats(scoreStats)
-                .statisticalResults(results)
+                .scoreStats(StatisticalAnalysisResponse.ScoreStats.builder()
+                        .mean(0)
+                        .stdDev(0)
+                        .min(0)
+                        .max(0)
+                        .count(0)
+                        .build())
+                .statisticalResults(List.of())
                 .build();
     }
 
@@ -335,39 +353,11 @@ public class FraudAnalysisService {
         if (filterAttempt != null) {
             attempts = attempts.stream().filter(a -> a.getId().equals(filterAttempt.getId())).collect(Collectors.toList());
         }
-
-        Map<Long, List<String>> attemptAnomalies = new HashMap<>();
-
-        for (ExamAttempt attempt : attempts) {
-            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
-            List<String> anomalies = new ArrayList<>();
-
-            for (FraudSignal signal : signals) {
-                String type = signal.getSignalType();
-                // Các signal liên quan đến hành vi trắc nghiệm
-                if (type.equals("AUTOMATED_INPUT_DETECTED")
-                        || type.equals("MOUSE_SIGNATURE_ANOMALY")
-                        || type.equals("INTERRUPTION_PATTERN")) {
-                    anomalies.add(type);
-                }
-            }
-
-            if (!anomalies.isEmpty()) {
-                attemptAnomalies.put(attempt.getId(), anomalies);
-            }
-        }
-
-        List<String> allAnomalies = attemptAnomalies.values().stream()
-                .flatMap(List::stream)
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
-
         return BehaviorAnalysisResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
                 .totalAttempts(attempts.size())
-                .anomalies(allAnomalies)
+                .anomalies(List.of())
                 .build();
     }
 
@@ -391,12 +381,14 @@ public class FraudAnalysisService {
 
         List<IpReputationAnalysisResponse.IpResultItem> suspicious = new ArrayList<>();
         for (Map.Entry<String, List<ExamAttempt>> entry : ipGroups.entrySet()) {
-            if (entry.getValue().size() >= 2) {
+            if (entry.getValue().size() >= Math.max(duplicateIpMediumAttempts, 2)) {
                 List<String> usernames = entry.getValue().stream()
                         .map(a -> a.getStudent().getUsername())
                         .distinct()
                         .collect(Collectors.toList());
-                String riskLevel = entry.getValue().size() >= 3 ? "HIGH" : "MEDIUM";
+                String riskLevel = entry.getValue().size() >= Math.max(duplicateIpHighAttempts, duplicateIpMediumAttempts + 1)
+                        ? "HIGH"
+                        : "MEDIUM";
 
                 Map<String, String> geoLocation = new LinkedHashMap<>();
                 geoLocation.put("city", "Unknown");
@@ -454,8 +446,6 @@ public class FraudAnalysisService {
 
         PlagiarismAnalysisResponse plagiarism = buildPlagiarismResponse(exam, filterAttempt);
         TimingAnalysisResponse timing = buildTimingResponse(exam, filterAttempt);
-        StatisticalAnalysisResponse statistical = buildStatisticalResponse(exam, filterAttempt);
-        BehaviorAnalysisResponse behavior = buildBehaviorResponse(exam, filterAttempt);
         IpReputationAnalysisResponse ipReputation = buildIpResponse(exam);
 
         List<ComprehensiveAnalysisResponse.FlaggedAttemptItem> flagged = new ArrayList<>();
@@ -464,7 +454,7 @@ public class FraudAnalysisService {
                 List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
                 List<String> indicators = signals.stream()
                         .filter(s -> s.getSeverity() == SignalSeverity.HIGH || s.getSeverity() == SignalSeverity.CRITICAL)
-                        .map(FraudSignal::getSignalType)
+                        .map(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()))
                         .distinct()
                         .sorted()
                         .collect(Collectors.toList());
@@ -489,8 +479,6 @@ public class FraudAnalysisService {
                 .flaggedAttempts(flaggedCount)
                 .plagiarism(plagiarism)
                 .timing(timing)
-                .statistical(statistical)
-                .behavior(behavior)
                 .ipReputation(ipReputation)
                 .flaggedAttemptItems(flagged)
                 .suspiciousPatterns(patterns)
@@ -505,18 +493,21 @@ public class FraudAnalysisService {
         for (ExamAttempt attempt : attempts) {
             List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
             Map<String, Long> typeCounts = signals.stream()
-                    .collect(Collectors.groupingBy(FraudSignal::getSignalType, Collectors.counting()));
+                    .collect(Collectors.groupingBy(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()), Collectors.counting()));
 
-            addPatternIf(patterns, attempt, "IP_ANOMALY", "Phat hien IP trung lap",
-                    typeCounts.getOrDefault("IP_ANOMALY", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "SYNC_BEHAVIOR", "Hanh vi dong bo voi thi sinh khac",
-                    typeCounts.getOrDefault("SYNC_BEHAVIOR", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "TIMING_ANOMALY", "Lam bai qua nhanh",
-                    typeCounts.getOrDefault("TIMING_ANOMALY", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "ANSWER_SIMILARITY", "Tuong dong dap an cao voi thi sinh khac",
-                    typeCounts.getOrDefault("ANSWER_SIMILARITY", 0L) + typeCounts.getOrDefault("EXACT_ANSWER_MATCH", 0L), 1L, 2L);
-            addPatternIf(patterns, attempt, "AUTOMATED_INPUT", "Phat hien input tu dong",
-                    typeCounts.getOrDefault("AUTOMATED_INPUT_DETECTED", 0L), 1L, 2L);
+            addPatternIf(patterns, attempt, "IP_CHANGED", "Phát hiện IP hoặc thiết bị đáng ngờ",
+                    countSignals(typeCounts, "IP_CHANGED", "DUPLICATE_IP", "IP_FINGERPRINT_GRAPH",
+                            "DEVICE_FINGERPRINT_CHANGED", "MULTIPLE_DEVICE_SESSION"), 1L, 2L);
+            addPatternIf(patterns, attempt, "ANSWER_SIMILARITY", "Tương đồng đáp án cao với thí sinh khác",
+                    countSignals(typeCounts, "ANSWER_SIMILARITY", "EXACT_ANSWER_MATCH"), 1L, 2L);
+            addPatternIf(patterns, attempt, "CLIPBOARD_MANIPULATION", "Sao chép hoặc dán bất thường",
+                    countSignals(typeCounts, "COPY_PASTE"), 1L, 2L);
+            addPatternIf(patterns, attempt, "TECHNICAL_TOOL_USE", "Công cụ kỹ thuật đáng ngờ",
+                    countSignals(typeCounts, "DEVTOOLS_OPEN",
+                            "PRINT_SCREEN", "RIGHT_CLICK", "MULTI_MONITOR"), 1L, 2L);
+            addPatternIf(patterns, attempt, "SESSION_INTEGRITY", "Vi phạm tính toàn vẹn phiên thi",
+                    countSignals(typeCounts, "TAB_SWITCH", "WINDOW_BLUR", "EXIT_FULLSCREEN", "LONG_SCREEN_LEAVE"),
+                    3L, 5L);
         }
         return patterns;
     }
@@ -568,31 +559,24 @@ public class FraudAnalysisService {
                 null,
                 FraudWarningCategory.ANSWER_PATTERN,
                 "ANSWER_SIMILARITY",
-                pair.similarity() >= 0.95 ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
+                pair.similarity() >= highSimilarityThreshold() ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
                 pair.similarity(),
                 "Nghi van trung mau dap an giua nhieu thi sinh",
                 evidence,
                 "answer_similarity",
                 List.of(a1.getId(), a2.getId())
         );
-        if (timeCorrelation) {
-            fraudWarningService.recordWarning(
-                    exam,
-                    null,
-                    FraudWarningCategory.SYNCHRONIZATION,
-                    "ANSWER_SYNC",
-                    SignalSeverity.MEDIUM,
-                    Math.min(1.0, pair.similarity()),
-                    "Nghi van dong bo thoi diem tra loi",
-                    evidence,
-                    "answer_similarity",
-                    List.of(a1.getId(), a2.getId())
-            );
-        }
     }
 
-    private void recordSessionIntegrityWarning(ExamAttempt attempt, String type, long count, String message) {
-        SignalSeverity severity = count >= 10 ? SignalSeverity.HIGH : count >= 3 ? SignalSeverity.MEDIUM : SignalSeverity.LOW;
+    private void recordSessionIntegrityWarning(
+            ExamAttempt attempt,
+            String type,
+            long count,
+            String message,
+            long mediumThreshold,
+            long highThreshold
+    ) {
+        SignalSeverity severity = severityForCount(count, mediumThreshold, highThreshold);
         fraudWarningService.recordWarning(
                 attempt.getExam(),
                 attempt,
@@ -601,7 +585,12 @@ public class FraudAnalysisService {
                 severity,
                 Math.min(0.95, 0.55 + count * 0.05),
                 message,
-                Map.of("count", count, "message", message),
+                Map.of(
+                        "count", count,
+                        "message", message,
+                        "mediumThreshold", mediumThreshold,
+                        "highThreshold", highThreshold
+                ),
                 "monitoring_event",
                 List.of(attempt.getId())
         );
@@ -613,39 +602,33 @@ public class FraudAnalysisService {
             return;
         }
         long questionCount = Math.max(questionRepository.countByExam(exam), 1);
-        long suspiciousThreshold = Math.max(60, questionCount * 15);
-        if (durationSeconds > suspiciousThreshold) {
+        long mediumThresholdSeconds = Math.max(
+                Math.max(fastCompletionMediumMinSeconds, 1L),
+                questionCount * Math.max(fastCompletionMediumSecondsPerQuestion, 1L)
+        );
+        if (durationSeconds > mediumThresholdSeconds) {
             return;
         }
+        long highThresholdSeconds = Math.max(
+                Math.max(fastCompletionHighMinSeconds, 1L),
+                questionCount * Math.max(fastCompletionHighSecondsPerQuestion, 1L)
+        );
+        highThresholdSeconds = Math.min(highThresholdSeconds, mediumThresholdSeconds);
         fraudWarningService.recordWarning(
                 exam,
                 attempt,
                 FraudWarningCategory.TIMING_PATTERN,
                 "FAST_COMPLETION",
-                durationSeconds < Math.max(45, questionCount * 10) ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
+                durationSeconds <= highThresholdSeconds ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
                 0.75,
-                "Thoi gian hoan thanh bai trac nghiem thap bat thuong",
+                "Thời gian hoàn thành bài trắc nghiệm thấp bất thường",
                 Map.of(
                         "durationSeconds", durationSeconds,
                         "questionCount", questionCount,
-                        "thresholdSeconds", suspiciousThreshold
+                        "mediumThresholdSeconds", mediumThresholdSeconds,
+                        "highThresholdSeconds", highThresholdSeconds
                 ),
                 "timing_analysis",
-                List.of(attempt.getId())
-        );
-    }
-
-    private void recordStatisticalWarning(Exam exam, ExamAttempt attempt, String type, SignalSeverity severity, Map<String, Object> evidence) {
-        fraudWarningService.recordWarning(
-                exam,
-                attempt,
-                FraudWarningCategory.POST_EXAM_STATISTICAL,
-                type,
-                severity,
-                severity == SignalSeverity.HIGH ? 0.85 : 0.7,
-                "Bat thuong thong ke sau thi can kiem tra",
-                evidence,
-                "statistical_analysis",
                 List.of(attempt.getId())
         );
     }
@@ -675,19 +658,6 @@ public class FraudAnalysisService {
                 "ip_reputation",
                 relatedAttemptIds
         );
-    }
-
-    private boolean isHighScoreFastCompletion(Exam exam, ExamAttempt attempt, double mean, double stdDev) {
-        if (attempt.getScore() == null) {
-            return false;
-        }
-        Long durationSeconds = attemptDurationSeconds(attempt);
-        if (durationSeconds == null || durationSeconds <= 0) {
-            return false;
-        }
-        long questionCount = Math.max(questionRepository.countByExam(exam), 1);
-        boolean highScore = stdDev > 0 ? attempt.getScore() >= mean + stdDev : attempt.getScore() >= mean;
-        return highScore && durationSeconds <= Math.max(90, questionCount * 20);
     }
 
     private Long attemptDurationSeconds(ExamAttempt attempt) {

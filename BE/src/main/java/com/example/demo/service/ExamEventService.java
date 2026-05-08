@@ -35,7 +35,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -334,7 +333,7 @@ public class ExamEventService {
 
     private void saveLegacyMonitoringEvent(ExamAttempt attempt, String eventType, String details, LocalDateTime createdAt) {
         try {
-            MonitoringEventType legacyType = MonitoringEventType.valueOf(eventType);
+            MonitoringEventType legacyType = MonitoringEventType.valueOf(normalizeLegacyMonitoringEventType(eventType));
             monitoringEventRepository.save(MonitoringEvent.builder()
                     .attempt(attempt)
                     .eventType(legacyType)
@@ -344,6 +343,17 @@ public class ExamEventService {
         } catch (IllegalArgumentException ignored) {
             // Legacy timeline chỉ giữ các events dựa trên enum.
         }
+    }
+
+    private String normalizeLegacyMonitoringEventType(String eventType) {
+        if (eventType == null || eventType.isBlank()) {
+            return "";
+        }
+        String normalized = FraudSignalTypeNormalizer.canonical(eventType);
+        return switch (normalized) {
+            case "WINDOW_BLUR" -> "BLUR";
+            default -> normalized;
+        };
     }
 
     // Giai đoạn 1: HEARTBEAT_STALE auto-generation bị tắt.
@@ -424,7 +434,7 @@ public class ExamEventService {
         if (eventType == null || eventType.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "eventType is required");
         }
-        return eventType.trim().toUpperCase(Locale.ROOT);
+        return FraudSignalTypeNormalizer.canonical(eventType);
     }
 
     private List<String> mapRequiredActions(RiskScoreResponse response) {

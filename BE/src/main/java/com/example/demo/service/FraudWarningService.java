@@ -221,14 +221,16 @@ public class FraudWarningService {
 
     @Transactional
     public Optional<FraudWarning> recordFromFraudSignal(FraudSignal signal) {
-        FraudWarningCategory category = mapSignalCategory(signal.getSignalType(), signal.getCategory());
+        String canonicalType = normalizeType(signal.getSignalType());
+        FraudWarningCategory category = mapSignalCategory(canonicalType, signal.getCategory());
         if (category == null) {
             return Optional.empty();
         }
         ExamAttempt attempt = signal.getAttempt();
         Map<String, Object> evidence = new LinkedHashMap<>();
         evidence.put("sourceSignalId", signal.getId());
-        evidence.put("signalType", signal.getSignalType());
+        evidence.put("signalType", canonicalType);
+        evidence.put("rawSignalType", signal.getSignalType());
         evidence.put("signalCategory", signal.getCategory());
         evidence.put("riskImpact", signal.getRiskImpact());
         evidence.put("riskImpactSource", "fraud_signal");
@@ -237,7 +239,7 @@ public class FraudWarningService {
                 attempt.getExam(),
                 attempt,
                 category,
-                signal.getSignalType(),
+                canonicalType,
                 signal.getSeverity(),
                 signal.getConfidence() != null ? signal.getConfidence() : 0.7,
                 signal.getDisplayMessage(),
@@ -287,13 +289,17 @@ public class FraudWarningService {
         if (Set.of("SYNC_BEHAVIOR").contains(type)) {
             return FraudWarningCategory.SYNCHRONIZATION;
         }
-        if (Set.of("TIMING_ANOMALY", "FAST_SUBMIT", "IMPOSSIBLE_SPEED", "IMPOSSIBLE_EXAM_SPEED", "FAST_ANSWER", "QUESTION_TIMING_ANOMALY", "RAPID_QUESTION_SWITCH").contains(type)) {
+        if (Set.of("TIMING_ANOMALY", "FAST_SUBMIT", "IMPOSSIBLE_SPEED", "IMPOSSIBLE_EXAM_SPEED", "FAST_ANSWER", "QUESTION_TIMING_ANOMALY", "RAPID_QUESTION_SWITCH", "ANSWER_CHANGE_BURST").contains(type)) {
             return FraudWarningCategory.TIMING_PATTERN;
         }
-        if (Set.of("DUPLICATE_IP", "IP_FINGERPRINT_GRAPH", "IP_ANOMALY", "DEVICE_FINGERPRINT_CHANGED", "MULTIPLE_DEVICE_SESSION", "IP_CHANGED").contains(type)) {
+        if (Set.of("DUPLICATE_IP", "IP_FINGERPRINT_GRAPH", "DEVICE_FINGERPRINT_CHANGED", "MULTIPLE_DEVICE_SESSION", "IP_CHANGED").contains(type)) {
             return FraudWarningCategory.IDENTITY_NETWORK;
         }
-        if (Set.of("TAB_SWITCH", "WINDOW_BLUR", "EXIT_FULLSCREEN", "FULLSCREEN_VIOLATION", "FULLSCREEN_EVASION", "HEARTBEAT_STALE", "NETWORK_INSTABILITY", "SESSION_RECOVERY").contains(type)) {
+        if (Set.of(
+                "TAB_SWITCH", "WINDOW_BLUR", "EXIT_FULLSCREEN", "LONG_SCREEN_LEAVE",
+                "HEARTBEAT_STALE", "NETWORK_INSTABILITY", "SESSION_RECOVERY",
+                "COPY_PASTE", "DEVTOOLS_OPEN", "RIGHT_CLICK", "PRINT_SCREEN", "MULTI_MONITOR"
+        ).contains(type)) {
             return FraudWarningCategory.SESSION_INTEGRITY;
         }
         if ("AI_CAMERA".equalsIgnoreCase(signalCategory) || isCameraSignal(type)) {
@@ -303,6 +309,7 @@ public class FraudWarningService {
     }
 
     private boolean isCameraSignal(String type) {
+        String canonical = normalizeType(type);
         return Set.of(
                 "NO_CAMERA",
                 "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
@@ -312,9 +319,8 @@ public class FraudWarningService {
                 "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                 "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
                 "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
-                "FLAT_IMAGE", "SCREEN_DISPLAY", "AI_MULTIPLE_FACES", "AI_FACE_MISSING",
-                "AI_PHONE_DETECTED", "AI_LOOKING_AWAY", "AI_SPEAKING_DETECTED"
-        ).contains(type);
+                "FLAT_IMAGE", "SCREEN_DISPLAY", "AI_PHONE_DETECTED", "AI_SPEAKING_DETECTED"
+        ).contains(canonical);
     }
 
     private String writeRelatedAttemptIds(List<Long> relatedAttemptIds, ExamAttempt attempt) {
@@ -424,7 +430,7 @@ public class FraudWarningService {
     }
 
     private String normalizeType(String type) {
-        return type == null || type.isBlank() ? "UNKNOWN_WARNING" : type.trim().toUpperCase(Locale.ROOT);
+        return type == null || type.isBlank() ? "UNKNOWN_WARNING" : FraudSignalTypeNormalizer.canonical(type);
     }
 
     private double normalizeConfidence(double confidence) {

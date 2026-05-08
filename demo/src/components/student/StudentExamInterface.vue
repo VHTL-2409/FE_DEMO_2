@@ -1430,21 +1430,17 @@ const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDO
     TAB_SWITCH: 'monitorTabSwitch',
     WINDOW_BLUR: 'monitorBlur',
     LONG_SCREEN_LEAVE: 'monitorBlur',
-    EXIT_FULLSCREEN: 'monitorExitFullscreen',
-    FULLSCREEN_EVASION: 'monitorFullscreenEvasion',
-    COPY_ATTEMPT: 'monitorCopyPaste',
-    PASTE_ATTEMPT: 'monitorCopyPaste',
-    CUT_ATTEMPT: 'monitorCopyPaste',
-    LONG_PASTE: 'monitorCopyPaste',
+    EXIT_FULLSCREEN: ['monitorExitFullscreen', 'monitorFullscreenEvasion'],
+    COPY_PASTE: 'monitorCopyPaste',
     RIGHT_CLICK: 'monitorRightClick',
-    INSPECT_ATTEMPT: 'monitorRightClick',
     PRINT_SCREEN: 'monitorPrintScreen',
     DEVTOOLS_OPEN: 'monitorDevtools',
-    DEVTOOLS_DETECTED: 'monitorDevtools',
     MULTI_MONITOR: 'monitorMultiMonitor'
   }
   const prop = monitorMap[eventType]
-  if (prop && cfg[prop] === false) return
+  if (Array.isArray(prop)) {
+    if (!prop.some(key => cfg[key] !== false)) return
+  } else if (prop && cfg[prop] === false) return
   const now = Date.now()
   const lastAt = lastViolationAtByType.value[eventType] || 0
   if (cooldownMs > 0 && now - lastAt < cooldownMs) return
@@ -1647,8 +1643,7 @@ const handleFullscreenChange = () => {
   if (!wasFullscreen) return
   fullscreenExitStartedAt.value = Date.now()
   fullscreenExitCount.value += 1
-  const eventType = examConfig.value.monitorFullscreenEvasion !== false ? 'FULLSCREEN_EVASION' : 'EXIT_FULLSCREEN'
-  void reportViolation(eventType, 'Thoát toàn màn hình', VIOLATION_COOLDOWN_MS, {
+  void reportViolation('EXIT_FULLSCREEN', 'Thoát toàn màn hình', VIOLATION_COOLDOWN_MS, {
     fullscreenExitCount: fullscreenExitCount.value,
     fullscreenReentryDelayMs: null
   })
@@ -1658,14 +1653,9 @@ const handleCopyPaste = (event) => {
   const target = event?.target
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
   const txt = event?.clipboardData?.getData?.('text') || ''
-  const eventType =
-    event.type === 'paste'
-      ? (txt.length > 300 ? 'LONG_PASTE' : 'PASTE_ATTEMPT')
-      : event.type === 'cut'
-        ? 'CUT_ATTEMPT'
-        : 'COPY_ATTEMPT'
   const summary = txt.length > 50 ? `${event.type} ${txt.length} ký tự` : `Phát hiện ${event.type}`
-  void reportViolation(eventType, summary, LONG_VIOLATION_COOLDOWN_MS, {
+  void reportViolation('COPY_PASTE', summary, LONG_VIOLATION_COOLDOWN_MS, {
+    clipboardAction: event.type,
     pasteLength: event.type === 'paste' ? txt.length : null,
     copiedTextLength: event.type === 'copy' || event.type === 'cut' ? txt.length : null,
     selectionSource: event.type

@@ -82,6 +82,7 @@
 <script setup>
 import { computed } from 'vue'
 import LucideIcon from '../../common/LucideIcon.vue'
+import { normalizeSignalType, uniqueSignalTypes } from '../../../utils/proctorSignalTypes'
 
 const props = defineProps({
   camera: {
@@ -160,21 +161,14 @@ const riskClass = computed(() => {
 
 const activeSignals = computed(() => {
   const signals = Array.isArray(props.camera.activeSignals) ? props.camera.activeSignals : []
-  const seen = new Set()
-  const unique = []
-  for (const signal of signals) {
-    const type = String(signal || '').trim().toUpperCase()
-    if (!type || seen.has(type)) continue
-    seen.add(type)
-    unique.push(type)
-  }
-  return unique
+  return uniqueSignalTypes(signals)
 })
 
 const activeSignalsPreview = computed(() => activeSignals.value.slice(0, 3))
 
 // Methods
 function getSignalSeverity(signal) {
+  const signalType = normalizeSignalType(signal)
   const severityMap = {
     NO_CAMERA: 'high',
     MULTIPLE_FACES: 'critical',
@@ -198,10 +192,11 @@ function getSignalSeverity(signal) {
     BLURRY_FRAME: 'low',
     EYES_CLOSED_PROLONGED: 'low'
   }
-  return severityMap[signal] || 'low'
+  return severityMap[signalType] || 'low'
 }
 
 function formatSignalType(signal) {
+  const signalType = normalizeSignalType(signal)
   const labelMap = {
     NO_CAMERA: 'Camera tắt',
     FACE_NOT_DETECTED: 'Không mặt',
@@ -230,7 +225,7 @@ function formatSignalType(signal) {
     FLAT_IMAGE: 'Ảnh phẳng',
     SCREEN_DISPLAY: 'Màn hình'
   }
-  return labelMap[signal] || signal
+  return labelMap[signalType] || signalType
 }
 
 function formatTimeAgo(timestamp) {

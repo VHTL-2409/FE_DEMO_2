@@ -5,20 +5,20 @@
       <div class="gf__header-left">
         <LucideIcon name="shield_check" class="gf__header-icon" />
         <div>
-          <h3 class="gf__title">Phan Tich Gian Lan &amp; Cham Diem</h3>
-          <p class="gf__subtitle">Phan tich nang cao: dao van, thoi gian, thong ke, hanh vi, IP</p>
+          <h3 class="gf__title">Phân tích gian lận trắc nghiệm &amp; chấm điểm</h3>
+          <p class="gf__subtitle">Tương đồng đáp án, thời gian làm bài, IP và kết quả chấm điểm</p>
         </div>
       </div>
       <div class="gf__header-right">
         <select v-model="selectedExamId" class="gf__select" @change="loadExam">
-          <option value="">Chon bai thi</option>
+          <option value="">Chọn bài thi</option>
           <option v-for="exam in exams" :key="exam.id" :value="exam.id">
             {{ exam.title }}
           </option>
         </select>
         <button type="button" class="gf__btn gf__btn--primary" @click="runFullAnalysis" :disabled="!selectedExamId || loading">
           <LucideIcon name="play" />
-          Phan Tich Toan Dien
+          Phân tích
         </button>
       </div>
     </div>
@@ -38,7 +38,7 @@
           <LucideIcon name="file_text" />
           <div class="gf__card-content">
             <span class="gf__card-number">{{ plagiarismReports.length }}</span>
-            <span class="gf__card-label">Cap nghi van dao van</span>
+            <span class="gf__card-label">Cặp trùng đáp án</span>
           </div>
           <div class="gf__card-badge gf__card-badge--warning" v-if="plagiarismReports.length > 0">
             {{ plagiarismReports.length }}
@@ -49,23 +49,7 @@
           <LucideIcon name="timer" />
           <div class="gf__card-content">
             <span class="gf__card-number">{{ timingResults.length }}</span>
-            <span class="gf__card-label">Bat thuong thoi gian</span>
-          </div>
-        </div>
-
-        <div class="gf__card gf__card--statistical" @click="activeTab = 'statistical'">
-          <LucideIcon name="bar_chart_2" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ statisticalResults.length }}</span>
-            <span class="gf__card-label">Bat thuong thong ke</span>
-          </div>
-        </div>
-
-        <div class="gf__card gf__card--behavior" @click="activeTab = 'behavior'">
-          <LucideIcon name="mouse_pointer_click" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ behaviorAnomalies.length }}</span>
-            <span class="gf__card-label">Bat thuong hanh vi</span>
+            <span class="gf__card-label">Bất thường thời gian</span>
           </div>
         </div>
 
@@ -73,7 +57,7 @@
           <LucideIcon name="globe" />
           <div class="gf__card-content">
             <span class="gf__card-number">{{ ipResults.length }}</span>
-            <span class="gf__card-label">Bat thuong IP</span>
+            <span class="gf__card-label">Bất thường IP</span>
           </div>
         </div>
 
@@ -81,7 +65,7 @@
           <LucideIcon name="award" />
           <div class="gf__card-content">
             <span class="gf__card-number">{{ gradingResult ? gradingResult.finalScore.toFixed(1) : '---' }}</span>
-            <span class="gf__card-label">Diem IRT</span>
+            <span class="gf__card-label">Điểm IRT</span>
           </div>
         </div>
       </div>
@@ -106,7 +90,7 @@
       <div v-if="activeTab === 'plagiarism'" class="gf__tab-content">
         <div v-if="plagiarismReports.length === 0" class="gf__empty">
           <LucideIcon name="check_circle" />
-          <p>Khong phat hien dao van</p>
+          <p>Không phát hiện cặp đáp án trùng bất thường</p>
         </div>
         <div v-else class="gf__plagiarism-list">
           <div v-for="report in plagiarismReports" :key="report.id" class="gf__plagiarism-item">
@@ -129,7 +113,7 @@
             </div>
             <div class="gf__plagiarism-body">
               <div class="gf__plagiarism-metric">
-                <span class="gf__metric-label">Do tuong dong</span>
+                <span class="gf__metric-label">Độ tương đồng</span>
                 <div class="gf__progress-bar">
                   <div
                     class="gf__progress-fill"
@@ -144,8 +128,8 @@
                 <span class="gf__metric-value">{{ (report.similarityScore * 100).toFixed(1) }}%</span>
               </div>
               <div class="gf__plagiarism-meta">
-                <span>{{ report.commonQuestions }} cau hoi chung</span>
-                <span v-if="report.timeCorrelation">Co tuong quan thoi gian</span>
+                <span>{{ report.commonQuestions }} câu hỏi chung</span>
+                <span v-if="report.timeCorrelation">Có tương quan thời gian</span>
               </div>
               <p class="gf__plagiarism-recommendation">{{ report.recommendation }}</p>
             </div>
@@ -157,7 +141,7 @@
       <div v-if="activeTab === 'timing'" class="gf__tab-content">
         <div v-if="timingResults.length === 0" class="gf__empty">
           <LucideIcon name="check_circle" />
-          <p>Khong phat hien bat thuong thoi gian</p>
+          <p>Không phát hiện bất thường thời gian</p>
         </div>
         <div v-else class="gf__timing-list">
           <div v-for="(result, idx) in timingResults" :key="result.signalType + '-' + idx" class="gf__timing-item">
@@ -180,52 +164,11 @@
         </div>
       </div>
 
-      <!-- Tab Content: Statistical -->
-      <div v-if="activeTab === 'statistical'" class="gf__tab-content">
-        <div v-if="statisticalResults.length === 0" class="gf__empty">
-          <LucideIcon name="check_circle" />
-          <p>Khong phat hien bat thuong thong ke</p>
-        </div>
-        <div v-else class="gf__statistical-list">
-          <div v-for="(result, idx) in statisticalResults" :key="result.signalType + '-' + idx" class="gf__statistical-item">
-            <div class="gf__statistical-header">
-              <span class="gf__statistical-type">{{ result.signalType }}</span>
-              <span
-                class="gf__severity-badge"
-                :class="`gf__severity-badge--${(result.severity || 'medium').toLowerCase()}`"
-              >
-                {{ result.severity }}
-              </span>
-            </div>
-            <div class="gf__statistical-body">
-              <div v-for="(v, k) in result.evidence" :key="k" class="gf__stat-item">
-                <span class="gf__stat-label">{{ k }}</span>
-                <span class="gf__stat-value">{{ typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : v }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab Content: Behavior -->
-      <div v-if="activeTab === 'behavior'" class="gf__tab-content">
-        <div v-if="!behaviorData || behaviorAnomalies.length === 0" class="gf__empty">
-          <LucideIcon name="check_circle" />
-          <p>Khong phat hien bat thuong hanh vi</p>
-        </div>
-        <div v-else class="gf__behavior-list">
-          <div v-for="anomaly in behaviorAnomalies" :key="anomaly" class="gf__behavior-item">
-            <LucideIcon name="alert_triangle" class="gf__behavior-icon" />
-            <span class="gf__behavior-type">{{ anomaly }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Tab Content: IP Reputation -->
       <div v-if="activeTab === 'ip'" class="gf__tab-content">
         <div v-if="ipResults.length === 0" class="gf__empty">
           <LucideIcon name="check_circle" />
-          <p>Khong phat hien bat thuong IP</p>
+          <p>Không phát hiện bất thường IP</p>
         </div>
         <div v-else class="gf__ip-list">
           <div v-for="result in ipResults" :key="result.ipAddress" class="gf__ip-item">
@@ -248,7 +191,7 @@
       <div v-if="activeTab === 'grading'" class="gf__tab-content">
         <div v-if="!gradingResult" class="gf__empty">
           <LucideIcon name="info" />
-          <p>Chua co ket qua cham diem</p>
+          <p>Chưa có kết quả chấm điểm</p>
         </div>
         <div v-else class="gf__grading-grid">
           <!-- Score Summary -->
@@ -259,11 +202,11 @@
             </div>
             <div class="gf__grade-breakdown">
               <div class="gf__grade-item">
-                <span>Diem thuan</span>
+                <span>Điểm thô</span>
                 <span>{{ gradingResult.rawScore.toFixed(1) }}</span>
               </div>
               <div class="gf__grade-item" v-if="gradingResult.irtResult">
-                <span>Diem IRT</span>
+                <span>Điểm IRT</span>
                 <span>{{ gradingResult.irtResult.irtScore.toFixed(1) }}</span>
               </div>
               <div class="gf__grade-item" v-if="gradingResult.peerResult">
@@ -271,7 +214,7 @@
                 <span>{{ gradingResult.peerResult.percentile.toFixed(0) }}%</span>
               </div>
               <div class="gf__grade-item" v-if="gradingResult.peerResult">
-                <span>Xep hang</span>
+                <span>Xếp hạng</span>
                 <span>{{ gradingResult.peerResult.rank }} / {{ gradingResult.peerResult.totalPeers }}</span>
               </div>
             </div>
@@ -279,7 +222,7 @@
 
           <!-- Question Analysis -->
           <div class="gf__grade-card" v-if="gradingResult.questionAnalyses?.length">
-            <h4 class="gf__grade-card-title">Phan Tich Cau Hoi</h4>
+            <h4 class="gf__grade-card-title">Phân tích câu hỏi</h4>
             <div class="gf__question-list">
               <div
                 v-for="qa in gradingResult.questionAnalyses"
@@ -303,8 +246,8 @@
     <!-- Empty state -->
     <div v-else class="gf__empty-state">
       <LucideIcon name="search" />
-      <h3>Chon bai thi de bat dau phan tich</h3>
-      <p>He thong se phan tich dao van, thoi gian, thong ke, hanh vi, va IP reputation</p>
+      <h3>Chọn bài thi để bắt đầu phân tích</h3>
+      <p>Hệ thống sẽ phân tích đáp án, thời gian, IP và kết quả chấm điểm</p>
     </div>
   </div>
 </template>
@@ -315,8 +258,6 @@ import { listExams } from '../../../services/examService'
 import {
   runPlagiarismAnalysis,
   runExamTimingAnalysis,
-  runStatisticalAnalysis,
-  runExamBehaviorAnalysis,
   runIpReputationAnalysis,
   runGradingByExam,
 } from '../../../services/fraudAnalysisService'
@@ -336,28 +277,21 @@ const exams = ref([])
 
 const plagiarismReports = ref([])
 const timingResults = ref([])
-const statisticalResults = ref([])
-const behaviorData = ref(null)
-const behaviorAnomalies = computed(() => behaviorData.value?.anomalies || [])
 const ipResults = ref([])
 const gradingResult = ref(null)
 
 const hasResults = computed(() =>
   plagiarismReports.value.length > 0 ||
   timingResults.value.length > 0 ||
-  statisticalResults.value.length > 0 ||
-  behaviorData.value !== null ||
   ipResults.value.length > 0 ||
   gradingResult.value !== null
 )
 
 const tabs = computed(() => [
-  { id: 'plagiarism', label: 'Dao Van', icon: 'file_text', count: plagiarismReports.value.length },
-  { id: 'timing', label: 'Thoi Gian', icon: 'timer', count: timingResults.value.length },
-  { id: 'statistical', label: 'Thong Ke', icon: 'bar_chart_2', count: statisticalResults.value.length },
-  { id: 'behavior', label: 'Hanh Vi', icon: 'mouse_pointer_click', count: behaviorAnomalies.value.length },
+  { id: 'plagiarism', label: 'Đáp án', icon: 'file_text', count: plagiarismReports.value.length },
+  { id: 'timing', label: 'Thời gian', icon: 'timer', count: timingResults.value.length },
   { id: 'ip', label: 'IP', icon: 'globe', count: ipResults.value.length },
-  { id: 'grading', label: 'Cham Diem', icon: 'award', count: gradingResult.value ? 1 : 0 }
+  { id: 'grading', label: 'Chấm điểm', icon: 'award', count: gradingResult.value ? 1 : 0 }
 ])
 
 const gradeCircleClass = computed(() => {
@@ -377,8 +311,6 @@ async function loadExam() {
   if (!selectedExamId.value) return
   plagiarismReports.value = []
   timingResults.value = []
-  statisticalResults.value = []
-  behaviorData.value = null
   ipResults.value = []
   gradingResult.value = null
 }
@@ -389,40 +321,30 @@ async function runFullAnalysis() {
   loading.value = true
   plagiarismReports.value = []
   timingResults.value = []
-  statisticalResults.value = []
-  behaviorData.value = null
   ipResults.value = []
   gradingResult.value = null
 
   try {
-    loadingMessage.value = 'Dang phan tich dao van...'
+    loadingMessage.value = 'Đang phân tích tương đồng đáp án...'
     const plagiarismResp = await runPlagiarismAnalysis(selectedExamId.value)
     plagiarismReports.value = plagiarismResp?.plagiarismReports || []
 
-    loadingMessage.value = 'Dang phan tich thoi gian...'
+    loadingMessage.value = 'Đang phân tích thời gian...'
     const timingResp = await runExamTimingAnalysis(selectedExamId.value)
     timingResults.value = timingResp?.timingResults || []
 
-    loadingMessage.value = 'Dang phan tich thong ke...'
-    const statResp = await runStatisticalAnalysis(selectedExamId.value)
-    statisticalResults.value = statResp?.statisticalResults || []
-
-    loadingMessage.value = 'Dang phan tich hanh vi...'
-    const behaviorResp = await runExamBehaviorAnalysis(selectedExamId.value)
-    behaviorData.value = behaviorResp || null
-
-    loadingMessage.value = 'Dang phan tich IP...'
+    loadingMessage.value = 'Đang phân tích IP...'
     const ipResp = await runIpReputationAnalysis(selectedExamId.value)
     ipResults.value = ipResp?.ipResults || []
 
-    loadingMessage.value = 'Dang tai ket qua cham diem...'
+    loadingMessage.value = 'Đang tải kết quả chấm điểm...'
     const gradeResp = await runGradingByExam(selectedExamId.value)
     gradingResult.value = gradeResp || null
 
-    loadingMessage.value = 'Hoan thanh!'
+    loadingMessage.value = 'Hoàn thành!'
   } catch (error) {
     console.error('Analysis failed:', error)
-    loadingMessage.value = 'Loi phan tich: ' + (error?.message || 'Unknown error')
+    loadingMessage.value = 'Lỗi phân tích: ' + (error?.message || 'Unknown error')
   } finally {
     loading.value = false
   }
@@ -432,11 +354,6 @@ function formatTime(timestampMs) {
   if (!timestampMs) return ''
   const d = new Date(timestampMs)
   return d.toLocaleString('vi-VN')
-}
-
-function formatPercent(val) {
-  if (val == null) return '0%'
-  return (val * 100).toFixed(0) + '%'
 }
 </script>
 
@@ -750,74 +667,6 @@ function formatPercent(val) {
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-family: monospace;
-}
-
-/* Statistical */
-.gf__statistical-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.gf__statistical-item {
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-.gf__statistical-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: var(--color-bg-subtle, #f9fafb);
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
-}
-
-.gf__statistical-type { font-weight: 600; font-size: 0.875rem; }
-
-.gf__statistical-body {
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.gf__stat-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.gf__stat-label { color: var(--color-text-muted, #6b7280); }
-.gf__stat-value { font-weight: 500; }
-
-/* Behavior */
-.gf__behavior-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.gf__behavior-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.5rem;
-  background: var(--color-surface, #fff);
-}
-
-.gf__behavior-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--color-warning, #d97706);
-}
-
-.gf__behavior-type {
-  font-weight: 500;
-  font-size: 0.875rem;
 }
 
 /* IP */

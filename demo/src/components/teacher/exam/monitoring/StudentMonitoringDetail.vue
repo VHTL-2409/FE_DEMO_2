@@ -615,6 +615,7 @@ import LucideIcon from '../../../common/LucideIcon.vue'
 import { useToast } from '../../../../composables/useToast'
 import { useExamMonitoring } from '../../../../composables/useExamMonitoring'
 import { useRealtimeChannel } from '../../../../composables/useRealtimeChannel'
+import { normalizeSignalType as normalizeProctorSignalType } from '../../../../utils/proctorSignalTypes'
 import { projectCameraOverlay } from '../../../../utils/cameraOverlay.js'
 import {
   fetchAttemptDetail,
@@ -670,6 +671,7 @@ const SIGNAL_LABELS = {
   PASTE_ATTEMPT: 'Dán nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools',
   // Identity & Network
+  IP_CHANGED: 'IP thay đổi',
   IP_ANOMALY: 'IP bất thường',
   DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
   DUPLICATE_IP: 'IP trùng lặp',
@@ -717,6 +719,7 @@ const EVENT_COLORS = {
   PASTE_ATTEMPT: 'var(--ds-danger)',
   DEVTOOLS_OPEN: 'var(--ds-danger)',
   // Identity
+  IP_CHANGED: 'var(--ds-danger)',
   IP_ANOMALY: 'var(--ds-danger)',
   DEVICE_FINGERPRINT_CHANGED: 'var(--ds-danger)',
   DUPLICATE_IP: 'var(--ds-danger)',
@@ -889,9 +892,15 @@ const SCREEN_LEAVE_TIMELINE_TYPES = new Set([
   'WINDOW_BLUR',
   'SCREEN_LEAVE',
   'EXIT_FULLSCREEN',
-  'FULLSCREEN_VIOLATION',
-  'FULLSCREEN_EVASION',
   'LONG_SCREEN_LEAVE'
+])
+const CLIPBOARD_TIMELINE_TYPES = new Set(['COPY_PASTE'])
+const IDENTITY_TIMELINE_TYPES = new Set([
+  'DUPLICATE_IP',
+  'IP_CHANGED',
+  'IP_FINGERPRINT_GRAPH',
+  'DEVICE_FINGERPRINT_CHANGED',
+  'MULTIPLE_DEVICE_SESSION'
 ])
 const CAMERA_SIGNAL_METADATA_KEYS = new Set([
   'faceCount', 'face_count', 'faceDetected', 'face_detected',
@@ -1029,16 +1038,9 @@ const sortedTimeline = computed(() => {
 
 const filteredTimeline = computed(() => {
   if (!timelineFilter.value) return sortedTimeline.value
-  if (timelineFilter.value === 'AI_CAMERA') {
-    return sortedTimeline.value.filter(e => {
-      const type = String(e.eventType || '').toUpperCase()
-      return AI_CAMERA_SIGNALS.includes(type)
-    })
-  }
-  return sortedTimeline.value.filter(e => {
-    const type = String(e.eventType || '').toUpperCase()
-    return type === timelineFilter.value.toUpperCase()
-  })
+  return sortedTimeline.value.filter(e =>
+    matchesTimelineFilter(e.eventType, e.category, timelineFilter.value)
+  )
 })
 
 const timelinePageCount = computed(() =>
@@ -1058,17 +1060,19 @@ const notes = computed(() =>
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function getSignalLabel(type) {
-  if (!type) return 'Tín hiệu'
-  return SIGNAL_LABELS[type] || type.replace(/_/g, ' ')
+  const signalType = normalizeSignalType(type)
+  if (!signalType) return 'Tín hiệu'
+  return SIGNAL_LABELS[signalType] || signalType.replace(/_/g, ' ')
 }
 
 function getEventLabel(type) {
-  if (!type) return 'Sự kiện'
-  return SIGNAL_LABELS[type] || type.replace(/_/g, ' ')
+  const signalType = normalizeSignalType(type)
+  if (!signalType) return 'Sự kiện'
+  return SIGNAL_LABELS[signalType] || signalType.replace(/_/g, ' ')
 }
 
 function getEventColor(type) {
-  return EVENT_COLORS[type] || 'var(--ds-text-muted)'
+  return EVENT_COLORS[normalizeSignalType(type)] || 'var(--ds-text-muted)'
 }
 
 function formatTime(ts) {
@@ -1088,8 +1092,24 @@ function formatMetaKey(key) {
 }
 
 function normalizeSignalType(value) {
-  const text = String(value || '').trim()
-  return text ? text.toUpperCase() : ''
+  return normalizeProctorSignalType(value)
+}
+
+function matchesTimelineFilter(eventType = '', category = '', filter = '') {
+  const type = normalizeSignalType(eventType)
+  const normalizedCategory = normalizeSignalType(category)
+  const normalizedFilter = normalizeSignalType(filter)
+  if (!normalizedFilter) return true
+  if (normalizedFilter === 'AI_CAMERA') {
+    return AI_CAMERA_SIGNALS.includes(type) || normalizedCategory === 'CAMERA_PROCTORING'
+  }
+  if (normalizedFilter === 'SCREEN_LEAVE') return SCREEN_LEAVE_TIMELINE_TYPES.has(type)
+  if (normalizedFilter === 'CLIPBOARD') return CLIPBOARD_TIMELINE_TYPES.has(type)
+  if (normalizedFilter === 'IDENTITY') return IDENTITY_TIMELINE_TYPES.has(type)
+  if (normalizedFilter === 'WARNING') {
+    return ['WARNING', 'WARNING_SENT', 'FRAUD_WARNING'].includes(type)
+  }
+  return type === normalizedFilter
 }
 
 function getSignalMetadata(signal) {

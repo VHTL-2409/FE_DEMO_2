@@ -490,6 +490,7 @@ import {
   invalidateAttempt
 } from '../../services/examMonitoringService'
 import { isAttemptPaused, isAttemptTerminal } from '../../utils/proctorStatusMeta'
+import { normalizeSignalType as normalizeProctorSignalType } from '../../utils/proctorSignalTypes'
 
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
 const RISK_LEVEL_LABELS = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao', SUSPICIOUS: 'Đáng ngờ', CLEAN: 'Bình thường' }
@@ -504,6 +505,7 @@ const V_COLORS = {
   // CRITICAL types — red
   COPY_PASTE: 'var(--mon-risk-critical)', DEVTOOLS_OPEN: 'var(--mon-risk-critical)',
   MULTI_MONITOR: 'var(--mon-risk-critical)', DUPLICATE_IP: 'var(--mon-risk-critical)',
+  IP_CHANGED: 'var(--mon-risk-critical)',
   PRINT_SCREEN: 'var(--mon-risk-critical)', DEVICE_FINGERPRINT_CHANGED: 'var(--mon-risk-critical)',
   SYNC_BEHAVIOR: 'var(--mon-risk-critical)', IP_FINGERPRINT_GRAPH: 'var(--mon-risk-critical)',
   ANSWER_SIMILARITY: 'var(--mon-risk-critical)', AI_MULTIPLE_FACES: 'var(--mon-risk-critical)',
@@ -535,7 +537,7 @@ const V_COLORS = {
 const V_ICONS = {
   TAB_SWITCH: 'layers', WINDOW_BLUR: 'layers', IDLE_TIME: 'clock', RIGHT_CLICK: 'mouse-pointer-2',
   EXIT_FULLSCREEN: 'minimize', COPY_PASTE: 'copy', DEVTOOLS_OPEN: 'code', PRINT_SCREEN: 'code',
-  MULTI_MONITOR: 'monitor', DUPLICATE_IP: 'globe', RAPID_QUESTION_SWITCH: 'monitor', HEARTBEAT_STALE: 'wifi-off',
+  MULTI_MONITOR: 'monitor', DUPLICATE_IP: 'globe', IP_CHANGED: 'globe', RAPID_QUESTION_SWITCH: 'monitor', HEARTBEAT_STALE: 'wifi-off',
   DEVICE_FINGERPRINT_CHANGED: 'code', SYNC_BEHAVIOR: 'monitor', IP_FINGERPRINT_GRAPH: 'globe',
   ANSWER_SIMILARITY: 'copy', AI_MULTIPLE_FACES: 'monitor', AI_PHONE_DETECTED: 'monitor', AI_LOOKING_AWAY: 'wifi-off',
   NO_CAMERA: 'videocam_off',
@@ -554,7 +556,7 @@ const V_LABELS = {
   TAB_SWITCH: 'Chuyển tab', WINDOW_BLUR: 'Mất tiêu điểm', IDLE_TIME: 'Không hoạt động',
   RIGHT_CLICK: 'Click chuột phải', EXIT_FULLSCREEN: 'Thoát toàn màn hình', COPY_PASTE: 'Sao chép nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools', PRINT_SCREEN: 'Chụp màn hình', MULTI_MONITOR: 'Nhiều màn hình',
-  DUPLICATE_IP: 'IP trùng lặp', RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh', HEARTBEAT_STALE: 'Mất kết nối',
+  DUPLICATE_IP: 'IP trùng lặp', IP_CHANGED: 'IP thay đổi', RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh', HEARTBEAT_STALE: 'Mất kết nối',
   DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị', SYNC_BEHAVIOR: 'Hành vi đồng bộ',
   IP_FINGERPRINT_GRAPH: 'Liên kết IP', ANSWER_SIMILARITY: 'Tương đồng đáp án',
   AI_MULTIPLE_FACES: 'Nhiều khuôn mặt', AI_PHONE_DETECTED: 'Phát hiện điện thoại', AI_LOOKING_AWAY: 'Nhìn lệch hướng',
@@ -574,8 +576,8 @@ const V_LABELS = {
 }
 const PATTERN_RULES = [
   { id: 'tab', key: 'TAB_SWITCH', threshold: 3, build: (n) => ({ title: 'Chuyển tab nhiều lần', description: `${n} lần chuyển tab (ngưỡng: 3)`, level: n > 5 ? 'high' : 'medium' }) },
-  { id: 'copy', key: 'COPY', threshold: 1, build: (n) => ({ title: 'Cố gắng copy nội dung', description: `${n} lần sao chép dữ liệu`, level: 'medium' }) },
-  { id: 'dev', key: 'DEVTOOLS', threshold: 1, build: (n) => ({ title: 'Mở công cụ phát triển', description: `${n} lần mở DevTools`, level: 'high' }) },
+  { id: 'copy', key: 'COPY_PASTE', threshold: 1, build: (n) => ({ title: 'Cố gắng copy nội dung', description: `${n} lần sao chép dữ liệu`, level: 'medium' }) },
+  { id: 'dev', key: 'DEVTOOLS_OPEN', threshold: 1, build: (n) => ({ title: 'Mở công cụ phát triển', description: `${n} lần mở DevTools`, level: 'high' }) },
   { id: 'dup', key: 'DUPLICATE_IP', threshold: 1, build: (n) => ({ title: 'Phát hiện IP trùng lặp', description: `${n} thiết bị khác cùng IP`, level: 'high' }) }
 ]
 const REALTIME_META = {
@@ -620,8 +622,6 @@ const TIMELINE_COLLAPSE_TYPES = new Set([
   'WINDOW_BLUR',
   'SCREEN_LEAVE',
   'EXIT_FULLSCREEN',
-  'FULLSCREEN_VIOLATION',
-  'FULLSCREEN_EVASION',
   'LONG_SCREEN_LEAVE',
   ...AI_CAMERA_TIMELINE_TYPES
 ])
@@ -781,8 +781,7 @@ function extractDetails(raw) {
 }
 
 function normalizeTimelineType(value) {
-  const text = String(value || '').trim()
-  return text ? text.toUpperCase() : ''
+  return normalizeProctorSignalType(value)
 }
 
 function normalizeTimelineText(value) {
@@ -891,17 +890,18 @@ const timelineEvents = computed(() => {
 
 const filteredTimeline = computed(() => {
   if (!timelineFilter.value) return timelineEvents.value
-  return timelineEvents.value.filter(e => (e.eventType || '').includes(timelineFilter.value))
+  const filter = normalizeTimelineType(timelineFilter.value)
+  return timelineEvents.value.filter(e => normalizeTimelineType(e.eventType).includes(filter))
 })
 
 const eventStats = computed(() => {
-  const c = { TAB_SWITCH: 0, COPY: 0, DEVTOOLS: 0, DUPLICATE_IP: 0 }
+  const c = { TAB_SWITCH: 0, COPY_PASTE: 0, DEVTOOLS_OPEN: 0, DUPLICATE_IP: 0 }
   for (const e of timelineEvents.value) {
-    const t = e.eventType || ''
-    if (/TAB_SWITCH/.test(t)) c.TAB_SWITCH++
-    if (/COPY/.test(t)) c.COPY++
-    if (/DEVTOOLS/.test(t)) c.DEVTOOLS++
-    if (/DUPLICATE_IP/.test(t)) c.DUPLICATE_IP++
+    const t = normalizeTimelineType(e.eventType)
+    if (t === 'TAB_SWITCH') c.TAB_SWITCH++
+    if (t === 'COPY_PASTE') c.COPY_PASTE++
+    if (t === 'DEVTOOLS_OPEN') c.DEVTOOLS_OPEN++
+    if (t === 'DUPLICATE_IP') c.DUPLICATE_IP++
   }
   return c
 })
@@ -948,9 +948,12 @@ const actionHistory = computed(() => {
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const getVColor = (type) => V_COLORS[type] || 'var(--mon-text-muted)'
-const getVIcon = (type) => V_ICONS[type] || 'alert-circle'
-const getVLabel = (type) => V_LABELS[type] || type || '—'
+const getVColor = (type) => V_COLORS[normalizeTimelineType(type)] || 'var(--mon-text-muted)'
+const getVIcon = (type) => V_ICONS[normalizeTimelineType(type)] || 'alert-circle'
+const getVLabel = (type) => {
+  const signalType = normalizeTimelineType(type)
+  return V_LABELS[signalType] || signalType || '—'
+}
 const getSeverityLabel = (s) => SEVERITY_LABELS[s] || s || '—'
 const getSeverityStatus = (s) => s === 'HIGH' || s === 'CRITICAL' ? 'high' : s === 'MEDIUM' ? 'medium' : 'low'
 const pColor = (l) => l === 'high' ? 'var(--mon-danger)' : l === 'medium' ? 'var(--mon-warning)' : 'var(--mon-info)'

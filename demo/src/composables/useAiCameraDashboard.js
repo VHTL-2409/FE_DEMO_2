@@ -1,5 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { fetchCameraStatus, fetchCameraAlerts, dismissCameraAlert } from '../services/proctorService'
+import { normalizeSignalType, uniqueSignalTypes } from '../utils/proctorSignalTypes'
 
 const RECONNECT_DELAY_MS = 5000
 const POLL_INTERVAL_WHEN_DISCONNECTED_MS = 8000
@@ -17,23 +18,6 @@ function parseMaybeJson(value) {
 
 function firstDefined(...values) {
   return values.find(value => value !== undefined && value !== null)
-}
-
-function normalizeSignalType(value) {
-  const text = String(value || '').trim()
-  return text ? text.toUpperCase() : ''
-}
-
-function uniqueSignalTypes(signals = []) {
-  const seen = new Set()
-  const unique = []
-  for (const signal of signals) {
-    const type = normalizeSignalType(signal)
-    if (!type || seen.has(type)) continue
-    seen.add(type)
-    unique.push(type)
-  }
-  return unique
 }
 
 function uniqueSignalEntries(entries = []) {

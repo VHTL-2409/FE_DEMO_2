@@ -1,6 +1,6 @@
 /**
  * Fraud Analysis Service
- * API calls for plagiarism, timing, statistical, behavior analysis, and IP reputation analysis.
+ * API calls for MCQ answer similarity, timing, IP reputation, and grading analysis.
  */
 import { apiRequest, unwrapApiData } from './apiClient'
 
@@ -32,38 +32,6 @@ export async function runTimingAnalysis(attemptId) {
 
 export async function runExamTimingAnalysis(examId) {
   const payload = await apiRequest(`${BASE}/timing/exam/${examId}`, {
-    method: 'POST',
-    body: JSON.stringify({})
-  })
-  return unwrapApiData(payload)
-}
-
-export async function runStatisticalAnalysis(examId) {
-  const payload = await apiRequest(`${BASE}/statistical/exam/${examId}`, {
-    method: 'POST',
-    body: JSON.stringify({})
-  })
-  return unwrapApiData(payload)
-}
-
-export async function runStudentStatisticalAnalysis(attemptId) {
-  const payload = await apiRequest(`${BASE}/statistical/attempts/${attemptId}`, {
-    method: 'POST',
-    body: JSON.stringify({})
-  })
-  return unwrapApiData(payload)
-}
-
-export async function runBehaviorAnalysis(attemptId) {
-  const payload = await apiRequest(`${BASE}/behavior/attempts/${attemptId}`, {
-    method: 'POST',
-    body: JSON.stringify({})
-  })
-  return unwrapApiData(payload)
-}
-
-export async function runExamBehaviorAnalysis(examId) {
-  const payload = await apiRequest(`${BASE}/behavior/exam/${examId}`, {
     method: 'POST',
     body: JSON.stringify({})
   })

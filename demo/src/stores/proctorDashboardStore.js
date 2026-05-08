@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { normalizeSignalType } from '../utils/proctorSignalTypes'
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
-const normalizeSignalType = (value) => String(value || '').trim().toUpperCase()
 const resolveAttemptId = (card) => {
   const raw = card?.attemptId ?? card?.id
   if (raw == null || raw === '') return raw
@@ -237,14 +237,14 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
       activeFlagTitle: event.activeFlag?.title ?? event.latestFlagTitle,
       lastSignalAt: occurredAt,
       lastRiskUpdatedAt: occurredAt,
-      latestSignalType: signal.signalType || event.signalType,
+      latestSignalType: normalizeSignalType(signal.signalType || event.signalType || event.warningType),
       latestSignalSeverity: signal.severity || event.severity,
       latestSignalCategory: signal.category,
       latestSignalDisplayMessage: signal.displayMessage,
       latestSignalRiskImpact: signal.riskImpact,
       scores: event.scores,
-      latestWarningCategory: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningCategory : undefined,
-      latestWarningType: event.type === 'FRAUD_WARNING_RECORDED' ? event.warningType : undefined,
+      latestWarningCategory: event.type === 'FRAUD_WARNING_RECORDED' ? normalizeSignalType(event.warningCategory) : undefined,
+      latestWarningType: event.type === 'FRAUD_WARNING_RECORDED' ? normalizeSignalType(event.warningType) : undefined,
       latestWarningRiskImpact: event.type === 'FRAUD_WARNING_RECORDED' ? event.riskImpact : undefined,
       latestWarningReviewStatus: event.type === 'FRAUD_WARNING_RECORDED' ? event.reviewStatus : undefined,
       lastWarning: event.type === 'WARNING_SENT' || event.type === 'FRAUD_WARNING_RECORDED' ? event.message : undefined,

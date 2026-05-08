@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -116,14 +115,12 @@ public class FraudSignalService {
     public SignalDescriptor descriptorFor(String eventType) {
         String normalized = normalizeSignal(eventType);
         return switch (normalized) {
-            case "TAB_SWITCH" -> new SignalDescriptor("TAB_SWITCH", "SCREEN_LEAVE", "Chuyển tab", 10, SignalSeverity.LOW, 0.7);
-            case "BLUR" -> new SignalDescriptor("WINDOW_BLUR", "SCREEN_LEAVE", "Cửa sổ mất focus", 8, SignalSeverity.LOW, 0.65);
-            case "EXIT_FULLSCREEN" -> new SignalDescriptor("EXIT_FULLSCREEN", "SCREEN_LEAVE", "Thoát toàn màn hình", 15, SignalSeverity.MEDIUM, 0.9);
-            case "FULLSCREEN_EVASION" -> new SignalDescriptor("FULLSCREEN_VIOLATION", "SCREEN_LEAVE", "Cố tình thoát fullscreen", 15, SignalSeverity.MEDIUM, 0.9);
-            case "COPY_PASTE" -> new SignalDescriptor("CLIPBOARD_ABUSE", "CLIPBOARD", "Copy/Paste phát hiện", 10, SignalSeverity.MEDIUM, 0.9);
-            case "CLIPBOARD_BURST" -> new SignalDescriptor("CLIPBOARD_BURST", "CLIPBOARD", "Clipboard bất thường", 10, SignalSeverity.HIGH, 0.9);
+            case "TAB_SWITCH" -> new SignalDescriptor("TAB_SWITCH", "SCREEN_LEAVE", "Chuyển tab", riskImpact("TAB_SWITCH", 10), SignalSeverity.MEDIUM, 0.72);
+            case "BLUR", "WINDOW_BLUR" -> new SignalDescriptor("WINDOW_BLUR", "SCREEN_LEAVE", "Cửa sổ mất focus", riskImpact("WINDOW_BLUR", 8), SignalSeverity.MEDIUM, 0.70);
+            case "EXIT_FULLSCREEN" -> new SignalDescriptor("EXIT_FULLSCREEN", "SCREEN_LEAVE", "Thoát toàn màn hình", riskImpact("EXIT_FULLSCREEN", 15), SignalSeverity.HIGH, 0.9);
+            case "COPY_PASTE" -> new SignalDescriptor("COPY_PASTE", "CLIPBOARD", "Sao chép hoặc dán nội dung", riskImpact("COPY_PASTE", 10), SignalSeverity.HIGH, 0.9);
             case "IDLE_TIME" -> new SignalDescriptor("IDLE_TIME", "HEARTBEAT", "Không hoạt động", 5, SignalSeverity.LOW, 0.55);
-            case "DEVTOOLS_OPEN" -> new SignalDescriptor("DEVTOOLS_OPEN", "TECHNICAL", "Mở DevTools", 22, SignalSeverity.HIGH, 0.95);
+            case "DEVTOOLS_OPEN" -> new SignalDescriptor("DEVTOOLS_OPEN", "TECHNICAL", "Mở DevTools", riskImpact("DEVTOOLS_OPEN", 22), SignalSeverity.HIGH, 0.95);
             case "RIGHT_CLICK" -> new SignalDescriptor("RIGHT_CLICK", "TECHNICAL", "Click chuột phải", 5, SignalSeverity.LOW, 0.7);
             case "PRINT_SCREEN" -> new SignalDescriptor("PRINT_SCREEN", "TECHNICAL", "Chụp màn hình", 15, SignalSeverity.HIGH, 0.85);
             case "RAPID_QUESTION_SWITCH" -> new SignalDescriptor("RAPID_QUESTION_SWITCH", "TECHNICAL", "Chuyển câu quá nhanh", 10, SignalSeverity.MEDIUM, 0.75);
@@ -142,10 +139,7 @@ public class FraudSignalService {
             case "MULTIPLE_DEVICE_SESSION" -> new SignalDescriptor("MULTIPLE_DEVICE_SESSION", "IDENTITY", "Tài khoản mở từ nhiều thiết bị", 25, SignalSeverity.HIGH, 0.95);
             case "IP_CHANGED" -> new SignalDescriptor("IP_CHANGED", "IDENTITY", "Địa chỉ IP thay đổi", 15, SignalSeverity.MEDIUM, 0.88);
             case "ANSWER_SIMILARITY" -> new SignalDescriptor("ANSWER_SIMILARITY", "IDENTITY", "Đáp án trùng lặp cao", 15, SignalSeverity.HIGH, 0.9);
-            case "AI_MULTIPLE_FACES" -> new SignalDescriptor("AI_MULTIPLE_FACES", "IDENTITY", "Nhiều khuôn mặt", 15, SignalSeverity.HIGH, 0.92);
-            case "AI_FACE_MISSING" -> new SignalDescriptor("AI_FACE_MISSING", "IDENTITY", "Không phát hiện khuôn mặt", 10, SignalSeverity.MEDIUM, 0.82);
             case "AI_PHONE_DETECTED" -> new SignalDescriptor("AI_PHONE_DETECTED", "IDENTITY", "Phát hiện điện thoại", 15, SignalSeverity.HIGH, 0.94);
-            case "AI_LOOKING_AWAY" -> new SignalDescriptor("AI_LOOKING_AWAY", "IDENTITY", "Nhìn sang chỗ khác", 5, SignalSeverity.MEDIUM, 0.78);
             case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện nói chuyện", 10, SignalSeverity.MEDIUM, 0.75);
             // Các tín hiệu phát hiện mới cho AI camera
             case "NO_CAMERA" -> new SignalDescriptor("NO_CAMERA", "AI_CAMERA", "Camera đã tắt", riskImpact("NO_CAMERA", 20), SignalSeverity.HIGH, 0.98);
@@ -226,10 +220,7 @@ public class FraudSignalService {
     }
 
     private String normalizeSignal(String signalType) {
-        if (signalType == null || signalType.isBlank()) {
-            return "UNKNOWN_SIGNAL";
-        }
-        return signalType.trim().toUpperCase(Locale.ROOT);
+        return FraudSignalTypeNormalizer.canonical(signalType);
     }
 
     private String writeJson(Object value) {

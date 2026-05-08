@@ -285,11 +285,9 @@ const categoryTabs = computed(() => {
     ['ALL', 'Tất cả'],
     ['ANSWER_PATTERN', 'Mẫu đáp án'],
     ['TIMING_PATTERN', 'Thời gian'],
-    ['SYNCHRONIZATION', 'Đồng bộ'],
     ['SESSION_INTEGRITY', 'Phiên thi'],
     ['IDENTITY_NETWORK', 'Mạng/thiết bị'],
-    ['CAMERA_PROCTORING', 'Camera'],
-    ['POST_EXAM_STATISTICAL', 'Thống kê sau thi']
+    ['CAMERA_PROCTORING', 'Camera']
   ]
   return categoryOrder.map(([value, label]) => ({
     value,
@@ -304,11 +302,9 @@ const categoryLabel = (category) => {
   const map = {
     ANSWER_PATTERN: 'Mẫu đáp án',
     TIMING_PATTERN: 'Thời gian',
-    SYNCHRONIZATION: 'Đồng bộ',
     SESSION_INTEGRITY: 'Phiên thi',
     IDENTITY_NETWORK: 'Mạng/thiết bị',
-    CAMERA_PROCTORING: 'Camera',
-    POST_EXAM_STATISTICAL: 'Thống kê sau thi'
+    CAMERA_PROCTORING: 'Camera'
   }
   return map[category] || category
 }

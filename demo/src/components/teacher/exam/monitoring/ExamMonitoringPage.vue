@@ -6,7 +6,7 @@
       class="emp-loading"
     >
       <div class="emp-spinner" />
-      <p>Đang tải phòng thi...</p>
+      <p>Đang tải phòng thi…</p>
     </section>
 
     <!-- Main content -->
@@ -37,19 +37,6 @@
           <p v-if="examCode" class="emp-subtitle">{{ examCode }}</p>
         </div>
 
-        <div class="emp-header__stats">
-          <div class="emp-stat-chip emp-stat-chip--online">
-            <LucideIcon name="user-check" :size="14" />
-            <span class="emp-stat-val">{{ onlineCount }}</span>
-            <span class="emp-stat-label">đang thi</span>
-          </div>
-          <div class="emp-stat-chip emp-stat-chip--flag">
-            <LucideIcon name="flag" :size="14" />
-            <span class="emp-stat-val">{{ openFlagCount }}</span>
-            <span class="emp-stat-label">flag mở</span>
-          </div>
-        </div>
-
         <div class="emp-header__actions">
           <span
             class="emp-conn"
@@ -78,12 +65,15 @@
 
       <!-- ── Toolbar ─────────────────────────────────────────── -->
       <div class="emp-toolbar">
-        <div class="emp-search">
+        <div class="emp-search" role="search">
           <LucideIcon name="search" :size="16" />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Tìm thí sinh..."
+            name="studentSearch"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Tìm thí sinh…"
             aria-label="Tìm thí sinh"
           >
           <button
@@ -130,7 +120,7 @@
 
           <label class="emp-sort">
             <span>Sắp xếp</span>
-            <select v-model="sortBy" aria-label="Sắp xếp">
+            <select v-model="sortBy" name="monitoringSort" aria-label="Sắp xếp">
               <option value="riskScore">Risk cao nhất</option>
               <option value="latestSignalAt">Tín hiệu mới nhất</option>
               <option value="name">Tên (A-Z)</option>
@@ -140,6 +130,24 @@
       </div>
 
       <!-- ── Body: Table + Panel ─────────────────────────────── -->
+      <div class="emp-metrics" aria-label="Tổng quan giám sát">
+        <article
+          v-for="metric in monitoringMetrics"
+          :key="metric.label"
+          class="emp-metric"
+          :class="`emp-metric--${metric.tone}`"
+        >
+          <div class="emp-metric__icon">
+            <LucideIcon :name="metric.icon" :size="16" />
+          </div>
+          <div class="emp-metric__body">
+            <span class="emp-metric__label">{{ metric.label }}</span>
+            <strong class="emp-metric__value">{{ metric.value }}</strong>
+          </div>
+          <span class="emp-metric__note">{{ metric.note }}</span>
+        </article>
+      </div>
+
       <div class="emp-body">
         <!-- Left: Student table -->
         <section class="emp-table-wrap" aria-label="Danh sách thí sinh">
@@ -167,10 +175,12 @@
               'emp-row--selected': selectedId === String(getCardId(card)),
               [`emp-row--${card._riskBand?.toLowerCase()}`]: true
             }"
-            role="row"
+            role="button"
             tabindex="0"
+            :aria-label="`Chọn ${card.student || 'học sinh'} để xem chi tiết`"
             @click="selectCard(card)"
             @keydown.enter="selectCard(card)"
+            @keydown.space.prevent="selectCard(card)"
           >
             <!-- Student -->
             <div class="emp-cell emp-cell--student">
@@ -367,7 +377,7 @@
           :disabled="actionLoading === 'warning'"
           @click="confirmSendWarning"
         >
-          {{ actionLoading === 'warning' ? 'Đang gửi...' : 'Gửi cảnh báo' }}
+          {{ actionLoading === 'warning' ? 'Đang gửi…' : 'Gửi cảnh báo' }}
         </button>
       </template>
     </Dialog>
@@ -390,6 +400,7 @@ import {
   resumeAttempt,
   invalidateAttempt
 } from '../../../../services/examMonitoringService'
+import { normalizeSignalType } from '../../../../utils/proctorSignalTypes'
 
 // ── Constants ───────────────────────────────────────────────────────────
 const RISK_BAND_THRESHOLDS = { CRITICAL: 81, HIGH_RISK: 61, SUSPICIOUS: 31 }
@@ -422,12 +433,10 @@ const SIGNAL_LABELS = {
   TAB_SWITCH: 'Chuyển tab',
   WINDOW_BLUR: 'Mất tiêu điểm',
   SCREEN_LEAVE: 'Rời màn hình',
-  FULLSCREEN_VIOLATION: 'Thoát toàn màn hình',
-  CLIPBOARD_ABUSE: 'Clipboard bất thường',
-  COPY_ATTEMPT: 'Sao chép',
-  PASTE_ATTEMPT: 'Dán nội dung',
+  EXIT_FULLSCREEN: 'Thoát toàn màn hình',
+  COPY_PASTE: 'Sao chép hoặc dán nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools',
-  IP_ANOMALY: 'IP bất thường',
+  IP_CHANGED: 'IP thay đổi',
   WARNING_SENT: 'Cảnh báo',
   ATTEMPT_PAUSED: 'Tạm dừng',
   ATTEMPT_RESUMED: 'Tiếp tục'
@@ -441,7 +450,7 @@ const store = useProctorDashboardStore()
 const { isConnected, connect, disconnect } = useExamMonitoring()
 
 const examId = computed(() => route.params.examId)
-const examTitle = ref('Đang tải...')
+const examTitle = ref('Đang tải…')
 const examCode = ref('')
 const examStatus = ref('')
 const loading = ref(true)
@@ -509,6 +518,10 @@ const openFlagCount = computed(() =>
   ).length
 )
 
+const highRiskCount = computed(() =>
+  enrichedCards.value.filter(c => ['HIGH_RISK', 'CRITICAL'].includes(c._riskBand)).length
+)
+
 const selectedCard = computed(() =>
   enrichedCards.value.find(c => String(getCardId(c)) === selectedId.value) || null
 )
@@ -567,6 +580,37 @@ const statusFilterTabs = computed(() => [
 ])
 
 // ── Helpers ──────────────────────────────────────────────────────────
+const monitoringMetrics = computed(() => [
+  {
+    label: 'Tổng thí sinh',
+    value: enrichedCards.value.length,
+    note: `${visibleCards.value.length} đang hiển thị`,
+    icon: 'users',
+    tone: 'neutral'
+  },
+  {
+    label: 'Đang thi',
+    value: onlineCount.value,
+    note: 'Theo dõi realtime',
+    icon: 'user-check',
+    tone: 'success'
+  },
+  {
+    label: 'Rủi ro cao',
+    value: highRiskCount.value,
+    note: 'Cần ưu tiên',
+    icon: 'shield-alert',
+    tone: 'danger'
+  },
+  {
+    label: 'Flag mở',
+    value: openFlagCount.value,
+    note: 'Chưa xử lý',
+    icon: 'flag',
+    tone: 'warning'
+  }
+])
+
 function getCardId(card) {
   return card?.id ?? card?.attemptId
 }
@@ -578,8 +622,9 @@ function getInitials(card) {
 }
 
 function getSignalLabel(type) {
-  if (!type) return '—'
-  return SIGNAL_LABELS[type] || type.replace(/_/g, ' ')
+  const signalType = normalizeSignalType(type)
+  if (!signalType) return '—'
+  return SIGNAL_LABELS[signalType] || signalType.replace(/_/g, ' ')
 }
 
 function getFlagStatusLabel(status) {
@@ -752,6 +797,7 @@ onActivated(() => {
   background: var(--ds-bg);
   color: var(--ds-text);
   font-family: var(--ds-font);
+  overflow-x: hidden;
 }
 
 /* ── Loading ─────────────────────────────────────────────────────── */
@@ -798,7 +844,13 @@ onActivated(() => {
   background: var(--ds-surface-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: all var(--ds-duration-base) var(--ds-easing);
+  transition: color var(--ds-duration-base) var(--ds-easing),
+    background-color var(--ds-duration-base) var(--ds-easing),
+    border-color var(--ds-duration-base) var(--ds-easing),
+    box-shadow var(--ds-duration-base) var(--ds-easing),
+    opacity var(--ds-duration-base) var(--ds-easing);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
 .emp-back:hover,
@@ -806,6 +858,12 @@ onActivated(() => {
   color: var(--ds-primary);
   background: var(--ds-primary-soft);
   border-color: var(--ds-primary-border);
+}
+
+.emp-back:focus-visible,
+.emp-icon-btn:focus-visible {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 
 .emp-icon-btn:disabled {
@@ -892,44 +950,6 @@ onActivated(() => {
   color: var(--ds-text-secondary);
 }
 
-.emp-header__stats {
-  display: flex;
-  gap: var(--ds-space-2);
-}
-
-.emp-stat-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 10px;
-  border-radius: var(--ds-radius-md);
-  font-size: var(--ds-text-sm);
-  font-weight: 700;
-  border: 1px solid;
-}
-
-.emp-stat-chip--online {
-  background: var(--ds-success-soft);
-  color: var(--ds-success);
-  border-color: rgba(22, 163, 74, 0.2);
-}
-
-.emp-stat-chip--flag {
-  background: var(--ds-warning-soft);
-  color: var(--ds-warning);
-  border-color: rgba(217, 119, 6, 0.2);
-}
-
-.emp-stat-val {
-  font-size: var(--ds-text-base);
-  font-weight: 900;
-}
-
-.emp-stat-label {
-  font-size: var(--ds-text-xs);
-  opacity: 0.8;
-}
-
 .emp-header__actions {
   display: flex;
   align-items: center;
@@ -1004,11 +1024,12 @@ onActivated(() => {
   border-radius: var(--ds-radius-md);
   background: var(--ds-surface);
   color: var(--ds-text-secondary);
-  transition: border-color var(--ds-duration-base);
+  transition: border-color var(--ds-duration-base), box-shadow var(--ds-duration-base), background-color var(--ds-duration-base);
 }
 
 .emp-search:focus-within {
   border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .emp-search input {
@@ -1053,6 +1074,7 @@ onActivated(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 28px;
   padding: 4px 10px;
   border: 1.5px solid transparent;
   border-radius: var(--ds-radius-full);
@@ -1061,9 +1083,11 @@ onActivated(() => {
   color: var(--ds-text-secondary);
   background: transparent;
   cursor: pointer;
-  transition: all var(--ds-duration-base);
+  transition: color var(--ds-duration-base), background-color var(--ds-duration-base), border-color var(--ds-duration-base), box-shadow var(--ds-duration-base);
   font-family: inherit;
   white-space: nowrap;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
 .emp-filter-btn:hover {
@@ -1075,6 +1099,11 @@ onActivated(() => {
   background: var(--ds-surface-muted);
   border-color: var(--ds-border);
   color: var(--ds-text);
+}
+
+.emp-filter-btn:focus-visible {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .emp-filter-btn--critical.active {
@@ -1102,6 +1131,8 @@ onActivated(() => {
 }
 
 .emp-filter-count {
+  min-width: 1.3rem;
+  text-align: center;
   font-size: 10px;
   padding: 0 4px;
   border-radius: 9999px;
@@ -1131,14 +1162,108 @@ onActivated(() => {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
+  transition: border-color var(--ds-duration-base), box-shadow var(--ds-duration-base), background-color var(--ds-duration-base);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.emp-sort select:focus-visible {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 /* ── Body layout ─────────────────────────────────────────────────── */
+.emp-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-5) 0;
+}
+
+.emp-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-width: 0;
+  padding: var(--ds-space-3);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+
+.emp-metric__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ds-radius-md);
+  flex-shrink: 0;
+  background: var(--ds-surface-muted);
+  color: var(--ds-text-secondary);
+}
+
+.emp-metric__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.emp-metric__label {
+  display: block;
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  color: var(--ds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.emp-metric__value {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--ds-text-xl);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ds-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.emp-metric__note {
+  align-self: flex-start;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  background: var(--ds-gray-100);
+  white-space: nowrap;
+}
+
+.emp-metric--success .emp-metric__icon {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.emp-metric--warning .emp-metric__icon {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.emp-metric--danger .emp-metric__icon {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.emp-metric--neutral .emp-metric__icon {
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+}
+
 .emp-body {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: var(--ds-space-4);
-  padding: var(--ds-space-4) var(--ds-space-5);
+  padding: var(--ds-space-4) var(--ds-space-5) var(--ds-space-5);
   min-height: calc(100vh - 130px);
   align-items: start;
 }
@@ -1149,6 +1274,7 @@ onActivated(() => {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   overflow: hidden;
+  box-shadow: var(--ds-shadow-sm);
 }
 
 .emp-table-head {
@@ -1184,9 +1310,11 @@ onActivated(() => {
   padding: 0 var(--ds-space-3);
   border-bottom: 1px solid var(--ds-border);
   cursor: pointer;
-  transition: background var(--ds-duration-fast);
+  transition: background-color var(--ds-duration-fast), border-color var(--ds-duration-fast), box-shadow var(--ds-duration-fast);
   border-left: 3px solid transparent;
   align-items: center;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
 }
 
 .emp-row:last-child {
@@ -1195,6 +1323,11 @@ onActivated(() => {
 
 .emp-row:hover {
   background: var(--ds-gray-50);
+}
+
+.emp-row:focus-visible {
+  background: var(--ds-primary-soft);
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.22);
 }
 
 .dark .emp-row:hover {
@@ -1423,6 +1556,7 @@ onActivated(() => {
   padding: var(--ds-space-4);
   position: sticky;
   top: var(--ds-space-4);
+  box-shadow: var(--ds-shadow-sm);
 }
 
 .emp-panel-empty {
@@ -1473,6 +1607,7 @@ onActivated(() => {
 .emp-panel-summary {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin-bottom: var(--ds-space-4);
 }
@@ -1480,6 +1615,7 @@ onActivated(() => {
 .emp-panel-summary__chip {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-height: 28px;
   padding: 3px 8px;
   border-radius: var(--ds-radius-full);
@@ -1488,6 +1624,7 @@ onActivated(() => {
   line-height: 1.2;
   background: var(--ds-gray-100);
   color: var(--ds-text-secondary);
+  min-width: 0;
 }
 
 .emp-panel-summary__chip--status {
@@ -1529,13 +1666,20 @@ onActivated(() => {
   font-size: var(--ds-text-sm);
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--ds-duration-base);
+  transition: color var(--ds-duration-base), background-color var(--ds-duration-base), border-color var(--ds-duration-base), box-shadow var(--ds-duration-base), opacity var(--ds-duration-base);
   font-family: inherit;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  white-space: nowrap;
 }
 
 .emp-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.emp-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }
 
 .emp-btn--warn {
@@ -1612,12 +1756,14 @@ onActivated(() => {
   color: var(--ds-text);
   background: var(--ds-surface);
   resize: vertical;
-  outline: none;
-  transition: border-color var(--ds-duration-base);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: border-color var(--ds-duration-base), box-shadow var(--ds-duration-base);
 }
 
-.emp-textarea:focus {
+.emp-textarea:focus-visible {
   border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .emp-dialog-btn {
@@ -1631,14 +1777,21 @@ onActivated(() => {
   font-size: var(--ds-text-sm);
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--ds-duration-base);
+  transition: color var(--ds-duration-base), background-color var(--ds-duration-base), border-color var(--ds-duration-base), box-shadow var(--ds-duration-base), opacity var(--ds-duration-base);
   font-family: inherit;
   background: var(--ds-surface);
   color: var(--ds-text);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
 .emp-dialog-btn:hover {
   background: var(--ds-gray-50);
+}
+
+.emp-dialog-btn:focus-visible {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .emp-dialog-btn--warn {
@@ -1658,6 +1811,10 @@ onActivated(() => {
 
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
+  .emp-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .emp-body {
     grid-template-columns: 1fr;
   }
@@ -1678,11 +1835,11 @@ onActivated(() => {
     gap: var(--ds-space-3);
   }
 
-  .emp-header__stats {
-    display: none;
+  .emp-toolbar {
+    padding: var(--ds-space-3);
   }
 
-  .emp-toolbar {
+  .emp-metrics {
     padding: var(--ds-space-3);
   }
 
@@ -1701,6 +1858,10 @@ onActivated(() => {
 }
 
 @media (max-width: 600px) {
+  .emp-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .emp-table-head {
     display: none;
   }
@@ -1734,9 +1895,15 @@ onActivated(() => {
   }
 
   .emp-row,
+  .emp-filter-btn,
   .emp-btn,
   .emp-back,
-  .emp-icon-btn {
+  .emp-icon-btn,
+  .emp-dialog-btn,
+  .emp-sort select,
+  .emp-textarea,
+  .emp-search,
+  .emp-search input {
     transition: none;
   }
 }

@@ -9,6 +9,7 @@ import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.service.FraudSignalService;
 import com.example.demo.service.RealtimeNotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +35,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class IdentityAnomalyService {
 
-    private static final long IP_CHANGE_DEDUP_SECONDS = 60;
-    private static final long DEVICE_CHANGE_DEDUP_SECONDS = 300;
+    @Value("${demo.identity-anomaly.ip-change-dedup-seconds:60}")
+    private long ipChangeDedupSeconds;
+
+    @Value("${demo.identity-anomaly.device-change-dedup-seconds:300}")
+    private long deviceChangeDedupSeconds;
+
+    @Value("${demo.identity-anomaly.multi-device-dedup-seconds:300}")
+    private long multiDeviceDedupSeconds;
 
     private final ExamAttemptRepository examAttemptRepository;
     private final FraudSignalRepository fraudSignalRepository;
@@ -123,7 +130,7 @@ public class IdentityAnomalyService {
             return null;
         }
 
-        if (isRecentIdentitySignal(attempt, "DEVICE_FINGERPRINT_CHANGED", DEVICE_CHANGE_DEDUP_SECONDS)) {
+        if (isRecentIdentitySignal(attempt, "DEVICE_FINGERPRINT_CHANGED", deviceChangeDedupSeconds)) {
             return null;
         }
 
@@ -168,7 +175,7 @@ public class IdentityAnomalyService {
             return null;
         }
 
-        if (isRecentIdentitySignal(attempt, "IP_CHANGED", IP_CHANGE_DEDUP_SECONDS)) {
+        if (isRecentIdentitySignal(attempt, "IP_CHANGED", ipChangeDedupSeconds)) {
             return null;
         }
 
@@ -243,7 +250,7 @@ public class IdentityAnomalyService {
             }
 
             String pairSignature = buildPairSignature(attempt.getId(), counterpart.getId());
-            if (isRecentIdentitySignalForPair(attempt, "MULTIPLE_DEVICE_SESSION", pairSignature, 300)) {
+            if (isRecentIdentitySignalForPair(attempt, "MULTIPLE_DEVICE_SESSION", pairSignature, multiDeviceDedupSeconds)) {
                 System.out.println("[DEBUG] checkMultiDeviceSession: recent signal exists for pair, skipping");
                 continue;
             }
