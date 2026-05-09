@@ -17,7 +17,10 @@ $$;
 -- Recreate constraint with all AuditAction values
 ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_action_check
 CHECK (action IN (
+    'TEACHER_NOTE',
     'TEACHER_WARNING',
+    'TEACHER_PAUSE',
+    'TEACHER_RESUME',
     'TEACHER_INVALIDATE',
     'SYSTEM_DUPLICATE_IP',
     'SYSTEM_IP_CHANGE',

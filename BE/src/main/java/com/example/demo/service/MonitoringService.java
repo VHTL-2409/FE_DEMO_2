@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service giám sát phiên thi: quản lý events, timeline, các hành động của giám thị (pause/resume/stop/warning).
@@ -69,6 +68,16 @@ public class MonitoringService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported event type");
         }
 
+        if (eventType == MonitoringEventType.NOTE) {
+            ensureCanManageAttempt(attempt, actor);
+            recordTeacherActionEvent(attempt, eventType, actor, request.getDetails());
+            return toMonitoringEventResponse(attempt, null, request.getDetails());
+        }
+
+        if (isAttemptHistoryEvent(eventType) || isTeacherCommandEvent(eventType)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported event type");
+        }
+
         if (!isEventEnabled(attempt, eventType)) {
             return MonitoringEventResponse.builder()
                     .attemptId(attempt.getId())
@@ -89,6 +98,10 @@ public class MonitoringService {
      */
     @Transactional
     public MonitoringEventResponse addSystemEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
+        if (isHistoryEventType(eventType)) {
+            recordAttemptHistoryEvent(attempt, eventType, details);
+            return toMonitoringEventResponse(attempt, null, details);
+        }
         RiskScoreResponse riskResponse = examEventService.recordLegacyEvent(attempt, eventType.name(), details);
         return toMonitoringEventResponse(attempt, riskResponse, null);
     }
@@ -108,7 +121,7 @@ public class MonitoringService {
                 : message.trim();
 
         realtimeNotificationService.notifyTeacherWarning(attempt, warningMessage);
-        auditLogService.logTeacherWarning(attempt, actor, warningMessage);
+        recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_WARNING, actor, warningMessage);
         RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
 
         return toMonitoringEventResponse(attempt, riskResponse, warningMessage);
@@ -135,15 +148,14 @@ public class MonitoringService {
         boolean wasPaused = attempt.getStatus() == AttemptStatus.PAUSED;
         if (attempt.getStatus() != AttemptStatus.STOPPED) {
             attempt.setStatus(AttemptStatus.STOPPED);
+            attempt.setPausedAt(null);
             examAttemptRepository.save(attempt);
         }
 
-        if (wasPaused) {
-            auditLogService.logTeacherInvalidate(attempt, actor,
-                    "[PROCTOR_STOPPED_AFTER_PAUSE] " + invalidateMessage);
-        } else {
-            auditLogService.logTeacherInvalidate(attempt, actor, invalidateMessage);
-        }
+        String historyDetails = wasPaused
+                ? "[PROCTOR_STOPPED_AFTER_PAUSE] " + invalidateMessage
+                : invalidateMessage;
+        recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_INVALIDATE, actor, historyDetails);
         realtimeNotificationService.notifyAttemptStopped(attempt, invalidateMessage);
         RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
         return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
@@ -165,13 +177,14 @@ public class MonitoringService {
 
         attempt.setStatus(AttemptStatus.IN_PROGRESS);
         attempt.setAutoPausedBy(AutoPausedBy.NONE);
+        attempt.setPausedAt(null);
         examAttemptRepository.save(attempt);
 
         String resumeMessage = (message == null || message.isBlank())
                 ? "Bài thi đã được giám thị khôi phục. Vui lòng tiếp tục làm bài."
                 : message.trim();
 
-        auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_RESUMED] " + resumeMessage);
+        recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_RESUME, actor, "[PROCTOR_RESUMED] " + resumeMessage);
         realtimeNotificationService.notifyAttemptResumed(attempt, resumeMessage);
 
         // KHÔNG gọi getRiskSnapshot() ở đây — recomputeRisk() sẽ re-trigger
@@ -203,16 +216,17 @@ public class MonitoringService {
         }
         if (attempt.getStatus() != AttemptStatus.PAUSED) {
             attempt.setStatus(AttemptStatus.PAUSED);
-            examAttemptRepository.save(attempt);
         }
         // Luôn đặt thành MANUAL để applyAutomatedResume không bao giờ fire trên teacher-initiated pause.
         // Điều này xử lý trường hợp attempt đã bị auto-pause trước đó (autoPausedBy=SYSTEM).
         attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
+        attempt.setPausedAt(VietNamTime.now());
+        examAttemptRepository.save(attempt);
 
         String pauseMessage = (reason == null || reason.isBlank())
                 ? "Bài thi đang được tạm dừng để giám thị kiểm tra."
                 : reason.trim();
-        auditLogService.logTeacherInvalidate(attempt, actor, "[PROCTOR_PAUSED] " + pauseMessage);
+        recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_PAUSE, actor, "[PROCTOR_PAUSED] " + pauseMessage);
         realtimeNotificationService.notifyAttemptPaused(attempt, pauseMessage);
 
         // Sử dụng recomputeRiskSkipAutoActions để teacher pause thủ công không bao giờ bị override
@@ -234,13 +248,11 @@ public class MonitoringService {
                 .stream()
                 .map(this::toExamEventTimelineItem)
                 .toList();
-
-        if (eventRows.isEmpty()) {
-            eventRows = monitoringEventRepository.findByAttemptOrderByCreatedAtAsc(attempt)
-                    .stream()
-                    .map(this::toLegacyEventTimelineItem)
-                    .toList();
-        }
+        List<MonitoringTimelineItem> monitoringRows = monitoringEventRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+                .stream()
+                .filter(this::isTimelineMonitoringEvent)
+                .map(this::toLegacyEventTimelineItem)
+                .toList();
 
         List<MonitoringTimelineItem> signalRows = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt)
                 .stream()
@@ -255,6 +267,7 @@ public class MonitoringService {
         List<MonitoringTimelineItem> riskRows = riskScoreLogRepository.findByAttemptOrderByCreatedAtAsc(attempt)
                 .stream()
                 .map(snapshot -> MonitoringTimelineItem.builder()
+                        .id(snapshot.getId())
                         .type("MONITORING_EVENT")
                         .at(snapshot.getCreatedAt())
                         .eventType("RISK_SCORE")
@@ -266,7 +279,7 @@ public class MonitoringService {
                         .build())
                 .toList();
 
-        return java.util.stream.Stream.of(eventRows, signalRows, warningRows, riskRows)
+        return java.util.stream.Stream.of(eventRows, monitoringRows, signalRows, warningRows, riskRows)
                 .flatMap(List::stream)
                 .sorted(Comparator.comparing(MonitoringTimelineItem::getAt))
                 .toList();
@@ -286,6 +299,7 @@ public class MonitoringService {
         // Cho phép cập nhật heartbeat ngay cả khi attempt đang PAUSED
         boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.IN_PROGRESS;
         Boolean previousCameraOn = attempt.getCameraOn();
+        Boolean previousMicOn = attempt.getMicOn();
         if (allowFullUpdate) {
             attempt.setCameraOn(cameraOn);
             attempt.setMicOn(micOn);
@@ -298,6 +312,14 @@ public class MonitoringService {
                     attempt,
                     "NO_CAMERA",
                     "Camera đã tắt",
+                    SignalSeverity.HIGH
+            );
+        }
+        if (allowFullUpdate && Boolean.TRUE.equals(previousMicOn) && Boolean.FALSE.equals(micOn)) {
+            examEventService.recordSystemSignal(
+                    attempt,
+                    "NO_MIC",
+                    "Micro đã tắt",
                     SignalSeverity.HIGH
             );
         }
@@ -351,6 +373,8 @@ public class MonitoringService {
     private boolean isEventEnabled(ExamAttempt attempt, MonitoringEventType eventType) {
         var exam = attempt.getExam();
         return switch (eventType) {
+            case NOTE, ATTEMPT_START, DRAFT_SAVE, ATTEMPT_SUBMIT, AUTO_SUBMIT,
+                 TEACHER_WARNING, TEACHER_PAUSE, TEACHER_RESUME, TEACHER_INVALIDATE -> true;
             case TAB_SWITCH -> monitoringFlagEnabled(exam.getMonitorTabSwitch());
             case BLUR -> monitoringFlagEnabled(exam.getMonitorBlur());
             case EXIT_FULLSCREEN -> monitoringFlagEnabled(exam.getMonitorExitFullscreen());
@@ -387,25 +411,30 @@ public class MonitoringService {
 
     private MonitoringTimelineItem toLegacyEventTimelineItem(MonitoringEvent event) {
         return MonitoringTimelineItem.builder()
+                .id(event.getId())
                 .type("MONITORING_EVENT")
                 .at(event.getCreatedAt())
                 .eventType(event.getEventType().name())
                 .details(event.getDetails())
+                .source("monitoring_events")
                 .build();
     }
 
     private MonitoringTimelineItem toExamEventTimelineItem(ExamEvent event) {
         return MonitoringTimelineItem.builder()
+                .id(event.getId())
                 .type("EXAM_EVENT")
                 .at(event.getCreatedAt())
                 .eventType(event.getEventType())
                 .severity(event.getSeverity() != null ? event.getSeverity().name() : null)
                 .evidence(event.getEventData())
+                .source("exam_events")
                 .build();
     }
 
     private MonitoringTimelineItem toFraudSignalTimelineItem(FraudSignal signal) {
         return MonitoringTimelineItem.builder()
+                .id(signal.getId())
                 .type("FRAUD_SIGNAL")
                 .at(signal.getCreatedAt())
                 .eventType(signal.getSignalType())
@@ -415,11 +444,13 @@ public class MonitoringService {
                 .evidence(signal.getEvidence())
                 .details(signal.getSignalType())
                 .category(signal.getCategory())
+                .source("fraud_signals")
                 .build();
     }
 
     private MonitoringTimelineItem toFraudWarningTimelineItem(FraudWarning warning) {
         return MonitoringTimelineItem.builder()
+                .id(warning.getId())
                 .type("FRAUD_WARNING")
                 .at(warning.getCreatedAt())
                 .eventType(warning.getWarningType())
@@ -432,8 +463,68 @@ public class MonitoringService {
                 .evidence(warning.getEvidence())
                 .category(warning.getCategory() != null ? warning.getCategory().name() : null)
                 .reviewStatus(warning.getReviewStatus() != null ? warning.getReviewStatus().name() : null)
-                .source(warning.getSource())
+                .source("fraud_warnings")
                 .build();
+    }
+
+    @Transactional
+    public void recordAttemptHistoryEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
+        saveMonitoringEvent(attempt, eventType, details);
+    }
+
+    @Transactional
+    public void recordTeacherActionEvent(ExamAttempt attempt, MonitoringEventType eventType, User actor, String details) {
+        saveMonitoringEvent(attempt, eventType, details);
+        switch (eventType) {
+            case NOTE -> auditLogService.logTeacherNote(attempt, actor, details);
+            case TEACHER_WARNING -> auditLogService.logTeacherWarning(attempt, actor, details);
+            case TEACHER_PAUSE -> auditLogService.logTeacherPause(attempt, actor, details);
+            case TEACHER_RESUME -> auditLogService.logTeacherResume(attempt, actor, details);
+            case TEACHER_INVALIDATE -> auditLogService.logTeacherInvalidate(attempt, actor, details);
+            default -> {
+            }
+        }
+    }
+
+    private MonitoringEvent saveMonitoringEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
+        return monitoringEventRepository.save(MonitoringEvent.builder()
+                .attempt(attempt)
+                .eventType(eventType)
+                .details(details != null ? details.trim() : "")
+                .createdAt(VietNamTime.now())
+                .build());
+    }
+
+    private boolean isHistoryEventType(MonitoringEventType eventType) {
+        return isAttemptHistoryEvent(eventType) || isTeacherActionEvent(eventType);
+    }
+
+    private boolean isAttemptHistoryEvent(MonitoringEventType eventType) {
+        return switch (eventType) {
+            case ATTEMPT_START, DRAFT_SAVE, ATTEMPT_SUBMIT, AUTO_SUBMIT -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isTeacherActionEvent(MonitoringEventType eventType) {
+        return switch (eventType) {
+            case NOTE, TEACHER_WARNING, TEACHER_PAUSE, TEACHER_RESUME, TEACHER_INVALIDATE -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isTeacherCommandEvent(MonitoringEventType eventType) {
+        return switch (eventType) {
+            case TEACHER_WARNING, TEACHER_PAUSE, TEACHER_RESUME, TEACHER_INVALIDATE -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isTimelineMonitoringEvent(MonitoringEvent event) {
+        if (event == null || event.getEventType() == null) {
+            return false;
+        }
+        return isHistoryEventType(event.getEventType());
     }
 
     @SuppressWarnings("unchecked")
@@ -475,6 +566,7 @@ public class MonitoringService {
 
     private static final Set<String> AI_CAMERA_SIGNALS = Set.of(
             "NO_CAMERA",
+            "NO_MIC",
             "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
             "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
             "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
@@ -482,6 +574,7 @@ public class MonitoringService {
             "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
             "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
             "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+            "AI_SPEAKING_DETECTED",
             "FLAT_IMAGE", "SCREEN_DISPLAY"
     );
 
@@ -793,6 +886,7 @@ public class MonitoringService {
                 Map.entry("FACE_NOT_CENTERED", "Khuôn mặt lệch tâm"),
                 Map.entry("EYES_NOT_DETECTED", "Không phát hiện mắt"),
                 Map.entry("NO_CAMERA", "Camera đã tắt"),
+                Map.entry("NO_MIC", "Micro đã tắt"),
                 Map.entry("VERY_LOW_LIGHTING", "Ánh sáng rất yếu"),
                 Map.entry("LOW_LIGHTING", "Ánh sáng yếu"),
                 Map.entry("OVEREXPOSED_FRAME", "Hình ảnh quá sáng"),
@@ -802,6 +896,7 @@ public class MonitoringService {
                 Map.entry("EYES_CLOSED_PROLONGED", "Eyes closed for too long"),
                 Map.entry("GAZE_OFF_SCREEN", "Gaze off screen"),
                 Map.entry("RAPID_EYE_MOVEMENT", "Rapid eye movement"),
+                Map.entry("AI_SPEAKING_DETECTED", "Phát hiện tiếng ồn"),
                 Map.entry("PRINTED_PHOTO", "Printed photo suspected"),
                 Map.entry("SCREEN_REPLAY", "Screen replay suspected"),
                 Map.entry("DEEPFAKE", "Deepfake suspected"),

@@ -52,6 +52,8 @@ export const AI_CAMERA_SIGNALS = {
   FACE_TURNED_AWAY: { label: 'Quay mặt đi', severity: 'MEDIUM', icon: 'rotate-ccw' },
   FACE_NOT_CENTERED: { label: 'Mặt lệch tâm', severity: 'LOW', icon: 'align-center' },
   EYES_NOT_DETECTED: { label: 'Không phát hiện mắt', severity: 'MEDIUM', icon: 'eye-off' },
+  AI_SPEAKING_DETECTED: { label: 'Tiếng ồn', severity: 'MEDIUM', icon: 'mic' },
+  NO_MIC: { label: 'Micro tắt', severity: 'HIGH', icon: 'mic_off' },
   VERY_LOW_LIGHTING: { label: 'Ánh sáng rất yếu', severity: 'HIGH', icon: 'moon' },
   LOW_LIGHTING: { label: 'Ánh sáng yếu', severity: 'MEDIUM', icon: 'cloudy' },
   OVEREXPOSED_FRAME: { label: 'Ảnh quá sáng', severity: 'LOW', icon: 'sun' },

@@ -17,6 +17,8 @@ public interface FraudWarningRepository extends JpaRepository<FraudWarning, Long
 
     List<FraudWarning> findByAttemptOrderByCreatedAtDesc(ExamAttempt attempt);
 
+    long countByAttempt(ExamAttempt attempt);
+
     List<FraudWarning> findByAttemptAndCategoryOrderByCreatedAtDesc(ExamAttempt attempt, FraudWarningCategory category);
 
     @Query("""
@@ -48,4 +50,12 @@ public interface FraudWarningRepository extends JpaRepository<FraudWarning, Long
             ORDER BY fw.created_at DESC
             """, nativeQuery = true)
     List<FraudWarning> findByAttemptOrRelatedAttemptId(@Param("attemptId") Long attemptId);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM fraud_warnings fw
+            WHERE fw.attempt_id = :attemptId
+               OR fw.related_attempt_ids::text ILIKE '%' || '"' || CAST(:attemptId AS TEXT) || '"' || '%'
+            """, nativeQuery = true)
+    long countByAttemptOrRelatedAttemptId(@Param("attemptId") Long attemptId);
 }

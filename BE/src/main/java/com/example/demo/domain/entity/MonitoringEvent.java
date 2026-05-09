@@ -6,10 +6,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "monitoring_events",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_monitoring_event_attempt_type_details",
-                columnNames = {"attempt_id", "event_type", "details"}))
+@Table(name = "monitoring_events", indexes = {
+        @Index(name = "idx_monitoring_events_attempt_type", columnList = "attempt_id,event_type"),
+        @Index(name = "idx_monitoring_events_attempt_created", columnList = "attempt_id,created_at")
+})
 @Getter
 @Setter
 @NoArgsConstructor

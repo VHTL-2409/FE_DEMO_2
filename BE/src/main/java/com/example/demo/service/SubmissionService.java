@@ -18,6 +18,7 @@ import com.example.demo.common.DateTimeUtils;
 import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
+import com.example.demo.domain.entity.AutoPausedBy;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.RiskLevel;
@@ -27,6 +28,7 @@ import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
+import com.example.demo.repository.FraudWarningRepository;
 import com.example.demo.repository.QuestionRepository;
 import com.example.demo.service.helper.SubmissionHelper;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +46,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -65,6 +66,7 @@ public class SubmissionService {
     private final MonitoringService monitoringService;
     private final QuestionService questionService;
     private final FraudSignalRepository fraudSignalRepository;
+    private final FraudWarningRepository fraudWarningRepository;
 
     @Value("${demo.monitoring.integrity-check.cooldown-seconds:45}")
     private long integrityCheckCooldownSeconds;
@@ -108,6 +110,10 @@ public class SubmissionService {
                         .build());
 
         duplicateIpDetectionService.detect(saved);
+        monitoringService.recordAttemptHistoryEvent(
+                saved,
+                MonitoringEventType.ATTEMPT_START,
+                buildAttemptStartDetails(saved, normalizedIp));
         publishAttemptStartedAfterCommit(saved);
 
         return toStartResponse(saved);
@@ -226,8 +232,15 @@ public class SubmissionService {
         attempt.setScore(submissionHelper.calculateScore(attempt));
         attempt.setSubmittedAt(now);
         attempt.setStatus(AttemptStatus.SUBMITTED);
+        attempt.setAutoPausedBy(AutoPausedBy.NONE);
+        attempt.setPausedAt(null);
+        attempt.setSubmitCount(nextCount(attempt.getSubmitCount()));
         examAttemptRepository.save(attempt);
 
+        monitoringService.recordAttemptHistoryEvent(
+                attempt,
+                MonitoringEventType.ATTEMPT_SUBMIT,
+                buildAttemptSubmitDetails(attempt, answerRepository.findByAttempt(attempt).size()));
         detectAndLogFastSubmit(attempt, now);
         publishAttemptSubmittedAfterCommit(attempt, "Thi sinh da nop bai");
 
@@ -252,11 +265,19 @@ public class SubmissionService {
         // Use Helper - khi hết hạn: lưu đáp án rồi tự động nộp, không throw
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
             submissionHelper.saveAnswers(attempt, normalizeAttemptAnswers(attempt, answers));
+            int answeredCount = answerRepository.findByAttempt(attempt).size();
+            attempt.setLastSavedAt(now);
+            attempt.setSaveCount(nextCount(attempt.getSaveCount()));
+            examAttemptRepository.save(attempt);
+            monitoringService.recordAttemptHistoryEvent(
+                    attempt,
+                    MonitoringEventType.DRAFT_SAVE,
+                    buildDraftSaveDetails(attempt, answeredCount, 0L, normalizeClientIp(clientIp)));
             autoSubmitFromDraft(attempt, now);
             return DraftSaveResponse.builder()
                     .attemptId(attempt.getId())
                     .savedAt(DateTimeUtils.toOffset(now, VietNamTime.zone()))
-                    .answeredCount(answerRepository.findByAttempt(attempt).size())
+                    .answeredCount(answeredCount)
                     .remainingSeconds(0L)
                     .build();
         }
@@ -271,6 +292,13 @@ public class SubmissionService {
 
         int answeredCount = answerRepository.findByAttempt(attempt).size();
         long remainingSeconds = submissionHelper.remainingSeconds(attempt);
+        attempt.setLastSavedAt(now);
+        attempt.setSaveCount(nextCount(attempt.getSaveCount()));
+        examAttemptRepository.save(attempt);
+        monitoringService.recordAttemptHistoryEvent(
+                attempt,
+                MonitoringEventType.DRAFT_SAVE,
+                buildDraftSaveDetails(attempt, answeredCount, remainingSeconds, normalizedIp));
 
         realtimeNotificationService.notifyDraftSaved(attempt, answeredCount, remainingSeconds);
 
@@ -371,6 +399,7 @@ public class SubmissionService {
                 .riskLevel(attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : null)
                 .suspicious(attempt.getSuspicious())
                 .violationCount(reviewSummary.violationCount())
+                .warningCount(reviewSummary.warningCount())
                 .reviewRequired(reviewSummary.reviewRequired())
                 .recommendedAction(reviewSummary.recommendedAction())
                 .reasons(reviewSummary.reasons())
@@ -663,7 +692,14 @@ public class SubmissionService {
         attempt.setScore(submissionHelper.calculateScore(attempt));
         attempt.setSubmittedAt(submittedAt);
         attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
+        attempt.setAutoPausedBy(AutoPausedBy.NONE);
+        attempt.setPausedAt(null);
+        attempt.setSubmitCount(nextCount(attempt.getSubmitCount()));
         examAttemptRepository.save(attempt);
+        monitoringService.recordAttemptHistoryEvent(
+                attempt,
+                MonitoringEventType.AUTO_SUBMIT,
+                buildAttemptSubmitDetails(attempt, answerRepository.findByAttempt(attempt).size()));
         publishAttemptSubmittedAfterCommit(attempt, "Thi sinh da tu dong nop bai");
     }
 
@@ -785,16 +821,52 @@ public class SubmissionService {
         return user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName));
     }
 
+    private int nextCount(Integer current) {
+        return (current == null ? 0 : current) + 1;
+    }
+
+    private String buildAttemptStartDetails(ExamAttempt attempt, String clientIp) {
+        return "status=" + safeName(attempt.getStatus())
+                + ";startedAt=" + attempt.getStartedAt()
+                + ";clientIp=" + safe(clientIp);
+    }
+
+    private String buildDraftSaveDetails(ExamAttempt attempt, int answeredCount, long remainingSeconds, String clientIp) {
+        return "savedAt=" + attempt.getLastSavedAt()
+                + ";answeredCount=" + answeredCount
+                + ";remainingSeconds=" + remainingSeconds
+                + ";saveCount=" + safe(attempt.getSaveCount())
+                + ";clientIp=" + safe(clientIp);
+    }
+
+    private String buildAttemptSubmitDetails(ExamAttempt attempt, int answeredCount) {
+        return "status=" + safeName(attempt.getStatus())
+                + ";submittedAt=" + attempt.getSubmittedAt()
+                + ";answeredCount=" + answeredCount
+                + ";score=" + safe(attempt.getScore())
+                + ";submitCount=" + safe(attempt.getSubmitCount());
+    }
+
+    private String safe(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String safeName(Enum<?> value) {
+        return value == null ? "" : value.name();
+    }
+
     private ReviewSummary buildReviewSummary(ExamAttempt attempt) {
         int violationCount = Math.toIntExact(fraudSignalRepository.countByAttempt(attempt));
-        int warningCount = Math.max(violationCount, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0);
+        int warningCount = Math.toIntExact(fraudWarningRepository.countByAttemptOrRelatedAttemptId(attempt.getId()));
         String recommendedAction = switch (attempt.getRiskLevel() != null ? attempt.getRiskLevel() : RiskLevel.CLEAN) {
             case CRITICAL -> "PAUSE_AND_REVIEW";
             case HIGH_RISK -> "WARN_AND_ESCALATE";
             case SUSPICIOUS -> "REVIEW_ATTEMPT";
             case CLEAN -> "CONTINUE_MONITORING";
         };
-        boolean reviewRequired = Boolean.TRUE.equals(attempt.getSuspicious()) || attempt.getStatus() == AttemptStatus.PAUSED;
+        boolean reviewRequired = Boolean.TRUE.equals(attempt.getSuspicious())
+                || attempt.getStatus() == AttemptStatus.PAUSED
+                || warningCount > 0;
         List<String> reasons = new ArrayList<>();
         if (attempt.getRiskLevel() == RiskLevel.CRITICAL) {
             reasons.add("Điểm rủi ro đang ở mức nghiêm trọng");
@@ -806,12 +878,21 @@ public class SubmissionService {
         if (violationCount > 0) {
             reasons.add("Có " + violationCount + " tín hiệu gian lận đã ghi nhận");
         }
+        if (warningCount > 0) {
+            reasons.add("Có " + warningCount + " cảnh báo cần review");
+        }
         List<String> evidenceSummary = new ArrayList<>();
         if (attempt.getClientIp() != null && !attempt.getClientIp().isBlank()) {
             evidenceSummary.add("IP hiện tại: " + attempt.getClientIp());
         }
         if (attempt.getDeviceFingerprint() != null && !attempt.getDeviceFingerprint().isBlank()) {
             evidenceSummary.add("Fingerprint thiết bị đã được ghi nhận");
+        }
+        if (violationCount > 0) {
+            evidenceSummary.add("Tín hiệu gian lận: " + violationCount);
+        }
+        if (warningCount > 0) {
+            evidenceSummary.add("Cảnh báo review: " + warningCount);
         }
         return new ReviewSummary(
                 violationCount,

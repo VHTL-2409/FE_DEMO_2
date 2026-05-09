@@ -11,6 +11,7 @@ import com.example.demo.domain.entity.User;
 import com.example.demo.realtime.TeacherAlertGateway;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
+import com.example.demo.service.ProctorEvidenceImageService.StoredEvidenceImage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -46,6 +47,7 @@ public class AiAssistService {
     private final RiskScoringService riskScoringService;
     private final TeacherAlertGateway teacherAlertGateway;
     private final FraudWarningService fraudWarningService;
+    private final ProctorEvidenceImageService proctorEvidenceImageService;
     private final Map<Long, Map<String, Object>> latestCameraFrames = new ConcurrentHashMap<>();
     private final Map<Long, CameraSignalClusterState> cameraSignalClusterStates = new ConcurrentHashMap<>();
 
@@ -55,7 +57,8 @@ public class AiAssistService {
             FraudSignalRepository fraudSignalRepository,
             RiskScoringService riskScoringService,
             TeacherAlertGateway teacherAlertGateway,
-            FraudWarningService fraudWarningService
+            FraudWarningService fraudWarningService,
+            ProctorEvidenceImageService proctorEvidenceImageService
     ) {
         this.examAttemptRepository = examAttemptRepository;
         this.fraudSignalService = fraudSignalService;
@@ -63,6 +66,7 @@ public class AiAssistService {
         this.riskScoringService = riskScoringService;
         this.teacherAlertGateway = teacherAlertGateway;
         this.fraudWarningService = fraudWarningService;
+        this.proctorEvidenceImageService = proctorEvidenceImageService;
     }
 
     @Value("${app.ai-service.enabled:true}")
@@ -153,6 +157,9 @@ public class AiAssistService {
                     response
             );
             response.put("recordableSignals", recordableAiSignals);
+            response.put("frameId", request.getFrameId());
+            response.put("capturedAt", request.getCapturedAt());
+            safeStoreEvidenceImage(request, recordableAiSignals, response);
             safeBridgeAiSignals(request.getAttemptId(), recordableAiSignals, response, "frame");
             Map<String, Object> aiAck = safePublishCameraFrame(request, response, "ai");
             mergeFrameAck(response, aiAck != null ? aiAck : initialAck);
@@ -1093,6 +1100,12 @@ public class AiAssistService {
         copyIfPresent(payload, response, "cameraSignalClusterCleared", "cameraSignalClusterCleared");
         copyIfPresent(payload, response, "cameraSignalClearing", "cameraSignalClearing");
         copyIfPresent(payload, response, "cameraSignalStateClearSeconds", "cameraSignalStateClearSeconds");
+        copyIfPresent(payload, response, "evidenceImageUrl", "evidenceImageUrl");
+        copyIfPresent(payload, response, "evidenceImageFileName", "evidenceImageFileName");
+        copyIfPresent(payload, response, "evidenceImageContentType", "evidenceImageContentType");
+        copyIfPresent(payload, response, "evidenceImageSizeBytes", "evidenceImageSizeBytes");
+        copyIfPresent(payload, response, "evidenceImageStoredAt", "evidenceImageStoredAt");
+        copyIfPresent(payload, response, "evidenceFrameId", "evidenceFrameId");
 
         if (response.containsKey("recordableSignals")) {
             Object clusteredSignalsObj = response.get("recordableSignals");
@@ -1122,6 +1135,66 @@ public class AiAssistService {
                 aiStatus,
                 backendAnalysisFlag);
         return ack;
+    }
+
+    private StoredEvidenceImage safeStoreEvidenceImage(
+            FrameAnalysisRequest request,
+            List<Map<String, Object>> signals,
+            Map<String, Object> response
+    ) {
+        if (request == null || request.getAttemptId() == null || request.getImageBase64() == null || request.getImageBase64().isBlank()) {
+            return null;
+        }
+        if (signals == null || signals.isEmpty()) {
+            return null;
+        }
+        try {
+            String signalType = resolveRepresentativeSignalType(signals);
+            StoredEvidenceImage stored = proctorEvidenceImageService.storeFrameImage(
+                    request.getAttemptId(),
+                    request.getFrameId(),
+                    signalType,
+                    request.getImageBase64()
+            );
+            applyEvidenceImage(response, stored);
+            return stored;
+        } catch (Exception ex) {
+            log.warn("[AI-Bridge] Failed to store evidence image for attemptId={}, frameId={}: {}",
+                    request.getAttemptId(), request.getFrameId(), ex.getMessage());
+            response.put("evidenceImageError", ex.getMessage());
+            return null;
+        }
+    }
+
+    private void applyEvidenceImage(Map<String, Object> target, StoredEvidenceImage evidenceImage) {
+        if (target == null || evidenceImage == null) {
+            return;
+        }
+        target.put("evidenceImageUrl", evidenceImage.imageUrl());
+        target.put("evidenceImageFileName", evidenceImage.fileName());
+        target.put("evidenceImageContentType", evidenceImage.contentType());
+        target.put("evidenceImageSizeBytes", evidenceImage.sizeBytes());
+        target.put("evidenceImageStoredAt", evidenceImage.storedAt() != null ? evidenceImage.storedAt().toString() : null);
+        Object frameId = target.get("frameId");
+        if (frameId != null) {
+            target.put("evidenceFrameId", frameId);
+        }
+    }
+
+    private String resolveRepresentativeSignalType(List<Map<String, Object>> signals) {
+        for (Map<String, Object> signal : signals) {
+            if (signal == null) {
+                continue;
+            }
+            String signalType = normalizeSignalType(signal.get("signal_type"));
+            if (signalType == null) {
+                signalType = normalizeSignalType(signal.get("signalType"));
+            }
+            if (signalType != null) {
+                return signalType;
+            }
+        }
+        return "AI_CAMERA";
     }
 
     private void validateFrameRequest(FrameAnalysisRequest request) {
@@ -1270,6 +1343,12 @@ public class AiAssistService {
         copyIfPresent(evidence, response, "attention_score", "attentionScore");
         copyIfPresent(evidence, response, "visual_overlay", "visualOverlay");
         copyIfPresent(evidence, response, "visualOverlay", "visualOverlay");
+        copyIfPresent(evidence, response, "evidenceImageUrl", "evidenceImageUrl");
+        copyIfPresent(evidence, response, "evidenceImageFileName", "evidenceImageFileName");
+        copyIfPresent(evidence, response, "evidenceImageContentType", "evidenceImageContentType");
+        copyIfPresent(evidence, response, "evidenceImageSizeBytes", "evidenceImageSizeBytes");
+        copyIfPresent(evidence, response, "evidenceImageStoredAt", "evidenceImageStoredAt");
+        copyIfPresent(evidence, response, "evidenceFrameId", "evidenceFrameId");
 
         Object diagnosticsObj = response.get("diagnostics");
         if (diagnosticsObj instanceof Map<?, ?> diagnostics) {
@@ -1305,10 +1384,11 @@ public class AiAssistService {
         return switch (signalType) {
             case "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE" ->
                     SignalSeverity.CRITICAL;
-            case "NO_CAMERA", "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
+            case "NO_CAMERA", "NO_MIC", "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
                     "FLAT_IMAGE", "SCREEN_DISPLAY", "GAZE_OFF_SCREEN" -> SignalSeverity.HIGH;
             case "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE", "FACE_TOO_FAR", "FACE_TURNED_AWAY",
-                    "EYES_NOT_DETECTED", "LOW_LIGHTING", "EYE_BLINK_ANOMALY", "RAPID_EYE_MOVEMENT" ->
+                    "EYES_NOT_DETECTED", "LOW_LIGHTING", "EYE_BLINK_ANOMALY", "RAPID_EYE_MOVEMENT",
+                    "AI_SPEAKING_DETECTED" ->
                     SignalSeverity.MEDIUM;
             default -> SignalSeverity.MEDIUM;
         };
@@ -1319,13 +1399,14 @@ public class AiAssistService {
             return false;
         }
         return switch (signalType) {
-            case "NO_CAMERA", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
+            case "NO_CAMERA", "NO_MIC", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                     "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                     "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
                     "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
                     "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                     "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
                     "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                    "AI_SPEAKING_DETECTED",
                     "FLAT_IMAGE", "SCREEN_DISPLAY" -> true;
             default -> false;
         };

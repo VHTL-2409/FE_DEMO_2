@@ -414,6 +414,7 @@ import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
 import { useExamProctoring } from '../../composables/useExamProctoring'
 import { useProctoringSession } from '../../composables/useProctoringSession'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
+import { useMicrophoneSpeechDetector } from '../../composables/useMicrophoneSpeechDetector'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
@@ -559,6 +560,11 @@ const FRAME_SEND_RETRY_DELAY_MS = 250
 const FRAME_SEND_MAX_ATTEMPTS = 2
 const AI_FRAME_WIDTH = 480
 const AI_FRAME_JPEG_QUALITY = 0.6
+const SPEECH_VAD_INTERVAL_MS = 250
+const SPEECH_VAD_MIN_DURATION_MS = 1200
+const SPEECH_VAD_SILENCE_RESET_MS = 600
+const SPEECH_VAD_THRESHOLD = 0.035
+const SPEECH_VIOLATION_COOLDOWN_MS = 30000
 
 const examSessionStore = useExamSessionStore()
 const realtimeChannel = useRealtimeChannel()
@@ -835,6 +841,7 @@ const checkDevices = async () => {
 }
 
 const stopMediaStream = () => {
+  speechDetector.stop()
   stopAiFrameSampler()
   stopCameraFrameStreamer()
   if (deviceStatusInterval) { clearInterval(deviceStatusInterval); deviceStatusInterval = null }
@@ -1389,6 +1396,54 @@ const buildTelemetrySnapshot = (overrides = {}) => ({
   networkType: navigator.connection?.effectiveType || '',
   screenExtended: Boolean(window.screen?.isExtended === true),
   ...overrides
+})
+
+const speechDetectionEnabled = computed(() => {
+  const audioTrack = (mediaStreamRef.value?.getAudioTracks?.() || []).find(track => track && track.readyState !== 'ended') || null
+  return !isPracticeExam.value
+    && shouldCheckDevices.value
+    && !isSuspended.value
+    && micReady.value
+    && Boolean(audioTrack && audioTrack.enabled !== false)
+})
+
+const queueSpeechViolation = (evidence = {}) => {
+  if (isPracticeExam.value || !attemptId.value || isSuspended.value) return
+  const eventType = 'AI_SPEAKING_DETECTED'
+  const now = Date.now()
+  const lastAt = lastViolationAtByType.value[eventType] || 0
+  if (now - lastAt < SPEECH_VIOLATION_COOLDOWN_MS) return
+  lastViolationAtByType.value = { ...lastViolationAtByType.value, [eventType]: now }
+  queueEvent(
+    eventType,
+    'Phát hiện tiếng ồn',
+    {
+      questionIndex: currentIndex.value + 1,
+      questionId: currentQuestion.value?.id || null,
+      speech: {
+        ...evidence,
+        eventSource: 'microphone_vad',
+        micOn: micReady.value,
+        cameraOn: cameraReady.value
+      }
+    },
+    0.75,
+    buildTelemetrySnapshot({ eventSource: 'microphone_vad' }),
+    now
+  )
+}
+
+const speechDetector = useMicrophoneSpeechDetector({
+  streamRef: mediaStreamRef,
+  enabledRef: speechDetectionEnabled,
+  onSpeechDetected: queueSpeechViolation,
+  options: {
+    sampleIntervalMs: SPEECH_VAD_INTERVAL_MS,
+    speechThreshold: SPEECH_VAD_THRESHOLD,
+    minSpeechMs: SPEECH_VAD_MIN_DURATION_MS,
+    silenceResetMs: SPEECH_VAD_SILENCE_RESET_MS,
+    cooldownMs: SPEECH_VIOLATION_COOLDOWN_MS
+  }
 })
 
 const ATTEMPT_CONFIG_KEYS = [

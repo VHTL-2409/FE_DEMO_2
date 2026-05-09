@@ -19,6 +19,7 @@ final class FraudSignalTypeNormalizer {
             case "AI_MULTIPLE_FACES" -> "MULTIPLE_FACES";
             case "AI_FACE_MISSING" -> "FACE_NOT_DETECTED";
             case "AI_LOOKING_AWAY" -> "GAZE_OFF_SCREEN";
+            case "AI_NO_MIC", "NO_MICROPHONE", "MIC_OFF", "MIC_DISABLED", "MICROPHONE_OFF" -> "NO_MIC";
             default -> normalized;
         };
     }

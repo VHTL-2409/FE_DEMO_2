@@ -1,6 +1,15 @@
 package com.example.demo.domain.entity;
 
 public enum MonitoringEventType {
+    ATTEMPT_START,
+    DRAFT_SAVE,
+    ATTEMPT_SUBMIT,
+    AUTO_SUBMIT,
+    NOTE,
+    TEACHER_WARNING,
+    TEACHER_PAUSE,
+    TEACHER_RESUME,
+    TEACHER_INVALIDATE,
     TAB_SWITCH,
     BLUR,
     EXIT_FULLSCREEN,

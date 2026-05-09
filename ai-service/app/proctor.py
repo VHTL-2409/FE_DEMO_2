@@ -52,6 +52,8 @@ class ProctorAnalyzer:
         self._profile_cascade = None
         self._dnn_net = None
         self._dnn_model_type = None
+        # Ngưỡng confidence để chấp nhận face từ DNN. Tăng ngưỡng thì giảm báo nhầm,
+        # nhưng dễ bỏ sót mặt ở góc nghiêng hoặc ánh sáng xấu.
         self._dnn_confidence_threshold = self._env_float("AI_SERVICE_FACE_DETECTION_THRESHOLD", 0.55)
         self._face_detector_backend = "UNAVAILABLE"
         self._face_detector_error = None
@@ -73,7 +75,11 @@ class ProctorAnalyzer:
         self._eye_missing_required_ms = 1500
         self._face_position_required_frames = 2
         self._face_position_required_ms = 1500
+        # Cùng một loại signal không được bắn liên tục trong mỗi frame.
+        # Tránh spam cảnh báo khi trạng thái chỉ nhấp nháy ngắn.
         self._signal_dedup_ms = int(self._env_float("AI_SERVICE_SIGNAL_DEDUP_SECONDS", 10) * 1000)
+        # Gaze cần lặp nhiều frame và đủ thời gian thực mới được chốt.
+        # Dùng để lọc nhiễu từ rung camera hoặc liếc mắt rất ngắn.
         self._gaze_required_frames = 3
         self._gaze_required_ms = 2500
         self._eye_closure_required_frames = 2
@@ -315,33 +321,35 @@ class ProctorAnalyzer:
         camera_state = self._resolve_camera_state(metadata)
         if camera_state["camera_off"]:
             return self._build_camera_off_response(metadata, camera_state)
+        mic_state = self._resolve_mic_state(metadata)
         sample_time = self._resolve_sample_time(metadata)
         tracking_key = self._resolve_tracking_key(metadata)
 
+        # Giải mã ảnh base64 từ FE thành ảnh RGB/gray để toàn bộ pipeline dùng chung.
         image = self._decode_image(image_base64)
         rgb_array = np.array(image)
         gray = np.array(image.convert("L"))
 
-        # Face detection
+        # Bước 1: phát hiện khuôn mặt trước, rồi mới suy luận mắt/gaze/che khuất.
         face_count, face_locations, detection_method = self._detect_face_locations(rgb_array, gray)
 
-        # Eye tracking with landmark detection
+        # Bước 2: theo dõi mắt trên vùng mặt đã tìm được.
         eye_tracking = self._track_eyes(rgb_array, gray, face_locations)
 
-        # Brightness and quality analysis
+        # Bước 3: đo sáng và độ nét để tạo quality gate.
         average_brightness = float(gray.mean()) if gray.size else 0.0
         variance = float(gray.var()) if gray.size else 0.0
 
-        # Advanced spoofing detection with deep learning
+        # Bước 4: kiểm tra giả mạo mặt bằng nhiều lớp, DL trước rồi fallback heuristic.
         spoofing_result = self._detect_spoofing_deep(rgb_array, gray, face_count, face_locations)
 
-        # Occlusion detection
+        # Bước 5: kiểm tra che mặt, kính, vùng mặt bị thiếu.
         occlusion_result = self._detect_occlusion(gray, face_locations, eye_tracking)
 
-        # Face position analysis
+        # Bước 6: kiểm tra mặt có quay đi hoặc lệch tâm không.
         position_analysis = self._analyze_face_position(face_locations, gray.shape)
 
-        # Gaze analysis
+        # Bước 7: suy luận hướng nhìn từ vị trí pupil đã chuẩn hóa.
         gaze_analysis = self._analyze_gaze(eye_tracking, face_locations, gray.shape)
         frame_quality = self._assess_frame_quality(average_brightness, variance)
         face_quality = self._assess_face_quality(face_count, eye_tracking["eye_count"], average_brightness, variance)
@@ -371,7 +379,21 @@ class ProctorAnalyzer:
 
         signals = []
 
-        # === FACE DETECTION SIGNALS ===
+        # Từ đây trở xuống: chỉ phát signal khi rule đủ mạnh và đã qua gate/stability.
+        if mic_state["mic_off"]:
+            signals.append(self._signal(
+                "NO_MIC",
+                "HIGH",
+                0.98,
+                {
+                    "derivedFromMetadata": True,
+                    "micState": mic_state,
+                    "reason": mic_state.get("reason") or "Microphone is disabled",
+                    "recommendation": "Turn the microphone back on to continue AI monitoring",
+                },
+            ))
+
+        # === Signal từ phát hiện mặt ===
         if (self.dnn_ready() or self.cv_ready()) and face_count == 0 and stability.get("face_issue_stable", True):
             signals.append(self._signal(
                 "FACE_NOT_DETECTED", "HIGH", 0.92,
@@ -406,7 +428,7 @@ class ProctorAnalyzer:
                      "reason": "Face is too close", "recommendation": "Move back to show shoulders",
                      "qualityGate": quality_gate}))
 
-        # === SPOOFING DETECTION ===
+        # === Signal nghi vấn giả mạo ảnh/màn hình ===
         if spoofing_result["detected"]:
             signals.append(self._signal(
                 "FACE_SPOOFING_SUSPECTED", "CRITICAL", spoofing_result["confidence"],
@@ -416,7 +438,7 @@ class ProctorAnalyzer:
                  "recommendation": "Verify identity with manual review"}
             ))
 
-        # === OCCLUSION DETECTION ===
+        # === Signal che khuất mặt hoặc mắt ===
         if (
             occlusion_result["mask_detected"]
             and quality_gate.get("face_size_reliable", False)
@@ -446,7 +468,7 @@ class ProctorAnalyzer:
                  "coverage": occlusion_result.get("coverage_percent", 0),
                  "recommendation": "Position face to show full front view"}))
 
-        # === EYE TRACKING SIGNALS ===
+        # === Signal từ theo dõi mắt ===
         if (
             eye_tracking["eye_count"] == 0
             and face_count == 1
@@ -457,14 +479,14 @@ class ProctorAnalyzer:
                 {"reason": "Eyes not detectable", "recommendation": "Face the camera directly",
                  "qualityGate": quality_gate}))
 
-        # Eye blink anomaly
+        # Nháy mắt bất thường, thường chỉ là tín hiệu phụ trợ.
         if eye_tracking.get("blink_anomaly"):
             signals.append(self._signal("EYE_BLINK_ANOMALY", "MEDIUM", 0.72,
                 {"blinkRate": eye_tracking.get("blink_rate", 0),
                  "reason": "Abnormal blinking pattern detected",
                  "recommendation": "Normal blinking patterns expected"}))
 
-        # Eye closure detection
+        # Nhắm mắt lâu, chỉ báo khi kéo dài đủ frame hoặc đủ thời gian.
         if eye_tracking.get("prolonged_eye_closure"):
             signals.append(self._signal("EYES_CLOSED_PROLONGED", "LOW", 0.65,
                 {"closureDuration": eye_tracking.get("closure_duration", 0),
@@ -472,7 +494,7 @@ class ProctorAnalyzer:
                  "reason": "Eyes closed for extended period",
                  "recommendation": "Keep eyes open during exam"}))
 
-        # === GAZE TRACKING SIGNALS ===
+        # === Signal từ hướng nhìn ===
         if gaze_analysis["gaze_off_screen"] and quality_gate.get("gaze_valid", False):
             signals.append(self._signal("GAZE_OFF_SCREEN", "HIGH", gaze_analysis["gaze_confidence"],
                 {"gazeDirection": gaze_analysis.get("primary_direction", "UNKNOWN"),
@@ -489,7 +511,7 @@ class ProctorAnalyzer:
                  "recommendation": "Steady gaze expected",
                  "qualityGate": quality_gate}))
 
-        # === LIGHTING SIGNALS ===
+        # === Signal từ ánh sáng ===
         if average_brightness < 40:
             signals.append(self._signal("VERY_LOW_LIGHTING", "HIGH", 0.85,
                 {"averageBrightness": round(average_brightness, 2),
@@ -506,7 +528,7 @@ class ProctorAnalyzer:
                  "reason": "Image is too bright",
                  "recommendation": "Avoid direct light source behind you"}))
 
-        # === BLUR/QUALITY SIGNALS ===
+        # === Signal từ độ nét ảnh ===
         if variance < 50:
             signals.append(self._signal("VERY_BLURRY_FRAME", "HIGH", 0.88,
                 {"variance": round(variance, 2),
@@ -518,7 +540,7 @@ class ProctorAnalyzer:
                  "reason": "Frame has some blur",
                  "recommendation": "Stabilize camera"}))
 
-        # === POSITION SIGNALS ===
+        # === Signal từ vị trí khuôn mặt trong khung hình ===
         if (
             position_analysis["face_turned"]
             and quality_gate.get("face_position_reliable", False)
@@ -587,6 +609,7 @@ class ProctorAnalyzer:
                 "quality_gate": quality_gate,
                 "stability": stability,
                 "signal_filter": signal_filter,
+                "mic_state": mic_state,
                 "landmark_status": self.landmark_status(),
                 "metadata": metadata or {},
             },
@@ -738,8 +761,11 @@ class ProctorAnalyzer:
             frame_size = max(frame_h * frame_w, 1)
             face_ratio = max(0.0, (w * h) / frame_size)
 
+        # Ngưỡng này dùng để lọc frame trước khi suy luận sâu.
+        # 42-235 là vùng sáng tương đối ổn, variance >= 60 coi như đủ nét.
         lighting_reliable = average_brightness >= 42.0 and average_brightness <= 235.0
         sharpness_reliable = variance >= 60.0
+        # Face phải đủ lớn nhưng không chiếm gần hết frame.
         face_size_reliable = face_count == 1 and 0.03 <= face_ratio <= 0.55
         not_obstructed = not (occlusion_result.get("mask_detected") or occlusion_result.get("sunglasses_detected"))
         not_partial = not occlusion_result.get("partial_face", False)
@@ -748,6 +774,7 @@ class ProctorAnalyzer:
         eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
         gaze_confidence = float(gaze_analysis.get("gaze_confidence", 0.0) or 0.0)
 
+        # Gate mắt chỉ mở khi điều kiện ảnh đủ tốt và eye tracking đủ tin cậy.
         eye_check_reliable = bool(
             face_size_reliable
             and lighting_reliable
@@ -762,6 +789,7 @@ class ProctorAnalyzer:
             and eye_state in {"OPEN", "PARTIAL"}
             and gaze_confidence >= 0.25
         )
+        # Gate vị trí mặt dùng cho signal quay mặt/lệch tâm.
         face_position_reliable = bool(
             face_count == 1
             and face_size_reliable
@@ -793,8 +821,13 @@ class ProctorAnalyzer:
             "AI_FACE_MISSING": "FACE_NOT_DETECTED",
             "AI_LOOKING_AWAY": "GAZE_OFF_SCREEN",
             "AI_NO_CAMERA": "NO_CAMERA",
+            "AI_NO_MIC": "NO_MIC",
             "AI_EYES_MISSING": "EYES_NOT_DETECTED",
             "AI_FACE_TURNED": "FACE_TURNED_AWAY",
+            "NO_MICROPHONE": "NO_MIC",
+            "MIC_OFF": "NO_MIC",
+            "MIC_DISABLED": "NO_MIC",
+            "MICROPHONE_OFF": "NO_MIC",
         }
         return alias_map.get(normalized, normalized)
 
@@ -818,6 +851,7 @@ class ProctorAnalyzer:
         type_rank_map = {
             "MULTIPLE_FACES": 900,
             "NO_CAMERA": 880,
+            "NO_MIC": 870,
             "FACE_NOT_DETECTED": 860,
             "FACE_SPOOFING_SUSPECTED": 850,
             "GAZE_OFF_SCREEN": 700,
@@ -842,6 +876,7 @@ class ProctorAnalyzer:
             reverse=True,
         )
 
+        # Loại trùng theo type trước, sau đó mới chặn theo cửa sổ thời gian.
         deduped: list[dict[str, Any]] = []
         seen_types: set[str] = set()
         for signal in ordered:
@@ -925,6 +960,7 @@ class ProctorAnalyzer:
         if not face_locations or len(face_locations) != 1:
             return result
 
+        # Nếu FaceMesh có sẵn thì ưu tiên vì lấy được landmark chính xác hơn Haar.
         mesh_result = self._track_eyes_with_face_mesh(rgb_array, face_locations)
         if mesh_result is not None:
             return mesh_result
@@ -940,6 +976,7 @@ class ProctorAnalyzer:
         if face_w <= 0 or face_h <= 0:
             return result
 
+        # Chỉ quét vùng nửa trên của mặt vì mắt thường nằm ở đây.
         upper_h = max(1, int(face_h * 0.58))
         upper_roi = gray[y1:y1 + upper_h, x1:x2]
         candidates = self._detect_eye_candidates(upper_roi, x1, y1, face_w, face_h)
@@ -1020,10 +1057,12 @@ class ProctorAnalyzer:
             center_y = y1 + box_h / 2
 
             if iris_points:
+                # Có iris landmarks thì lấy tâm iris làm pupil, chính xác hơn đoán từ box.
                 pupil_x = float(np.mean([point[0] for point in iris_points]))
                 pupil_y = float(np.mean([point[1] for point in iris_points]))
                 pupil_confidence = 0.9
             else:
+                # Không có iris thì fallback về tâm box, confidence thấp hơn.
                 pupil_x = center_x
                 pupil_y = center_y
                 pupil_confidence = 0.55
@@ -1180,6 +1219,7 @@ class ProctorAnalyzer:
         pupil_confidence = 0.0
 
         try:
+            # Tăng tương phản, làm mượt rồi nhị phân hóa để tìm vùng tối giống pupil.
             enhanced = cv2.equalizeHist(roi)
             blurred = cv2.GaussianBlur(enhanced, (5, 5), 0)
             _, threshold = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -1196,6 +1236,7 @@ class ProctorAnalyzer:
             contours = contours_raw[0] if len(contours_raw) == 2 else contours_raw[1]
             best: tuple[float, float, float] | None = None
             for contour in contours:
+                # Chỉ nhận contour có kích thước và hình dạng hợp lý của pupil.
                 area = float(cv2.contourArea(contour))
                 area_ratio = area / box_area
                 if area_ratio < 0.008 or area_ratio > 0.42:
@@ -1219,8 +1260,10 @@ class ProctorAnalyzer:
             if best is not None:
                 _, pupil_x, pupil_y = best
                 contrast = float(np.std(roi)) / 64.0
+                # Confidence tăng theo độ tương phản và mức độ giống pupil trung tâm.
                 pupil_confidence = max(0.15, min(0.95, best[0] * 0.45 + min(0.35, contrast)))
             else:
+                # Không tìm được contour tốt thì lấy điểm tối nhất trong ROI.
                 _, _, min_loc, _ = cv2.minMaxLoc(blurred)
                 pupil_x, pupil_y = float(min_loc[0]), float(min_loc[1])
                 contrast = float(np.std(roi)) / 80.0
@@ -1271,6 +1314,7 @@ class ProctorAnalyzer:
             return 0.0
         pupil_confidence = [float(detail.get("pupil_confidence", 0.0)) for detail in eye_details]
         open_scores = [float(detail.get("openness_score", 0.0)) for detail in eye_details]
+        # Trọng số này ưu tiên pupil trước, rồi độ mở mắt, rồi số lượng mắt bắt được.
         eye_count_score = min(1.0, len(eye_details) / 2.0)
         score = 0.45 * float(np.mean(pupil_confidence)) + 0.35 * float(np.mean(open_scores)) + 0.20 * eye_count_score
         return round(max(0.0, min(1.0, score)), 3)
@@ -1291,23 +1335,23 @@ class ProctorAnalyzer:
             return result
 
         try:
-            # Method 1: DL-based spoofing detection (if model available)
+            # Ưu tiên model DL nếu có, vì nó thường bắt được fake phức tạp hơn rule tay.
             if self.spoofing_dl_ready() and face_locations:
                 dl_result = self._dl_spoofing_detection(rgb_array, face_locations[0])
                 if dl_result["detected"]:
                     return dl_result
 
-            # Method 2: Enhanced statistical spoofing detection
+            # Nếu không có DL hoặc DL không bắt được, dùng heuristic theo thống kê ảnh.
             statistical_result = self._enhanced_statistical_spoofing(rgb_array, gray, face_locations)
             if statistical_result["detected"]:
                 return statistical_result
 
-            # Method 3: Texture-based spoofing detection
+            # Kiểm tra texture phẳng bất thường, hay gặp ở ảnh in / ảnh màn hình.
             texture_result = self._texture_based_spoofing(gray, face_locations)
             if texture_result["detected"]:
                 return texture_result
 
-            # Method 4: Color-based spoofing detection
+            # Cuối cùng kiểm tra phân bố màu để bắt ảnh replay hoặc display.
             color_result = self._color_based_spoofing(rgb_array, face_locations)
             if color_result["detected"]:
                 return color_result
@@ -1360,7 +1404,7 @@ class ProctorAnalyzer:
         """Enhanced statistical spoofing detection."""
         laplacian = cv2.Laplacian(gray, cv2.CV_64F).var()
 
-        # Very low Laplacian variance indicates flat image (printed photo)
+        # Laplacian variance rất thấp -> ảnh phẳng, ít biên độ nét, hay gặp ở ảnh in.
         if laplacian < 40:
             return {
                 "detected": True,
@@ -1371,7 +1415,7 @@ class ProctorAnalyzer:
                 "details": {"laplacian_variance": round(laplacian, 2)}
             }
 
-        # FFT-based screen detection
+        # FFT giúp bắt pattern lặp đều, thường gặp khi camera chụp màn hình.
         fft_result = self._fft_screen_detection(gray)
         if fft_result["detected"]:
             return fft_result
@@ -1388,7 +1432,7 @@ class ProctorAnalyzer:
             h, w = gray.shape
             center_h, center_w = h // 2, w // 2
 
-            # Check for periodic patterns
+            # Lấy mẫu theo vòng tròn để xem phổ tần có dao động lặp đều không.
             r = min(h, w) // 4
             ring_values = []
             for angle in range(0, 360, 10):
@@ -1426,7 +1470,7 @@ class ProctorAnalyzer:
             if face_roi.size == 0:
                 return {"detected": False, "type": None, "confidence": 0.0}
 
-            # Sobel edge detection
+            # Ảnh thật thường có biên tự nhiên hơn ảnh phẳng.
             sobelx = cv2.Sobel(face_roi, cv2.CV_64F, 1, 0, ksize=3)
             sobely = cv2.Sobel(face_roi, cv2.CV_64F, 0, 1, ksize=3)
             sobel_magnitude = np.sqrt(sobelx**2 + sobely**2)
@@ -1434,7 +1478,7 @@ class ProctorAnalyzer:
             edge_mean = np.mean(sobel_magnitude)
             edge_std = np.std(sobel_magnitude)
 
-            # Real faces have more texture variation
+            # Biên quá ít và quá đều -> nghi ngờ ảnh phẳng.
             if edge_mean < 10 and edge_std < 5:
                 return {
                     "detected": True,
@@ -1464,18 +1508,18 @@ class ProctorAnalyzer:
 
             b, g, r = cv2.split(face_roi)
 
-            # Check color histogram distribution
+            # Phân bố màu quá thấp entropy thường là ảnh display hoặc ảnh in.
             r_hist = cv2.calcHist([r], [0], None, [256], [0, 256])
             g_hist = cv2.calcHist([g], [0], None, [256], [0, 256])
             b_hist = cv2.calcHist([b], [0], None, [256], [0, 256])
 
-            # Real faces typically have more natural color distribution
+            # Tính entropy riêng cho từng kênh rồi lấy trung bình.
             r_entropy = -np.sum(r_hist / np.sum(r_hist) * np.log2(r_hist / np.sum(r_hist) + 1e-10))
             g_entropy = -np.sum(g_hist / np.sum(g_hist) * np.log2(g_hist / np.sum(g_hist) + 1e-10))
             b_entropy = -np.sum(b_hist / np.sum(b_hist) * np.log2(b_hist / np.sum(b_hist) + 1e-10))
             avg_entropy = (r_entropy + g_entropy + b_entropy) / 3
 
-            # Low entropy indicates unnatural color distribution (screen/print)
+            # Entropy thấp -> màu quá đều, không giống khuôn mặt thật.
             if avg_entropy < 4.5:
                 return {
                     "detected": True,
@@ -1510,6 +1554,7 @@ class ProctorAnalyzer:
         if not face_locations or len(face_locations) != 1 or eye_tracking.get("eye_count", 0) == 0:
             return result
 
+        # Chỉ dùng mắt có confidence tối thiểu để tránh kéo lệch trung bình.
         eye_samples = [
             eye for eye in (eye_tracking.get("left_eye"), eye_tracking.get("right_eye"))
             if isinstance(eye, dict) and isinstance(eye.get("normalized_pupil"), dict)
@@ -1528,13 +1573,16 @@ class ProctorAnalyzer:
         avg_y = float(np.mean(norm_y_values))
         offset_x = avg_x - 0.5
         offset_y = avg_y - 0.5
+        # Nếu chỉ bắt được 1 mắt thì độ tin cậy thấp hơn một chút.
         sample_penalty = 0.15 if len(eye_samples) < 2 else 0.0
         tracking_confidence = float(eye_tracking.get("tracking_confidence", 0.0))
+        # Gaze confidence ghép từ pupil confidence và confidence của tracking.
         gaze_confidence = max(
             0.0,
             min(0.98, 0.55 * float(np.mean(confidences)) + 0.45 * tracking_confidence - sample_penalty),
         )
 
+        # Pupil gần 0.5 là nhìn thẳng. Lệch đủ xa mới coi là hướng khác.
         horizontal_threshold = 0.17
         vertical_threshold = 0.18
         direction = "CENTER"
@@ -1583,6 +1631,7 @@ class ProctorAnalyzer:
         self._prune_tracking_state(now_ms)
         state = self._tracking_state.get(tracking_key)
         if state is None:
+            # State per attempt dùng để nhìn chuỗi frame thay vì chỉ 1 frame đơn lẻ.
             state = {
                 "last_seen_ms": now_ms,
                 "closed_since_ms": None,
@@ -1614,6 +1663,7 @@ class ProctorAnalyzer:
         elif face_count > 1:
             face_status = "MULTIPLE_FACES"
 
+        # Trạng thái mặt phải giữ qua vài frame mới coi là ổn định.
         if state.get("face_status") != face_status:
             state["face_status"] = face_status
             state["face_status_since_ms"] = now_ms
@@ -1671,6 +1721,7 @@ class ProctorAnalyzer:
         )
 
         if face_count != 1:
+            # Khi không còn đúng 1 mặt thì reset các mốc thời gian liên quan đến mắt/gaze.
             state["closed_since_ms"] = None
             state["off_screen_since_ms"] = None
             state["closed_streak"] = 0
@@ -1746,6 +1797,7 @@ class ProctorAnalyzer:
             )
 
         gaze_history = state.setdefault("gaze_history", [])
+        # Lịch sử gaze ngắn hạn dùng để đếm chuyển hướng bất thường.
         gaze_history.append({
             "direction": current_direction,
             "confidence": round(current_confidence, 3),
@@ -1873,6 +1925,29 @@ class ProctorAnalyzer:
         elif ready_state in {"ENDED", "INACTIVE"}:
             state["camera_off"] = True
             state["reason"] = f"trackReadyState={ready_state.lower()}"
+        return state
+
+    def _resolve_mic_state(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        mic_on = self._coerce_bool(self._metadata_value(metadata, "micOn", "mic_on"))
+        track_enabled = self._coerce_bool(self._metadata_value(metadata, "audioTrackEnabled", "audio_track_enabled", "micTrackEnabled", "mic_track_enabled"))
+        track_ready_state = self._normalize_text(self._metadata_value(metadata, "audioTrackReadyState", "audio_track_ready_state", "micTrackReadyState", "mic_track_ready_state"))
+        state = {
+            "mic_on": mic_on,
+            "track_enabled": track_enabled,
+            "track_ready_state": track_ready_state,
+            "mic_off": False,
+            "reason": None,
+        }
+        ready_state = track_ready_state.upper() if track_ready_state else ""
+        if mic_on is False:
+            state["mic_off"] = True
+            state["reason"] = "micOn=false"
+        elif track_enabled is False:
+            state["mic_off"] = True
+            state["reason"] = "audioTrackEnabled=false"
+        elif ready_state in {"ENDED", "INACTIVE"}:
+            state["mic_off"] = True
+            state["reason"] = f"audioTrackReadyState={ready_state.lower()}"
         return state
 
     def _build_camera_off_response(self, metadata: dict[str, Any], camera_state: dict[str, Any]) -> dict[str, Any]:
@@ -2003,6 +2078,7 @@ class ProctorAnalyzer:
     # === Face Detection Methods ===
     def _detect_face_locations(self, rgb_array: np.ndarray, gray: np.ndarray) -> tuple[int, list[tuple[int, int, int, int]], str]:
         if self.dnn_ready():
+            # DNN đi trước, Haar chỉ là đường lui nếu DNN yếu hoặc fail.
             face_count, face_locations, used_haar_fallback = self._detect_faces_dnn(rgb_array, gray)
             if face_count > 0:
                 if used_haar_fallback:
@@ -2029,6 +2105,7 @@ class ProctorAnalyzer:
         try:
             h, w = gray.shape
             bgr_array = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+            # Model Caffe của OpenCV dùng input 300x300, nên frame được resize trước khi infer.
             blob = cv2.dnn.blobFromImage(
                 cv2.resize(bgr_array, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0), swapRB=False, crop=False)
 
@@ -2038,6 +2115,7 @@ class ProctorAnalyzer:
             faces = []
             for i in range(detections.shape[2]):
                 confidence = detections[0, 0, i, 2]
+                # Chỉ giữ detection vượt ngưỡng cấu hình.
                 if confidence > self._dnn_confidence_threshold:
                     x1 = int(detections[0, 0, i, 3] * w)
                     y1 = int(detections[0, 0, i, 4] * h)
@@ -2072,8 +2150,7 @@ class ProctorAnalyzer:
         for variant in variants:
             candidates.extend(self._detect_with_cascade(variant, self._face_cascade))
 
-        # Frontal Haar misses many real webcam frames when the student turns
-        # slightly. Profile detection is advisory but useful as a fallback.
+        # Haar frontal dễ hụt khi mặt quay nhẹ, nên thử thêm profile và ảnh lật ngang.
         if self._profile_cascade is not None and not self._profile_cascade.empty():
             for variant in variants:
                 candidates.extend(self._detect_with_cascade(variant, self._profile_cascade))
@@ -2164,7 +2241,7 @@ class ProctorAnalyzer:
         (x, y, w, h) = face_locations[0]
         eye_count = eye_tracking.get("eye_count", 0)
 
-        # Check upper region for sunglasses
+        # Vùng trên của mặt thường chứa kính và vùng mắt.
         upper_face = gray[y:y + int(h * 0.45), x:x + w]
         if upper_face.size > 0:
             upper_mean = np.mean(upper_face)
@@ -2173,7 +2250,7 @@ class ProctorAnalyzer:
                 result["sunglasses_detected"] = True
                 result["coverage_percent"] -= 20
 
-        # Check for mask
+        # Vùng dưới và vùng giữa ổn định hơn để đo khẩu trang.
         lower_face = gray[y + int(h * 0.75):y + h, x:x + w]
         middle_face = gray[y + int(h * 0.45):y + int(h * 0.75), x:x + w]
         if lower_face.size > 0 and middle_face.size > 0:
@@ -2189,7 +2266,7 @@ class ProctorAnalyzer:
                             result["mask_detected"] = True
                             result["coverage_percent"] -= 30
 
-        # Check partial face
+        # Mặt quá nhỏ hoặc chạm mép frame thì coi là bị che/thiếu một phần.
         face_area = w * h
         frame_area = gray.shape[0] * gray.shape[1]
         if face_area / frame_area < 0.08:
@@ -2223,6 +2300,7 @@ class ProctorAnalyzer:
         frame_center_x, frame_center_y = frame_w // 2, frame_h // 2
 
         offset_x, offset_y = face_center_x - frame_center_x, face_center_y - frame_center_y
+        # Offset tính theo pixel và phần trăm để dễ debug và hiển thị.
         result["center_offset"] = {
             "x": offset_x, "y": offset_y,
             "x_percent": round((offset_x / frame_w) * 100, 1),
@@ -2266,11 +2344,13 @@ class ProctorAnalyzer:
         return warnings
 
     def _decode_image(self, image_base64: str) -> Image.Image:
+        # Bỏ prefix data URL nếu có, giải base64 sang bytes rồi mở bằng PIL.
         raw = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
         image_bytes = base64.b64decode(raw)
         return Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     def _signal(self, signal_type: str, severity: str, confidence: float, evidence: dict[str, Any]) -> dict[str, Any]:
+        # Chuẩn hóa một signal ra cùng schema để BE đọc thống nhất.
         return {
             "signal_type": signal_type,
             "severity": severity,

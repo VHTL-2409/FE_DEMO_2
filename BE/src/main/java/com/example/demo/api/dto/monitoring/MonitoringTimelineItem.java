@@ -11,6 +11,7 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 public class MonitoringTimelineItem {
+    private Long id;
     private String type;
     private LocalDateTime at;
     private String eventType;

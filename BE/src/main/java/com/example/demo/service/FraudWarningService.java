@@ -312,6 +312,7 @@ public class FraudWarningService {
         String canonical = normalizeType(type);
         return Set.of(
                 "NO_CAMERA",
+                "NO_MIC",
                 "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                 "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                 "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",

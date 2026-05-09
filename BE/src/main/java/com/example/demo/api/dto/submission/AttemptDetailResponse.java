@@ -21,6 +21,7 @@ public class AttemptDetailResponse {
     private String riskLevel;
     private Boolean suspicious;
     private Integer violationCount;
+    private Integer warningCount;
     private Boolean reviewRequired;
     private String recommendedAction;
     private List<String> reasons;

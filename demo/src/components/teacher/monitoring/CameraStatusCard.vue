@@ -171,6 +171,7 @@ function getSignalSeverity(signal) {
   const signalType = normalizeSignalType(signal)
   const severityMap = {
     NO_CAMERA: 'high',
+    NO_MIC: 'high',
     MULTIPLE_FACES: 'critical',
     FACE_SPOOFING_SUSPECTED: 'critical',
     FACE_NOT_DETECTED: 'high',
@@ -188,6 +189,7 @@ function getSignalSeverity(signal) {
     FACE_TURNED_AWAY: 'medium',
     EYE_BLINK_ANOMALY: 'medium',
     RAPID_EYE_MOVEMENT: 'medium',
+    AI_SPEAKING_DETECTED: 'medium',
     LOW_LIGHTING: 'low',
     BLURRY_FRAME: 'low',
     EYES_CLOSED_PROLONGED: 'low'
@@ -199,6 +201,7 @@ function formatSignalType(signal) {
   const signalType = normalizeSignalType(signal)
   const labelMap = {
     NO_CAMERA: 'Camera tắt',
+    NO_MIC: 'Micro tắt',
     FACE_NOT_DETECTED: 'Không mặt',
     MULTIPLE_FACES: 'Nhiều mặt',
     FACE_SPOOFING_SUSPECTED: 'Giả mạo',
@@ -219,6 +222,7 @@ function formatSignalType(signal) {
     EYES_CLOSED_PROLONGED: 'Nhắm mắt',
     GAZE_OFF_SCREEN: 'Nhìn lệch',
     RAPID_EYE_MOVEMENT: 'Mắt đảo nhanh',
+    AI_SPEAKING_DETECTED: 'Tiếng ồn',
     PRINTED_PHOTO: 'Ảnh in',
     SCREEN_REPLAY: 'Phát lại',
     DEEPFAKE: 'Deepfake',

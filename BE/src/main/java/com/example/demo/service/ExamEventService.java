@@ -169,6 +169,7 @@ public class ExamEventService {
 
         LocalDateTime now = VietNamTime.now();
         Boolean previousCameraOn = attempt.getCameraOn();
+        Boolean previousMicOn = attempt.getMicOn();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
         attempt.setMicOn(request.getMicOn());
@@ -178,14 +179,17 @@ public class ExamEventService {
         }
         examAttemptRepository.save(attempt);
 
-        RiskScoreResponse noCameraRisk = null;
+        RiskScoreResponse deviceOffRisk = null;
         if (Boolean.TRUE.equals(previousCameraOn) && Boolean.FALSE.equals(request.getCameraOn())) {
-            noCameraRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+            deviceOffRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+        }
+        if (Boolean.TRUE.equals(previousMicOn) && Boolean.FALSE.equals(request.getMicOn())) {
+            deviceOffRisk = recordSystemSignal(attempt, "NO_MIC", "Micro đã tắt", SignalSeverity.HIGH);
         }
 
         applyHeartbeatDerivedSignals(attempt, request);
 
-        return noCameraRisk != null ? noCameraRisk : riskScoringService.recomputeRisk(attempt);
+        return deviceOffRisk != null ? deviceOffRisk : riskScoringService.recomputeRisk(attempt);
     }
 
     @Transactional
@@ -205,6 +209,7 @@ public class ExamEventService {
 
         LocalDateTime now = VietNamTime.now();
         Boolean previousCameraOn = attempt.getCameraOn();
+        Boolean previousMicOn = attempt.getMicOn();
         attempt.setLastHeartbeatAt(now);
         attempt.setCameraOn(request.getCameraOn());
         attempt.setMicOn(request.getMicOn());
@@ -214,14 +219,17 @@ public class ExamEventService {
         }
         examAttemptRepository.save(attempt);
 
-        RiskScoreResponse noCameraRisk = null;
+        RiskScoreResponse deviceOffRisk = null;
         if (Boolean.TRUE.equals(previousCameraOn) && Boolean.FALSE.equals(request.getCameraOn())) {
-            noCameraRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+            deviceOffRisk = recordSystemSignal(attempt, "NO_CAMERA", "Camera đã tắt", SignalSeverity.HIGH);
+        }
+        if (Boolean.TRUE.equals(previousMicOn) && Boolean.FALSE.equals(request.getMicOn())) {
+            deviceOffRisk = recordSystemSignal(attempt, "NO_MIC", "Micro đã tắt", SignalSeverity.HIGH);
         }
 
         applyHeartbeatDerivedSignals(attempt, request);
 
-        return noCameraRisk != null ? noCameraRisk : riskScoringService.recomputeRisk(attempt);
+        return deviceOffRisk != null ? deviceOffRisk : riskScoringService.recomputeRisk(attempt);
     }
 
     @Transactional

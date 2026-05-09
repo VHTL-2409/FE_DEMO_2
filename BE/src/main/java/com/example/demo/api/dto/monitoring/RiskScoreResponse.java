@@ -86,6 +86,9 @@ public class RiskScoreResponse {
     @AllArgsConstructor
     public static class LatestSignalItem {
         private String signalType;
+        private String category;
+        private String displayMessage;
+        private Integer riskImpact;
         private Double confidence;
         private String severity;
         private String evidence;

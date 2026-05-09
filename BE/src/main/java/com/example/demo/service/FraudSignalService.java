@@ -140,9 +140,10 @@ public class FraudSignalService {
             case "IP_CHANGED" -> new SignalDescriptor("IP_CHANGED", "IDENTITY", "Địa chỉ IP thay đổi", 15, SignalSeverity.MEDIUM, 0.88);
             case "ANSWER_SIMILARITY" -> new SignalDescriptor("ANSWER_SIMILARITY", "IDENTITY", "Đáp án trùng lặp cao", 15, SignalSeverity.HIGH, 0.9);
             case "AI_PHONE_DETECTED" -> new SignalDescriptor("AI_PHONE_DETECTED", "IDENTITY", "Phát hiện điện thoại", 15, SignalSeverity.HIGH, 0.94);
-            case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện nói chuyện", 10, SignalSeverity.MEDIUM, 0.75);
+            case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện tiếng ồn", riskImpact("AI_SPEAKING_DETECTED", 10), SignalSeverity.MEDIUM, 0.75);
             // Các tín hiệu phát hiện mới cho AI camera
             case "NO_CAMERA" -> new SignalDescriptor("NO_CAMERA", "AI_CAMERA", "Camera đã tắt", riskImpact("NO_CAMERA", 20), SignalSeverity.HIGH, 0.98);
+            case "NO_MIC" -> new SignalDescriptor("NO_MIC", "AI_CAMERA", "Micro đã tắt", riskImpact("NO_MIC", 20), SignalSeverity.HIGH, 0.98);
             case "FACE_NOT_DETECTED" -> new SignalDescriptor("FACE_NOT_DETECTED", "AI_CAMERA", "Không phát hiện khuôn mặt", riskImpact("FACE_NOT_DETECTED", 20), SignalSeverity.HIGH, 0.90);
             case "MULTIPLE_FACES" -> new SignalDescriptor("MULTIPLE_FACES", "AI_CAMERA", "Nhiều khuôn mặt trong khung hình", riskImpact("MULTIPLE_FACES", 25), SignalSeverity.CRITICAL, 0.97);
             case "FACE_SPOOFING_SUSPECTED" -> new SignalDescriptor("FACE_SPOOFING_SUSPECTED", "AI_CAMERA", "Nghi vấn giả mạo khuôn mặt", riskImpact("FACE_SPOOFING_SUSPECTED", 25), SignalSeverity.CRITICAL, 0.85);

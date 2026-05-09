@@ -275,6 +275,7 @@ public class RealtimeNotificationService {
         if (signalType == null) return false;
         return Set.of(
                 "NO_CAMERA",
+                "NO_MIC",
                 "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
                 "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
                 "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
@@ -282,6 +283,7 @@ public class RealtimeNotificationService {
                 "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                 "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
                 "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                "AI_SPEAKING_DETECTED",
                 "FLAT_IMAGE", "SCREEN_DISPLAY"
         ).contains(signalType);
     }

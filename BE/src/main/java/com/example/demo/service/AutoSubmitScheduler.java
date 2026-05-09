@@ -1,9 +1,12 @@
 package com.example.demo.service;
 
 import com.example.demo.common.VietNamTime;
+import com.example.demo.domain.entity.AutoPausedBy;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
+import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.domain.entity.RiskLevel;
+import com.example.demo.repository.AnswerRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.service.helper.SubmissionHelper;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +29,9 @@ import java.util.List;
 public class AutoSubmitScheduler {
 
     private final ExamAttemptRepository examAttemptRepository;
+    private final AnswerRepository answerRepository;
     private final SubmissionHelper submissionHelper;
+    private final MonitoringService monitoringService;
     private final RealtimeNotificationService realtimeNotificationService;
 
     @Scheduled(fixedRate = 60000) // mỗi phút
@@ -43,7 +48,14 @@ public class AutoSubmitScheduler {
                     attempt.setScore(submissionHelper.calculateScore(attempt));
                     attempt.setSubmittedAt(now);
                     attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
+                    attempt.setAutoPausedBy(AutoPausedBy.NONE);
+                    attempt.setSubmitCount(nextCount(attempt.getSubmitCount()));
+                    attempt.setPausedAt(null);
                     examAttemptRepository.save(attempt);
+                    monitoringService.recordAttemptHistoryEvent(
+                            attempt,
+                            MonitoringEventType.AUTO_SUBMIT,
+                            buildAttemptSubmitDetails(attempt, answerRepository.findByAttempt(attempt).size()));
                     publishAutoSubmittedAfterCommit(attempt);
                     count++;
                     log.info("Auto-submitted attempt {} (student: {}, exam: {})", attempt.getId(), attempt.getStudent().getUsername(), attempt.getExam().getTitle());
@@ -55,6 +67,18 @@ public class AutoSubmitScheduler {
         if (count > 0) {
             log.info("Auto-submitted {} expired attempt(s)", count);
         }
+    }
+
+    private int nextCount(Integer current) {
+        return (current == null ? 0 : current) + 1;
+    }
+
+    private String buildAttemptSubmitDetails(ExamAttempt attempt, int answeredCount) {
+        return "status=" + (attempt.getStatus() != null ? attempt.getStatus().name() : "")
+                + ";submittedAt=" + attempt.getSubmittedAt()
+                + ";answeredCount=" + answeredCount
+                + ";score=" + (attempt.getScore() != null ? attempt.getScore() : "")
+                + ";submitCount=" + (attempt.getSubmitCount() != null ? attempt.getSubmitCount() : "");
     }
 
     private void publishAutoSubmittedAfterCommit(ExamAttempt attempt) {

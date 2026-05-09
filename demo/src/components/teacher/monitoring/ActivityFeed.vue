@@ -107,6 +107,14 @@ const eventsCount = computed(() => Math.min(props.events.length, props.maxEvents
 
 const hasCritical = computed(() => props.alerts.some(a => (a.severity || a.riskBand) === 'CRITICAL'))
 
+const itemSignalType = (item) =>
+  String(item.signalType || item.warningType || item.latestSignal?.signalType || item.eventType || item.type || item.action || item.message || '').toUpperCase()
+
+const isSpeechItem = (item) => {
+  const text = `${itemSignalType(item)} ${String(item.message || '').toUpperCase()}`
+  return text.includes('SPEAK') || text.includes('VOICE')
+}
+
 // Merge alerts and events into one chronological list
 const mergedItems = computed(() => {
   const alertItems = props.alerts.map(a => ({ ...a, type: 'alert' }))
@@ -146,18 +154,21 @@ const severityLabel = (sev) => {
 }
 
 const alertText = (a) => {
+  if (isSpeechItem(a)) return 'Tiếng ồn'
   if (a.eventType) return a.eventType
   if (a.message) return a.message
   return 'Cảnh báo'
 }
 
 const alertIcon = (a) => {
+  if (isSpeechItem(a)) return 'mic'
   const map = { CRITICAL: 'error', HIGH_RISK: 'warning', SUSPICIOUS: 'help', CLEAN: 'check_circle' }
   return map[a.severity || a.riskBand] || 'warning'
 }
 
 const eventVariant = (e) => {
-  const type = String(e.eventType || '').toUpperCase()
+  const type = itemSignalType(e)
+  if (isSpeechItem(e)) return 'warning'
   if (type.includes('WARNING') || type.includes('VIOLATION')) return 'warning'
   if (type.includes('PAUSE') || type.includes('STOP') || type.includes('INVALIDATE')) return 'danger'
   if (type.includes('SUBMIT') || type.includes('COMPLETE')) return 'success'
@@ -165,7 +176,8 @@ const eventVariant = (e) => {
 }
 
 const eventIcon = (e) => {
-  const type = String(e.eventType || '').toUpperCase()
+  const type = itemSignalType(e)
+  if (isSpeechItem(e)) return 'mic'
   if (type.includes('WARNING')) return 'warning'
   if (type.includes('PAUSE')) return 'pause_circle'
   if (type.includes('SUBMIT') || type.includes('COMPLETE')) return 'check_circle'
@@ -174,7 +186,8 @@ const eventIcon = (e) => {
 }
 
 const eventText = (e) => {
-  const type = String(e.eventType || '').toLowerCase()
+  const type = itemSignalType(e).toLowerCase()
+  if (isSpeechItem(e)) return 'tiếng ồn'
   if (type.includes('warning')) return 'nhận cảnh báo'
   if (type.includes('pause')) return 'bị tạm dừng'
   if (type.includes('stop') || type.includes('invalidate')) return 'bị đình chỉ'

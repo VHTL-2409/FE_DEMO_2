@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX IF NOT EXISTS idx_audit_attempt ON audit_logs(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
+ALTER TABLE IF EXISTS audit_logs DROP CONSTRAINT IF EXISTS audit_logs_action_check;
+ALTER TABLE IF EXISTS audit_logs ADD CONSTRAINT audit_logs_action_check
+CHECK (action IN (
+    'TEACHER_NOTE','TEACHER_WARNING','TEACHER_PAUSE','TEACHER_RESUME','TEACHER_INVALIDATE',
+    'SYSTEM_DUPLICATE_IP','SYSTEM_IP_CHANGE','SYSTEM_RISK_WARNING',
+    'SYSTEM_ATTEMPT_PAUSE','SYSTEM_ATTEMPT_RESUME'
+));
 
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP;
@@ -37,6 +44,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_exam_events_attempt_sequence
 CREATE INDEX IF NOT EXISTS idx_exam_events_attempt_type ON exam_events(attempt_id, event_type);
 CREATE INDEX IF NOT EXISTS idx_exam_events_attempt_created ON exam_events(attempt_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_exam_events_fingerprint ON exam_events(device_fingerprint);
+
+CREATE TABLE IF NOT EXISTS monitoring_events (
+    id BIGSERIAL PRIMARY KEY,
+    attempt_id BIGINT NOT NULL REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    event_type VARCHAR(30) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP NOT NULL
+);
+
+ALTER TABLE IF EXISTS monitoring_events DROP CONSTRAINT IF EXISTS uk_monitoring_event_attempt_type_details;
+ALTER TABLE IF EXISTS monitoring_events DROP CONSTRAINT IF EXISTS monitoring_events_event_type_check;
+ALTER TABLE IF EXISTS monitoring_events ADD CONSTRAINT monitoring_events_event_type_check
+CHECK (event_type IN (
+    'ATTEMPT_START','DRAFT_SAVE','ATTEMPT_SUBMIT','AUTO_SUBMIT','NOTE',
+    'TEACHER_WARNING','TEACHER_PAUSE','TEACHER_RESUME','TEACHER_INVALIDATE',
+    'TAB_SWITCH','BLUR','EXIT_FULLSCREEN','FAST_SUBMIT','DUPLICATE_IP',
+    'COPY_PASTE','IDLE_TIME','DEVTOOLS_OPEN','RIGHT_CLICK','PRINT_SCREEN',
+    'RAPID_QUESTION_SWITCH','MULTI_MONITOR','HEARTBEAT_STALE','DEVICE_FINGERPRINT_CHANGED'
+));
 
 CREATE TABLE IF NOT EXISTS fraud_signals (
     id BIGSERIAL PRIMARY KEY,
@@ -177,6 +203,8 @@ CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_
 
 CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_created
     ON monitoring_events(attempt_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_type
+    ON monitoring_events(attempt_id, event_type);
 
 -- =====================================================
 -- EXAM SHUFFLE FIELDS

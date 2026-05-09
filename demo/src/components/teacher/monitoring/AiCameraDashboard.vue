@@ -233,6 +233,7 @@ function formatSignalType(signal) {
   const signalType = normalizeSignalType(signal)
   const labelMap = {
     NO_CAMERA: 'Camera tắt',
+    NO_MIC: 'Micro tắt',
     FACE_NOT_DETECTED: 'Không thấy mặt',
     MULTIPLE_FACES: 'Nhiều mặt',
     FACE_SPOOFING_SUSPECTED: 'Nghi giả mạo',
@@ -242,6 +243,7 @@ function formatSignalType(signal) {
     EYES_CLOSED_PROLONGED: 'Nhắm mắt lâu',
     GAZE_OFF_SCREEN: 'Nhìn lệch',
     RAPID_EYE_MOVEMENT: 'Mắt đảo nhanh',
+    AI_SPEAKING_DETECTED: 'Tiếng ồn',
     VERY_LOW_LIGHTING: 'Rất tối',
     LOW_LIGHTING: 'Thiếu sáng',
     OVEREXPOSED_FRAME: 'Cháy sáng',

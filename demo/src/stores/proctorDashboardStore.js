@@ -41,11 +41,12 @@ const makeEventKey = (event) =>
   `${event.attemptId || ''}:${event.type || event.eventType || ''}:${event.occurredAt || event.issuedAt || event.at || ''}`
 
 const CAMERA_ALERT_CATEGORIES = new Set(['CAMERA_PROCTORING', 'AI_CAMERA'])
+const CAMERA_ALERT_SIGNAL_TYPES = new Set(['AI_CAMERA_SIGNAL', 'AI_SPEAKING_DETECTED', 'NO_MIC'])
 
 const isCameraAlert = (alert = {}) => {
   const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
   const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
-  return CAMERA_ALERT_CATEGORIES.has(category) || signalType === 'AI_CAMERA_SIGNAL'
+  return CAMERA_ALERT_CATEGORIES.has(category) || CAMERA_ALERT_SIGNAL_TYPES.has(signalType)
 }
 
 const buildAlertKey = (alert = {}) => {

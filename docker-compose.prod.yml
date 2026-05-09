@@ -82,6 +82,7 @@ services:
       - app-network
     volumes:
       - ./BE/.env:/run/secrets/be.env:ro
+      - ./BE/data/proctor-evidence:/app/data/proctor-evidence
 
   ai-service:
     build:

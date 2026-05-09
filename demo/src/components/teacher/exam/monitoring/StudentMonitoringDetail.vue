@@ -67,6 +67,13 @@
           <span class="smd-risk-level">
             {{ riskBandLabel }}
           </span>
+          <span
+            v-if="latestRiskDelta != null && latestRiskDelta !== 0"
+            class="smd-risk-delta"
+            :class="latestRiskDelta > 0 ? 'smd-risk-delta--up' : 'smd-risk-delta--down'"
+          >
+            {{ formatRiskImpact(latestRiskDelta) }}
+          </span>
         </div>
 
         <div class="smd-header__actions">
@@ -197,22 +204,27 @@
 
             <div class="smd-risk-summary">
               <div class="smd-breakdown">
-                <div class="smd-breakdown-row">
-                  <span class="smd-breakdown-label">Screen leave</span>
-                  <span class="smd-breakdown-val">{{ getBreakdownCount('SCREEN_LEAVE') }}</span>
-                </div>
-                <div class="smd-breakdown-row">
-                  <span class="smd-breakdown-label">Clipboard</span>
-                  <span class="smd-breakdown-val">{{ getBreakdownCount('CLIPBOARD') }}</span>
-                </div>
-                <div class="smd-breakdown-row">
-                  <span class="smd-breakdown-label">Kỹ thuật</span>
-                  <span class="smd-breakdown-val">{{ getBreakdownCount('TECHNICAL') }}</span>
-                </div>
-                <div class="smd-breakdown-row">
-                  <span class="smd-breakdown-label">Định danh</span>
-                  <span class="smd-breakdown-val">{{ getBreakdownCount('IDENTITY') }}</span>
-                </div>
+                <article
+                  v-for="group in riskComponentGroups"
+                  :key="group.key"
+                  class="smd-breakdown-cluster"
+                  :class="`smd-breakdown-cluster--${group.tone}`"
+                >
+                  <div class="smd-breakdown-cluster__head">
+                    <span class="smd-breakdown-cluster__icon">
+                      <LucideIcon :name="group.icon" :size="15" />
+                    </span>
+                    <span class="smd-breakdown-cluster__score">{{ group.score }}</span>
+                  </div>
+                  <span class="smd-breakdown-cluster__label">{{ group.label }}</span>
+                  <span class="smd-breakdown-cluster__desc">{{ group.description }}</span>
+                  <div class="smd-breakdown-cluster__meter" aria-hidden="true">
+                    <span
+                      class="smd-breakdown-cluster__fill"
+                      :style="{ width: Math.min(group.score, 100) + '%' }"
+                    />
+                  </div>
+                </article>
               </div>
 
               <div v-if="riskData.evidenceSummary?.length" class="smd-reasons">
@@ -223,6 +235,38 @@
                 >
                   {{ reason }}
                 </span>
+              </div>
+
+              <div class="smd-live-snapshot">
+                <div class="smd-live-snapshot__head">
+                  <span class="smd-live-snapshot__label">Tín hiệu mới nhất</span>
+                  <span
+                    class="smd-live-badge"
+                    :class="isConnected ? 'smd-live-badge--on' : 'smd-live-badge--off'"
+                  >
+                    {{ isConnected ? 'Realtime' : 'Polling' }}
+                  </span>
+                </div>
+
+                <div v-if="latestRealtimeSignal" class="smd-live-snapshot__body">
+                  <div class="smd-live-snapshot__row">
+                    <span class="smd-live-snapshot__type">{{ getSignalLabel(latestRealtimeSignal.signalType) }}</span>
+                    <span
+                      v-if="latestRealtimeSignal.riskImpact != null && Number(latestRealtimeSignal.riskImpact) !== 0"
+                      class="smd-live-snapshot__impact"
+                      :class="latestRealtimeSignal.riskImpact >= 15 ? 'smd-live-snapshot__impact--high' : 'smd-live-snapshot__impact--mid'"
+                    >
+                      {{ formatRiskImpact(latestRealtimeSignal.riskImpact) }}
+                    </span>
+                  </div>
+                  <p v-if="latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence" class="smd-live-snapshot__msg">
+                    {{ latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence }}
+                  </p>
+                </div>
+
+                <div v-else class="smd-live-snapshot__empty">
+                  Đang chờ tín hiệu mới
+                </div>
               </div>
             </div>
           </section>
@@ -268,6 +312,13 @@
                   <p v-if="event.displayMessage || event.details" class="smd-event__msg">
                     {{ event.displayMessage || event.details }}
                   </p>
+                  <span
+                    v-if="event.riskImpact != null && Number(event.riskImpact) !== 0"
+                    class="smd-event__impact"
+                    :class="event.riskImpact >= 15 ? 'smd-event__impact--high' : 'smd-event__impact--mid'"
+                  >
+                    {{ formatRiskImpact(event.riskImpact) }}
+                  </span>
                 </div>
                 <time class="smd-event__time">{{ formatTime(event.at || event.timestamp || event.occurredAt) }}</time>
               </article>
@@ -653,6 +704,8 @@ const SIGNAL_LABELS = {
   FACE_TURNED_AWAY: 'Quay mặt đi',
   FACE_NOT_CENTERED: 'Mặt lệch tâm',
   EYES_NOT_DETECTED: 'Không phát hiện mắt',
+  AI_SPEAKING_DETECTED: 'Tiếng ồn',
+  NO_MIC: 'Micro tắt',
   // Lighting & Quality
   VERY_LOW_LIGHTING: 'Ánh sáng rất yếu',
   LOW_LIGHTING: 'Ánh sáng yếu',
@@ -670,6 +723,16 @@ const SIGNAL_LABELS = {
   COPY_ATTEMPT: 'Sao chép',
   PASTE_ATTEMPT: 'Dán nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools',
+  EXIT_FULLSCREEN: 'Thoát toàn màn hình',
+  COPY_PASTE: 'Sao chép / dán',
+  RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh',
+  MULTI_MONITOR: 'Nhiều màn hình',
+  HEARTBEAT_STALE: 'Mất kết nối',
+  GAZE_OFF_SCREEN: 'Nhìn lệch màn hình',
+  ATTEMPT_STARTED: 'Bắt đầu bài thi',
+  DRAFT_SAVED: 'Lưu nháp',
+  FRAUD_SIGNAL: 'Tín hiệu gian lận',
+  FRAUD_WARNING: 'Cảnh báo gian lận',
   // Identity & Network
   IP_CHANGED: 'IP thay đổi',
   IP_ANOMALY: 'IP bất thường',
@@ -686,9 +749,19 @@ const SIGNAL_LABELS = {
   RISK_UPDATED: 'Cập nhật rủi ro',
   NOTE: 'Ghi chú'
 }
+const BREAKDOWN_KEY_ALIASES = {
+  SCREEN_LEAVE: ['screenLeaveScore', 'SCREEN_LEAVE', 'screen_leave', 'screen_leave_score'],
+  CLIPBOARD: ['clipboardScore', 'CLIPBOARD', 'clipboard_score'],
+  TECHNICAL: ['technicalScore', 'TECHNICAL', 'technical_score'],
+  IDENTITY: ['identityScore', 'IDENTITY', 'identity_score'],
+  VISUAL_IDENTITY: ['visualIdentityScore', 'VISUAL_IDENTITY', 'visual_identity_score'],
+  HEARTBEAT: ['heartbeatScore', 'HEARTBEAT', 'heartbeat_score'],
+  TOTAL: ['totalScore', 'TOTAL_SCORE', 'total_score', 'score', 'riskScore']
+}
 const EVENT_COLORS = {
   // AI Camera Detection - Critical
   NO_CAMERA: 'var(--ds-danger)',
+  NO_MIC: 'var(--ds-danger)',
   FACE_NOT_DETECTED: 'var(--ds-danger)',
   MULTIPLE_FACES: 'var(--ds-danger)',
   FACE_SPOOFING_SUSPECTED: 'var(--ds-danger)',
@@ -701,6 +774,7 @@ const EVENT_COLORS = {
   FACE_TURNED_AWAY: 'var(--ds-warning)',
   FACE_NOT_CENTERED: 'var(--ds-info)',
   EYES_NOT_DETECTED: 'var(--ds-warning)',
+  AI_SPEAKING_DETECTED: 'var(--ds-warning)',
   // Lighting & Quality
   VERY_LOW_LIGHTING: 'var(--ds-warning)',
   LOW_LIGHTING: 'var(--ds-info)',
@@ -713,11 +787,17 @@ const EVENT_COLORS = {
   SCREEN_LEAVE: 'var(--ds-warning)',
   FULLSCREEN_VIOLATION: 'var(--ds-warning)',
   FULLSCREEN_EVASION: 'var(--ds-warning)',
+  EXIT_FULLSCREEN: 'var(--ds-warning)',
   LONG_SCREEN_LEAVE: 'var(--ds-warning)',
   CLIPBOARD_ABUSE: 'var(--ds-danger)',
+  COPY_PASTE: 'var(--ds-danger)',
   COPY_ATTEMPT: 'var(--ds-danger)',
   PASTE_ATTEMPT: 'var(--ds-danger)',
   DEVTOOLS_OPEN: 'var(--ds-danger)',
+  RAPID_QUESTION_SWITCH: 'var(--ds-warning)',
+  MULTI_MONITOR: 'var(--ds-warning)',
+  HEARTBEAT_STALE: 'var(--ds-warning)',
+  GAZE_OFF_SCREEN: 'var(--ds-warning)',
   // Identity
   IP_CHANGED: 'var(--ds-danger)',
   IP_ANOMALY: 'var(--ds-danger)',
@@ -725,6 +805,10 @@ const EVENT_COLORS = {
   DUPLICATE_IP: 'var(--ds-danger)',
   // System Events
   WARNING_SENT: 'var(--ds-primary)',
+  FRAUD_SIGNAL: 'var(--ds-danger)',
+  FRAUD_WARNING: 'var(--ds-danger)',
+  ATTEMPT_STARTED: 'var(--ds-success)',
+  DRAFT_SAVED: 'var(--ds-info)',
   ATTEMPT_PAUSED: 'var(--ds-warning)',
   ATTEMPT_RESUMED: 'var(--ds-success)',
   ATTEMPT_SUBMITTED: 'var(--ds-success)',
@@ -738,12 +822,13 @@ const EVENT_COLORS = {
 // ── Route & composables ────────────────────────────────────────────
 const route = useRoute()
 const toast = useToast()
-const { subscribeToAttempt, unsubscribeFromAttempt, isConnected } = useExamMonitoring()
+const { subscribeToAttempt, unsubscribeFromAttempt, isConnected: isRealtimeConnected } = useExamMonitoring()
 const cameraRealtime = useRealtimeChannel()
 
 const attemptId = computed(() => route.params.attemptId)
 const examId = computed(() => route.params.examId)
 const backLink = computed(() => `/teacher/exams/${examId.value}/monitoring`)
+const isConnected = computed(() => isRealtimeConnected())
 
 // ── State ─────────────────────────────────────────────────────────
 const loading = ref(true)
@@ -813,13 +898,17 @@ const studentName = computed(() => {
     || attemptData.value.username
   return s || 'Chưa có tên'
 })
-const riskScore = computed(() =>
-  Math.round(riskData.value.score ?? attemptData.value.riskScore ?? 0)
-)
+const riskScore = computed(() => {
+  const score = resolveRiskScoreValue(riskData.value)
+    ?? resolveRiskScoreValue({ score: attemptData.value.riskScore })
+    ?? 0
+  return Math.round(score)
+})
+const latestRiskDelta = computed(() => toNumberOrNull(riskData.value.lastRiskDelta))
 const riskBand = computed(() => {
   // Use level from API first, fallback to computing from score
-  const level = riskData.value.level
-  if (level) return level.toUpperCase()
+  const level = riskData.value.level ?? riskData.value.riskLevel
+  if (level) return String(level).toUpperCase()
   const score = riskScore.value
   if (score >= RISK_BAND_THRESHOLDS.CRITICAL) return 'CRITICAL'
   if (score >= RISK_BAND_THRESHOLDS.HIGH_RISK) return 'HIGH_RISK'
@@ -883,7 +972,7 @@ const AI_CAMERA_SIGNALS = [
   'NO_CAMERA', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'FACE_SPOOFING_SUSPECTED',
   'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
   'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
-  'EYES_NOT_DETECTED', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
+  'EYES_NOT_DETECTED', 'AI_SPEAKING_DETECTED', 'NO_MIC', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
   'VERY_BLURRY_FRAME', 'BLURRY_FRAME', 'EYE_BLINK_ANOMALY',
   'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT'
 ]
@@ -915,18 +1004,12 @@ const TIMELINE_HIDDEN_TYPES = new Set(['RISK_SCORE', 'RISK_UPDATED'])
 const TIMELINE_WARNING_TYPES = new Set(['FRAUD_WARNING', 'WARNING', 'WARNING_SENT', 'CAMERA_PROCTORING'])
 
 const latestSignals = computed(() => {
-  const signals = Array.isArray(riskData.value.latestSignals) ? riskData.value.latestSignals : []
-  const seen = new Set()
-  const unique = []
-  for (const signal of signals) {
-    const type = normalizeSignalType(signal?.signalType || signal?.signal_type)
-    const key = type || String(signal?.id || signal?.createdAt || signal?.occurredAt || unique.length)
-    if (seen.has(key)) continue
-    seen.add(key)
-    unique.push(signal)
-  }
-  return unique.slice(0, 3)
+  return mergeLatestSignals(
+    Array.isArray(riskData.value.latestSignals) ? riskData.value.latestSignals : [],
+    riskData.value.latestSignal ? [riskData.value.latestSignal] : []
+  ).slice(0, 5)
 })
+const latestRealtimeSignal = computed(() => latestSignals.value[0] || null)
 const latestCameraFrameSrc = computed(() => renderedCameraFrame.value?.imageBase64 || '')
 const latestCameraVisualOverlay = computed(() => {
   const frame = renderedCameraFrame.value
@@ -1002,14 +1085,48 @@ const gazeStatusLabel = computed(() => {
 
 // Breakdown from API returns Map<String, Integer> - access by signal type key
 const getBreakdownCount = (key) => {
-  const breakdown = riskData.value.breakdown
-  if (!breakdown) return 0
-  // Keys might be uppercase or comeCase
-  return breakdown[key] ?? breakdown[key.toUpperCase()] ?? breakdown[key.toLowerCase()] ?? 0
+  const sources = [riskData.value.breakdown, riskData.value.scores].filter(source => source && typeof source === 'object')
+  const aliases = BREAKDOWN_KEY_ALIASES[key] || [key]
+  for (const source of sources) {
+    for (const alias of aliases) {
+      const value = source[alias]
+      if (value != null && value !== '') {
+        return Number(value) || 0
+      }
+    }
+  }
+  return 0
 }
 
+const riskComponentGroups = computed(() => [
+  {
+    key: 'screen_leave',
+    label: 'Screen leave',
+    description: 'Chuyển tab, mất focus, thoát fullscreen',
+    score: getBreakdownCount('SCREEN_LEAVE'),
+    tone: 'screen',
+    icon: 'monitor-off'
+  },
+  {
+    key: 'identity_device',
+    label: 'Định danh / IP device',
+    description: 'IP trùng, đổi IP, đổi thiết bị',
+    score: getBreakdownCount('IDENTITY'),
+    tone: 'identity',
+    icon: 'fingerprint'
+  },
+  {
+    key: 'camera_ai',
+    label: 'Camera AI',
+    description: 'Khuôn mặt, ánh sáng, hướng nhìn',
+    score: getBreakdownCount('VISUAL_IDENTITY'),
+    tone: 'camera',
+    icon: 'camera'
+  }
+])
+
 const activeFlagStatusLabel = computed(() => {
-  const status = String(riskData.value.status || '').toUpperCase()
+  const status = String(riskData.value.activeFlagStatus || riskData.value.status || '').toUpperCase()
   if (!status || status === 'CLEAN') return 'Chưa có'
   if (status === 'OPEN' || status === 'ACTIVE') return 'Đang mở'
   if (status === 'CONFIRMED') return 'Đã xác nhận'
@@ -1017,24 +1134,247 @@ const activeFlagStatusLabel = computed(() => {
   return status
 })
 
-// Sorted & filtered timeline
-const sortedTimeline = computed(() => {
-  const unique = new Map()
-  for (const rawItem of timeline.value || []) {
-    const item = normalizeTimelineItem(rawItem)
-    if (!item || TIMELINE_HIDDEN_TYPES.has(item.eventType)) continue
-    const key = makeEventKey(item)
-    const existing = unique.get(key)
-    if (!existing || preferTimelineItem(item, existing)) {
-      unique.set(key, item)
+function toNumberOrNull(value) {
+  if (value == null || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function clampRiskScoreValue(value) {
+  const number = toNumberOrNull(value)
+  if (number == null) return null
+  return Math.min(100, Math.max(0, number))
+}
+
+function toObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+}
+
+function resolveRiskScoreValue(snapshot = {}) {
+  return clampRiskScoreValue(
+    snapshot.riskScore
+      ?? snapshot.scores?.totalScore
+      ?? snapshot.breakdown?.totalScore
+      ?? snapshot.attempt?.riskScore
+      ?? snapshot.score
+  )
+}
+
+function hasExplicitRiskScore(snapshot = {}) {
+  return snapshot.riskScore != null
+    || snapshot.scores?.totalScore != null
+    || snapshot.breakdown?.totalScore != null
+    || snapshot.attempt?.riskScore != null
+}
+
+function normalizeRealtimeRiskPatch(payload = {}) {
+  const patch = { ...payload }
+  if (!hasExplicitRiskScore(patch) && patch.score != null) {
+    delete patch.score
+  }
+  return patch
+}
+
+function formatRiskImpact(value) {
+  const number = toNumberOrNull(value)
+  if (number == null) return '—'
+  const sign = number > 0 ? '+' : ''
+  return `${sign}${number} điểm`
+}
+
+function normalizeTimelineSource(value) {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return ''
+  const normalized = raw.replace(/[\s-]+/g, '_')
+  if (normalized.includes('exam_event')) return 'exam_events'
+  if (normalized.includes('fraud_warning')) return 'fraud_warnings'
+  if (normalized.includes('fraud_signal')) return 'fraud_signals'
+  if (normalized.includes('monitoring_event')) return 'monitoring_events'
+  return normalized
+}
+
+function resolveTimelineSource(item = {}) {
+  if (!item || typeof item !== 'object') return ''
+  return normalizeTimelineSource(item.type || item.source || item.sourceType || item.eventSource || '')
+}
+
+function getTimelineItemId(item = {}) {
+  if (!item || typeof item !== 'object') return null
+  return item.id ?? item.eventId ?? item.event_id ?? item.signalId ?? item.signal_id ?? item.warningId ?? item.warning_id ?? null
+}
+
+function makeTimelineIdKey(item = {}) {
+  const source = resolveTimelineSource(item)
+  const id = getTimelineItemId(item)
+  if (!source || id == null || id === '') return ''
+  return `${source}:${id}`
+}
+
+function getTimelineDedupeKeys(item = {}) {
+  const keys = []
+  const idKey = makeTimelineIdKey(item)
+  if (idKey) keys.push(idKey)
+  const fingerprint = makeTimelineFingerprint(item)
+  if (fingerprint) keys.push(`fp:${fingerprint}`)
+  return keys
+}
+
+function getTimelineSourceRank(source = '') {
+  if (source === 'fraud_warnings') return 4
+  if (source === 'fraud_signals') return 3
+  if (source === 'monitoring_events') return 2
+  if (source === 'exam_events') return 1
+  return 0
+}
+
+function normalizeSignalItem(signal = {}) {
+  if (!signal || typeof signal !== 'object') signal = {}
+  const signalType = normalizeSignalType(signal.signalType || signal.signal_type || signal.warningType || signal.type)
+  const createdAt = signal.createdAt || signal.occurredAt || signal.issuedAt || signal.timestamp || signal.at || null
+  const id = signal.id ?? signal.signalId ?? signal.signal_id ?? signal.warningId ?? signal.warning_id ?? null
+  const fallbackKey = [
+    signalType || 'signal',
+    id || '',
+    createdAt || '',
+    normalizeTimelineText(signal.displayMessage || signal.message || signal.details || signal.evidence) || ''
+  ].filter(Boolean).join('|') || signalType || 'signal'
+  return {
+    ...signal,
+    id,
+    signalType,
+    category: normalizeSignalType(signal.category || signal.warningCategory) || signal.category || '',
+    displayMessage: normalizeTimelineText(signal.displayMessage || signal.message || signal.details || signal.evidence),
+    evidence: signal.evidence || signal.message || signal.details || '',
+    severity: normalizeSignalType(signal.severity) || signal.severity || '',
+    confidence: toNumberOrNull(signal.confidence),
+    riskImpact: toNumberOrNull(signal.riskImpact),
+    createdAt,
+    _key: signal.id || signal.signalId || signal.signal_id || fallbackKey
+  }
+}
+
+function signalKey(signal = {}) {
+  const id = signal.id || signal.signalId || signal.signal_id || signal.warningId || signal.warning_id || ''
+  if (id !== '') {
+    return [
+      signal.signalType || '',
+      signal.category || '',
+      id
+    ].join('|')
+  }
+  return [
+    signal.signalType || '',
+    signal.category || '',
+    signal.createdAt || signal.occurredAt || signal.issuedAt || '',
+    signal.riskImpact ?? '',
+    signal.displayMessage || signal.evidence || ''
+  ].join('|')
+}
+
+function preferSignalItem(candidate = {}, existing = {}) {
+  if (!existing) return true
+  if (candidate.riskImpact != null && existing.riskImpact == null) return true
+  if (candidate.displayMessage && !existing.displayMessage) return true
+  if (candidate.evidence && !existing.evidence) return true
+  if (candidate.confidence != null && existing.confidence == null) return true
+  const candidateTime = new Date(candidate.createdAt || candidate.occurredAt || candidate.issuedAt || 0).getTime()
+  const existingTime = new Date(existing.createdAt || existing.occurredAt || existing.issuedAt || 0).getTime()
+  return candidateTime > existingTime
+}
+
+function mergeLatestSignals(...groups) {
+  const merged = new Map()
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue
+    for (const signal of group) {
+      const normalized = normalizeSignalItem(signal)
+      if (!normalized.signalType && !normalized.displayMessage && normalized.riskImpact == null) continue
+      const key = signalKey(normalized)
+      const existing = merged.get(key)
+      if (!existing || preferSignalItem(normalized, existing)) {
+        merged.set(key, normalized)
+      }
     }
   }
-  return [...unique.values()].sort((a, b) => {
-    const aTime = new Date(a.at || a.timestamp || a.occurredAt || 0).getTime()
-    const bTime = new Date(b.at || b.timestamp || b.occurredAt || 0).getTime()
-    return bTime - aTime
-  }).map((item, i) => ({ ...item, _key: item.id || makeEventKey(item) || `${i}-${item.at}` }))
-})
+  return [...merged.values()]
+    .sort((a, b) => new Date(b.createdAt || b.occurredAt || b.issuedAt || 0).getTime() - new Date(a.createdAt || a.occurredAt || a.issuedAt || 0).getTime())
+    .map((signal, index) => ({ ...signal, _key: signal._key || `${signal.signalType || 'signal'}-${index}` }))
+}
+
+function normalizeRiskSnapshot(snapshot = {}) {
+  const next = { ...snapshot }
+  const score = resolveRiskScoreValue(snapshot)
+  if (score != null) {
+    next.score = score
+    next.riskScore = score
+  }
+
+  const level = snapshot.level ?? snapshot.riskLevel
+  if (level) {
+    const normalizedLevel = String(level).toUpperCase()
+    next.level = normalizedLevel
+    next.riskLevel = normalizedLevel
+  }
+
+  const breakdown = { ...toObject(snapshot.breakdown), ...toObject(snapshot.scores) }
+  if (Object.keys(breakdown).length > 0) {
+    next.breakdown = breakdown
+  }
+  if (Object.keys(toObject(snapshot.scores)).length > 0) {
+    next.scores = { ...toObject(snapshot.scores) }
+  }
+
+  const latestSignals = mergeLatestSignals(
+    Array.isArray(snapshot.latestSignals) ? snapshot.latestSignals : [],
+    snapshot.latestSignal ? [snapshot.latestSignal] : []
+  )
+  if (latestSignals.length > 0) {
+    next.latestSignals = latestSignals
+  }
+  if (snapshot.latestSignal) {
+    next.latestSignal = normalizeSignalItem(snapshot.latestSignal)
+  }
+
+  next.reasons = snapshot.reasons ?? next.reasons
+  next.evidenceSummary = snapshot.evidenceSummary ?? next.evidenceSummary
+  next.recommendedAction = snapshot.recommendedAction ?? next.recommendedAction
+  next.reviewRequired = snapshot.reviewRequired ?? next.reviewRequired
+  next.actionTaken = snapshot.actionTaken ?? next.actionTaken
+  next.status = snapshot.status ?? next.status
+  next.updatedAt = snapshot.updatedAt ?? snapshot.issuedAt ?? next.updatedAt
+  return next
+}
+
+function mergeRiskSnapshot(current = {}, patch = {}) {
+  const base = normalizeRiskSnapshot(current)
+  const next = normalizeRiskSnapshot({ ...base, ...patch })
+  if (patch.lastRiskDelta != null) {
+    next.lastRiskDelta = toNumberOrNull(patch.lastRiskDelta)
+  } else {
+    next.lastRiskDelta = null
+  }
+  if (patch.activeFlag || patch.activeFlagId != null || patch.activeFlagStatus != null) {
+    next.activeFlag = {
+      ...(base.activeFlag || {}),
+      ...(toObject(patch.activeFlag) || {})
+    }
+    next.activeFlagId = patch.activeFlag?.id ?? patch.activeFlagId ?? base.activeFlagId
+    next.activeFlagStatus = patch.activeFlag?.status ?? patch.activeFlagStatus ?? base.activeFlagStatus
+  }
+  next.latestSignals = mergeLatestSignals(
+    Array.isArray(base.latestSignals) ? base.latestSignals : [],
+    base.latestSignal ? [base.latestSignal] : [],
+    Array.isArray(patch.latestSignals) ? patch.latestSignals : [],
+    patch.latestSignal ? [patch.latestSignal] : []
+  )
+  if (patch.latestSignal || base.latestSignal) {
+    next.latestSignal = normalizeSignalItem(patch.latestSignal || base.latestSignal)
+  }
+  return next
+}
+
+// Sorted & filtered timeline
+const sortedTimeline = computed(() => mergeTimelineItems(timeline.value || []))
 
 const filteredTimeline = computed(() => {
   if (!timelineFilter.value) return sortedTimeline.value
@@ -1052,23 +1392,25 @@ const paginatedTimeline = computed(() => {
   return filteredTimeline.value.slice(start, start + timelinePageSize)
 })
 
-const notes = computed(() =>
-  sortedTimeline.value
-    .filter(e => String(e.eventType || '').toUpperCase() === 'NOTE')
-    .map((item, i) => ({ ...item, _key: item.id || `note-${i}` }))
-)
+const notes = computed(() => {
+  const sources = [
+    ...(Array.isArray(notesTimeline.value) ? notesTimeline.value : []),
+    ...sortedTimeline.value
+  ]
+  return mergeTimelineItems(sources.filter(item => String(item?.eventType || item?.type || '').toUpperCase() === 'NOTE'))
+})
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function getSignalLabel(type) {
   const signalType = normalizeSignalType(type)
   if (!signalType) return 'Tín hiệu'
-  return SIGNAL_LABELS[signalType] || signalType.replace(/_/g, ' ')
+  return SIGNAL_LABELS[signalType] || 'Tín hiệu'
 }
 
 function getEventLabel(type) {
   const signalType = normalizeSignalType(type)
   if (!signalType) return 'Sự kiện'
-  return SIGNAL_LABELS[signalType] || signalType.replace(/_/g, ' ')
+  return SIGNAL_LABELS[signalType] || 'Sự kiện'
 }
 
 function getEventColor(type) {
@@ -1129,6 +1471,7 @@ function getSignalMetadata(signal) {
 }
 
 function normalizeTimelineItem(item = {}) {
+  if (!item || typeof item !== 'object') return null
   const eventType = normalizeSignalType(item.eventType || item.type || item.warningType)
   const at = item.at || item.timestamp || item.occurredAt || item.createdAt || item.issuedAt || null
   const severity = normalizeSignalType(item.severity) || null
@@ -1136,11 +1479,12 @@ function normalizeTimelineItem(item = {}) {
   const riskImpact = item.riskImpact != null ? Number(item.riskImpact) : null
   const category = normalizeSignalType(item.category) || null
   const details = normalizeTimelineDetails(item, eventType)
-  const source = item.source || null
+  const source = resolveTimelineSource(item)
   const bucketSize = timelineBucketSize(eventType, category)
   const bucketAt = bucketSize > 0 ? Math.floor(new Date(at || 0).getTime() / bucketSize) * bucketSize : new Date(at || 0).getTime()
   return {
     ...item,
+    id: getTimelineItemId(item),
     eventType,
     at,
     severity,
@@ -1197,19 +1541,31 @@ function makeTimelineFingerprint(item = {}) {
   const signalType = normalizeSignalType(item.eventType || item.type || '')
   const atBucket = item._bucketAt != null ? String(item._bucketAt) : String(item.at || item.timestamp || item.occurredAt || '')
   const category = normalizeSignalType(item.category) || ''
+  const source = resolveTimelineSource(item)
   const collapse = shouldCollapseTimelineEntry(signalType, category)
+    || ['exam_events', 'fraud_signals', 'fraud_warnings'].includes(source)
   const details = collapse ? '' : normalizeTimelineText(item.details || item.displayMessage)
   const bucketCategory = collapse ? 'CAMERA_PROCTORING' : category
   const severity = collapse ? '' : normalizeSignalType(item.severity) || ''
+  if (!signalType && !details && !source) return ''
   return [signalType, atBucket, bucketCategory, severity, details].join('|')
 }
 
 function makeEventKey(event) {
-  return makeTimelineFingerprint(event)
+  return makeTimelineIdKey(event) || makeTimelineFingerprint(event)
 }
 
 function preferTimelineItem(candidate = {}, existing = {}) {
   if (!existing) return true
+  const candidateSource = resolveTimelineSource(candidate)
+  const existingSource = resolveTimelineSource(existing)
+  const sourceDelta = getTimelineSourceRank(candidateSource) - getTimelineSourceRank(existingSource)
+  if (sourceDelta !== 0) {
+    return sourceDelta > 0
+  }
+  if (getTimelineItemId(candidate) != null && getTimelineItemId(existing) == null) {
+    return true
+  }
   if ((candidate.type || '').toUpperCase() === 'FRAUD_SIGNAL' && (existing.type || '').toUpperCase() !== 'FRAUD_SIGNAL') {
     return true
   }
@@ -1227,14 +1583,59 @@ function preferTimelineItem(candidate = {}, existing = {}) {
   return candidateText.length > existingText.length
 }
 
+function mergeTimelineItems(items = []) {
+  const merged = new Map()
+  const aliases = new Map()
+  for (const rawItem of items || []) {
+    const item = normalizeTimelineItem(rawItem)
+    if (!item || TIMELINE_HIDDEN_TYPES.has(item.eventType)) continue
+    const keys = getTimelineDedupeKeys(item)
+    if (keys.length === 0) continue
+
+    let canonicalKey = ''
+    for (const key of keys) {
+      const linked = aliases.get(key)
+      if (linked) {
+        canonicalKey = linked
+        break
+      }
+    }
+
+    if (!canonicalKey) {
+      canonicalKey = keys[0]
+      merged.set(canonicalKey, item)
+    } else {
+      const existing = merged.get(canonicalKey)
+      if (!existing || preferTimelineItem(item, existing)) {
+        merged.set(canonicalKey, item)
+      }
+    }
+
+    for (const key of keys) {
+      aliases.set(key, canonicalKey)
+    }
+  }
+
+  return [...merged.values()]
+    .sort((a, b) => {
+      const aTime = new Date(a.at || a.timestamp || a.occurredAt || 0).getTime()
+      const bTime = new Date(b.at || b.timestamp || b.occurredAt || 0).getTime()
+      return bTime - aTime
+    })
+    .map((item, i) => ({
+      ...item,
+      _key: makeTimelineIdKey(item) || makeTimelineFingerprint(item) || `${i}-${item.at || item.timestamp || item.occurredAt || ''}`
+    }))
+}
+
 function prependTimelineItem(item) {
   const normalized = normalizeTimelineItem(item)
   if (!normalized || TIMELINE_HIDDEN_TYPES.has(normalized.eventType)) return false
-  const key = makeEventKey(normalized)
-  const exists = timeline.value.some(e => makeEventKey(normalizeTimelineItem(e)) === key)
-  if (exists) return false
-  timeline.value = [normalized, ...timeline.value]
-  return true
+  const existingKeys = new Set((timeline.value || []).flatMap(rawItem => getTimelineDedupeKeys(normalizeTimelineItem(rawItem))))
+  const incomingKeys = getTimelineDedupeKeys(normalized)
+  const isNew = incomingKeys.length > 0 && incomingKeys.every(key => !existingKeys.has(key))
+  timeline.value = mergeTimelineItems([normalized, ...(timeline.value || [])])
+  return isNew
 }
 
 // ── Realtime handler ───────────────────────────────────────────────
@@ -1476,27 +1877,21 @@ function handleRealtimeUpdate(payload) {
   const payloadAttemptId = payload.attemptId ?? payload.id ?? payload.attempt?.id
   if (String(payloadAttemptId || '') !== String(attemptId.value)) return
 
-  const type = String(payload.type || '').toUpperCase()
+  const type = normalizeSignalType(payload.type || '') || String(payload.type || '').toUpperCase()
+  const riskPatch = normalizeRealtimeRiskPatch(payload)
+  const previousScore = resolveRiskScoreValue(riskData.value)
+  riskData.value = mergeRiskSnapshot(riskData.value, riskPatch)
+  const nextScore = resolveRiskScoreValue(riskData.value)
+  if (hasExplicitRiskScore(riskPatch) && nextScore != null && previousScore != null && nextScore !== previousScore) {
+    riskData.value.lastRiskDelta = nextScore - previousScore
+  }
 
-  // Patch risk
-  if (payload.riskScore != null) {
-    riskData.value = { ...riskData.value, riskScore: payload.riskScore }
+  if (nextScore != null) {
+    attemptData.value = { ...attemptData.value, riskScore: nextScore }
   }
-  if (payload.riskLevel) {
-    riskData.value = { ...riskData.value, riskLevel: payload.riskLevel }
-  }
-  if (payload.reasons) {
-    riskData.value = { ...riskData.value, reasons: payload.reasons }
-  }
-  if (payload.recommendedAction) {
-    riskData.value = { ...riskData.value, recommendedAction: payload.recommendedAction }
-  }
-  if (payload.activeFlagId != null || payload.activeFlagStatus) {
-    riskData.value = {
-      ...riskData.value,
-      activeFlagId: payload.activeFlag?.id ?? payload.activeFlagId ?? riskData.value.activeFlagId,
-      activeFlagStatus: payload.activeFlag?.status ?? payload.activeFlagStatus ?? riskData.value.activeFlagStatus
-    }
+  const nextRiskLevel = payload.riskLevel ?? payload.level ?? riskData.value.riskLevel ?? riskData.value.level
+  if (nextRiskLevel) {
+    attemptData.value = { ...attemptData.value, riskLevel: String(nextRiskLevel).toUpperCase() }
   }
 
   // Patch status
@@ -1511,23 +1906,28 @@ function handleRealtimeUpdate(payload) {
   }
 
   // Handle fraud signal
-  if (type === 'FRAUD_SIGNAL_RECORDED') {
-    const signal = payload.latestSignal || {}
+  if (type === 'FRAUD_SIGNAL_RECORDED' || type === 'AI_CAMERA_SIGNAL') {
+    const signal = normalizeSignalItem(payload.latestSignal || payload.signal || payload)
     prependTimelineItem({
+      id: signal.id,
+      type: 'FRAUD_SIGNAL',
       eventType: signal.signalType || 'UNKNOWN',
-      at: signal.occurredAt || payload.issuedAt || new Date().toISOString(),
-      details: signal.displayMessage || signal.signalType,
+      at: signal.createdAt || signal.occurredAt || payload.issuedAt || new Date().toISOString(),
+      details: signal.displayMessage || signal.evidence || signal.signalType,
       displayMessage: signal.displayMessage,
       severity: signal.severity,
       confidence: signal.confidence,
       riskImpact: signal.riskImpact,
-      category: signal.category
+      category: signal.category,
+      source: 'fraud_signals'
     })
   }
 
   // Handle risk update — only update data, don't add timeline item to avoid flooding
   if (type === 'FRAUD_WARNING_RECORDED') {
     prependTimelineItem({
+      id: payload.warningId || payload.id,
+      type: 'FRAUD_WARNING',
       eventType: payload.warningType || 'WARNING',
       at: payload.issuedAt || new Date().toISOString(),
       details: payload.message || payload.warningType,
@@ -1536,14 +1936,12 @@ function handleRealtimeUpdate(payload) {
       confidence: payload.confidence,
       category: payload.warningCategory,
       riskImpact: payload.riskImpact,
-      reviewStatus: payload.reviewStatus
+      reviewStatus: payload.reviewStatus,
+      source: 'fraud_warnings'
     })
   }
 
   if (type === 'RISK_UPDATED') {
-    if (payload.riskScore != null) {
-      riskData.value = { ...riskData.value, riskScore: payload.riskScore }
-    }
     // Removed: prependTimelineItem caused timeline to flood with RISK_UPDATED events
     // Risk score is already displayed in header, no need to duplicate in timeline
   }
@@ -1551,9 +1949,11 @@ function handleRealtimeUpdate(payload) {
   // Handle system events
   if (['WARNING_SENT', 'ATTEMPT_PAUSED', 'ATTEMPT_RESUMED', 'ATTEMPT_STOPPED', 'ATTEMPT_SUBMITTED', 'SUBMITTED', 'AUTO_SUBMITTED'].includes(type)) {
     prependTimelineItem({
+      type: 'MONITORING_EVENT',
       eventType: type,
       at: payload.issuedAt || new Date().toISOString(),
-      details: payload.message || SIGNAL_LABELS[type]
+      details: payload.message || SIGNAL_LABELS[type],
+      source: 'monitoring_events'
     })
   }
 }
@@ -1567,26 +1967,7 @@ async function loadTimeline() {
       eventType: timelineFilter.value || undefined
     })
     const apiItems = Array.isArray(result) ? result : (result?.items || [])
-    const normalizedExisting = (timeline.value || []).map(normalizeTimelineItem).filter(Boolean)
-    const existingKeys = new Set(normalizedExisting.map(item => makeEventKey(item)))
-    const newItems = apiItems
-      .map(normalizeTimelineItem)
-      .filter(item => item && !TIMELINE_HIDDEN_TYPES.has(item.eventType) && !existingKeys.has(makeEventKey(item)))
-
-    const mergedByKey = new Map()
-    for (const item of [...normalizedExisting, ...newItems]) {
-      const key = makeEventKey(item)
-      const existing = mergedByKey.get(key)
-      if (!existing || preferTimelineItem(item, existing)) {
-        mergedByKey.set(key, item)
-      }
-    }
-
-    timeline.value = [...mergedByKey.values()].sort((a, b) => {
-      const aTime = new Date(a.at || a.timestamp || a.occurredAt || 0).getTime()
-      const bTime = new Date(b.at || b.timestamp || b.occurredAt || 0).getTime()
-      return bTime - aTime
-    })
+    timeline.value = mergeTimelineItems([...(timeline.value || []), ...apiItems])
   } catch {
     // Keep existing timeline on error
   }
@@ -1624,7 +2005,7 @@ async function loadData() {
     }
 
     if (riskResult.status === 'fulfilled' && riskResult.value) {
-      riskData.value = riskResult.value
+      riskData.value = normalizeRiskSnapshot(riskResult.value)
     }
 
     await Promise.all([loadTimeline(), loadNotes()])
@@ -2055,6 +2436,26 @@ onActivated(() => {
   color: var(--ds-text-secondary);
 }
 
+.smd-risk-delta {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.smd-risk-delta--up {
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
+}
+
+.smd-risk-delta--down {
+  color: var(--ds-success);
+  background: var(--ds-success-soft);
+}
+
 .smd-header__actions {
   display: flex;
   align-items: center;
@@ -2277,10 +2678,35 @@ onActivated(() => {
   font-weight: 800;
 }
 
+.smd-card__subtitle {
+  margin: 2px 0 0;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+}
+
 .smd-card__head-right {
   display: flex;
   align-items: center;
   gap: var(--ds-space-2);
+}
+
+.smd-live-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+}
+
+.smd-live-badge--on {
+  color: var(--ds-success);
+  background: var(--ds-success-soft);
+}
+
+.smd-live-badge--off {
+  color: var(--ds-text-secondary);
+  background: var(--ds-gray-100);
 }
 
 /* ── Level badge ─────────────────────────────────────────────── */
@@ -2500,30 +2926,110 @@ onActivated(() => {
 
 .smd-breakdown {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ds-space-2);
 }
 
-.smd-breakdown-row {
+.smd-breakdown-cluster {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--ds-space-2) var(--ds-space-3);
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--ds-space-3);
   background: var(--ds-gray-50);
-  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  min-width: 0;
 }
 
-.smd-breakdown-label {
-  font-size: var(--ds-text-sm);
-  font-weight: 600;
+.smd-breakdown-cluster--screen {
+  border-top: 2px solid var(--ds-warning);
+}
+
+.smd-breakdown-cluster--identity {
+  border-top: 2px solid var(--ds-danger);
+}
+
+.smd-breakdown-cluster--camera {
+  border-top: 2px solid var(--ds-info);
+}
+
+.smd-breakdown-cluster__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+}
+
+.smd-breakdown-cluster__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ds-surface);
   color: var(--ds-text-secondary);
 }
 
-.smd-breakdown-val {
-  font-size: var(--ds-text-sm);
+.smd-breakdown-cluster--screen .smd-breakdown-cluster__icon {
+  color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+
+.smd-breakdown-cluster--identity .smd-breakdown-cluster__icon {
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
+}
+
+.smd-breakdown-cluster--camera .smd-breakdown-cluster__icon {
+  color: var(--ds-info);
+  background: var(--ds-info-soft);
+}
+
+.smd-breakdown-cluster__score {
+  font-size: var(--ds-text-lg);
   font-weight: 800;
   color: var(--ds-text);
   font-variant-numeric: tabular-nums;
+}
+
+.smd-breakdown-cluster__label {
+  font-size: var(--ds-text-sm);
+  font-weight: 800;
+  color: var(--ds-text);
+}
+
+.smd-breakdown-cluster__desc {
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+  line-height: 1.35;
+  min-height: 2.7em;
+}
+
+.smd-breakdown-cluster__meter {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ds-border);
+  overflow: hidden;
+}
+
+.smd-breakdown-cluster__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ds-primary);
+}
+
+.smd-breakdown-cluster--screen .smd-breakdown-cluster__fill {
+  background: var(--ds-warning);
+}
+
+.smd-breakdown-cluster--identity .smd-breakdown-cluster__fill {
+  background: var(--ds-danger);
+}
+
+.smd-breakdown-cluster--camera .smd-breakdown-cluster__fill {
+  background: var(--ds-info);
 }
 
 .smd-reasons {
@@ -2540,6 +3046,82 @@ onActivated(() => {
   color: var(--ds-warning);
   font-size: var(--ds-text-xs);
   font-weight: 700;
+}
+
+.smd-live-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-gray-50);
+}
+
+.smd-live-snapshot__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.smd-live-snapshot__label {
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  color: var(--ds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.smd-live-snapshot__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.smd-live-snapshot__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  flex-wrap: wrap;
+}
+
+.smd-live-snapshot__type {
+  font-size: var(--ds-text-sm);
+  font-weight: 800;
+  color: var(--ds-text);
+}
+
+.smd-live-snapshot__impact {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.smd-live-snapshot__impact--mid {
+  color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+
+.smd-live-snapshot__impact--high {
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
+}
+
+.smd-live-snapshot__msg {
+  margin: 0;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+  line-height: 1.4;
+}
+
+.smd-live-snapshot__empty {
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-muted);
 }
 
 /* ── Evidence ───────────────────────────────────────────────── */
@@ -2650,6 +3232,16 @@ onActivated(() => {
   color: var(--ds-danger);
   font-size: 10px;
   font-weight: 700;
+}
+
+.smd-event__impact--mid {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.smd-event__impact--high {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
 }
 
 .smd-event__time {
@@ -2846,6 +3438,10 @@ onActivated(() => {
 
   .smd-header__risk {
     display: none;
+  }
+
+  .smd-breakdown {
+    grid-template-columns: 1fr;
   }
 
   .smd-strip {

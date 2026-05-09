@@ -57,6 +57,7 @@ services:
       - app-network
     volumes:
       - ./BE/.env:/app/.env:ro
+      - ./BE/data/proctor-evidence:/app/data/proctor-evidence
 
   python-parser:
     build:

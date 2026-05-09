@@ -437,6 +437,8 @@ const SIGNAL_LABELS = {
   COPY_PASTE: 'Sao chép hoặc dán nội dung',
   DEVTOOLS_OPEN: 'Mở DevTools',
   IP_CHANGED: 'IP thay đổi',
+  AI_SPEAKING_DETECTED: 'Tiếng ồn',
+  NO_MIC: 'Micro tắt',
   WARNING_SENT: 'Cảnh báo',
   ATTEMPT_PAUSED: 'Tạm dừng',
   ATTEMPT_RESUMED: 'Tiếp tục'

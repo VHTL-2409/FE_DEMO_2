@@ -137,8 +137,20 @@ const absoluteTime = (ts) => {
   } catch { return '' }
 }
 
+const eventSignalType = (event) =>
+  String(event.latestSignal?.signalType || event.signalType || event.warningType || '').toUpperCase()
+
+const eventKind = (event) =>
+  String(event.type || event.eventType || event.action || event.message || eventSignalType(event) || '').toUpperCase()
+
+const isSpeechEvent = (event) => {
+  const text = `${eventKind(event)} ${eventSignalType(event)}`
+  return text.includes('SPEAK') || text.includes('VOICE')
+}
+
 const eventColor = (event) => {
-  const type = event.type || event.eventType || event.action || ''
+  const type = eventKind(event)
+  if (isSpeechEvent(event)) return 'warning'
   if (type.includes('ENTER') || type.includes('JOIN') || type.includes('START') || type.includes('RESUME')) return 'success'
   if (type.includes('EXIT') || type.includes('LEAVE') || type.includes('DISCONNECT') || type.includes('NETWORK')) return 'danger'
   if (type.includes('TAB') || type.includes('SWITCH') || type.includes('DEVTOOLS') || type.includes('COPY')) return 'warning'
@@ -150,7 +162,8 @@ const eventColor = (event) => {
 }
 
 const eventIcon = (event) => {
-  const type = event.type || event.eventType || event.action || ''
+  const type = eventKind(event)
+  if (isSpeechEvent(event)) return 'mic'
   if (type.includes('ENTER') || type.includes('JOIN') || type.includes('START')) return 'login'
   if (type.includes('EXIT') || type.includes('LEAVE')) return 'logout'
   if (type.includes('TAB') || type.includes('SWITCH')) return 'tab'
@@ -169,7 +182,8 @@ const eventIcon = (event) => {
 }
 
 const eventText = (event) => {
-  const type = (event.type || event.eventType || event.action || event.message || '').toUpperCase()
+  const type = eventKind(event)
+  if (isSpeechEvent(event)) return ' tiếng ồn'
   if (type.includes('ENTER') || type.includes('JOIN')) return ' vào phòng thi'
   if (type.includes('EXIT') || type.includes('LEAVE')) return ' rời phòng thi'
   if (type.includes('START') || type.includes('BEGIN')) return ' bắt đầu làm bài'
@@ -195,7 +209,8 @@ const eventText = (event) => {
 }
 
 const eventTypeShort = (event) => {
-  const type = event.type || event.eventType || event.action || ''
+  const type = eventKind(event)
+  if (isSpeechEvent(event)) return 'VOICE'
   if (type.includes('ENTER') || type.includes('JOIN') || type.includes('START')) return 'JOIN'
   if (type.includes('EXIT') || type.includes('LEAVE') || type.includes('DISCONNECT')) return 'EXIT'
   if (type.includes('TAB') || type.includes('SWITCH') || type.includes('DEVTOOLS')) return 'SWITCH'

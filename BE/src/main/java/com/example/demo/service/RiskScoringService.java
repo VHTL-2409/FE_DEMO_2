@@ -137,6 +137,7 @@ public class RiskScoringService {
             // Nhóm VISUAL_IDENTITY
             Map.entry("FACE_NOT_DETECTED", 20),
             Map.entry("NO_CAMERA", 20),
+            Map.entry("NO_MIC", 20),
             Map.entry("MULTIPLE_FACES", 25),
             Map.entry("FACE_SPOOFING_SUSPECTED", 25),
             Map.entry("FACE_OBSTRUCTED_MASK", 0),
@@ -185,6 +186,7 @@ public class RiskScoringService {
             Map.entry("SESSION_RECOVERY", "HEARTBEAT"),
             Map.entry("FACE_NOT_DETECTED", "VISUAL_IDENTITY"),
             Map.entry("NO_CAMERA", "VISUAL_IDENTITY"),
+            Map.entry("NO_MIC", "VISUAL_IDENTITY"),
             Map.entry("MULTIPLE_FACES", "VISUAL_IDENTITY"),
             Map.entry("FACE_SPOOFING_SUSPECTED", "VISUAL_IDENTITY"),
             Map.entry("FACE_OBSTRUCTED_MASK", "VISUAL_IDENTITY"),
@@ -547,6 +549,9 @@ public class RiskScoringService {
                 .limit(5)
                 .map(signal -> RiskScoreResponse.LatestSignalItem.builder()
                         .signalType(signal.getSignalType())
+                        .category(signal.getCategory())
+                        .displayMessage(signal.getDisplayMessage())
+                        .riskImpact(signal.getRiskImpact())
                         .confidence(signal.getConfidence())
                         .severity(signal.getSeverity() != null ? signal.getSeverity().name() : "LOW")
                         .evidence(signal.getEvidence())

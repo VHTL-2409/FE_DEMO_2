@@ -68,7 +68,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/login", "/web/**", "/css/**", "/js/**", "/avatars/**").permitAll()
+                        .requestMatchers("/", "/login", "/web/**", "/css/**", "/js/**", "/avatars/**", "/evidence-images/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password",
                         "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/refresh",
                         "/api/auth/oauth2/google/init", "/api/auth/oauth2/google/callback",

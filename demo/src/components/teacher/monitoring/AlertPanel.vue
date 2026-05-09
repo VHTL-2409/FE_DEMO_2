@@ -287,7 +287,7 @@ const categoryTabs = computed(() => {
     ['TIMING_PATTERN', 'Thời gian'],
     ['SESSION_INTEGRITY', 'Phiên thi'],
     ['IDENTITY_NETWORK', 'Mạng/thiết bị'],
-    ['CAMERA_PROCTORING', 'Camera']
+    ['CAMERA_PROCTORING', 'Camera/Mic']
   ]
   return categoryOrder.map(([value, label]) => ({
     value,
@@ -304,9 +304,17 @@ const categoryLabel = (category) => {
     TIMING_PATTERN: 'Thời gian',
     SESSION_INTEGRITY: 'Phiên thi',
     IDENTITY_NETWORK: 'Mạng/thiết bị',
-    CAMERA_PROCTORING: 'Camera'
+    CAMERA_PROCTORING: 'Camera/Mic'
   }
   return map[category] || category
+}
+
+const alertSignalType = (alert) =>
+  String(alert.signalType || alert.warningType || alert.latestSignal?.signalType || alert.eventType || alert.type || '').toUpperCase()
+
+const isSpeechAlert = (alert) => {
+  const text = `${alertSignalType(alert)} ${String(alert.message || '').toUpperCase()}`
+  return text.includes('SPEAK') || text.includes('VOICE')
 }
 
 const severityColor = (severity) => {
@@ -315,7 +323,8 @@ const severityColor = (severity) => {
 }
 
 const alertIcon = (alert) => {
-  const type = alert.type || alert.eventType || ''
+  const type = alertSignalType(alert)
+  if (isSpeechAlert(alert)) return 'mic'
   if (type.includes('TAB') || type.includes('SWITCH')) return 'tab'
   if (type.includes('CAMERA') || type.includes('VIDEO')) return 'videocam_off'
   if (type.includes('MIC') || type.includes('AUDIO')) return 'mic_off'
@@ -334,7 +343,8 @@ const alertIcon = (alert) => {
 }
 
 const alertTitle = (alert) => {
-  const type = alert.type || alert.eventType || alert.message || ''
+  const type = alertSignalType(alert) || String(alert.message || '')
+  if (isSpeechAlert(alert)) return 'Tiếng ồn'
   if (type.includes('TAB') || type.includes('SWITCH')) return 'Chuyển tab'
   if (type.includes('CAMERA')) return 'Camera tắt'
   if (type.includes('MIC')) return 'Micro tắt'
