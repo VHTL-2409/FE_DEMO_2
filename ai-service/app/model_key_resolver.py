@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 from functools import lru_cache
+from pathlib import Path
 
 _MODEL_KEYS: dict[str, str] = {}
 _DEFAULT_KEY: str | None = None
@@ -21,11 +22,39 @@ _BASE_URL: str = ""
 _LOADED: bool = False
 
 
+def _load_local_dotenv() -> None:
+    """Load ai-service/.env in local uvicorn runs without overriding real env."""
+    candidates = [
+        Path.cwd() / ".env",
+        Path(__file__).resolve().parents[1] / ".env",
+        Path(__file__).resolve().parents[2] / ".env",
+    ]
+    seen: set[Path] = set()
+    for candidate in candidates:
+        path = candidate.resolve()
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        try:
+            for raw_line in path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ and value:
+                    os.environ[key] = value
+        except OSError:
+            continue
+
+
 def _load() -> None:
     global _MODEL_KEYS, _DEFAULT_KEY, _BASE_URL, _LOADED
     if _LOADED:
         return
     _LOADED = True
+    _load_local_dotenv()
 
     _BASE_URL = (os.environ.get("OPENAI_API_BASE_URL") or "").strip().rstrip("/")
 
