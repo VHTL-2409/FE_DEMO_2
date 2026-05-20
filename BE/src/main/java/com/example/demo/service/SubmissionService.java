@@ -17,6 +17,7 @@ import com.example.demo.common.ApiException;
 import com.example.demo.common.DateTimeUtils;
 import com.example.demo.common.VietNamTime;
 import com.example.demo.domain.entity.Answer;
+import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.AutoPausedBy;
 import com.example.demo.domain.entity.Exam;
@@ -26,6 +27,7 @@ import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.repository.AnswerRepository;
+import com.example.demo.repository.AssignmentRepository;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.repository.FraudWarningRepository;
@@ -56,6 +58,7 @@ import java.util.Map;
 public class SubmissionService {
 
     private final ExamAttemptRepository examAttemptRepository;
+    private final AssignmentRepository assignmentRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final SubmissionHelper submissionHelper;
@@ -90,6 +93,8 @@ public class SubmissionService {
             return toStartResponse(existing);
         }
 
+        enforceMaxAttempts(exam, student);
+
         String normalizedIp = normalizeClientIp(clientIp);
 
         ExamAttempt saved = examAttemptRepository.save(
@@ -117,6 +122,35 @@ public class SubmissionService {
         publishAttemptStartedAfterCommit(saved);
 
         return toStartResponse(saved);
+    }
+
+    private void enforceMaxAttempts(Exam exam, User student) {
+        if (Boolean.TRUE.equals(exam.getPractice())) {
+            return;
+        }
+        int maxAttempts = resolveMaxAttempts(exam);
+        long usedAttempts = examAttemptRepository.countByExamAndStudentAndStatusIn(
+                exam,
+                student,
+                List.of(AttemptStatus.SUBMITTED, AttemptStatus.AUTO_SUBMITTED));
+        if (usedAttempts >= maxAttempts) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Báº¡n Ä‘Ã£ háº¿t sá»‘ láº§n lÃ m bÃ i cho Ä‘á» thi nÃ y.");
+        }
+    }
+
+    private int resolveMaxAttempts(Exam exam) {
+        return assignmentRepository.findPublishedByExamOrderByCreatedAtDesc(exam).stream()
+                .findFirst()
+                .map(Assignment::getMaxAttempts)
+                .filter(value -> value != null && value > 0)
+                .orElseGet(() -> exam.getMaxAttempts() == null || exam.getMaxAttempts() <= 0 ? 1 : exam.getMaxAttempts());
+    }
+
+    private boolean resolveAllowReviewAfterSubmit(Exam exam) {
+        return assignmentRepository.findPublishedByExamOrderByCreatedAtDesc(exam).stream()
+                .findFirst()
+                .map(Assignment::getAllowReviewAfterSubmit)
+                .orElseGet(() -> exam.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(exam.getAllowReviewAfterSubmit()));
     }
 
     private void publishAttemptStartedAfterCommit(ExamAttempt attempt) {
@@ -380,6 +414,26 @@ public class SubmissionService {
         return !Boolean.FALSE.equals(value);
     }
 
+    private static boolean aiProctoringEnabled(Exam exam) {
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring())
+                || aiFaceDetectionEnabled(exam)
+                || aiEyeTrackingEnabled(exam);
+    }
+
+    private static boolean aiFaceDetectionEnabled(Exam exam) {
+        if (exam.getAiFaceDetection() != null) {
+            return Boolean.TRUE.equals(exam.getAiFaceDetection());
+        }
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring());
+    }
+
+    private static boolean aiEyeTrackingEnabled(Exam exam) {
+        if (exam.getAiEyeTracking() != null) {
+            return Boolean.TRUE.equals(exam.getAiEyeTracking());
+        }
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring());
+    }
+
     @Transactional(readOnly = true)
     public AttemptDetailResponse getAttemptDetail(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
@@ -394,13 +448,15 @@ public class SubmissionService {
                 .examId(attempt.getExam().getId())
                 .student(attempt.getStudent().getUsername())
                 .status(attempt.getStatus().name())
-                .score(attempt.getScore())
+                .score(canViewScore(attempt, actor) ? attempt.getScore() : null)
                 .riskScore(attempt.getRiskScore())
                 .riskLevel(attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : null)
                 .suspicious(attempt.getSuspicious())
                 .violationCount(reviewSummary.violationCount())
                 .warningCount(reviewSummary.warningCount())
                 .reviewRequired(reviewSummary.reviewRequired())
+                .allowReviewAfterSubmit(resolveAllowReviewAfterSubmit(attempt.getExam()))
+                .showScoreAfterSubmit(attempt.getExam().getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(attempt.getExam().getShowScoreAfterSubmit()))
                 .recommendedAction(reviewSummary.recommendedAction())
                 .reasons(reviewSummary.reasons())
                 .evidenceSummary(reviewSummary.evidenceSummary())
@@ -419,7 +475,9 @@ public class SubmissionService {
                 .saveCount(attempt.getSaveCount())
                 .submitCount(attempt.getSubmitCount())
                 .fullscreenRequired(attempt.getFullscreenRequired())
-                .enableAiProctoring(Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring()))
+                .enableAiProctoring(aiProctoringEnabled(attempt.getExam()))
+                .aiFaceDetection(aiFaceDetectionEnabled(attempt.getExam()))
+                .aiEyeTracking(aiEyeTrackingEnabled(attempt.getExam()))
                 .requireCameraMic(monitoringFlagEnabled(attempt.getExam().getRequireCameraMic()))
                 .monitorTabSwitch(monitoringFlagEnabled(attempt.getExam().getMonitorTabSwitch()))
                 .monitorBlur(monitoringFlagEnabled(attempt.getExam().getMonitorBlur()))
@@ -446,6 +504,7 @@ public class SubmissionService {
     public AttemptReportResponse getAttemptReport(Long attemptId, User actor) {
         ExamAttempt attempt = requireAttempt(attemptId);
         ensureCanViewAttempt(attempt, actor);
+        enforceReviewAllowedForStudent(attempt, actor);
 
         List<Answer> answers = answerRepository.findByAttempt(attempt);
         long correctCount = answers.stream().filter(answer -> Boolean.TRUE.equals(answer.getCorrect())).count();
@@ -592,6 +651,20 @@ public class SubmissionService {
         }
     }
 
+    private void enforceReviewAllowedForStudent(ExamAttempt attempt, User actor) {
+        if (attempt.getStudent().getId().equals(actor.getId())
+                && !resolveAllowReviewAfterSubmit(attempt.getExam())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher has disabled review for this exam");
+        }
+    }
+
+    private boolean canViewScore(ExamAttempt attempt, User actor) {
+        if (hasRole(actor, RoleName.ADMIN)) return true;
+        boolean isTeacher = hasRole(actor, RoleName.TEACHER);
+        if (isTeacher && attempt.getExam().getCreatedBy().getId().equals(actor.getId())) return true;
+        return attempt.getExam().getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(attempt.getExam().getShowScoreAfterSubmit());
+    }
+
     public AttemptSummaryResponse toSummary(ExamAttempt attempt) {
         boolean isPractice = attempt.getExam().getCreatedBy().getId().equals(attempt.getStudent().getId());
         ReviewSummary reviewSummary = buildReviewSummary(attempt);
@@ -678,9 +751,11 @@ public class SubmissionService {
     private SubmitAttemptResponse toSubmitResponse(ExamAttempt attempt) {
         return SubmitAttemptResponse.builder()
                 .attemptId(attempt.getId())
-                .score(attempt.getScore())
+                .score(attempt.getExam().getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(attempt.getExam().getShowScoreAfterSubmit()) ? attempt.getScore() : null)
                 .riskScore(attempt.getRiskScore())
                 .suspicious(attempt.getSuspicious())
+                .showScoreAfterSubmit(attempt.getExam().getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(attempt.getExam().getShowScoreAfterSubmit()))
+                .allowReviewAfterSubmit(resolveAllowReviewAfterSubmit(attempt.getExam()))
                 .submittedAt(DateTimeUtils.toOffset(attempt.getSubmittedAt(), VietNamTime.zone()))
                 .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
                 .remainingSeconds(submissionHelper.remainingSeconds(attempt))

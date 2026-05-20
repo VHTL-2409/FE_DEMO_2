@@ -23,6 +23,8 @@ public class AttemptDetailResponse {
     private Integer violationCount;
     private Integer warningCount;
     private Boolean reviewRequired;
+    private Boolean allowReviewAfterSubmit;
+    private Boolean showScoreAfterSubmit;
     private String recommendedAction;
     private List<String> reasons;
     private List<String> evidenceSummary;
@@ -45,6 +47,8 @@ public class AttemptDetailResponse {
     private Integer submitCount;
     private Boolean fullscreenRequired;
     private Boolean enableAiProctoring;
+    private Boolean aiFaceDetection;
+    private Boolean aiEyeTracking;
     private Boolean requireCameraMic;
     private Boolean monitorTabSwitch;
     private Boolean monitorBlur;

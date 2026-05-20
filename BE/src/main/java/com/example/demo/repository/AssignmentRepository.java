@@ -15,13 +15,15 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     @Query("SELECT a FROM Assignment a WHERE a.exam = :exam AND a.isPublished = true ORDER BY a.createdAt DESC")
     List<Assignment> findPublishedByExamOrderByCreatedAtDesc(Exam exam);
 
+    boolean existsByExamAndIsPublishedTrue(Exam exam);
+
     @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e LEFT JOIN e.createdBy WHERE a.createdBy = :creator")
     List<Exam> findDistinctExamsByCreator(User creator);
 
-    @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e LEFT JOIN e.createdBy WHERE a.isPublished = true")
+    @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e LEFT JOIN e.createdBy WHERE a.isPublished = true AND e.isActive = true AND (e.isArchived IS NULL OR e.isArchived = false)")
     List<Exam> findDistinctPublishedExams();
 
-    @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e WHERE a.isPublished = true AND e.createdBy = :teacher")
+    @Query("SELECT DISTINCT e FROM Assignment a JOIN a.exam e WHERE a.isPublished = true AND e.isActive = true AND (e.isArchived IS NULL OR e.isArchived = false) AND e.createdBy = :teacher")
     List<Exam> findDistinctPublishedExamsByTeacher(User teacher);
 
     @Query("""
@@ -29,6 +31,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
             FROM Assignment a
             JOIN a.exam e
             WHERE a.isPublished = true
+              AND e.isActive = true
+              AND (e.isArchived IS NULL OR e.isArchived = false)
               AND e.createdBy = :teacher
               AND LOWER(COALESCE(e.className, '')) = LOWER(:className)
             """)

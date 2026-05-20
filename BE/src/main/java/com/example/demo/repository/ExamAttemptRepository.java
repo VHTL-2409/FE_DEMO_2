@@ -49,6 +49,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);
 
+    long countByExamAndStudentAndStatusIn(Exam exam, User student, List<AttemptStatus> statuses);
+
     /**
      * Tim cac attempt cung IP trong ky thi.
      * Khong loc theo ngay gio vi IP detection chi can biet co attempt nao cung IP.

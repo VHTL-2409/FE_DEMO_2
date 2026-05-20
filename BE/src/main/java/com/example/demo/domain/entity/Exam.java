@@ -122,6 +122,12 @@ public class Exam {
     @Column(name = "enable_ai_proctoring")
     private Boolean enableAiProctoring;
 
+    @Column(name = "ai_face_detection")
+    private Boolean aiFaceDetection;
+
+    @Column(name = "ai_eye_tracking")
+    private Boolean aiEyeTracking;
+
     @Column(name = "shuffle_questions")
     @Builder.Default
     private Boolean shuffleQuestions = false;
@@ -140,4 +146,12 @@ public class Exam {
     @Column(name = "show_score_after_submit")
     @Builder.Default
     private Boolean showScoreAfterSubmit = true;
+
+    @Column(name = "max_attempts")
+    @Builder.Default
+    private Integer maxAttempts = 1;
+
+    @Column(name = "allow_review_after_submit")
+    @Builder.Default
+    private Boolean allowReviewAfterSubmit = true;
 }

@@ -83,7 +83,7 @@
               v-for="rule in rules"
               :key="rule.key"
               class="pe__rule-card"
-              :class="{ 'pe__rule-card--active': localFlags[rule.key] }"
+              :class="{ 'pe__rule-card--active': localFlags[rule.key], 'pe__rule-card--disabled': isRuleDisabled(rule) }"
             >
               <div class="pe__rule-icon">
                 <LucideIcon :name="rule.icon" />
@@ -96,6 +96,7 @@
                 type="button"
                 class="pe__rule-toggle"
                 :class="{ 'pe__rule-toggle--on': localFlags[rule.key] }"
+                :disabled="isRuleDisabled(rule)"
                 @click="toggleRule(rule.key)"
               >
                 <div class="pe__rule-knob" />
@@ -110,24 +111,33 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 
 const props = defineProps({
   enabled: { type: Boolean, default: true },
   monitorTabSwitch: { type: Boolean, default: true },
   monitorBlur: { type: Boolean, default: true },
   monitorExitFullscreen: { type: Boolean, default: true },
-  monitorCopyPaste: { type: Boolean, default: true },
+  monitorCopyPaste: { type: Boolean, default: false },
   monitorIdleTime: { type: Boolean, default: true },
-  monitorDevtools: { type: Boolean, default: true },
+  monitorDevtools: { type: Boolean, default: false },
   monitorDuplicateIp: { type: Boolean, default: true },
-  monitorFastSubmit: { type: Boolean, default: true },
+  monitorFastSubmit: { type: Boolean, default: false },
   monitorRightClick: { type: Boolean, default: true },
   monitorPrintScreen: { type: Boolean, default: true },
-  monitorRapidQuestionSwitch: { type: Boolean, default: true },
-  monitorMultiMonitor: { type: Boolean, default: true },
-  requireCameraMic: { type: Boolean, default: true },
-  enableAiProctoring: { type: Boolean, default: false }
+ monitorRapidQuestionSwitch: { type: Boolean, default: true },
+ monitorMultiMonitor: { type: Boolean, default: true },
+ requireCameraMic: { type: Boolean, default: true },
+ monitorNetworkInstability: { type: Boolean, default: true },
+ monitorSessionRecovery: { type: Boolean, default: true },
+ monitorQuestionTimingAnomaly: { type: Boolean, default: true },
+ monitorAnswerChangeBurst: { type: Boolean, default: true },
+ monitorClipboardBurst: { type: Boolean, default: false },
+ monitorAnswerSimilarity: { type: Boolean, default: true },
+ monitorIpFingerprintGraph: { type: Boolean, default: true },
+ enableAiProctoring: { type: Boolean, default: false },
+ aiFaceDetection: { type: Boolean, default: false },
+ aiEyeTracking: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -142,28 +152,78 @@ const emit = defineEmits([
   'update:monitorFastSubmit',
   'update:monitorRightClick',
   'update:monitorPrintScreen',
-  'update:monitorRapidQuestionSwitch',
-  'update:monitorMultiMonitor',
-  'update:requireCameraMic',
-  'update:enableAiProctoring'
+ 'update:monitorRapidQuestionSwitch',
+ 'update:monitorMultiMonitor',
+ 'update:requireCameraMic',
+ 'update:monitorNetworkInstability',
+ 'update:monitorSessionRecovery',
+ 'update:monitorQuestionTimingAnomaly',
+ 'update:monitorAnswerChangeBurst',
+ 'update:monitorClipboardBurst',
+ 'update:monitorAnswerSimilarity',
+ 'update:monitorIpFingerprintGraph',
+ 'update:enableAiProctoring',
+ 'update:aiFaceDetection',
+ 'update:aiEyeTracking'
 ])
 
 const localFlags = reactive({
   monitorTabSwitch: props.monitorTabSwitch,
   monitorBlur: props.monitorBlur,
   monitorExitFullscreen: props.monitorExitFullscreen,
-  monitorCopyPaste: props.monitorCopyPaste,
+  monitorCopyPaste: false,
   monitorIdleTime: props.monitorIdleTime,
-  monitorDevtools: props.monitorDevtools,
+  monitorDevtools: false,
   monitorDuplicateIp: props.monitorDuplicateIp,
-  monitorFastSubmit: props.monitorFastSubmit,
+  monitorFastSubmit: false,
   monitorRightClick: props.monitorRightClick,
   monitorPrintScreen: props.monitorPrintScreen,
-  monitorRapidQuestionSwitch: props.monitorRapidQuestionSwitch,
-  monitorMultiMonitor: props.monitorMultiMonitor,
-  requireCameraMic: props.requireCameraMic,
-  enableAiProctoring: props.enableAiProctoring
+ monitorRapidQuestionSwitch: props.monitorRapidQuestionSwitch,
+ monitorMultiMonitor: props.monitorMultiMonitor,
+ requireCameraMic: props.requireCameraMic,
+ monitorNetworkInstability: props.monitorNetworkInstability,
+ monitorSessionRecovery: props.monitorSessionRecovery,
+ monitorQuestionTimingAnomaly: props.monitorQuestionTimingAnomaly,
+ monitorAnswerChangeBurst: props.monitorAnswerChangeBurst,
+ monitorClipboardBurst: false,
+ monitorAnswerSimilarity: props.monitorAnswerSimilarity,
+ monitorIpFingerprintGraph: props.monitorIpFingerprintGraph,
+ aiFaceDetection: props.requireCameraMic !== false && (props.aiFaceDetection || props.enableAiProctoring),
+ aiEyeTracking: props.requireCameraMic !== false && (props.aiEyeTracking || props.enableAiProctoring)
 })
+
+const flagKeys = [
+ 'monitorTabSwitch',
+ 'monitorBlur',
+ 'monitorExitFullscreen',
+ 'monitorIdleTime',
+ 'monitorDuplicateIp',
+ 'monitorRightClick',
+ 'monitorPrintScreen',
+ 'monitorRapidQuestionSwitch',
+ 'monitorMultiMonitor',
+ 'requireCameraMic',
+ 'monitorNetworkInstability',
+ 'monitorSessionRecovery',
+ 'monitorQuestionTimingAnomaly',
+ 'monitorAnswerChangeBurst',
+ 'monitorAnswerSimilarity',
+ 'monitorIpFingerprintGraph',
+ 'aiFaceDetection',
+ 'aiEyeTracking'
+]
+
+watch(
+ () => [...flagKeys.map((key) => props[key]), props.enableAiProctoring],
+ () => {
+  flagKeys.forEach((key) => {
+   localFlags[key] = key === 'aiFaceDetection' || key === 'aiEyeTracking'
+    ? props.requireCameraMic !== false && (props[key] || props.enableAiProctoring)
+    : props[key]
+  })
+ },
+ { immediate: true }
+)
 
 const localEnabled = computed({
   get: () => props.enabled,
@@ -181,27 +241,39 @@ const flagEmits = {
   monitorFastSubmit: (v) => emit('update:monitorFastSubmit', v),
   monitorRightClick: (v) => emit('update:monitorRightClick', v),
   monitorPrintScreen: (v) => emit('update:monitorPrintScreen', v),
-  monitorRapidQuestionSwitch: (v) => emit('update:monitorRapidQuestionSwitch', v),
-  monitorMultiMonitor: (v) => emit('update:monitorMultiMonitor', v),
-  requireCameraMic: (v) => emit('update:requireCameraMic', v),
-  enableAiProctoring: (v) => emit('update:enableAiProctoring', v)
+ monitorRapidQuestionSwitch: (v) => emit('update:monitorRapidQuestionSwitch', v),
+ monitorMultiMonitor: (v) => emit('update:monitorMultiMonitor', v),
+ requireCameraMic: (v) => emit('update:requireCameraMic', v),
+ monitorNetworkInstability: (v) => emit('update:monitorNetworkInstability', v),
+ monitorSessionRecovery: (v) => emit('update:monitorSessionRecovery', v),
+ monitorQuestionTimingAnomaly: (v) => emit('update:monitorQuestionTimingAnomaly', v),
+ monitorAnswerChangeBurst: (v) => emit('update:monitorAnswerChangeBurst', v),
+ monitorClipboardBurst: (v) => emit('update:monitorClipboardBurst', v),
+ monitorAnswerSimilarity: (v) => emit('update:monitorAnswerSimilarity', v),
+ monitorIpFingerprintGraph: (v) => emit('update:monitorIpFingerprintGraph', v),
+ aiFaceDetection: (v) => emit('update:aiFaceDetection', v),
+ aiEyeTracking: (v) => emit('update:aiEyeTracking', v)
 }
 
 const rules = [
   { key: 'monitorTabSwitch', label: 'Theo dõi đổi tab', desc: 'Cảnh báo khi chuyển sang tab khác', icon: 'tab' },
   { key: 'monitorBlur', label: 'Phát hiện mất focus', desc: 'Cảnh báo khi rời khỏi cửa sổ thi', icon: 'visibility_off' },
   { key: 'monitorExitFullscreen', label: 'Thoát toàn màn hình', desc: 'Cảnh báo khi thoát chế độ toàn màn hình', icon: 'fullscreen_exit' },
-  { key: 'monitorCopyPaste', label: 'Copy / Paste', desc: 'Chặn sao chép và dán nội dung', icon: 'content_paste' },
   { key: 'monitorIdleTime', label: 'Thời gian nhàn rỗi', desc: 'Cảnh báo khi không tương tác lâu', icon: 'timer_off' },
-  { key: 'monitorDevtools', label: 'DevTools', desc: 'Phát hiện mở công cụ phát triển', icon: 'code' },
   { key: 'monitorDuplicateIp', label: "IP trùng lặp", desc: 'Phát hiện nhiều học sinh cùng IP', icon: 'router' },
-  { key: 'monitorFastSubmit', label: 'Nộp nhanh', desc: 'Cảnh báo nộp bài quá nhanh', icon: 'bolt' },
   { key: 'monitorRightClick', label: 'Chuột phải', desc: 'Vô hiệu hóa menu chuột phải', icon: 'mouse' },
   { key: 'monitorPrintScreen', label: 'Chụp màn hình', desc: 'Chặn chụp màn hình', icon: 'screenshot' },
-  { key: 'monitorRapidQuestionSwitch', label: 'Đổi câu nhanh', desc: 'Phát hiện chuyển câu quá nhanh', icon: 'skip_next' },
-  { key: 'monitorMultiMonitor', label: 'Đa màn hình', desc: 'Cảnh báo kết nối màn hình phụ', icon: 'desktop_windows' },
-  { key: 'requireCameraMic', label: 'Camera & Micro', desc: 'Yêu cầu bật camera và microphone', icon: 'videocam' },
-  { key: 'enableAiProctoring', label: 'AI camera analysis', desc: 'Phân tích camera để ghi tín hiệu và tính điểm review', icon: 'scan-face' }
+ { key: 'monitorRapidQuestionSwitch', label: 'Đổi câu nhanh', desc: 'Phát hiện chuyển câu quá nhanh', icon: 'skip_next' },
+ { key: 'monitorMultiMonitor', label: 'Đa màn hình', desc: 'Cảnh báo kết nối màn hình phụ', icon: 'desktop_windows' },
+ { key: 'requireCameraMic', label: 'Camera & Micro', desc: 'Yêu cầu bật camera và microphone', icon: 'videocam' },
+ { key: 'monitorNetworkInstability', label: 'Mạng bất ổn', desc: 'Ghi nhận mất kết nối hoặc kết nối chập chờn', icon: 'wifi_off' },
+ { key: 'monitorSessionRecovery', label: 'Khôi phục phiên', desc: 'Theo dõi các lần tải lại hoặc khôi phục phiên thi', icon: 'restore' },
+ { key: 'monitorQuestionTimingAnomaly', label: 'Thời gian câu bất thường', desc: 'Phát hiện thời gian làm từng câu bất thường', icon: 'schedule' },
+ { key: 'monitorAnswerChangeBurst', label: 'Đổi đáp án dồn dập', desc: 'Cảnh báo khi thay đổi đáp án liên tục', icon: 'edit_note' },
+ { key: 'monitorAnswerSimilarity', label: 'Tương đồng đáp án', desc: 'Phân tích mức độ giống nhau bất thường giữa các bài làm', icon: 'compare_arrows' },
+ { key: 'monitorIpFingerprintGraph', label: 'Liên kết IP/thiết bị', desc: 'Phân tích cụm IP và dấu vân tay thiết bị liên quan', icon: 'hub' },
+  { key: 'aiFaceDetection', label: 'AI nhận diện khuôn mặt', desc: 'Phân tích số lượng khuôn mặt và trạng thái hiện diện', icon: 'scan-face', requiresCameraMic: true },
+ { key: 'aiEyeTracking', label: 'AI theo dõi mắt', desc: 'Phân tích hướng nhìn và dấu hiệu rời khỏi màn hình', icon: 'visibility', requiresCameraMic: true }
 ]
 
 const totalRules = rules.length
@@ -235,34 +307,65 @@ const summaryDesc = computed(() => {
 })
 
 const presets = [
-  { id: 'light', label: 'Nhẹ', color: 'success', icon: 'shield', flags: { monitorTabSwitch: false, monitorBlur: false, monitorExitFullscreen: false, monitorCopyPaste: false, monitorIdleTime: false, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, enableAiProctoring: false } },
-  { id: 'medium', label: 'Trung bình', color: 'warning', icon: 'verified_user', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: false, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, enableAiProctoring: false } },
-  { id: 'strict', label: 'Nghiêm ngặt', color: 'danger', icon: 'security', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: true, monitorIdleTime: true, monitorDevtools: true, monitorDuplicateIp: true, monitorFastSubmit: true, monitorRightClick: true, monitorPrintScreen: true, monitorRapidQuestionSwitch: true, monitorMultiMonitor: true, requireCameraMic: true, enableAiProctoring: true } }
+ { id: 'light', label: 'Nhẹ', color: 'success', icon: 'shield', flags: { monitorTabSwitch: false, monitorBlur: false, monitorExitFullscreen: false, monitorCopyPaste: false, monitorIdleTime: false, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, monitorNetworkInstability: true, monitorSessionRecovery: true, monitorQuestionTimingAnomaly: false, monitorAnswerChangeBurst: false, monitorClipboardBurst: false, monitorAnswerSimilarity: false, monitorIpFingerprintGraph: true, aiFaceDetection: false, aiEyeTracking: false } },
+ { id: 'medium', label: 'Trung bình', color: 'warning', icon: 'verified_user', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: false, monitorIdleTime: true, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: false, monitorPrintScreen: false, monitorRapidQuestionSwitch: false, monitorMultiMonitor: false, requireCameraMic: false, monitorNetworkInstability: true, monitorSessionRecovery: true, monitorQuestionTimingAnomaly: true, monitorAnswerChangeBurst: true, monitorClipboardBurst: false, monitorAnswerSimilarity: true, monitorIpFingerprintGraph: true, aiFaceDetection: false, aiEyeTracking: false } },
+ { id: 'strict', label: 'Nghiêm ngặt', color: 'danger', icon: 'security', flags: { monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true, monitorCopyPaste: false, monitorIdleTime: true, monitorDevtools: false, monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: true, monitorPrintScreen: true, monitorRapidQuestionSwitch: true, monitorMultiMonitor: true, requireCameraMic: true, monitorNetworkInstability: true, monitorSessionRecovery: true, monitorQuestionTimingAnomaly: true, monitorAnswerChangeBurst: true, monitorClipboardBurst: false, monitorAnswerSimilarity: true, monitorIpFingerprintGraph: true, aiFaceDetection: true, aiEyeTracking: true } }
 ]
 
 const currentPreset = computed(() => {
   for (const p of presets) {
     const match = p.flags.monitorTabSwitch === localFlags.monitorTabSwitch
-      && p.flags.monitorDevtools === localFlags.monitorDevtools
+      && p.flags.monitorDuplicateIp === localFlags.monitorDuplicateIp
       && p.flags.requireCameraMic === localFlags.requireCameraMic
     if (match) return p.id
   }
   return null
 })
 
-const allOn = computed(() => Object.values(localFlags).every(Boolean))
+const allOn = computed(() => rules.every((rule) => localFlags[rule.key]))
+
+const emitAiAggregate = () => {
+  emit('update:enableAiProctoring', localFlags.aiFaceDetection || localFlags.aiEyeTracking)
+}
+
+const isRuleDisabled = (rule) => rule.requiresCameraMic && !localFlags.requireCameraMic
+
+const disableAiCameraRules = () => {
+  localFlags.aiFaceDetection = false
+  localFlags.aiEyeTracking = false
+  flagEmits.aiFaceDetection(false)
+  flagEmits.aiEyeTracking(false)
+  emit('update:enableAiProctoring', false)
+}
 
 const toggleRule = (key) => {
+  const rule = rules.find((item) => item.key === key)
+  if (rule && isRuleDisabled(rule)) return
   localFlags[key] = !localFlags[key]
   flagEmits[key](localFlags[key])
+  if (key === 'requireCameraMic' && localFlags[key] === false) {
+    disableAiCameraRules()
+    return
+  }
+  if (key === 'aiFaceDetection' || key === 'aiEyeTracking') emitAiAggregate()
 }
 
 const toggleAll = () => {
   const next = !allOn.value
   rules.forEach(r => {
+    if (r.requiresCameraMic && !next) {
+      localFlags[r.key] = false
+      flagEmits[r.key](false)
+      return
+    }
     localFlags[r.key] = next
     flagEmits[r.key](next)
   })
+  if (!localFlags.requireCameraMic) {
+    disableAiCameraRules()
+    return
+  }
+  emit('update:enableAiProctoring', localFlags.aiFaceDetection || localFlags.aiEyeTracking)
 }
 
 const applyPreset = (presetId) => {
@@ -272,6 +375,11 @@ const applyPreset = (presetId) => {
     localFlags[key] = val
     flagEmits[key](val)
   })
+  if (!localFlags.requireCameraMic) {
+    disableAiCameraRules()
+    return
+  }
+  emitAiAggregate()
 }
 </script>
 
@@ -566,6 +674,15 @@ const applyPreset = (presetId) => {
   background: var(--ds-primary-soft);
 }
 .dark .pe__rule-card--active { background: rgba(79, 70, 229, 0.1); }
+
+.pe__rule-card--disabled {
+  opacity: 0.55;
+}
+
+.pe__rule-card--disabled .pe__rule-body,
+.pe__rule-card--disabled .pe__rule-toggle {
+  cursor: not-allowed;
+}
 
 .pe__rule-icon {
   width: 32px;

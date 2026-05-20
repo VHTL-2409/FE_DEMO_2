@@ -57,6 +57,9 @@ export const createExam = async ({
   isActive = false,
   shuffleQuestions = false,
   shuffleAnswers = false,
+  showScoreAfterSubmit = true,
+  maxAttempts = 1,
+  allowReviewAfterSubmit = true,
   monitorTabSwitch,
   monitorBlur,
   monitorExitFullscreen,
@@ -78,7 +81,9 @@ export const createExam = async ({
   monitorFullscreenEvasion,
   monitorAnswerSimilarity,
   monitorIpFingerprintGraph,
-  enableAiProctoring
+  enableAiProctoring,
+  aiFaceDetection,
+  aiEyeTracking
 }) => {
   const payload = await apiRequest('/api/exams', {
     method: 'POST',
@@ -93,6 +98,9 @@ export const createExam = async ({
       isActive,
       shuffleQuestions,
       shuffleAnswers,
+      showScoreAfterSubmit,
+      maxAttempts,
+      allowReviewAfterSubmit,
       monitorTabSwitch,
       monitorBlur,
       monitorExitFullscreen,
@@ -114,7 +122,9 @@ export const createExam = async ({
       monitorFullscreenEvasion,
       monitorAnswerSimilarity,
       monitorIpFingerprintGraph,
-      enableAiProctoring
+      enableAiProctoring,
+      aiFaceDetection,
+      aiEyeTracking
     })
   })
 
@@ -131,6 +141,9 @@ export const updateExam = async (examId, {
   isActive = false,
   shuffleQuestions,
   shuffleAnswers,
+  showScoreAfterSubmit,
+  maxAttempts,
+  allowReviewAfterSubmit,
   monitorTabSwitch,
   monitorBlur,
   monitorExitFullscreen,
@@ -152,7 +165,9 @@ export const updateExam = async (examId, {
   monitorFullscreenEvasion,
   monitorAnswerSimilarity,
   monitorIpFingerprintGraph,
-  enableAiProctoring
+  enableAiProctoring,
+  aiFaceDetection,
+  aiEyeTracking
 }) => {
   const body = {
     title,
@@ -162,6 +177,9 @@ export const updateExam = async (examId, {
     startTime: toLocalDateTimeOrNull(startTime),
     endTime: toLocalDateTimeOrNull(endTime),
     isActive,
+    showScoreAfterSubmit,
+    maxAttempts,
+    allowReviewAfterSubmit,
     monitorTabSwitch,
     monitorBlur,
     monitorExitFullscreen,
@@ -183,7 +201,9 @@ export const updateExam = async (examId, {
     monitorFullscreenEvasion,
     monitorAnswerSimilarity,
     monitorIpFingerprintGraph,
-    enableAiProctoring
+    enableAiProctoring,
+    aiFaceDetection,
+    aiEyeTracking
   }
   if (shuffleQuestions !== undefined) {
     body.shuffleQuestions = shuffleQuestions

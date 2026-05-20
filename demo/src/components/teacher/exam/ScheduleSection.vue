@@ -13,7 +13,7 @@
 
       <!-- Exam mode selector -->
       <div class="ec-field">
-        <label class="ec-field__label">Hình thức thi</label>
+        <label class="ec-field__label">Thời gian thi</label>
         <div class="ec-mode-group">
           <button
             v-for="m in modes"
@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const props = defineProps({
   startTime: { type: String, default: '' },
@@ -190,10 +190,7 @@ const localMode = computed({
       emit('update:startTime', '')
       emit('update:endTime', '')
     } else {
-      if (!props.startTime) {
-        const now = new Date()
-        emit('update:startTime', toIsoDefaultStart(now))
-      }
+      ensureDefaultSchedule()
     }
   }
 })
@@ -218,6 +215,25 @@ const fmtTime = (d) => {
 }
 
 const toIsoDefaultStart = (d) => `${fmtDate(d)}T${fmtTime(d)}:00`
+
+const getDefaultSchedule = () => {
+  const start = new Date()
+  start.setSeconds(0, 0)
+  const minute = start.getMinutes()
+  const roundedMinute = Math.ceil(minute / 5) * 5
+  start.setMinutes(roundedMinute)
+  const end = addMins(start, Math.max(5, Number(props.durationMinutes) || 60))
+  return { start, end }
+}
+
+const ensureDefaultSchedule = () => {
+  if (props.startTime && props.endTime) return
+  const fallback = getDefaultSchedule()
+  const start = props.startTime ? parseLocal(props.startTime) : fallback.start
+  const end = props.endTime ? parseLocal(props.endTime) : addMins(start, Math.max(5, Number(props.durationMinutes) || 60))
+  emit('update:startTime', `${fmtDate(start)}T${fmtTime(start)}:00`)
+  emit('update:endTime', `${fmtDate(end)}T${fmtTime(end)}:00`)
+}
 
 // ─── Local state ───────────────────────────────────────────────────────────────
 const parseLocal = (v) => v ? new Date(v) : null
@@ -375,19 +391,19 @@ const ensureEndAfterConstraint = () => {
 
 // ─── On input/change handlers ─────────────────────────────────────────────────
 // Khi start date thay đổi
-const onStartDateChanged = () => {
+const onStartDateChanged = (event) => {
   closePicker(event)
   ensureEndAfterConstraint()
 }
 
 // Khi start time thay đổi
-const onStartTimeChanged = () => {
+const onStartTimeChanged = (event) => {
   closePicker(event)
   ensureEndAfterConstraint()
 }
 
 // Khi end date thay đổi
-const onEndDateChanged = () => {
+const onEndDateChanged = (event) => {
   closePicker(event)
   const start = localStartTimeValue.value
   const end = localEndTimeValue.value
@@ -400,7 +416,7 @@ const onEndDateChanged = () => {
 }
 
 // Khi end time thay đổi
-const onEndTimeChanged = () => {
+const onEndTimeChanged = (event) => {
   closePicker(event)
   const start = localStartTimeValue.value
   const end = localEndTimeValue.value
@@ -418,6 +434,10 @@ const closePicker = (event) => {
   if (!target) return
   window.setTimeout(() => target.blur(), 0)
 }
+
+onMounted(() => {
+  ensureDefaultSchedule()
+})
 </script>
 
 

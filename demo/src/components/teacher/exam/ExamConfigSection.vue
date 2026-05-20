@@ -44,57 +44,6 @@
         </div>
       </div>
 
-      <!-- Review options -->
-      <div class="ec-field">
-        <label class="ec-field__label">Tùy chọn hiển thị</label>
-        <div class="ec-toggle-list">
-          <div class="ec-toggle-item">
-            <div class="ec-toggle-item__body">
-              <LucideIcon name="visibility" />
-              <p class="ec-toggle-item__title">Hiển thị đáp án sau thi</p>
-            </div>
-            <button
-              type="button"
-              class="ec-toggle"
-              :class="localShowAnswers && 'ec-toggle--on'"
-              @click="localShowAnswers = !localShowAnswers"
-            >
-              <span class="ec-toggle__knob" />
-            </button>
-          </div>
-
-          <div class="ec-toggle-item">
-            <div class="ec-toggle-item__body">
-              <LucideIcon name="rate_review" />
-              <p class="ec-toggle-item__title">Cho phép xem lại bài</p>
-            </div>
-            <button
-              type="button"
-              class="ec-toggle"
-              :class="localAllowReview && 'ec-toggle--on'"
-              @click="localAllowReview = !localAllowReview"
-            >
-              <span class="ec-toggle__knob" />
-            </button>
-          </div>
-
-          <div class="ec-toggle-item">
-            <div class="ec-toggle-item__body">
-              <LucideIcon name="grade" />
-              <p class="ec-toggle-item__title">Hiển thị điểm sau nộp</p>
-            </div>
-            <button
-              type="button"
-              class="ec-toggle"
-              :class="localShowScoreAfterSubmit && 'ec-toggle--on'"
-              @click="localShowScoreAfterSubmit = !localShowScoreAfterSubmit"
-            >
-              <span class="ec-toggle__knob" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Max attempts -->
       <div class="ec-field">
         <label class="ec-field__label">Số lần thi tối đa</label>
@@ -131,15 +80,11 @@ import { computed } from 'vue'
 
 const props = defineProps({
   duration: { type: [Number, String], default: 60 },
-  showAnswers: { type: Boolean, default: false },
-  allowReview: { type: Boolean, default: true },
-  showScoreAfterSubmit: { type: Boolean, default: true },
   maxAttempts: { type: [Number, String], default: 1 }
 })
 
 const emit = defineEmits([
-  'update:duration', 'update:showAnswers', 'update:allowReview', 'update:showScoreAfterSubmit',
-  'update:maxAttempts'
+  'update:duration', 'update:maxAttempts'
 ])
 
 const durationPresets = [15, 30, 45, 60, 90, 120]
@@ -147,21 +92,6 @@ const durationPresets = [15, 30, 45, 60, 90, 120]
 const localDuration = computed({
   get: () => Number(props.duration),
   set: (v) => emit('update:duration', Math.max(5, Math.min(480, Number(v) || 60)))
-})
-
-const localShowAnswers = computed({
-  get: () => props.showAnswers,
-  set: (v) => emit('update:showAnswers', v)
-})
-
-const localAllowReview = computed({
-  get: () => props.allowReview,
-  set: (v) => emit('update:allowReview', v)
-})
-
-const localShowScoreAfterSubmit = computed({
-  get: () => props.showScoreAfterSubmit,
-  set: (v) => emit('update:showScoreAfterSubmit', v)
 })
 
 const localMaxAttempts = computed({

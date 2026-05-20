@@ -25,6 +25,7 @@ public class RealtimeNotificationService {
     public void notifyFraudSignalRecorded(
             ExamAttempt attempt,
             FraudSignal signal,
+            Integer scoreContribution,
             int riskScore,
             RiskLevel level,
             Map<String, Integer> breakdown
@@ -33,11 +34,12 @@ public class RealtimeNotificationService {
                 attempt.getExam().getId(),
                 attempt.getId(),
                 signal,
+                scoreContribution,
                 riskScore,
                 level,
                 breakdown
         );
-        notifyAiCameraSignal(attempt, signal);
+        notifyAiCameraSignal(attempt, signal, scoreContribution);
     }
 
     public void notifyFraudWarningRecorded(FraudWarning warning) {
@@ -54,6 +56,7 @@ public class RealtimeNotificationService {
             RiskActionType actionTaken,
             RiskScoringService.DecisionSummary decision,
             FraudSignal latestSignal,
+            Integer latestSignalScoreContribution,
             ProctorFlag activeFlag
     ) {
         teacherAlertGateway.publishRiskUpdate(
@@ -69,7 +72,7 @@ public class RealtimeNotificationService {
                 decision.recommendedAction(),
                 decision.reasons(),
                 decision.evidenceSummary(),
-                latestSignal != null ? toSignalInfo(latestSignal) : null,
+                latestSignal != null ? toSignalInfo(latestSignal, latestSignalScoreContribution) : null,
                 activeFlag != null ? toFlagInfo(activeFlag) : null,
                 LocalDateTime.now()
         );
@@ -251,7 +254,7 @@ public class RealtimeNotificationService {
     /**
      * Notify AI Camera signal detected.
      */
-    public void notifyAiCameraSignal(ExamAttempt attempt, FraudSignal signal) {
+    public void notifyAiCameraSignal(ExamAttempt attempt, FraudSignal signal, Integer scoreContribution) {
         String signalType = signal.getSignalType();
         // Only notify for AI camera signals
         if (isAiCameraSignal(signalType)) {
@@ -259,7 +262,8 @@ public class RealtimeNotificationService {
                     attempt.getExam().getId(),
                     attempt.getId(),
                     attempt.getStudent().getUsername(),
-                    signal
+                    signal,
+                    scoreContribution
             );
         }
     }
@@ -288,13 +292,14 @@ public class RealtimeNotificationService {
         ).contains(signalType);
     }
 
-    private TeacherAlertGateway.AlertPayload.SignalInfo toSignalInfo(FraudSignal signal) {
+    private TeacherAlertGateway.AlertPayload.SignalInfo toSignalInfo(FraudSignal signal, Integer scoreContribution) {
         return TeacherAlertGateway.AlertPayload.SignalInfo.builder()
                 .id(signal.getId())
                 .signalType(signal.getSignalType())
                 .category(signal.getCategory())
                 .displayMessage(signal.getDisplayMessage())
                 .riskImpact(signal.getRiskImpact())
+                .scoreContribution(scoreContribution)
                 .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
                 .confidence(signal.getConfidence())
                 .occurredAt(signal.getCreatedAt())

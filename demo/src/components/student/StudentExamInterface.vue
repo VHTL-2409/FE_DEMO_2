@@ -139,16 +139,16 @@
     <main class="ei-main">
       <!-- Left: Question Area -->
       <div class="ei-question-col">
-        <div v-if="!examSurfaceReady" class="ei-empty-state">
-          <LucideIcon name="progress_activity" size="32" class="ei-empty-icon" />
-          <p class="ei-empty-title">Đang tải đề thi…</p>
-          <p class="ei-empty-desc">Vui lòng đợi trong giây lát.</p>
-        </div>
-
-        <div v-else-if="examLoadFailed" class="ei-empty-state">
+        <div v-if="examLoadFailed" class="ei-empty-state">
           <LucideIcon name="error" size="32" class="ei-empty-icon" />
           <p class="ei-empty-title">Không tải được đề thi</p>
           <p class="ei-empty-desc">Vui lòng làm mới trang hoặc quay lại sau.</p>
+        </div>
+
+        <div v-else-if="!examSurfaceReady" class="ei-empty-state">
+          <LucideIcon name="progress_activity" size="32" class="ei-empty-icon" />
+          <p class="ei-empty-title">Đang tải đề thi…</p>
+          <p class="ei-empty-desc">Vui lòng đợi trong giây lát.</p>
         </div>
 
         <div v-else-if="!questions.length" class="ei-empty-state">
@@ -450,7 +450,7 @@ const examConfig = ref({
   monitorDuplicateIp: true, monitorFastSubmit: false, monitorRightClick: false,
   monitorPrintScreen: false, monitorRapidQuestionSwitch: false,
   monitorMultiMonitor: false, requireCameraMic: true,
-  enableAiProctoring: false,
+  enableAiProctoring: false, aiFaceDetection: false, aiEyeTracking: false,
   monitorNetworkInstability: true, monitorSessionRecovery: true,
   monitorQuestionTimingAnomaly: false, monitorAnswerChangeBurst: false,
   monitorClipboardBurst: false, monitorFullscreenEvasion: true
@@ -646,7 +646,7 @@ const normalizeAnswerIdsForQuestion = (question, value) => {
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 const shouldCheckDevices = computed(() => !isPracticeExam.value && (
-  examConfig.value.requireCameraMic !== false || examConfig.value.enableAiProctoring === true
+  examConfig.value.requireCameraMic !== false || aiCameraAnalysisRequested.value
 ))
 const aiFrameInFlight = ref(false)
 const cameraFrameInFlight = ref(false)
@@ -668,6 +668,8 @@ const cameraFrameTransport = ref({
 })
 const aiCameraAnalysisRequested = computed(() =>
   examConfig.value.enableAiProctoring === true
+  || examConfig.value.aiFaceDetection === true
+  || examConfig.value.aiEyeTracking === true
 )
 const cameraFrameTransportEnabled = computed(() => {
   const status = String(attemptStatus.value || '').toUpperCase()
@@ -923,9 +925,11 @@ const buildCameraFramePayloadFromDrawable = (drawable, sourceWidth, sourceHeight
       viewportWidth: window.innerWidth || null,
       viewportHeight: window.innerHeight || null,
       aiEnabled: aiCameraAnalysisRequested.value,
-      enableAiProctoring: examConfig.value.enableAiProctoring === true,
+      enableAiProctoring: aiCameraAnalysisRequested.value,
+      aiFaceDetection: examConfig.value.aiFaceDetection === true,
+      aiEyeTracking: examConfig.value.aiEyeTracking === true,
       requireCameraMic: examConfig.value.requireCameraMic !== false,
-      aiAnalysisReason: examConfig.value.enableAiProctoring === true ? 'AI_PROCTORING' : 'CAMERA_REQUIRED',
+      aiAnalysisReason: aiCameraAnalysisRequested.value ? 'AI_PROCTORING' : 'CAMERA_REQUIRED',
       captureSource,
       sourceWidth,
       sourceHeight,
@@ -1448,6 +1452,8 @@ const speechDetector = useMicrophoneSpeechDetector({
 
 const ATTEMPT_CONFIG_KEYS = [
   'enableAiProctoring',
+  'aiFaceDetection',
+  'aiEyeTracking',
   'requireCameraMic',
   'monitorTabSwitch',
   'monitorBlur',
@@ -1873,7 +1879,7 @@ const autoSubmitOnTimeUp = async () => {
     showSubmitModal.value = false
     allowConfirmedLeave.value = true
     await exitExamFullscreen()
-    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
+    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: result?.showScoreAfterSubmit === false ? '' : Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '', showScoreAfterSubmit: result?.showScoreAfterSubmit !== false, allowReviewAfterSubmit: result?.allowReviewAfterSubmit !== false }) })
   } catch {
     showSubmitModal.value = false
     showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp tự động được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
@@ -1889,7 +1895,7 @@ const submitExamAction = async () => {
     showSubmitModal.value = false
     allowConfirmedLeave.value = true
     await exitExamFullscreen()
-    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '' }) })
+    router.push({ path: '/student/submission-confirmation', query: buildSubmissionQuery({ examTitle: examTitle.value, attemptId: attemptId.value, score: result?.showScoreAfterSubmit === false ? '' : Math.round(Number(result?.score || 0)), submittedAt: result?.submittedAt || '', showScoreAfterSubmit: result?.showScoreAfterSubmit !== false, allowReviewAfterSubmit: result?.allowReviewAfterSubmit !== false }) })
   } catch {
     showSubmitModal.value = false
     showModal({ type: 'error', title: 'Lỗi nộp bài', message: 'Không nộp được. Vui lòng thử nộp lại.', confirmLabel: 'Đóng' })
@@ -1940,8 +1946,10 @@ const restoreSession = async () => {
 
 const loadExam = async () => {
   if (!examId.value) return
+  examLoadFailed.value = false
+  examSurfaceReady.value = false
   try {
-    const data = await listExamQuestions(examId.value)
+    const data = await listExamQuestions(examId.value, { attemptId: attemptId.value })
     questionList = Array.isArray(data) ? data : (data?.questions || [])
     questions.value = questionList.map(q => ({
       ...q,
@@ -1951,6 +1959,7 @@ const loadExam = async () => {
     if (attemptId.value) void restoreSession()
   } catch {
     examLoadFailed.value = true
+    examSurfaceReady.value = true
   }
 }
 

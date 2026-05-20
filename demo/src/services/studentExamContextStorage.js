@@ -41,7 +41,9 @@ export function buildWaitingRoomQuery(exam = {}) {
     endAt: toStringOrEmpty(exam.endTime || exam.endDate),
     className: toStringOrEmpty(exam.className),
     requireCameraMic: exam.requireCameraMic === false ? 'false' : 'true',
-    enableAiProctoring: exam.enableAiProctoring === true ? 'true' : 'false'
+    enableAiProctoring: exam.enableAiProctoring === true || exam.aiFaceDetection === true || exam.aiEyeTracking === true ? 'true' : 'false',
+    aiFaceDetection: exam.aiFaceDetection === true ? 'true' : 'false',
+    aiEyeTracking: exam.aiEyeTracking === true ? 'true' : 'false'
   }
 }
 
@@ -65,12 +67,14 @@ export function buildAttemptQuery({
   }
 }
 
-export function buildSubmissionQuery({ attemptId, examTitle, score, submittedAt }) {
+export function buildSubmissionQuery({ attemptId, examTitle, score, submittedAt, showScoreAfterSubmit, allowReviewAfterSubmit }) {
   return {
     attemptId: toStringOrEmpty(attemptId),
     exam: toStringOrEmpty(examTitle || 'Bài thi'),
     score: toStringOrEmpty(score),
-    submittedAt: toStringOrEmpty(submittedAt)
+    submittedAt: toStringOrEmpty(submittedAt),
+    showScoreAfterSubmit: typeof showScoreAfterSubmit === 'boolean' ? String(showScoreAfterSubmit) : undefined,
+    allowReviewAfterSubmit: typeof allowReviewAfterSubmit === 'boolean' ? String(allowReviewAfterSubmit) : undefined
   }
 }
 
@@ -95,7 +99,9 @@ export function writeWaitingRoomQuery(query) {
     endAt: toStringOrEmpty(query.endAt),
     className: toStringOrEmpty(query.className),
     requireCameraMic: toStringOrEmpty(query.requireCameraMic || 'true'),
-    enableAiProctoring: toStringOrEmpty(query.enableAiProctoring || 'false')
+    enableAiProctoring: toStringOrEmpty(query.enableAiProctoring || 'false'),
+    aiFaceDetection: toStringOrEmpty(query.aiFaceDetection || 'false'),
+    aiEyeTracking: toStringOrEmpty(query.aiEyeTracking || 'false')
   })
 }
 
@@ -112,7 +118,9 @@ export function readWaitingRoomQuery() {
     endAt: toStringOrEmpty(value.endAt),
     className: toStringOrEmpty(value.className),
     requireCameraMic: toStringOrEmpty(value.requireCameraMic || 'true'),
-    enableAiProctoring: toStringOrEmpty(value.enableAiProctoring || 'false')
+    enableAiProctoring: toStringOrEmpty(value.enableAiProctoring || 'false'),
+    aiFaceDetection: toStringOrEmpty(value.aiFaceDetection || 'false'),
+    aiEyeTracking: toStringOrEmpty(value.aiEyeTracking || 'false')
   }
 }
 

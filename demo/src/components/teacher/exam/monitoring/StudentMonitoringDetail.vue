@@ -114,24 +114,6 @@
             {{ attemptData.answeredCount || 0 }}/{{ attemptData.totalQuestions || 0 }} câu
           </span>
         </div>
-        <div class="smd-strip-item">
-          <span class="smd-strip-label">Camera</span>
-          <span
-            class="smd-strip-val"
-            :class="attemptData.cameraOn ? 'smd-strip-val--ok' : 'smd-strip-val--warn'"
-          >
-            {{ attemptData.cameraOn ? 'Bật' : 'Tắt' }}
-          </span>
-        </div>
-        <div class="smd-strip-item">
-          <span class="smd-strip-label">Micro</span>
-          <span
-            class="smd-strip-val"
-            :class="attemptData.micOn ? 'smd-strip-val--ok' : 'smd-strip-val--warn'"
-          >
-            {{ attemptData.micOn ? 'Bật' : 'Tắt' }}
-          </span>
-        </div>
         <div v-if="riskData.activeFlagId" class="smd-strip-item">
           <span class="smd-strip-label">Flag</span>
           <span class="smd-strip-val smd-strip-val--warn">
@@ -199,34 +181,10 @@
           <!-- Risk summary -->
           <section class="smd-card">
             <div class="smd-card__head">
-              <h2 class="smd-card__title">Cấu phần rủi ro</h2>
+              <h2 class="smd-card__title">Tóm tắt giám sát</h2>
             </div>
 
             <div class="smd-risk-summary">
-              <div class="smd-breakdown">
-                <article
-                  v-for="group in riskComponentGroups"
-                  :key="group.key"
-                  class="smd-breakdown-cluster"
-                  :class="`smd-breakdown-cluster--${group.tone}`"
-                >
-                  <div class="smd-breakdown-cluster__head">
-                    <span class="smd-breakdown-cluster__icon">
-                      <LucideIcon :name="group.icon" :size="15" />
-                    </span>
-                    <span class="smd-breakdown-cluster__score">{{ group.score }}</span>
-                  </div>
-                  <span class="smd-breakdown-cluster__label">{{ group.label }}</span>
-                  <span class="smd-breakdown-cluster__desc">{{ group.description }}</span>
-                  <div class="smd-breakdown-cluster__meter" aria-hidden="true">
-                    <span
-                      class="smd-breakdown-cluster__fill"
-                      :style="{ width: Math.min(group.score, 100) + '%' }"
-                    />
-                  </div>
-                </article>
-              </div>
-
               <div v-if="riskData.evidenceSummary?.length" class="smd-reasons">
                 <span
                   v-for="(reason, i) in riskData.evidenceSummary.slice(0, 3)"
@@ -236,15 +194,19 @@
                   {{ reason }}
                 </span>
               </div>
+              <div v-else class="smd-empty smd-empty--sm">
+                <LucideIcon name="check-circle" :size="20" />
+                <p>Chưa có bằng chứng cần xử lý</p>
+              </div>
 
               <div class="smd-live-snapshot">
                 <div class="smd-live-snapshot__head">
-                  <span class="smd-live-snapshot__label">Tín hiệu mới nhất</span>
+                  <span class="smd-live-snapshot__label">Diễn biến mới nhất</span>
                   <span
                     class="smd-live-badge"
                     :class="isConnected ? 'smd-live-badge--on' : 'smd-live-badge--off'"
                   >
-                    {{ isConnected ? 'Realtime' : 'Polling' }}
+                    {{ isConnected ? 'Đang cập nhật' : 'Cập nhật định kỳ' }}
                   </span>
                 </div>
 
@@ -252,11 +214,11 @@
                   <div class="smd-live-snapshot__row">
                     <span class="smd-live-snapshot__type">{{ getSignalLabel(latestRealtimeSignal.signalType) }}</span>
                     <span
-                      v-if="latestRealtimeSignal.riskImpact != null && Number(latestRealtimeSignal.riskImpact) !== 0"
+                      v-if="Number(latestRealtimeSignal.scoreContribution) > 0"
                       class="smd-live-snapshot__impact"
-                      :class="latestRealtimeSignal.riskImpact >= 15 ? 'smd-live-snapshot__impact--high' : 'smd-live-snapshot__impact--mid'"
+                      :class="latestRealtimeSignal.scoreContribution >= 15 ? 'smd-live-snapshot__impact--high' : 'smd-live-snapshot__impact--mid'"
                     >
-                      {{ formatRiskImpact(latestRealtimeSignal.riskImpact) }}
+                      {{ formatRiskImpact(latestRealtimeSignal.scoreContribution) }}
                     </span>
                   </div>
                   <p v-if="latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence" class="smd-live-snapshot__msg">
@@ -282,9 +244,10 @@
                   aria-label="Lọc dòng thời gian"
                 >
                   <option value="">Tất cả</option>
-                  <option value="AI_CAMERA">AI Camera</option>
-                  <option value="SCREEN_LEAVE">Screen leave</option>
+                  <option value="AI_CAMERA">Camera</option>
+                  <option value="SCREEN_LEAVE">Rời màn hình</option>
                   <option value="CLIPBOARD">Clipboard</option>
+                  <option value="TECHNICAL">Thiết bị</option>
                   <option value="IDENTITY">Định danh</option>
                   <option value="WARNING">Cảnh báo</option>
                   <option value="NOTE">Ghi chú</option>
@@ -313,11 +276,11 @@
                     {{ event.displayMessage || event.details }}
                   </p>
                   <span
-                    v-if="event.riskImpact != null && Number(event.riskImpact) !== 0"
+                    v-if="Number(event.scoreContribution) > 0"
                     class="smd-event__impact"
-                    :class="event.riskImpact >= 15 ? 'smd-event__impact--high' : 'smd-event__impact--mid'"
+                    :class="event.scoreContribution >= 15 ? 'smd-event__impact--high' : 'smd-event__impact--mid'"
                   >
-                    {{ formatRiskImpact(event.riskImpact) }}
+                    {{ formatRiskImpact(event.scoreContribution) }}
                   </span>
                 </div>
                 <time class="smd-event__time">{{ formatTime(event.at || event.timestamp || event.occurredAt) }}</time>
@@ -353,7 +316,7 @@
           <!-- Camera stream -->
           <section class="smd-card smd-camera">
             <div class="smd-card__head">
-              <h2 class="smd-card__title">Camera thí sinh</h2>
+              <h2 class="smd-card__title">Camera</h2>
               <span
                 class="smd-camera__badge"
                 :class="cameraFrameBadgeClass"
@@ -402,24 +365,9 @@
               </div>
             </div>
 
-            <div v-if="renderedCameraFrame" class="smd-camera__summary">
-              <span class="smd-camera__summary-chip">
-                Mặt: {{ renderedCameraFrame?.faceCount ?? '—' }}
-              </span>
-              <span class="smd-camera__summary-chip">
-                Mắt: {{ eyeStateLabel }}
-              </span>
-              <span class="smd-camera__summary-chip">
-                Nhìn: {{ gazeDirectionLabel }} / {{ gazeStatusLabel }}
-              </span>
-            </div>
-
             <div class="smd-camera__meta">
               <span>
-                <strong>Frame:</strong> {{ renderedCameraFrame ? cameraFrameTimeLabel : '—' }}
-              </span>
-              <span>
-                <strong>Chất lượng:</strong> {{ renderedCameraFrame?.frameQuality || '—' }}
+                Cập nhật {{ renderedCameraFrame ? cameraFrameTimeLabel : '—' }}
               </span>
             </div>
           </section>
@@ -427,7 +375,7 @@
           <!-- Review flag -->
           <section class="smd-card">
             <div class="smd-card__head">
-              <h2 class="smd-card__title">Review flag</h2>
+              <h2 class="smd-card__title">Kiểm tra</h2>
               <span
                 v-if="riskData.activeFlagId"
                 class="smd-flag-badge"
@@ -691,54 +639,52 @@ const RISK_LEVEL_LABELS = {
   CLEAN: 'Bình thường'
 }
 const SIGNAL_LABELS = {
-  // AI Camera Detection
   NO_CAMERA: 'Camera tắt',
+  NO_MIC: 'Micro tắt',
   FACE_NOT_DETECTED: 'Không có khuôn mặt',
   MULTIPLE_FACES: 'Nhiều khuôn mặt',
   FACE_SPOOFING_SUSPECTED: 'Nghi vấn giả mạo',
-  FACE_OBSTRUCTED_MASK: 'Khẩu trang che mặt',
-  EYES_OBSTRUCTED: 'Kính che mắt',
+  FACE_OBSTRUCTED_MASK: 'Khuôn mặt bị che',
+  EYES_OBSTRUCTED: 'Mắt bị che',
   PARTIAL_FACE_VISIBLE: 'Mặt không đầy đủ',
   FACE_TOO_FAR: 'Mặt quá xa',
   FACE_TOO_CLOSE: 'Mặt quá gần',
   FACE_TURNED_AWAY: 'Quay mặt đi',
   FACE_NOT_CENTERED: 'Mặt lệch tâm',
   EYES_NOT_DETECTED: 'Không phát hiện mắt',
-  AI_SPEAKING_DETECTED: 'Tiếng ồn',
-  NO_MIC: 'Micro tắt',
-  // Lighting & Quality
+  EYE_BLINK_ANOMALY: 'Nháy mắt bất thường',
+  EYES_CLOSED_PROLONGED: 'Nhắm mắt lâu',
+  GAZE_OFF_SCREEN: 'Nhìn lệch màn hình',
+  RAPID_EYE_MOVEMENT: 'Chuyển động mắt nhanh',
   VERY_LOW_LIGHTING: 'Ánh sáng rất yếu',
   LOW_LIGHTING: 'Ánh sáng yếu',
   OVEREXPOSED_FRAME: 'Ảnh quá sáng',
   VERY_BLURRY_FRAME: 'Ảnh rất mờ',
   BLURRY_FRAME: 'Ảnh mờ',
-  // Browser Events
+  AI_SPEAKING_DETECTED: 'Tiếng ồn',
+  PRINTED_PHOTO: 'Ảnh in',
+  SCREEN_REPLAY: 'Phát lại màn hình',
+  DEEPFAKE: 'Nghi vấn deepfake',
+  FLAT_IMAGE: 'Ảnh phẳng',
+  SCREEN_DISPLAY: 'Ảnh từ màn hình',
   TAB_SWITCH: 'Chuyển tab',
   WINDOW_BLUR: 'Mất tiêu điểm',
-  SCREEN_LEAVE: 'Rời màn hình',
-  FULLSCREEN_VIOLATION: 'Thoát toàn màn hình',
-  FULLSCREEN_EVASION: 'Thoát toàn màn hình',
   LONG_SCREEN_LEAVE: 'Rời màn hình lâu',
-  CLIPBOARD_ABUSE: 'Clipboard bất thường',
-  COPY_ATTEMPT: 'Sao chép',
-  PASTE_ATTEMPT: 'Dán nội dung',
-  DEVTOOLS_OPEN: 'Mở DevTools',
   EXIT_FULLSCREEN: 'Thoát toàn màn hình',
   COPY_PASTE: 'Sao chép / dán',
-  RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh',
+  DEVTOOLS_OPEN: 'Mở DevTools',
+  RIGHT_CLICK: 'Chuột phải',
+  PRINT_SCREEN: 'Chụp màn hình',
   MULTI_MONITOR: 'Nhiều màn hình',
-  HEARTBEAT_STALE: 'Mất kết nối',
-  GAZE_OFF_SCREEN: 'Nhìn lệch màn hình',
+  IP_CHANGED: 'IP thay đổi',
+  DUPLICATE_IP: 'IP trùng lặp',
+  IP_FINGERPRINT_GRAPH: 'Trùng IP / thiết bị',
+  DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
+  MULTIPLE_DEVICE_SESSION: 'Nhiều thiết bị',
   ATTEMPT_STARTED: 'Bắt đầu bài thi',
   DRAFT_SAVED: 'Lưu nháp',
   FRAUD_SIGNAL: 'Tín hiệu gian lận',
   FRAUD_WARNING: 'Cảnh báo gian lận',
-  // Identity & Network
-  IP_CHANGED: 'IP thay đổi',
-  IP_ANOMALY: 'IP bất thường',
-  DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị',
-  DUPLICATE_IP: 'IP trùng lặp',
-  // System Events
   WARNING_SENT: 'Cảnh báo',
   ATTEMPT_PAUSED: 'Tạm dừng',
   ATTEMPT_RESUMED: 'Tiếp tục',
@@ -746,27 +692,15 @@ const SIGNAL_LABELS = {
   SUBMITTED: 'Đã nộp bài',
   AUTO_SUBMITTED: 'Tự động nộp bài',
   ATTEMPT_STOPPED: 'Đình chỉ',
-  RISK_UPDATED: 'Cập nhật rủi ro',
   NOTE: 'Ghi chú'
 }
-const BREAKDOWN_KEY_ALIASES = {
-  SCREEN_LEAVE: ['screenLeaveScore', 'SCREEN_LEAVE', 'screen_leave', 'screen_leave_score'],
-  CLIPBOARD: ['clipboardScore', 'CLIPBOARD', 'clipboard_score'],
-  TECHNICAL: ['technicalScore', 'TECHNICAL', 'technical_score'],
-  IDENTITY: ['identityScore', 'IDENTITY', 'identity_score'],
-  VISUAL_IDENTITY: ['visualIdentityScore', 'VISUAL_IDENTITY', 'visual_identity_score'],
-  HEARTBEAT: ['heartbeatScore', 'HEARTBEAT', 'heartbeat_score'],
-  TOTAL: ['totalScore', 'TOTAL_SCORE', 'total_score', 'score', 'riskScore']
-}
 const EVENT_COLORS = {
-  // AI Camera Detection - Critical
   NO_CAMERA: 'var(--ds-danger)',
   NO_MIC: 'var(--ds-danger)',
   FACE_NOT_DETECTED: 'var(--ds-danger)',
   MULTIPLE_FACES: 'var(--ds-danger)',
   FACE_SPOOFING_SUSPECTED: 'var(--ds-danger)',
   FACE_OBSTRUCTED_MASK: 'var(--ds-danger)',
-  // AI Camera Detection - High
   EYES_OBSTRUCTED: 'var(--ds-warning)',
   PARTIAL_FACE_VISIBLE: 'var(--ds-warning)',
   FACE_TOO_FAR: 'var(--ds-warning)',
@@ -774,36 +708,35 @@ const EVENT_COLORS = {
   FACE_TURNED_AWAY: 'var(--ds-warning)',
   FACE_NOT_CENTERED: 'var(--ds-info)',
   EYES_NOT_DETECTED: 'var(--ds-warning)',
+  EYE_BLINK_ANOMALY: 'var(--ds-warning)',
+  EYES_CLOSED_PROLONGED: 'var(--ds-info)',
+  GAZE_OFF_SCREEN: 'var(--ds-warning)',
+  RAPID_EYE_MOVEMENT: 'var(--ds-warning)',
   AI_SPEAKING_DETECTED: 'var(--ds-warning)',
-  // Lighting & Quality
   VERY_LOW_LIGHTING: 'var(--ds-warning)',
   LOW_LIGHTING: 'var(--ds-info)',
   OVEREXPOSED_FRAME: 'var(--ds-info)',
   VERY_BLURRY_FRAME: 'var(--ds-warning)',
   BLURRY_FRAME: 'var(--ds-info)',
-  // Browser Events
+  PRINTED_PHOTO: 'var(--ds-danger)',
+  SCREEN_REPLAY: 'var(--ds-danger)',
+  DEEPFAKE: 'var(--ds-danger)',
+  FLAT_IMAGE: 'var(--ds-warning)',
+  SCREEN_DISPLAY: 'var(--ds-warning)',
   TAB_SWITCH: 'var(--ds-warning)',
   WINDOW_BLUR: 'var(--ds-warning)',
-  SCREEN_LEAVE: 'var(--ds-warning)',
-  FULLSCREEN_VIOLATION: 'var(--ds-warning)',
-  FULLSCREEN_EVASION: 'var(--ds-warning)',
   EXIT_FULLSCREEN: 'var(--ds-warning)',
   LONG_SCREEN_LEAVE: 'var(--ds-warning)',
-  CLIPBOARD_ABUSE: 'var(--ds-danger)',
   COPY_PASTE: 'var(--ds-danger)',
-  COPY_ATTEMPT: 'var(--ds-danger)',
-  PASTE_ATTEMPT: 'var(--ds-danger)',
   DEVTOOLS_OPEN: 'var(--ds-danger)',
-  RAPID_QUESTION_SWITCH: 'var(--ds-warning)',
+  RIGHT_CLICK: 'var(--ds-info)',
+  PRINT_SCREEN: 'var(--ds-danger)',
   MULTI_MONITOR: 'var(--ds-warning)',
-  HEARTBEAT_STALE: 'var(--ds-warning)',
-  GAZE_OFF_SCREEN: 'var(--ds-warning)',
-  // Identity
   IP_CHANGED: 'var(--ds-danger)',
-  IP_ANOMALY: 'var(--ds-danger)',
   DEVICE_FINGERPRINT_CHANGED: 'var(--ds-danger)',
   DUPLICATE_IP: 'var(--ds-danger)',
-  // System Events
+  IP_FINGERPRINT_GRAPH: 'var(--ds-danger)',
+  MULTIPLE_DEVICE_SESSION: 'var(--ds-danger)',
   WARNING_SENT: 'var(--ds-primary)',
   FRAUD_SIGNAL: 'var(--ds-danger)',
   FRAUD_WARNING: 'var(--ds-danger)',
@@ -974,16 +907,17 @@ const AI_CAMERA_SIGNALS = [
   'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
   'EYES_NOT_DETECTED', 'AI_SPEAKING_DETECTED', 'NO_MIC', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
   'VERY_BLURRY_FRAME', 'BLURRY_FRAME', 'EYE_BLINK_ANOMALY',
-  'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT'
+  'EYES_CLOSED_PROLONGED', 'GAZE_OFF_SCREEN', 'RAPID_EYE_MOVEMENT',
+  'PRINTED_PHOTO', 'SCREEN_REPLAY', 'DEEPFAKE', 'FLAT_IMAGE', 'SCREEN_DISPLAY'
 ]
 const SCREEN_LEAVE_TIMELINE_TYPES = new Set([
   'TAB_SWITCH',
   'WINDOW_BLUR',
-  'SCREEN_LEAVE',
   'EXIT_FULLSCREEN',
   'LONG_SCREEN_LEAVE'
 ])
 const CLIPBOARD_TIMELINE_TYPES = new Set(['COPY_PASTE'])
+const TECHNICAL_TIMELINE_TYPES = new Set(['DEVTOOLS_OPEN', 'RIGHT_CLICK', 'PRINT_SCREEN'])
 const IDENTITY_TIMELINE_TYPES = new Set([
   'DUPLICATE_IP',
   'IP_CHANGED',
@@ -1075,55 +1009,6 @@ const cameraFrameTimeLabel = computed(() => {
   const ts = renderedCameraFrame.value?.capturedAt || renderedCameraFrame.value?.issuedAt || renderedCameraFrame.value?.receivedAt
   return formatTime(ts)
 })
-const eyeStateLabel = computed(() => renderedCameraFrame.value?.eyeState || renderedCameraFrame.value?.eye_state || '—')
-const gazeDirectionLabel = computed(() => renderedCameraFrame.value?.gazeDirection || renderedCameraFrame.value?.gaze_direction || '—')
-const gazeStatusLabel = computed(() => {
-  if (renderedCameraFrame.value?.gazeOffScreen || renderedCameraFrame.value?.gaze_off_screen) return 'Off screen'
-  if (!renderedCameraFrame.value) return '—'
-  return 'On screen'
-})
-
-// Breakdown from API returns Map<String, Integer> - access by signal type key
-const getBreakdownCount = (key) => {
-  const sources = [riskData.value.breakdown, riskData.value.scores].filter(source => source && typeof source === 'object')
-  const aliases = BREAKDOWN_KEY_ALIASES[key] || [key]
-  for (const source of sources) {
-    for (const alias of aliases) {
-      const value = source[alias]
-      if (value != null && value !== '') {
-        return Number(value) || 0
-      }
-    }
-  }
-  return 0
-}
-
-const riskComponentGroups = computed(() => [
-  {
-    key: 'screen_leave',
-    label: 'Screen leave',
-    description: 'Chuyển tab, mất focus, thoát fullscreen',
-    score: getBreakdownCount('SCREEN_LEAVE'),
-    tone: 'screen',
-    icon: 'monitor-off'
-  },
-  {
-    key: 'identity_device',
-    label: 'Định danh / IP device',
-    description: 'IP trùng, đổi IP, đổi thiết bị',
-    score: getBreakdownCount('IDENTITY'),
-    tone: 'identity',
-    icon: 'fingerprint'
-  },
-  {
-    key: 'camera_ai',
-    label: 'Camera AI',
-    description: 'Khuôn mặt, ánh sáng, hướng nhìn',
-    score: getBreakdownCount('VISUAL_IDENTITY'),
-    tone: 'camera',
-    icon: 'camera'
-  }
-])
 
 const activeFlagStatusLabel = computed(() => {
   const status = String(riskData.value.activeFlagStatus || riskData.value.status || '').toUpperCase()
@@ -1248,6 +1133,7 @@ function normalizeSignalItem(signal = {}) {
     severity: normalizeSignalType(signal.severity) || signal.severity || '',
     confidence: toNumberOrNull(signal.confidence),
     riskImpact: toNumberOrNull(signal.riskImpact),
+    scoreContribution: toNumberOrNull(signal.scoreContribution),
     createdAt,
     _key: signal.id || signal.signalId || signal.signal_id || fallbackKey
   }
@@ -1266,13 +1152,14 @@ function signalKey(signal = {}) {
     signal.signalType || '',
     signal.category || '',
     signal.createdAt || signal.occurredAt || signal.issuedAt || '',
-    signal.riskImpact ?? '',
+    signal.scoreContribution ?? '',
     signal.displayMessage || signal.evidence || ''
   ].join('|')
 }
 
 function preferSignalItem(candidate = {}, existing = {}) {
   if (!existing) return true
+  if (candidate.scoreContribution != null && existing.scoreContribution == null) return true
   if (candidate.riskImpact != null && existing.riskImpact == null) return true
   if (candidate.displayMessage && !existing.displayMessage) return true
   if (candidate.evidence && !existing.evidence) return true
@@ -1288,7 +1175,7 @@ function mergeLatestSignals(...groups) {
     if (!Array.isArray(group)) continue
     for (const signal of group) {
       const normalized = normalizeSignalItem(signal)
-      if (!normalized.signalType && !normalized.displayMessage && normalized.riskImpact == null) continue
+      if (!normalized.signalType && !normalized.displayMessage && normalized.riskImpact == null && normalized.scoreContribution == null) continue
       const key = signalKey(normalized)
       const existing = merged.get(key)
       if (!existing || preferSignalItem(normalized, existing)) {
@@ -1447,6 +1334,7 @@ function matchesTimelineFilter(eventType = '', category = '', filter = '') {
   }
   if (normalizedFilter === 'SCREEN_LEAVE') return SCREEN_LEAVE_TIMELINE_TYPES.has(type)
   if (normalizedFilter === 'CLIPBOARD') return CLIPBOARD_TIMELINE_TYPES.has(type)
+  if (normalizedFilter === 'TECHNICAL') return TECHNICAL_TIMELINE_TYPES.has(type)
   if (normalizedFilter === 'IDENTITY') return IDENTITY_TIMELINE_TYPES.has(type)
   if (normalizedFilter === 'WARNING') {
     return ['WARNING', 'WARNING_SENT', 'FRAUD_WARNING'].includes(type)
@@ -1477,6 +1365,7 @@ function normalizeTimelineItem(item = {}) {
   const severity = normalizeSignalType(item.severity) || null
   const confidence = item.confidence != null ? Number(item.confidence) : null
   const riskImpact = item.riskImpact != null ? Number(item.riskImpact) : null
+  const scoreContribution = item.scoreContribution != null ? Number(item.scoreContribution) : null
   const category = normalizeSignalType(item.category) || null
   const details = normalizeTimelineDetails(item, eventType)
   const source = resolveTimelineSource(item)
@@ -1490,6 +1379,7 @@ function normalizeTimelineItem(item = {}) {
     severity,
     confidence,
     riskImpact,
+    scoreContribution,
     category,
     details,
     displayMessage: normalizeTimelineDisplayMessage(item, eventType),
@@ -1570,6 +1460,9 @@ function preferTimelineItem(candidate = {}, existing = {}) {
     return true
   }
   if ((candidate.type || '').toUpperCase() === 'FRAUD_WARNING' && (existing.type || '').toUpperCase() === 'RISK_SCORE') {
+    return true
+  }
+  if (candidate.scoreContribution != null && existing.scoreContribution == null) {
     return true
   }
   if (candidate.riskImpact != null && existing.riskImpact == null) {
@@ -1918,6 +1811,7 @@ function handleRealtimeUpdate(payload) {
       severity: signal.severity,
       confidence: signal.confidence,
       riskImpact: signal.riskImpact,
+      scoreContribution: signal.scoreContribution,
       category: signal.category,
       source: 'fraud_signals'
     })
@@ -1963,8 +1857,7 @@ async function loadTimeline() {
   try {
     const result = await fetchProctorTimeline(attemptId.value, {
       page: 1,
-      size: 100,
-      eventType: timelineFilter.value || undefined
+      size: 100
     })
     const apiItems = Array.isArray(result) ? result : (result?.items || [])
     timeline.value = mergeTimelineItems([...(timeline.value || []), ...apiItems])
@@ -2850,71 +2743,25 @@ onActivated(() => {
   font-weight: 700;
 }
 
-.smd-camera__summary {
+.smd-camera__meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
+  align-items: center;
   margin-top: var(--ds-space-3);
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
   min-height: 28px;
   contain: layout paint;
 }
 
-.smd-camera__summary-chip {
+.smd-camera__meta > span {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 3px 8px;
-  border-radius: 9999px;
-  background: var(--ds-gray-100);
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-text-xs);
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.smd-camera__summary-chip--success {
-  background: var(--ds-success-soft);
-  color: var(--ds-success);
-}
-
-.smd-camera__summary-chip--warning {
-  background: var(--ds-warning-soft);
-  color: var(--ds-warning);
-}
-
-.smd-camera__summary-chip--danger {
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger);
-}
-
-.smd-camera__meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ds-space-2);
-  margin-top: var(--ds-space-3);
-  font-size: var(--ds-text-xs);
-  color: var(--ds-text-secondary);
-  min-height: 56px;
-  contain: layout paint;
-}
-
-.smd-camera__meta > span {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
-  padding: 7px 8px;
+  padding: 5px 8px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-sm);
   background: var(--ds-gray-50);
   line-height: 1.25;
-}
-
-.smd-camera__meta strong {
-  color: var(--ds-text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0;
 }
 
 /* ── Risk summary ───────────────────────────────────────────── */
@@ -2922,114 +2769,6 @@ onActivated(() => {
   display: flex;
   flex-direction: column;
   gap: var(--ds-space-3);
-}
-
-.smd-breakdown {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--ds-space-2);
-}
-
-.smd-breakdown-cluster {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--ds-space-3);
-  background: var(--ds-gray-50);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  min-width: 0;
-}
-
-.smd-breakdown-cluster--screen {
-  border-top: 2px solid var(--ds-warning);
-}
-
-.smd-breakdown-cluster--identity {
-  border-top: 2px solid var(--ds-danger);
-}
-
-.smd-breakdown-cluster--camera {
-  border-top: 2px solid var(--ds-info);
-}
-
-.smd-breakdown-cluster__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ds-space-2);
-}
-
-.smd-breakdown-cluster__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--ds-surface);
-  color: var(--ds-text-secondary);
-}
-
-.smd-breakdown-cluster--screen .smd-breakdown-cluster__icon {
-  color: var(--ds-warning);
-  background: var(--ds-warning-soft);
-}
-
-.smd-breakdown-cluster--identity .smd-breakdown-cluster__icon {
-  color: var(--ds-danger);
-  background: var(--ds-danger-soft);
-}
-
-.smd-breakdown-cluster--camera .smd-breakdown-cluster__icon {
-  color: var(--ds-info);
-  background: var(--ds-info-soft);
-}
-
-.smd-breakdown-cluster__score {
-  font-size: var(--ds-text-lg);
-  font-weight: 800;
-  color: var(--ds-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.smd-breakdown-cluster__label {
-  font-size: var(--ds-text-sm);
-  font-weight: 800;
-  color: var(--ds-text);
-}
-
-.smd-breakdown-cluster__desc {
-  font-size: var(--ds-text-xs);
-  color: var(--ds-text-secondary);
-  line-height: 1.35;
-  min-height: 2.7em;
-}
-
-.smd-breakdown-cluster__meter {
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--ds-border);
-  overflow: hidden;
-}
-
-.smd-breakdown-cluster__fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ds-primary);
-}
-
-.smd-breakdown-cluster--screen .smd-breakdown-cluster__fill {
-  background: var(--ds-warning);
-}
-
-.smd-breakdown-cluster--identity .smd-breakdown-cluster__fill {
-  background: var(--ds-danger);
-}
-
-.smd-breakdown-cluster--camera .smd-breakdown-cluster__fill {
-  background: var(--ds-info);
 }
 
 .smd-reasons {
@@ -3440,20 +3179,12 @@ onActivated(() => {
     display: none;
   }
 
-  .smd-breakdown {
-    grid-template-columns: 1fr;
-  }
-
   .smd-strip {
     padding: var(--ds-space-3);
   }
 
   .smd-actions {
     flex-direction: column;
-  }
-
-  .smd-camera__meta {
-    grid-template-columns: 1fr;
   }
 
   .smd-btn {

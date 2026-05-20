@@ -290,6 +290,12 @@ export const analyzeQuestionDifficulty = async (examId, { overwrite = false } = 
 /** Ghi toàn bộ câu hỏi form lên server (dùng khi xuất bản đề từ wizard tạo đề). */
 export async function persistExamQuestionsFromForm(examId, questions) {
   if (!examId || !Array.isArray(questions) || questions.length === 0) return
+  const existingQuestions = await listExamQuestions(examId)
+  for (const question of existingQuestions) {
+    if (question?.id != null) {
+      await deleteQuestion(examId, question.id)
+    }
+  }
   for (const q of questions) {
     const payload = buildCreatePayloadFromFormQuestion(q)
     if (!payload.content) continue

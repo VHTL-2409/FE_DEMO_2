@@ -99,18 +99,29 @@ export function useExamForm(options = {}) {
     monitorTabSwitch: true,
     monitorBlur: true,
     monitorExitFullscreen: true,
-    monitorCopyPaste: true,
-    monitorIdleTime: true,
-    monitorDevtools: true,
+    monitorCopyPaste: false,
+    monitorIdleTime: false,
+    monitorDevtools: false,
     monitorDuplicateIp: true,
-    monitorFastSubmit: true,
+    monitorFastSubmit: false,
     monitorRightClick: true,
     monitorPrintScreen: true,
-    monitorRapidQuestionSwitch: true,
-    monitorMultiMonitor: true,
-    requireCameraMic: true,
-    questions: []
-  })
+ monitorRapidQuestionSwitch: false,
+ monitorMultiMonitor: true,
+ requireCameraMic: true,
+ monitorNetworkInstability: false,
+ monitorSessionRecovery: false,
+ monitorQuestionTimingAnomaly: false,
+ monitorAnswerChangeBurst: false,
+ monitorClipboardBurst: false,
+ monitorFullscreenEvasion: true,
+ monitorAnswerSimilarity: false,
+ monitorIpFingerprintGraph: false,
+ aiFaceDetection: false,
+ aiEyeTracking: false,
+ enableAiProctoring: false,
+ questions: []
+ })
 
   // ── Errors
   const errors = reactive({})
@@ -187,22 +198,33 @@ export function useExamForm(options = {}) {
       startTime: data.startTime || '',
       endTime: data.endTime || '',
       timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      proctoringEnabled: data.monitorTabSwitch || data.monitorBlur || data.monitorDevtools,
+      proctoringEnabled: data.monitorTabSwitch || data.monitorBlur,
       monitorTabSwitch: data.monitorTabSwitch !== false,
       monitorBlur: data.monitorBlur !== false,
       monitorExitFullscreen: data.monitorExitFullscreen !== false,
-      monitorCopyPaste: data.monitorCopyPaste !== false,
-      monitorIdleTime: data.monitorIdleTime !== false,
-      monitorDevtools: data.monitorDevtools !== false,
+      monitorCopyPaste: false,
+      monitorIdleTime: data.monitorIdleTime === true,
+      monitorDevtools: false,
       monitorDuplicateIp: data.monitorDuplicateIp !== false,
-      monitorFastSubmit: data.monitorFastSubmit !== false,
+      monitorFastSubmit: false,
       monitorRightClick: data.monitorRightClick !== false,
       monitorPrintScreen: data.monitorPrintScreen !== false,
-      monitorRapidQuestionSwitch: data.monitorRapidQuestionSwitch !== false,
-      monitorMultiMonitor: data.monitorMultiMonitor !== false,
-      requireCameraMic: data.requireCameraMic !== false,
-      questions: data.questions || []
-    })
+ monitorRapidQuestionSwitch: data.monitorRapidQuestionSwitch === true,
+ monitorMultiMonitor: data.monitorMultiMonitor !== false,
+ requireCameraMic: data.requireCameraMic !== false,
+ monitorNetworkInstability: data.monitorNetworkInstability === true,
+ monitorSessionRecovery: data.monitorSessionRecovery === true,
+ monitorQuestionTimingAnomaly: data.monitorQuestionTimingAnomaly === true,
+ monitorAnswerChangeBurst: data.monitorAnswerChangeBurst === true,
+ monitorClipboardBurst: false,
+ monitorFullscreenEvasion: data.monitorFullscreenEvasion !== false,
+ monitorAnswerSimilarity: data.monitorAnswerSimilarity === true,
+ monitorIpFingerprintGraph: data.monitorIpFingerprintGraph === true,
+ aiFaceDetection: data.requireCameraMic !== false && (data.aiFaceDetection != null ? data.aiFaceDetection === true : data.enableAiProctoring === true),
+ aiEyeTracking: data.requireCameraMic !== false && (data.aiEyeTracking != null ? data.aiEyeTracking === true : data.enableAiProctoring === true),
+ enableAiProctoring: data.requireCameraMic !== false && (data.enableAiProctoring === true || data.aiFaceDetection === true || data.aiEyeTracking === true),
+ questions: data.questions || []
+ })
     // Clear errors
     Object.keys(errors).forEach(k => delete errors[k])
     markSaved()

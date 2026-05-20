@@ -1,9 +1,17 @@
 import { apiRequest, unwrapApiData } from './apiClient'
 
-const toIsoOrNull = (value) => {
+const toLocalDateTimeOrNull = (value) => {
   if (!value) return null
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+  if (Number.isNaN(date.getTime())) return null
+
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const sec = String(date.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}`
 }
 
 export const listExamAssignments = async (examId) => {
@@ -23,8 +31,8 @@ export const createExamAssignment = async (examId, {
     method: 'POST',
     body: JSON.stringify({
       title,
-      openAt: toIsoOrNull(openAt),
-      closeAt: toIsoOrNull(closeAt),
+      openAt: toLocalDateTimeOrNull(openAt),
+      closeAt: toLocalDateTimeOrNull(closeAt),
       maxAttempts,
       allowReviewAfterSubmit,
       isPublished
@@ -46,8 +54,8 @@ export const updateExamAssignment = async (examId, assignmentId, {
     method: 'PUT',
     body: JSON.stringify({
       title,
-      openAt: toIsoOrNull(openAt),
-      closeAt: toIsoOrNull(closeAt),
+      openAt: toLocalDateTimeOrNull(openAt),
+      closeAt: toLocalDateTimeOrNull(closeAt),
       maxAttempts,
       allowReviewAfterSubmit,
       isPublished
@@ -55,4 +63,18 @@ export const updateExamAssignment = async (examId, assignmentId, {
   })
 
   return unwrapApiData(payload)
+}
+
+export const publishExamAssignment = async (examId, assignmentId, isPublished = true) => {
+  const payload = await apiRequest(`/api/exams/${examId}/assignments/${assignmentId}/publish?isPublished=${isPublished ? 'true' : 'false'}`, {
+    method: 'PATCH'
+  })
+
+  return unwrapApiData(payload)
+}
+
+export const deleteExamAssignment = async (examId, assignmentId) => {
+  await apiRequest(`/api/exams/${examId}/assignments/${assignmentId}`, {
+    method: 'DELETE'
+  })
 }

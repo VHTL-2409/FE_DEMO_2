@@ -199,39 +199,54 @@ const router = useRouter()
 
 const isProctoringEnabled = computed(() => {
   if (!props.exam) return false
-  return props.exam.monitorTabSwitch || props.exam.monitorBlur || props.exam.monitorDevtools
+  return props.exam.monitorTabSwitch || props.exam.monitorBlur
+    || props.exam.monitorNetworkInstability || props.exam.monitorSessionRecovery
+    || props.exam.monitorQuestionTimingAnomaly || props.exam.monitorAnswerChangeBurst
+    || props.exam.monitorAnswerSimilarity
+    || props.exam.monitorIpFingerprintGraph
+    || props.exam.aiFaceDetection || props.exam.aiEyeTracking || props.exam.enableAiProctoring
 })
 
 const proctorLabels = {
   monitorTabSwitch: 'Theo dõi tab',
   monitorBlur: 'Blur focus',
   monitorExitFullscreen: 'Thoát toàn màn hình',
-  monitorCopyPaste: 'Copy/Paste',
   monitorIdleTime: 'Nhàn rỗi',
-  monitorDevtools: 'DevTools',
   monitorDuplicateIp: "IP trùng lặp",
-  monitorFastSubmit: 'Nộp nhanh',
   monitorRightClick: 'Chuột phải',
   monitorPrintScreen: 'Chụp màn hình',
   monitorRapidQuestionSwitch: 'Đổi câu',
   monitorMultiMonitor: 'Đa màn hình',
-  requireCameraMic: 'Camera/Mic'
+  requireCameraMic: 'Camera/Mic',
+  monitorNetworkInstability: 'Mạng bất ổn',
+  monitorSessionRecovery: 'Khôi phục phiên',
+  monitorQuestionTimingAnomaly: 'Thời gian câu',
+  monitorAnswerChangeBurst: 'Đổi đáp án',
+  monitorAnswerSimilarity: 'Tương đồng đáp án',
+  monitorIpFingerprintGraph: 'IP/thiết bị',
+  aiFaceDetection: 'AI khuôn mặt',
+  aiEyeTracking: 'AI theo dõi mắt'
 }
 
 const proctorIcons = {
   monitorTabSwitch: 'tab',
   monitorBlur: 'visibility_off',
   monitorExitFullscreen: 'fullscreen_exit',
-  monitorCopyPaste: 'content_copy',
   monitorIdleTime: 'timer_off',
-  monitorDevtools: 'code',
   monitorDuplicateIp: 'router',
-  monitorFastSubmit: 'bolt',
   monitorRightClick: 'mouse',
   monitorPrintScreen: 'screenshot',
   monitorRapidQuestionSwitch: 'skip_next',
   monitorMultiMonitor: 'desktop_windows',
-  requireCameraMic: 'videocam'
+  requireCameraMic: 'videocam',
+  monitorNetworkInstability: 'wifi_off',
+  monitorSessionRecovery: 'restore',
+  monitorQuestionTimingAnomaly: 'schedule',
+  monitorAnswerChangeBurst: 'edit_note',
+  monitorAnswerSimilarity: 'compare_arrows',
+  monitorIpFingerprintGraph: 'hub',
+  aiFaceDetection: 'scan-face',
+  aiEyeTracking: 'visibility'
 }
 
 const activeRules = computed(() => {

@@ -43,43 +43,6 @@
           <span>{{ isSocketConnected ? 'Real-time' : 'Polling' }}</span>
         </div>
 
-        <!-- Quick stats pills -->
-        <div class="pm-stat-pill pm-stat-pill--online">
-          <LucideIcon
-            name="wifi"
-            :size="13"
-          />
-          <span class="pm-stat-pill__value">{{ onlineCount }}</span>
-          <span class="pm-stat-pill__label">Online</span>
-        </div>
-        <div
-          v-if="alertCount > 0"
-          class="pm-stat-pill pm-stat-pill--warn"
-        >
-          <LucideIcon
-            name="alert-triangle"
-            :size="13"
-          />
-          <span class="pm-stat-pill__value">{{ alertCount }}</span>
-          <span class="pm-stat-pill__label">Nghi ngờ</span>
-        </div>
-        <div class="pm-stat-pill pm-stat-pill--submit">
-          <LucideIcon
-            name="check-circle"
-            :size="13"
-          />
-          <span class="pm-stat-pill__value">{{ submittedCount }}</span>
-          <span class="pm-stat-pill__label">Đã nộp</span>
-        </div>
-        <div class="pm-stat-pill pm-stat-pill--neutral">
-          <LucideIcon
-            name="users"
-            :size="13"
-          />
-          <span class="pm-stat-pill__value">{{ store.cards.length }}</span>
-          <span class="pm-stat-pill__label">Tổng</span>
-        </div>
-
         <!-- Timer -->
         <div
           v-if="timeRemaining"
@@ -94,6 +57,7 @@
       </div>
 
       <div class="pm-topbar__right">
+        <span class="pm-sync-note">Cập nhật {{ lastUpdatedLabel }}</span>
         <!-- Alerts toggle -->
         <button
           class="pm-icon-btn"
@@ -279,32 +243,28 @@
           </div>
         </Transition>
 
-        <!-- ── Risk Summary Strip ── -->
-        <div class="pm-risk-strip">
-          <div class="pm-risk-strip__item pm-risk-strip__item--clean">
-            <span class="pm-risk-strip__dot" />
-            <span class="pm-risk-strip__label">Bình thường</span>
-            <span class="pm-risk-strip__count">{{ getCountByBand('clean') }}</span>
-          </div>
-          <div class="pm-risk-strip__item pm-risk-strip__item--suspicious">
-            <span class="pm-risk-strip__dot" />
-            <span class="pm-risk-strip__label">Nghi ngờ</span>
-            <span class="pm-risk-strip__count">{{ getCountByBand('suspicious') }}</span>
-          </div>
-          <div class="pm-risk-strip__item pm-risk-strip__item--high">
-            <span class="pm-risk-strip__dot" />
-            <span class="pm-risk-strip__label">Rủi ro cao</span>
-            <span class="pm-risk-strip__count">{{ getCountByBand('high') }}</span>
-          </div>
-          <div class="pm-risk-strip__item pm-risk-strip__item--critical">
-            <span class="pm-risk-strip__dot" />
-            <span class="pm-risk-strip__label">Nguy hiểm</span>
-            <span class="pm-risk-strip__count">{{ getCountByBand('critical') }}</span>
-          </div>
-          <div class="pm-risk-strip__legend">
-            <span class="pm-risk-strip__legend-tick" />
-            <span>Cập nhật: {{ lastUpdatedLabel }}</span>
-          </div>
+        <!-- ── Overview ── -->
+        <div
+          class="pm-overview"
+          aria-label="Tổng quan phòng thi"
+        >
+          <button
+            v-for="item in monitoringOverview"
+            :key="item.key"
+            type="button"
+            class="pm-overview__item"
+            :class="[`pm-overview__item--${item.tone}`, { 'pm-overview__item--active': activeTab === item.filter }]"
+            @click="activeTab = item.filter"
+          >
+            <LucideIcon
+              :name="item.icon"
+              :size="15"
+            />
+            <span class="pm-overview__body">
+              <span class="pm-overview__label">{{ item.label }}</span>
+              <strong class="pm-overview__value">{{ item.value }}</strong>
+            </span>
+          </button>
         </div>
 
         <!-- ── Student Grid ── -->
@@ -375,38 +335,6 @@
           />
         </div>
 
-        <!-- ── Connection Bar ── -->
-        <div class="pm-conn-bar">
-          <div class="pm-conn-bar__left">
-            <span
-              class="pm-conn-indicator"
-              :class="isSocketConnected ? 'pm-conn-indicator--live' : 'pm-conn-indicator--poll'"
-            >
-              <span class="pm-conn-indicator__dot" />
-              <LucideIcon
-                :name="isSocketConnected ? 'zap' : 'refresh-cw'"
-                :size="11"
-              />
-            </span>
-            <span class="pm-conn-bar__text">
-              {{ isSocketConnected ? 'Đang kết nối thời gian thực' : `Cập nhật định kỳ · lần cuối ${lastUpdatedLabel}` }}
-            </span>
-          </div>
-          <div class="pm-conn-bar__right">
-            <span class="pm-conn-bar__version">v2.0</span>
-            <button
-              v-if="wsError"
-              class="pm-conn-bar__retry"
-              @click="retryConnection"
-            >
-              <LucideIcon
-                name="refresh-cw"
-                :size="11"
-              />
-              Kết nối lại
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- ── Sidebar ── -->
@@ -647,10 +575,10 @@ const store = useProctorDashboardStore()
 const { cards: attempts, lastUpdatedAt } = storeToRefs(store)
 
 // ── View mode ──────────────────────────────────────────────────────────
-const viewMode = ref('grid')
+const viewMode = ref('list')
 const activeTab = ref('all')
 const sidebarTab = ref('alerts')
-const allPanelsCollapsed = ref(false)
+const allPanelsCollapsed = ref(true)
 const searchQuery = ref('')
 
 // ── Route / Exam ────────────────────────────────────────────────────────
@@ -671,8 +599,6 @@ let reconnectTimer = null
 // ── Realtime ────────────────────────────────────────────────────────────
 const rt = useRealtimeChannel()
 const isSocketConnected = rt.isConnected
-const wsError = rt.lastError
-const retryConnection = rt.retryConnection
 
 const liveAlerts = ref([])
 const recentEvents = ref([])
@@ -729,13 +655,40 @@ const lastUpdatedLabel = computed(() => {
 })
 const timeRemaining = ref('')
 
-function getCountByBand(band) {
-  if (band === 'clean') return attempts.value.filter(a => Number(a.riskScore || 0) < 31).length
-  if (band === 'suspicious') return attempts.value.filter(a => Number(a.riskScore || 0) >= 31 && Number(a.riskScore || 0) < 61).length
-  if (band === 'high') return attempts.value.filter(a => Number(a.riskScore || 0) >= 61 && Number(a.riskScore || 0) < 81).length
-  if (band === 'critical') return attempts.value.filter(a => Number(a.riskScore || 0) >= 81).length
-  return 0
-}
+const monitoringOverview = computed(() => [
+  {
+    key: 'attention',
+    label: 'Cần chú ý',
+    value: alertCount.value,
+    icon: 'alert-triangle',
+    tone: alertCount.value > 0 ? 'danger' : 'muted',
+    filter: 'suspicious'
+  },
+  {
+    key: 'active',
+    label: 'Đang thi',
+    value: onlineCount.value,
+    icon: 'wifi',
+    tone: 'success',
+    filter: 'active'
+  },
+  {
+    key: 'submitted',
+    label: 'Đã nộp',
+    value: submittedCount.value,
+    icon: 'check-circle',
+    tone: 'primary',
+    filter: 'submitted'
+  },
+  {
+    key: 'total',
+    label: 'Tổng',
+    value: store.cards.length,
+    icon: 'users',
+    tone: 'neutral',
+    filter: 'all'
+  }
+])
 
 // ── Filter tabs ─────────────────────────────────────────────────────────
 const filterTabs = computed(() => [
@@ -1128,6 +1081,7 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .pm-topbar__right {
   display: flex;
@@ -1239,43 +1193,6 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 }
 .pm-conn-status--live .pm-conn-status__dot { animation: pm-pulse 1.5s ease-in-out infinite; }
 
-/* Stat pills */
-.pm-stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.7rem;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  border: 1px solid;
-}
-.pm-stat-pill__value {
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-}
-.pm-stat-pill__label { font-weight: 600; opacity: 0.8; }
-.pm-stat-pill--online {
-  background: rgba(22,163,74,0.08);
-  color: var(--ds-success);
-  border-color: rgba(22,163,74,0.2);
-}
-.pm-stat-pill--warn {
-  background: rgba(245,158,11,0.08);
-  color: var(--ds-warning);
-  border-color: rgba(245,158,11,0.2);
-}
-.pm-stat-pill--submit {
-  background: var(--ds-primary-soft);
-  color: var(--ds-primary);
-  border-color: var(--ds-primary-border);
-}
-.pm-stat-pill--neutral {
-  background: var(--ds-surface-muted);
-  color: var(--ds-text-secondary);
-  border-color: var(--ds-border);
-}
-
 /* Timer */
 .pm-timer {
   display: inline-flex;
@@ -1345,6 +1262,13 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 .pm-spin { animation: pm-spin 0.8s linear infinite; }
 @keyframes pm-spin { to { transform: rotate(360deg); } }
 
+.pm-sync-note {
+  color: var(--ds-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* ── Layout ───────────────────────────────────────────────────────── */
 .pm-layout {
   display: flex;
@@ -1361,7 +1285,7 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
   padding: 1rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.75rem;
 }
 .pm-main::-webkit-scrollbar { width: 6px; }
 .pm-main::-webkit-scrollbar-track { background: transparent; }
@@ -1548,65 +1472,55 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 .pm-batch-btn--restore:hover { background: var(--ds-surface-muted); color: var(--ds-text); }
 
 /* ── Risk Strip ─────────────────────────────────────────────────── */
-.pm-risk-strip {
+.pm-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+.pm-overview__item {
   display: flex;
   align-items: center;
-  gap: 0;
-  background: var(--ds-surface);
+  gap: 0.625rem;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-lg);
-  overflow: hidden;
-  box-shadow: var(--ds-shadow-xs);
-}
-.pm-risk-strip__item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-right: 1px solid var(--ds-border);
-  transition: background 0.15s;
-}
-.pm-risk-strip__item:last-of-type { border-right: none; }
-.pm-risk-strip__item:hover { background: var(--ds-surface-muted); }
-.pm-risk-strip__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.pm-risk-strip__item--clean .pm-risk-strip__dot { background: var(--ds-success); }
-.pm-risk-strip__item--suspicious .pm-risk-strip__dot { background: var(--ds-risk-moderate); }
-.pm-risk-strip__item--high .pm-risk-strip__dot { background: var(--ds-risk-high); }
-.pm-risk-strip__item--critical .pm-risk-strip__dot { background: var(--ds-risk-critical); animation: pm-pulse 1.5s ease-in-out infinite; }
-.pm-risk-strip__label {
-  font-size: 0.72rem;
-  font-weight: 600;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
   color: var(--ds-text-secondary);
-  flex: 1;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.pm-risk-strip__count {
-  font-size: 1rem;
-  font-weight: 900;
+.pm-overview__item:hover,
+.pm-overview__item--active {
+  background: var(--ds-surface-muted);
+  border-color: var(--ds-primary-border);
   color: var(--ds-text);
+}
+.pm-overview__body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+.pm-overview__label {
+  color: var(--ds-text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pm-overview__value {
+  color: var(--ds-text);
+  font-size: 1.05rem;
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
-.pm-risk-strip__legend {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.7rem;
-  color: var(--ds-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.pm-risk-strip__legend-tick {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ds-primary);
-}
+.pm-overview__item--danger { color: var(--ds-danger); border-color: var(--ds-danger-soft); }
+.pm-overview__item--success { color: var(--ds-success); }
+.pm-overview__item--primary { color: var(--ds-primary); }
+.pm-overview__item--muted { color: var(--ds-text-muted); }
 
 /* ── Grid ────────────────────────────────────────────────────────── */
 .pm-grid {
@@ -1641,72 +1555,6 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 .pm-empty__sub { font-size: 0.825rem; margin: 0; }
 
 /* ── Connection Bar ─────────────────────────────────────────────── */
-.pm-conn-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0.875rem;
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
-  margin-top: auto;
-  box-shadow: var(--ds-shadow-xs);
-}
-.pm-conn-bar__left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.pm-conn-bar__text {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--ds-text-muted);
-}
-.pm-conn-bar__right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.pm-conn-bar__version {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--ds-text-muted);
-  background: var(--ds-surface-muted);
-  padding: 0.1rem 0.4rem;
-  border-radius: 9999px;
-}
-.pm-conn-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-.pm-conn-indicator__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.pm-conn-indicator--live { color: var(--ds-success); }
-.pm-conn-indicator--live .pm-conn-indicator__dot { animation: pm-pulse 2s ease-in-out infinite; }
-.pm-conn-indicator--poll { color: var(--ds-text-muted); }
-.pm-conn-bar__retry {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--ds-danger);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--ds-radius-sm);
-  transition: background 0.15s;
-}
-.pm-conn-bar__retry:hover { background: var(--ds-danger-bg); }
-
 /* ── Sidebar ───────────────────────────────────────────────────── */
 .pm-sidebar {
   width: 340px;
@@ -1977,11 +1825,14 @@ onUnmounted(() => { if (refreshTimer) window.clearInterval(refreshTimer); discon
 @media (max-width: 1024px) {
   .pm-sidebar { width: 280px; }
   .pm-topbar__center { gap: 0.375rem; }
+  .pm-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 768px) {
   .pm-layout { flex-direction: column; }
   .pm-sidebar { width: 100%; border-left: none; border-top: 1px solid var(--ds-border); }
   .pm-topbar { flex-wrap: wrap; }
   .pm-topbar__center { order: 3; width: 100%; justify-content: center; }
+  .pm-sync-note { display: none; }
+  .pm-overview { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

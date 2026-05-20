@@ -56,7 +56,7 @@
         <!-- Action Buttons -->
         <div class="flex flex-col justify-center gap-2.5 sm:flex-row">
           <button
-            v-if="attemptId"
+            v-if="attemptId && allowReviewAfterSubmit"
             type="button"
             class="inline-flex items-center justify-center gap-2 rounded-[var(--ds-radius-xl)] px-6 py-3 text-sm font-bold text-white shadow-[var(--ds-shadow-md)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--ds-shadow-lg)]"
             style="background-color: var(--ds-primary);"
@@ -94,6 +94,7 @@ const report = ref(null)
 const toast = useToast()
 
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
+const allowReviewAfterSubmit = computed(() => detail.value?.allowReviewAfterSubmit !== false && route.query.allowReviewAfterSubmit !== 'false')
 const examTitle = computed(() => detail.value?.examTitle || route.query.exam || 'Bài thi')
 
 const submittedAtDisplay = computed(() => {
@@ -150,12 +151,11 @@ const goToResult = () => {
 onMounted(async () => {
   if (!attemptId.value) return
   try {
-    const [detailPayload, reportPayload] = await Promise.all([
-      getAttemptDetail(attemptId.value),
-      getAttemptReport(attemptId.value)
-    ])
+    const detailPayload = await getAttemptDetail(attemptId.value)
     detail.value = detailPayload
-    report.value = reportPayload
+    if (detailPayload?.allowReviewAfterSubmit !== false) {
+      report.value = await getAttemptReport(attemptId.value)
+    }
   } catch {
     toast.error('Không thể tải tóm tắt bài nộp.')
   }

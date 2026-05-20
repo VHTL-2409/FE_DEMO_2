@@ -67,18 +67,6 @@
         </div>
       </div>
 
-      <div v-if="selectedFile && isServerParseCandidate" class="ec-field">
-        <label class="ec-field__label">Nhận diện mẫu tự động</label>
-        <div class="ec-import-template-picker ec-import-template-picker--auto">
-          <p class="ec-import-template-picker__hint">
-            Hệ thống sẽ tự động nhận diện mẫu PDF / DOCX và tối ưu cách đọc, không cần chọn thủ công.
-          </p>
-          <p class="ec-import-template-picker__status" :class="{ 'ec-import-template-picker__status--down': pythonAvailable === false }">
-            {{ parserHealthLabel }}
-          </p>
-        </div>
-      </div>
-
       <!-- Đọc câu hỏi — ngay dưới khung file, trước tùy chọn hiển thị -->
       <div class="ec-import-actions ec-import-actions--after-dropzone">
         <button
@@ -114,35 +102,10 @@
           <button
             type="button"
             class="ec-import-success__add-more"
-            @click="showAddMore = !showAddMore"
+            @click="prepareAddMoreFile"
           >
             <LucideIcon name="add" />
             Thêm file khác
-          </button>
-        </div>
-      </Transition>
-
-      <Transition name="ec-slide">
-        <div
-          v-if="canRetryWithTemplate && isServerParseCandidate"
-          class="ec-import-retry"
-        >
-          <div class="ec-import-retry__copy">
-            <LucideIcon name="tips_and_updates" />
-            <span>
-              {{ importError
-                ? 'Có thể đọc lại để hệ thống tự nhận diện mẫu một lần nữa.'
-                : 'Nếu còn câu đọc sai, hãy nhấn Đọc câu hỏi lại để hệ thống tự nhận diện lại.' }}
-            </span>
-          </div>
-          <button
-            type="button"
-            class="ec-btn ec-btn--ghost"
-            :disabled="!selectedFile || isImporting"
-            @click="handleImport"
-          >
-            <LucideIcon name="refresh" />
-            Đọc lại tự động
           </button>
         </div>
       </Transition>
@@ -187,78 +150,12 @@
             </button>
           </div>
 
-          <div class="ec-toggle-item">
-            <div class="ec-toggle-item__body">
-              <LucideIcon name="call_split" />
-              <div>
-                <p class="ec-toggle-item__title">Chia mã đề</p>
-                <p class="ec-toggle-item__desc">Tạo nhiều mã đề khác nhau từ file gốc</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              class="ec-toggle"
-              :class="localMultipleVersions && 'ec-toggle--on'"
-              @click="localMultipleVersions = !localMultipleVersions"
-            >
-              <span class="ec-toggle__knob" />
-            </button>
-          </div>
         </div>
       </div>
 
-      <Transition name="ec-slide">
-        <div v-if="localMultipleVersions" class="exam-code-card">
-          <div class="ecc__header">
-            <div class="ecc__icon">
-              <LucideIcon name="vpn_key" />
-            </div>
-            <div class="ecc__title-group">
-              <p class="ecc__label">Chia mã đề</p>
-              <p class="ecc__desc">Mỗi mã đề sẽ có thứ tự câu hỏi riêng</p>
-            </div>
-          </div>
-          <div class="ecc__body">
-            <div class="ecc__stepper">
-              <button
-                type="button"
-                class="ecc__stepper-btn"
-                :disabled="versionCount <= 2"
-                @click="versionCount = Math.max(2, versionCount - 1)"
-              >
-                <LucideIcon name="remove" />
-              </button>
-              <div class="ecc__stepper-value">
-                <span class="ecc__stepper-num">{{ versionCount }}</span>
-                <span class="ecc__stepper-unit">mã đề</span>
-              </div>
-              <button
-                type="button"
-                class="ecc__stepper-btn"
-                :disabled="versionCount >= 20"
-                @click="versionCount = Math.min(20, versionCount + 1)"
-              >
-                <LucideIcon name="add" />
-              </button>
-            </div>
-            <input
-              v-model.number="versionCount"
-              type="range"
-              min="2"
-              max="20"
-              class="ecc__slider"
-            />
-            <div class="ecc__hint-row">
-              <LucideIcon name="info" size="13" />
-              <span>Tối thiểu 2, tối đa 20 mã đề</span>
-            </div>
-          </div>
-        </div>
-      </Transition>
-
       <!-- Add more file section -->
       <Transition name="ec-slide">
-        <div v-if="showAddMore && importedCount > 0" class="ec-add-more">
+        <div v-if="showAddMore" class="ec-add-more">
           <div class="ec-add-more__divider">
             <span>Thêm file khác</span>
           </div>
@@ -268,8 +165,8 @@
             @dragenter.prevent="handleDragEnter"
             @dragover.prevent="handleDragOver"
             @dragleave.prevent="handleDragLeave"
-            @drop.prevent="onDrop"
-            @click="triggerFileInput"
+            @drop.prevent="onDrop($event, true)"
+            @click="triggerAddMoreFileInput"
           >
             <input
               ref="fileInput2"
@@ -314,14 +211,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { API_BASE_URL } from '../../../services/apiClient'
 import {
   previewImportFile,
   uploadExamPdf,
   getExamImportPreview,
   waitForExamImportSession,
-  checkPythonParserHealth,
   validateImportFile,
   IMPORT_FILE_ACCEPT,
   IMPORT_FILE_MAX_SIZE_MB
@@ -349,13 +245,11 @@ const importError = ref('')
 const importSuccess = ref(false)
 const importedCount = ref(0)
 const showAddMore = ref(false)
-const versionCount = ref(4)
 const isParsingServer = ref(false)
 const parsingStatus = ref('')
 const parsingProgress = ref(0)
 const sessionId = ref(null)
 const sessionStatus = ref(null)
-const pythonAvailable = ref(null)
 const dragDepth = ref(0)
 const importedBatchIdsByFingerprint = ref({})
 
@@ -374,31 +268,12 @@ const localShuffleAnswers = computed({
   set: (v) => emit('update:shuffleAnswers', v)
 })
 
-const localMultipleVersions = computed({
-  get: () => versionCount.value > 1,
-  set: (v) => {
-    if (v) versionCount.value = Math.max(2, versionCount.value)
-  }
-})
-
 const templateCsvUrl = `${API_BASE_URL}/api/questions/template`
 const templateXlsxUrl = `${API_BASE_URL}/api/questions/template?format=xlsx`
 
 const isServerParseCandidate = computed(() => {
   const ext = selectedFile.value?.name?.split('.').pop()?.toLowerCase()
   return ext === 'pdf' || ext === 'docx'
-})
-
-const canRetryWithTemplate = computed(() => {
-  if (!selectedFile.value || !isServerParseCandidate.value) return false
-  return (importSuccess.value && importedCount.value > 0) || Boolean(importError.value)
-})
-
-const parserHealthLabel = computed(() => {
-  if (pythonAvailable.value == null) return 'Đang kiểm tra parser Python...'
-  return pythonAvailable.value
-    ? 'Parser Python đang sẵn sàng cho PDF/DOCX.'
-    : 'Parser Python chưa sẵn sàng, file PDF/DOCX có thể không đọc được.'
 })
 
 const fileSizeLabel = computed(() => {
@@ -410,11 +285,11 @@ const fileSizeLabel = computed(() => {
 let localIdCounter = 1
 
 const triggerFileInput = () => {
-  if (showAddMore.value && fileInput2.value) {
-    fileInput2.value.click()
-    return
-  }
   fileInput.value?.click()
+}
+
+const triggerAddMoreFileInput = () => {
+  fileInput2.value?.click()
 }
 
 const getFileFingerprint = (file) => {
@@ -517,19 +392,18 @@ const handleDragLeave = () => {
   }
 }
 
-const onDrop = (e) => {
+const onDrop = (e, keepAddMore = false) => {
   resetDragState()
   const file = e.dataTransfer?.files?.[0]
-  if (file) setFile(file)
+  if (file) setFile(file, { keepAddMore })
 }
 
 const onFileChange = (e) => {
   const file = e.target.files?.[0]
-  if (file) setFile(file)
+  if (file) setFile(file, { keepAddMore: e.target === fileInput2.value })
 }
 
-const setFile = (file) => {
-  const previousFingerprint = getFileFingerprint(selectedFile.value)
+const setFile = (file, { keepAddMore = false } = {}) => {
   importError.value = ''
   try {
     validateImportFile(file)
@@ -547,12 +421,12 @@ const setFile = (file) => {
   selectedFile.value = file
   importSuccess.value = false
   importedCount.value = 0
-  showAddMore.value = false
+  showAddMore.value = keepAddMore
   sessionId.value = null
   sessionStatus.value = null
 }
 
-const removeFile = () => {
+const resetSelectedFile = () => {
   selectedFile.value = null
   importError.value = ''
   importSuccess.value = false
@@ -562,6 +436,16 @@ const removeFile = () => {
   resetDragState()
   if (fileInput.value) fileInput.value.value = ''
   if (fileInput2.value) fileInput2.value.value = ''
+}
+
+const removeFile = () => {
+  resetSelectedFile()
+  showAddMore.value = false
+}
+
+const prepareAddMoreFile = () => {
+  resetSelectedFile()
+  showAddMore.value = true
 }
 
 const parseFileClientSide = async (file) => {
@@ -993,6 +877,7 @@ const handleImport = async () => {
 
     importedCount.value = questions.length
     importSuccess.value = true
+    showAddMore.value = false
 
     if (ext !== 'pdf' && ext !== 'docx') {
       selectedFile.value = null
@@ -1015,14 +900,6 @@ const handleImport = async () => {
   }
 }
 
-onMounted(async () => {
-  try {
-    const health = await checkPythonParserHealth()
-    pythonAvailable.value = Boolean(health?.pythonParserAvailable)
-  } catch {
-    pythonAvailable.value = false
-  }
-})
 </script>
 
 
@@ -1249,43 +1126,6 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.ec-import-template-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-gray-50);
-}
-
-.dark .ec-import-template-picker {
-  border-color: var(--ds-border-strong);
-  background: var(--ds-gray-800);
-}
-
-.ec-import-template-picker--auto {
-  gap: 0.625rem;
-}
-
-.ec-import-template-picker__hint,
-.ec-import-template-picker__status {
-  margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: var(--ds-text-muted);
-}
-
-.ec-import-template-picker__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.ec-import-template-picker__status--down {
-  color: var(--ds-danger);
-}
-
 .ec-import-success {
   display: flex;
   align-items: center;
@@ -1343,31 +1183,6 @@ onMounted(async () => {
 .ec-import-success__add-more:hover {
   background: var(--ds-success);
   color: white;
-}
-
-.ec-import-retry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.875rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  background: var(--ds-warning-soft);
-}
-
-.dark .ec-import-retry {
-  border-color: var(--ds-border-strong);
-  background: rgba(245, 158, 11, 0.12);
-}
-
-.ec-import-retry__copy {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--ds-text);
-  font-size: 0.8rem;
-  font-weight: 600;
 }
 
 .ec-add-more {
@@ -1516,154 +1331,6 @@ onMounted(async () => {
 }
 
 .ec-toggle--on .ec-toggle__knob { transform: translateX(20px); }
-
-.exam-code-card {
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  overflow: hidden;
-}
-
-.dark .exam-code-card {
-  border-color: var(--ds-border-strong);
-  background: rgba(2, 132, 199, 0.05);
-}
-
-.ecc__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: var(--ds-primary-soft);
-  border-bottom: 1px solid var(--ds-border);
-}
-
-.dark .ecc__header { background: rgba(79, 70, 229, 0.15); border-color: var(--ds-border-strong); }
-
-.ecc__icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--ds-radius-lg);
-  background: var(--ds-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ecc__title-group { flex: 1; }
-
-.ecc__label {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin: 0;
-}
-
-.dark .ecc__label { color: white; }
-
-.ecc__desc {
-  font-size: 0.75rem;
-  color: var(--ds-text-secondary);
-  margin: 0.125rem 0 0;
-}
-
-.ecc__body {
-  padding: 1.25rem;
-  background: var(--ds-surface);
-}
-
-.dark .ecc__body { background: var(--ds-surface); }
-
-.ecc__stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.ecc__stepper-btn {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--ds-radius-lg);
-  border: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-  color: var(--ds-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  font-size: 1.25rem;
-}
-
-.dark .ecc__stepper-btn {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-  color: white;
-}
-
-.ecc__stepper-btn:hover:not(:disabled) {
-  background: var(--ds-primary);
-  color: white;
-  border-color: var(--ds-primary);
-}
-
-.ecc__stepper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.ecc__stepper-value {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 5rem;
-}
-
-.ecc__stepper-num {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--ds-primary);
-  line-height: 1;
-}
-
-.dark .ecc__stepper-num { color: var(--ds-primary); }
-
-.ecc__stepper-unit {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--ds-text-secondary);
-}
-
-.ecc__slider {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ds-gray-200);
-  outline: none;
-  -webkit-appearance: none;
-  margin-bottom: 0.75rem;
-}
-
-.dark .ecc__slider { background: var(--ds-gray-700); }
-
-.ecc__slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--ds-primary);
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
-}
-
-.ecc__hint-row {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  justify-content: center;
-}
 
 /* ── Server-side parse progress ──────────────────────────────── */
 

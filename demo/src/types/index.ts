@@ -89,6 +89,9 @@ export interface Exam {
   monitorRapidQuestionSwitch: boolean
   monitorMultiMonitor: boolean
   requireCameraMic: boolean
+  enableAiProctoring?: boolean
+  aiFaceDetection?: boolean
+  aiEyeTracking?: boolean
 }
 
 export interface ExamAttempt {

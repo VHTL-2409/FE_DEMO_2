@@ -145,20 +145,6 @@
             </button>
           </div>
 
-          <div class="emf__toggle-item">
-            <div>
-              <p class="emf__toggle-title">Hiển thị điểm ngay sau nộp</p>
-              <p class="emf__toggle-desc">Học sinh thấy điểm trên màn hình xác nhận. Tắt nếu muốn công bố điểm sau.</p>
-            </div>
-            <button
-              type="button"
-              class="emf__toggle"
-              :class="localShowScoreAfterSubmit && 'emf__toggle--on'"
-              @click="localShowScoreAfterSubmit = !localShowScoreAfterSubmit"
-            >
-              <span class="emf__toggle-knob" />
-            </button>
-          </div>
         </div>
 
         <!-- Max attempts -->
@@ -201,13 +187,12 @@ const props = defineProps({
   duration: { type: [Number, String], default: 60 },
   shuffleQuestions: { type: Boolean, default: false },
   shuffleAnswers: { type: Boolean, default: false },
-  showScoreAfterSubmit: { type: Boolean, default: true },
   maxAttempts: { type: [Number, String], default: 1 }
 })
 
 const emit = defineEmits([
   'update:title', 'update:subject', 'update:className', 'update:description',
-  'update:duration', 'update:shuffleQuestions', 'update:shuffleAnswers', 'update:showScoreAfterSubmit',
+  'update:duration', 'update:shuffleQuestions', 'update:shuffleAnswers',
   'update:maxAttempts'
 ])
 
@@ -240,10 +225,6 @@ const localShuffleQuestions = computed({
 const localShuffleAnswers = computed({
   get: () => props.shuffleAnswers,
   set: (v) => emit('update:shuffleAnswers', v)
-})
-const localShowScoreAfterSubmit = computed({
-  get: () => props.showScoreAfterSubmit,
-  set: (v) => emit('update:showScoreAfterSubmit', v)
 })
 const localMaxAttempts = computed({
   get: () => Number(props.maxAttempts),
