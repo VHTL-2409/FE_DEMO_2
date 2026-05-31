@@ -15,6 +15,7 @@ public class WaitingStudentResponse {
     private String studentName;
     private String studentEmail;
     private String status;
+    private String statusCode;
     private Integer riskScore;
     private Boolean suspicious;
     private String joinedAt;

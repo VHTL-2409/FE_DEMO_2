@@ -6,16 +6,21 @@ import com.example.demo.api.dto.classmanagement.ClassStudentResponse;
 import com.example.demo.api.dto.classmanagement.JoinClassByCodeRequest;
 import com.example.demo.api.dto.exam.ExamResponse;
 import com.example.demo.common.ApiException;
-import org.springframework.http.HttpStatus;
-import com.example.demo.domain.entity.ClassEntity;
+import com.example.demo.domain.entity.User;
 import com.example.demo.repository.ClassRepository;
 import com.example.demo.service.ClassService;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ExamService;
-import com.example.demo.domain.entity.User;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -60,15 +65,11 @@ public class StudentClassController {
     @GetMapping("/{classId}/exams")
     public ApiResponse<List<ExamResponse>> getClassExams(@PathVariable Long classId) {
         User student = currentUserService.requireCurrentUser();
-        ClassEntity classEntity = classRepository.findById(classId)
+        classRepository.findById(classId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp học"));
         if (!classService.isStudentEnrolled(classId, student.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không thuộc lớp học này");
         }
-        List<ExamResponse> exams = examService.listPublishedExamsByTeacherAndClassName(
-                classEntity.getTeacher(),
-                classEntity.getName()
-        );
-        return ApiResponse.success(exams);
+        return ApiResponse.success(examService.listActiveExamsByClass(classId));
     }
 }

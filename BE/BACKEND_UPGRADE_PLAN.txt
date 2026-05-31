@@ -1,0 +1,75 @@
+# Backend Upgrade Plan
+
+## Current baseline
+
+- Stack: Spring Boot, Java 17, Maven, PostgreSQL, JPA, WebSocket, JWT auth.
+- Build status: `mvn.cmd -q -DskipTests compile` is the minimum verification gate.
+- Test baseline: add or keep backend tests under `src/test` as changes become production-facing.
+- Database baseline: both `schema.sql` and `db/migration` files exist; use one documented migration strategy.
+- Runtime risk addressed: the default profile no longer forces SQL initialization unless `SPRING_SQL_INIT_MODE` enables it.
+- Latest verification: `mvn.cmd test` passes, but there are still no backend test sources.
+
+## Completed Hardening
+
+- Replaced proctoring identity `System.out` debug output with structured SLF4J debug logging.
+- Made production profile validate schema and disable SQL initialization.
+- Removed hardcoded JWT fallback and made the placeholder fail startup as a weak secret.
+- Removed Prometheus exposure from the scale profile until a registry dependency is added.
+- Fixed Lombok builder defaults in import DTOs.
+- Avoided full-table refresh-token loading during session revocation.
+- Avoided N+1 role loading in the admin auth users endpoint.
+- Avoided full-table exam loading in startup code generation checks.
+- Replaced deprecated permissions-policy config with a static `Permissions-Policy` header writer.
+- Added paged fast path for proctor timeline when no event type filter is used.
+- Replaced camera dashboard N+1 queries with bulk warning/signal queries grouped in memory.
+- Moved attempt list/export limits into database queries instead of trimming after full load.
+- Added performance indexes for attempts lists, camera alerts, and risk timeline lookups.
+- Batch-counted attempt summary fraud signals and warnings to avoid per-attempt count queries in large lists/exports.
+- Preserved related-warning counts while avoiding repeated `countByAttemptOrRelatedAttemptId` calls.
+
+## Priority 0 - Stabilize runtime contracts
+
+1. Freeze API response contracts for auth, exams, attempts, monitoring, class management, import, and AI assist.
+2. Add integration smoke tests for the endpoints used by the frontend service layer.
+3. Add role/ownership tests for student, teacher, and admin access paths.
+4. Keep debug output behind structured logging.
+5. Keep error responses consistent and machine-readable across validation, auth, persistence, and domain errors.
+
+## Priority 1 - Database and migration standardization
+
+1. Development may use `ddl-auto=update`, but production must use validated migrations.
+2. Add Flyway or remove inactive migration files. Do not keep inactive `db/migration` files beside `schema.sql` without a documented owner.
+3. Move seed/demo data out of the default runtime path. Seed explicitly with a `dev` or `demo` profile.
+4. Add indexes for hot paths: attempts by exam/student/status/time, monitoring events by attempt/type/time, fraud signals by attempt/type/time.
+5. Add uniqueness constraints for idempotent flows: active waiting attempt, class membership, refresh token identity, and import session ownership.
+
+## Priority 2 - Correctness Gaps To Audit
+
+1. Attempt lifecycle: `WAITING -> IN_PROGRESS -> SUBMITTED/AUTO_SUBMITTED`.
+2. Paused/stopped attempts must have one clear resume or reject path.
+3. IP/fingerprint checks should not suspend legitimate reconnects without a teacher-review path.
+4. Exam joinable vs startable windows must match frontend waiting room behavior.
+5. Browser events, heartbeat, camera AI, identity anomaly, and risk score should use one normalized signal taxonomy.
+
+## Priority 3 - Performance
+
+1. Replace unbounded list endpoints with paginated responses.
+2. Add explicit fetch joins or projections for list responses to avoid N+1 queries.
+3. Keep WebSocket notifications after transaction commit only.
+4. Bound CSV/export size and report truncation metadata to clients.
+5. Cache only read-mostly reference data, not user-specific attempt state.
+
+## Priority 4 - Security And Production Readiness
+
+1. Require production secrets from environment variables.
+2. Disable SQL initialization and `ddl-auto=update` in production.
+3. Narrow CORS origins per deployment.
+4. Restrict actuator endpoints to health/info unless metrics are explicitly deployed.
+5. Add audit records for sensitive admin actions, teacher overrides, attempt suspension, and role changes.
+
+## Verification Gates
+
+- `mvn.cmd -q -DskipTests compile`
+- `mvn.cmd test`
+- Endpoint smoke tests for auth, exam list/detail, attempt prepare/start/save/submit, monitoring heartbeat/batch.
+- Migration validation against an empty database and a copied production-like database.

@@ -17,6 +17,7 @@ public class ImportFromAzotaQuestionDto {
     @NotBlank(message = "Nội dung câu hỏi không được để trống")
     private String content;
 
+    @Builder.Default
     private String type = "SINGLE_CHOICE";
 
     private List<OptionDto> options;
@@ -24,7 +25,9 @@ public class ImportFromAzotaQuestionDto {
     @NotBlank(message = "Đáp án đúng không được để trống")
     private String correctAnswer;
 
+    @Builder.Default
     private Double scoreWeight = 1.0;
+    @Builder.Default
     private String difficulty = "MEDIUM";
     private String metadata;
 

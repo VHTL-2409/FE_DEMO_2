@@ -17,6 +17,10 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
 
     List<Exam> findByCreatedByIdIn(Collection<Long> ids);
 
+    List<Exam> findByClassEntityIdAndIsActiveTrueOrderByStartTimeAscIdDesc(Long classId);
+
+    List<Exam> findByClassEntityId(Long classId);
+
     @Query("SELECT e FROM Exam e LEFT JOIN FETCH e.createdBy")
     List<Exam> findAllWithCreatedBy();
 
@@ -31,6 +35,10 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     Optional<Exam> findFirstByCodeIgnoreCase(String code);
 
     Optional<Exam> findFirstByTitleContainingIgnoreCase(String title);
+
+    @Query("SELECT e FROM Exam e WHERE e.code IS NULL OR TRIM(e.code) = ''")
+    List<Exam> findExamsWithoutCode();
+
     long countByIsActiveTrue();
     long countByIsActiveFalse();
 }

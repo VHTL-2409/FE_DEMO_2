@@ -10,6 +10,7 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
+import com.example.demo.domain.entity.ClassEntity;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
@@ -80,13 +81,14 @@ public class ExamService {
     public ExamResponse createExam(ExamRequest request, User teacher) {
         currentUserService.requireTeacherOrAdmin(teacher);
         validateExamRequest(request);
-        ensureAssignedClassBelongsToTeacher(request.getClassName(), teacher);
+        ClassEntity assignedClass = resolveAssignedClass(request, teacher);
 
         Exam exam = Exam.builder()
                 .title(request.getTitle())
                 .code(generateUniqueExamCode())
                 .description(request.getDescription())
-                .className(normalizeClassName(request.getClassName()))
+                .classEntity(assignedClass)
+                .className(resolveClassName(assignedClass, request.getClassName()))
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
                 .durationMinutes(request.getDurationMinutes())
@@ -114,6 +116,13 @@ public class ExamService {
                 .monitorAnswerSimilarity(Boolean.TRUE.equals(request.getMonitorAnswerSimilarity()) || request.getMonitorAnswerSimilarity() == null)
                 .monitorIpFingerprintGraph(Boolean.TRUE.equals(request.getMonitorIpFingerprintGraph()) || request.getMonitorIpFingerprintGraph() == null)
                 .enableAiProctoring(Boolean.TRUE.equals(request.getEnableAiProctoring()))
+                .rulesText(normalizeRulesText(request.getRulesText()))
+                .rulesVersion(resolveRulesVersion(request.getRulesVersion(), request.getRulesText()))
+                .requireRulesAgreement(request.getRequireRulesAgreement() == null || Boolean.TRUE.equals(request.getRequireRulesAgreement()))
+                .requireIdentityVerification(resolveRequireIdentityVerification(request.getRequireIdentityVerification(), request.getRequireCameraMic(), request.getEnableAiProctoring()))
+                .identityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()))
+                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(request.getInExamIdentityCheckEnabled(), request.getRequireCameraMic(), request.getEnableAiProctoring()))
+                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()))
                 .shuffleQuestions(Boolean.TRUE.equals(request.getShuffleQuestions()))
                 .shuffleAnswers(Boolean.TRUE.equals(request.getShuffleAnswers()))
                 .showScoreAfterSubmit(request.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(request.getShowScoreAfterSubmit()))
@@ -275,6 +284,21 @@ public class ExamService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ExamResponse> listActiveExamsByClass(Long classId) {
+        if (classId == null) {
+            return List.of();
+        }
+        List<Exam> exams = examRepository.findByClassEntityIdAndIsActiveTrueOrderByStartTimeAscIdDesc(classId);
+        if (exams.isEmpty()) return List.of();
+        List<Long> examIds = exams.stream().map(Exam::getId).toList();
+        Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
+        Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
+        return exams.stream()
+                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
+                .toList();
+    }
+
     private Map<Long, Long> participantCountsByExamIds(List<Long> examIds) {
         if (examIds == null || examIds.isEmpty()) {
             return Map.of();
@@ -321,6 +345,11 @@ public class ExamService {
                 .durationMinutes(dur)
                 .isActive(true)
                 .createdBy(student)
+                .requireRulesAgreement(false)
+                .requireIdentityVerification(false)
+                .identityReviewPolicy("ALLOW_WITH_WARNING")
+                .inExamIdentityCheckEnabled(false)
+                .identityCheckIntervalSeconds(60)
                 .practice(true)
                 .showScoreAfterSubmit(true)
                 .build();
@@ -355,6 +384,11 @@ public class ExamService {
                 .durationMinutes(durationMinutes)
                 .isActive(true)
                 .createdBy(student)
+                .requireRulesAgreement(false)
+                .requireIdentityVerification(false)
+                .identityReviewPolicy("ALLOW_WITH_WARNING")
+                .inExamIdentityCheckEnabled(false)
+                .identityCheckIntervalSeconds(60)
                 .practice(true)
                 .showScoreAfterSubmit(true)
                 .build();
@@ -470,7 +504,7 @@ public class ExamService {
         validateExamRequest(request);
 
         Exam exam = requireManageableExam(examId, actor);
-        ensureAssignedClassBelongsToTeacher(request.getClassName(), exam.getCreatedBy());
+        ClassEntity assignedClass = resolveAssignedClass(request, exam.getCreatedBy());
 
         LocalDateTime nowInExamZone = LocalDateTime.now(VietNamTime.zone());
         if (exam.getStartTime() != null && !nowInExamZone.isBefore(exam.getStartTime())) {
@@ -482,7 +516,8 @@ public class ExamService {
             exam.setCode(generateUniqueExamCode());
         }
         exam.setDescription(request.getDescription());
-        exam.setClassName(normalizeClassName(request.getClassName()));
+        exam.setClassEntity(assignedClass);
+        exam.setClassName(resolveClassName(assignedClass, request.getClassName()));
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
         exam.setDurationMinutes(request.getDurationMinutes());
@@ -597,6 +632,23 @@ public class ExamService {
         } else if (exam.getEnableAiProctoring() == null) {
             exam.setEnableAiProctoring(Boolean.FALSE);
         }
+        exam.setRulesText(normalizeRulesText(request.getRulesText()));
+        exam.setRulesVersion(resolveRulesVersion(request.getRulesVersion(), exam.getRulesText()));
+        if (request.getRequireRulesAgreement() != null) {
+            exam.setRequireRulesAgreement(request.getRequireRulesAgreement());
+        } else if (exam.getRequireRulesAgreement() == null) {
+            exam.setRequireRulesAgreement(Boolean.TRUE);
+        }
+        exam.setRequireIdentityVerification(resolveRequireIdentityVerification(
+                request.getRequireIdentityVerification(),
+                exam.getRequireCameraMic(),
+                exam.getEnableAiProctoring()));
+        exam.setIdentityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()));
+        exam.setInExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(
+                request.getInExamIdentityCheckEnabled(),
+                exam.getRequireCameraMic(),
+                exam.getEnableAiProctoring()));
+        exam.setIdentityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()));
         if (request.getShuffleQuestions() != null) {
             exam.setShuffleQuestions(request.getShuffleQuestions());
         }
@@ -710,6 +762,25 @@ public class ExamService {
         if (request.getEnableAiProctoring() != null) {
             exam.setEnableAiProctoring(request.getEnableAiProctoring());
         }
+        if (request.getRulesText() != null) {
+            exam.setRulesText(normalizeRulesText(request.getRulesText()));
+            exam.setRulesVersion(resolveRulesVersion(request.getRulesVersion(), exam.getRulesText()));
+        }
+        if (request.getRequireRulesAgreement() != null) {
+            exam.setRequireRulesAgreement(request.getRequireRulesAgreement());
+        }
+        if (request.getRequireIdentityVerification() != null) {
+            exam.setRequireIdentityVerification(request.getRequireIdentityVerification());
+        }
+        if (request.getIdentityReviewPolicy() != null) {
+            exam.setIdentityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()));
+        }
+        if (request.getInExamIdentityCheckEnabled() != null) {
+            exam.setInExamIdentityCheckEnabled(request.getInExamIdentityCheckEnabled());
+        }
+        if (request.getIdentityCheckIntervalSeconds() != null) {
+            exam.setIdentityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()));
+        }
     }
 
     /**
@@ -809,6 +880,7 @@ public class ExamService {
                 .title("Bản sao — " + original.getTitle())
                 .code(generateUniqueExamCode())
                 .description(original.getDescription())
+                .classEntity(original.getClassEntity())
                 .className(original.getClassName())
                 .startTime(null)
                 .endTime(null)
@@ -838,6 +910,13 @@ public class ExamService {
                 .monitorAnswerSimilarity(original.getMonitorAnswerSimilarity())
                 .monitorIpFingerprintGraph(original.getMonitorIpFingerprintGraph())
                 .enableAiProctoring(original.getEnableAiProctoring())
+                .rulesText(original.getRulesText())
+                .rulesVersion(original.getRulesVersion())
+                .requireRulesAgreement(original.getRequireRulesAgreement() == null || Boolean.TRUE.equals(original.getRequireRulesAgreement()))
+                .requireIdentityVerification(resolveRequireIdentityVerification(original.getRequireIdentityVerification(), original.getRequireCameraMic(), original.getEnableAiProctoring()))
+                .identityReviewPolicy(normalizeIdentityReviewPolicy(original.getIdentityReviewPolicy()))
+                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(original.getInExamIdentityCheckEnabled(), original.getRequireCameraMic(), original.getEnableAiProctoring()))
+                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(original.getIdentityCheckIntervalSeconds()))
                 .shuffleQuestions(original.getShuffleQuestions())
                 .shuffleAnswers(original.getShuffleAnswers())
                 .showScoreAfterSubmit(original.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(original.getShowScoreAfterSubmit()))
@@ -910,11 +989,13 @@ public class ExamService {
             if (attempt.getStudent() == null) continue;
 
             String statusLabel = switch (attempt.getStatus()) {
+                case WAITING -> "Đang chờ";
                 case IN_PROGRESS -> "Đang thi";
                 case PAUSED -> "Tạm dừng";
                 case SUBMITTED, AUTO_SUBMITTED -> "Đã nộp";
                 case STOPPED -> "Bị dừng";
             };
+            LocalDateTime joinedAt = attempt.getJoinedAt() != null ? attempt.getJoinedAt() : attempt.getStartedAt();
 
             waitingStudents.add(WaitingStudentResponse.builder()
                     .attemptId(attempt.getId())
@@ -923,10 +1004,10 @@ public class ExamService {
                             attempt.getStudent().getFullName() : attempt.getStudent().getUsername())
                     .studentEmail(attempt.getStudent().getEmail())
                     .status(statusLabel)
+                    .statusCode(attempt.getStatus() != null ? attempt.getStatus().name() : null)
                     .riskScore(attempt.getRiskScore())
                     .suspicious(attempt.getSuspicious())
-                    .joinedAt(attempt.getStartedAt() != null ?
-                            DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()).toString() : null)
+                    .joinedAt(joinedAt != null ? DateTimeUtils.toOffset(joinedAt, VietNamTime.zone()).toString() : null)
                     .build());
         }
 
@@ -1013,6 +1094,12 @@ public class ExamService {
     }
 
     private void enforceStudentClassAccess(Exam exam, User actor) {
+        if (exam.getClassEntity() != null && exam.getClassEntity().getId() != null) {
+            if (!classService.isStudentEnrolled(exam.getClassEntity().getId(), actor.getId())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Báº¡n khÃ´ng thuá»™c lá»›p Ä‘Æ°á»£c phÃ©p vÃ o bÃ i thi nÃ y");
+            }
+            return;
+        }
         String className = normalizeClassName(exam.getClassName());
         if (className == null) {
             return;
@@ -1063,6 +1150,28 @@ public class ExamService {
         }
     }
 
+    private ClassEntity resolveAssignedClass(ExamRequest request, User teacher) {
+        if (request == null || teacher == null) {
+            return null;
+        }
+        if (request.getClassId() != null) {
+            return classService.requireAssignableClassForExam(request.getClassId(), teacher);
+        }
+        String normalizedClassName = normalizeClassName(request.getClassName());
+        if (normalizedClassName == null) {
+            return null;
+        }
+        return classService.findTeacherClassByName(teacher, normalizedClassName)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Lá»›p Ä‘Æ°á»£c gÃ¡n cho bÃ i thi khÃ´ng há»£p lá»‡"));
+    }
+
+    private String resolveClassName(ClassEntity assignedClass, String fallbackClassName) {
+        if (assignedClass != null) {
+            return normalizeClassName(assignedClass.getName());
+        }
+        return normalizeClassName(fallbackClassName);
+    }
+
     private void ensureAssignedClassBelongsToTeacher(String className, User teacher) {
         String normalizedClassName = normalizeClassName(className);
         if (normalizedClassName == null || teacher == null) {
@@ -1079,6 +1188,70 @@ public class ExamService {
         }
         String normalized = className.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeRulesText(String rulesText) {
+        if (rulesText == null || rulesText.trim().isEmpty()) {
+            return null;
+        }
+        return rulesText.trim();
+    }
+
+    private String resolveRulesText(Exam exam) {
+        String custom = exam == null ? null : normalizeRulesText(exam.getRulesText());
+        if (custom != null) {
+            return custom;
+        }
+        return """
+                1. Thí sinh phải tự làm bài, không trao đổi, không sử dụng tài liệu hoặc thiết bị ngoài phạm vi cho phép.
+                2. Thí sinh phải duy trì camera trong suốt thời gian làm bài nếu kỳ thi yêu cầu giám sát.
+                3. Không rời khỏi màn hình thi, không chuyển tab, không mở công cụ phát triển hoặc phần mềm hỗ trợ.
+                4. Hệ thống có thể ghi nhận sự kiện giám sát, ảnh xác minh danh tính và tín hiệu rủi ro để giám thị xem xét.
+                5. Vi phạm quy chế có thể khiến bài thi bị tạm dừng, đình chỉ hoặc chuyển sang trạng thái cần duyệt.
+                """.trim();
+    }
+
+    private String resolveRulesVersion(String explicitVersion, String rulesText) {
+        if (explicitVersion != null && !explicitVersion.trim().isEmpty()) {
+            return explicitVersion.trim();
+        }
+        String source = normalizeRulesText(rulesText);
+        if (source == null) {
+            source = "DEFAULT_ONLINE_EXAM_RULES";
+        }
+        return "rules-" + Integer.toHexString(source.hashCode());
+    }
+
+    private Boolean resolveRequireIdentityVerification(Boolean explicit, Boolean requireCameraMic, Boolean enableAiProctoring) {
+        if (explicit != null) {
+            return explicit;
+        }
+        return Boolean.TRUE.equals(requireCameraMic) || Boolean.TRUE.equals(enableAiProctoring);
+    }
+
+    private Boolean resolveInExamIdentityCheckEnabled(Boolean explicit, Boolean requireCameraMic, Boolean enableAiProctoring) {
+        if (explicit != null) {
+            return explicit;
+        }
+        return Boolean.TRUE.equals(requireCameraMic) || Boolean.TRUE.equals(enableAiProctoring);
+    }
+
+    private String normalizeIdentityReviewPolicy(String policy) {
+        if (policy == null || policy.isBlank()) {
+            return "ALLOW_WITH_WARNING";
+        }
+        String normalized = policy.trim().toUpperCase();
+        if (!normalized.equals("ALLOW_WITH_WARNING") && !normalized.equals("BLOCK_UNTIL_VERIFIED")) {
+            return "ALLOW_WITH_WARNING";
+        }
+        return normalized;
+    }
+
+    private Integer normalizeIdentityCheckInterval(Integer seconds) {
+        if (seconds == null) {
+            return 60;
+        }
+        return Math.max(30, Math.min(seconds, 600));
     }
 
     private String generateUniqueExamCode() {
@@ -1120,6 +1293,7 @@ public class ExamService {
                 .durationMinutes(exam.getDurationMinutes())
                 .isActive(exam.getIsActive())
                 .isArchived(Boolean.TRUE.equals(exam.getIsArchived()))
+                .classId(exam.getClassEntity() == null ? null : exam.getClassEntity().getId())
                 .className(exam.getClassName())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())
                 .questionCount(questionCount)
@@ -1146,6 +1320,13 @@ public class ExamService {
                 .monitorAnswerSimilarity(exam.getMonitorAnswerSimilarity())
                 .monitorIpFingerprintGraph(exam.getMonitorIpFingerprintGraph())
                 .enableAiProctoring(exam.getEnableAiProctoring())
+                .rulesText(resolveRulesText(exam))
+                .rulesVersion(resolveRulesVersion(exam.getRulesVersion(), exam.getRulesText()))
+                .requireRulesAgreement(exam.getRequireRulesAgreement() == null || Boolean.TRUE.equals(exam.getRequireRulesAgreement()))
+                .requireIdentityVerification(resolveRequireIdentityVerification(exam.getRequireIdentityVerification(), exam.getRequireCameraMic(), exam.getEnableAiProctoring()))
+                .identityReviewPolicy(normalizeIdentityReviewPolicy(exam.getIdentityReviewPolicy()))
+                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(exam.getInExamIdentityCheckEnabled(), exam.getRequireCameraMic(), exam.getEnableAiProctoring()))
+                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(exam.getIdentityCheckIntervalSeconds()))
                 .shuffleQuestions(exam.getShuffleQuestions())
                 .shuffleAnswers(exam.getShuffleAnswers())
                 .showScoreAfterSubmit(exam.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(exam.getShowScoreAfterSubmit()))

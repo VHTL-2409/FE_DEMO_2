@@ -20,12 +20,26 @@ CHECK (action IN (
 ));
 
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;
+ALTER TABLE exam_attempts ALTER COLUMN started_at DROP NOT NULL;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(128);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS original_device_fingerprint VARCHAR(128);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS session_token_version INTEGER;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS fullscreen_required BOOLEAN;
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS rules_agreed_at TIMESTAMP;
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS rules_version_agreed VARCHAR(64);
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS rules_agreement_ip VARCHAR(64);
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS rules_agreement_user_agent VARCHAR(512);
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_integrity_check_at TIMESTAMP;
+
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS rules_text TEXT;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS rules_version VARCHAR(64);
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS require_rules_agreement BOOLEAN DEFAULT TRUE;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS require_identity_verification BOOLEAN;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS identity_review_policy VARCHAR(40) DEFAULT 'ALLOW_WITH_WARNING';
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS in_exam_identity_check_enabled BOOLEAN;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS identity_check_interval_seconds INTEGER DEFAULT 60;
 
 CREATE TABLE IF NOT EXISTS exam_events (
     id BIGSERIAL PRIMARY KEY,
@@ -61,7 +75,8 @@ CHECK (event_type IN (
     'TEACHER_WARNING','TEACHER_PAUSE','TEACHER_RESUME','TEACHER_INVALIDATE',
     'TAB_SWITCH','BLUR','EXIT_FULLSCREEN','FAST_SUBMIT','DUPLICATE_IP',
     'COPY_PASTE','IDLE_TIME','DEVTOOLS_OPEN','RIGHT_CLICK','PRINT_SCREEN',
-    'RAPID_QUESTION_SWITCH','MULTI_MONITOR','HEARTBEAT_STALE','DEVICE_FINGERPRINT_CHANGED'
+    'RAPID_QUESTION_SWITCH','MULTI_MONITOR','HEARTBEAT_STALE','DEVICE_FINGERPRINT_CHANGED',
+    'RULES_AGREEMENT','IDENTITY_REVIEW_REQUIRED','IDENTITY_RECHECK'
 ));
 
 CREATE TABLE IF NOT EXISTS fraud_signals (
@@ -82,6 +97,32 @@ CREATE TABLE IF NOT EXISTS fraud_signals (
 CREATE INDEX IF NOT EXISTS idx_fraud_signals_attempt_type ON fraud_signals(attempt_id, signal_type);
 CREATE INDEX IF NOT EXISTS idx_fraud_signals_attempt_created ON fraud_signals(attempt_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_fraud_signals_student_created ON fraud_signals(student_id, created_at);
+
+CREATE TABLE IF NOT EXISTS student_identity_checks (
+    id BIGSERIAL PRIMARY KEY,
+    attempt_id BIGINT NOT NULL REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(30) NOT NULL,
+    confidence DOUBLE PRECISION NOT NULL,
+    document_type VARCHAR(50),
+    check_type VARCHAR(30),
+    source VARCHAR(50),
+    ocr_fields_json JSONB,
+    matched_fields_json JSONB,
+    mismatched_fields_json JSONB,
+    face_match_json JSONB,
+    liveness_json JSONB,
+    evidence_refs_json JSONB,
+    review_status VARCHAR(30),
+    reviewed_by BIGINT REFERENCES users(id),
+    reviewed_at TIMESTAMP,
+    review_reason VARCHAR(500),
+    created_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_identity_checks_attempt_created ON student_identity_checks(attempt_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_identity_checks_student_created ON student_identity_checks(student_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_identity_checks_status ON student_identity_checks(status);
 
 CREATE TABLE IF NOT EXISTS risk_scores (
     id BIGSERIAL PRIMARY KEY,
@@ -150,6 +191,10 @@ CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam_risk_started
     ON exam_attempts(exam_id, risk_score DESC, started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_exam_attempts_student_started
     ON exam_attempts(student_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_exam_attempts_student_started_id
+    ON exam_attempts(student_id, started_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam_started_id
+    ON exam_attempts(exam_id, started_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_answers_attempt_question
     ON answers(attempt_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_answers_question
@@ -199,12 +244,31 @@ CREATE TABLE IF NOT EXISTS class_students (
 CREATE INDEX IF NOT EXISTS idx_class_students_class ON class_students(class_id);
 CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_id);
 
+ALTER TABLE IF EXISTS exams ADD COLUMN IF NOT EXISTS class_id BIGINT REFERENCES classes(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_exams_class_id ON exams(class_id);
+UPDATE exams e
+SET class_id = c.id
+FROM classes c
+WHERE e.class_id IS NULL
+  AND e.created_by = c.teacher_id
+  AND e.class_name IS NOT NULL
+  AND LOWER(TRIM(e.class_name)) = LOWER(TRIM(c.name));
+
 -- =====================================================
 
 CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_created
     ON monitoring_events(attempt_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_monitoring_events_attempt_type
     ON monitoring_events(attempt_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_fraud_warnings_exam_camera_alerts
+    ON fraud_warnings(exam_id, category, severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fraud_warnings_exam_related
+    ON fraud_warnings(exam_id)
+    WHERE related_attempt_ids IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_fraud_signals_camera_alerts
+    ON fraud_signals(signal_type, severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_risk_scores_attempt_created_desc
+    ON risk_scores(attempt_id, created_at DESC);
 
 -- =====================================================
 -- EXAM SHUFFLE FIELDS

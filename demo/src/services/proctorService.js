@@ -57,6 +57,31 @@ export const fetchProctorTimeline = async (attemptId, options = {}) => {
   return unwrapApiData(response)
 }
 
+export const verifyStudentIdentity = async (payload) => {
+  const response = await apiRequest('/api/v1/proctor/identity/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
+export const fetchIdentityCheck = async (attemptId) => {
+  const response = await apiRequest(`/api/v1/proctor/attempts/${attemptId}/identity-check`, {
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
+export const recheckStudentIdentity = async (payload) => {
+  const response = await apiRequest('/api/v1/proctor/identity/recheck', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
 export const fetchProctorSessionAlerts = async (sessionId) => {
   const response = await apiRequest(`/api/v1/proctor/sessions/${sessionId}/alerts`, { suppressToast: true })
   return unwrapApiData(response) || []

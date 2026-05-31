@@ -69,6 +69,46 @@ class FrameAnalysisResponse(BaseModel):
     gaze_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     off_screen_duration_ms: int | None = Field(default=None, ge=0)
     attention_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Attention score 0-1")
+    deepfake_valid: bool = Field(default=False)
+    deepfake_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    liveness_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    spoofing_label: str | None = None
+    identity_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class IdentityVerifyRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    attempt_id: int | None = Field(default=None, validation_alias=AliasChoices("attempt_id", "attemptId"))
+    student_id: int | None = Field(default=None, validation_alias=AliasChoices("student_id", "studentId"))
+    document_image_base64: str = Field(
+        max_length=10_000_000,
+        validation_alias=AliasChoices("document_image_base64", "documentImageBase64"),
+    )
+    selfie_image_base64: str = Field(
+        max_length=10_000_000,
+        validation_alias=AliasChoices("selfie_image_base64", "selfieImageBase64"),
+    )
+    document_type: str | None = Field(default=None, validation_alias=AliasChoices("document_type", "documentType"))
+    captured_at: str | None = Field(default=None, validation_alias=AliasChoices("captured_at", "capturedAt"))
+    expected: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class IdentityVerifyResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    status: str = "DONE"
+    verification_status: str = Field(validation_alias=AliasChoices("verification_status", "verificationStatus"))
+    confidence: float = Field(ge=0.0, le=1.0)
+    matched_fields: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("matched_fields", "matchedFields"))
+    mismatched_fields: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("mismatched_fields", "mismatchedFields"))
+    document_ocr: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("document_ocr", "documentOcr"))
+    face_match: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("face_match", "faceMatch"))
+    liveness: dict[str, Any] = Field(default_factory=dict)
+    signals: list[FraudSignal] = Field(default_factory=list)
+    review_reason: str | None = Field(default=None, validation_alias=AliasChoices("review_reason", "reviewReason"))
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
 class BehaviorAnalysisRequest(BaseModel):

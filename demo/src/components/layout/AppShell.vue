@@ -1,5 +1,15 @@
 <template>
   <div class="db-app-shell">
+    <button
+      v-if="showSidebar"
+      type="button"
+      class="db-app-shell__mobile-menu"
+      :aria-label="mobileOpen ? 'Dong menu' : 'Mo menu'"
+      :aria-expanded="mobileOpen"
+      @click="mobileOpen = true"
+    >
+      <LucideIcon name="menu" :size="20" />
+    </button>
     <!-- Sidebar — unified for all layouts -->
     <Sidebar
       v-if="showSidebar"
@@ -28,6 +38,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from './Sidebar.vue'
+import LucideIcon from '../common/LucideIcon.vue'
 
 const props = defineProps({
   layout: {
@@ -129,6 +140,41 @@ watch(
 
 .db-app-shell__main--collapsed {
   padding-left: var(--portal-sidebar-collapsed);
+}
+
+.db-app-shell__mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0.875rem;
+  left: 0.875rem;
+  z-index: 45;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ds-radius-lg, 14px);
+  border: 1px solid var(--portal-shell-border);
+  background: var(--portal-shell-surface);
+  color: var(--portal-shell-text);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.db-app-shell__mobile-menu:hover {
+  background: var(--portal-shell-muted);
+}
+
+@media (max-width: 768px) {
+  .db-app-shell__mobile-menu {
+    display: flex;
+  }
+
+  .db-app-shell__main,
+  .db-app-shell__main--expanded,
+  .db-app-shell__main--collapsed {
+    padding-left: 0;
+    padding-top: 3.25rem;
+  }
 }
 
 /* GPU: sidebar padding transitions smoothly; reduced-motion disables it */

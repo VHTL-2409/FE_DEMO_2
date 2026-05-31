@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+import hmac
 import os
 from functools import lru_cache
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -13,17 +15,21 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .ocr import OcrEngine
-from .proctor import ProctorAnalyzer
+from .proctor import ProctorAnalyzer, proctor_runtime_status
+from .identity import IdentityVerifier
 from .generator import QuestionGenerator
 from .evaluator import EssayEvaluator
 from .analytics import PerformancePredictor, QuestionQualityAnalyzer
 from .chat import AiChatAssistant
+from .config import env_bool
 from .model_key_resolver import available_models, has_any_key
 from .schemas import (
     BehaviorAnalysisRequest,
     BehaviorAnalysisResponse,
     FrameAnalysisRequest,
     FrameAnalysisResponse,
+    IdentityVerifyRequest,
+    IdentityVerifyResponse,
     GenerateQuestionsRequest,
     AiGenerateQuestionsResponse,
     EssayEvaluationRequest,
@@ -41,10 +47,19 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="FE_DEMO AI Service", version="0.2.0")
+APP_TITLE = "FE_DEMO AI Service"
+APP_VERSION = "0.2.0"
+PROCTOR_FRAME_RATE_LIMIT = os.getenv("PROCTOR_FRAME_RATE_LIMIT", "600/minute")
+WARMUP_ON_STARTUP = env_bool("AI_SERVICE_WARMUP_ON_STARTUP", False)
+
+app = FastAPI(title=APP_TITLE, version=APP_VERSION)
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-PROCTOR_FRAME_RATE_LIMIT = os.getenv("PROCTOR_FRAME_RATE_LIMIT", "600/minute")
+
+
+def _cors_allowed_origins() -> list[str]:
+    raw = os.getenv("APP_CORS_ALLOWED_ORIGINS", "")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
 # ─── Rate limit exceeded handler ───────────────────────────────────────────────
@@ -57,12 +72,9 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
 
 
 # ─── CORS — read allowed origins from env (never use wildcard with credentials) ─
-_allow_origins = os.getenv("APP_CORS_ALLOWED_ORIGINS", "").split(",")
-if _allow_origins == [""]:
-    _allow_origins = []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allow_origins,
+    allow_origins=_cors_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +89,10 @@ def get_ocr_engine() -> OcrEngine:
 @lru_cache(maxsize=1)
 def get_proctor_analyzer() -> ProctorAnalyzer:
     return ProctorAnalyzer()
+
+@lru_cache(maxsize=1)
+def get_identity_verifier() -> IdentityVerifier:
+    return IdentityVerifier()
 
 @lru_cache(maxsize=1)
 def get_question_generator() -> QuestionGenerator:
@@ -101,22 +117,31 @@ def get_chat_assistant() -> AiChatAssistant:
 
 # ─── API Key Authentication ────────────────────────────────────────────────────
 async def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")) -> str:
-    expected = os.getenv("AI_SERVICE_API_KEY", "")
+    expected = _expected_api_key()
     if not expected:
         logger.warning("AI_SERVICE_API_KEY not set — auth bypassed")
         return ""
-    if not x_api_key or x_api_key != expected:
+    if not x_api_key or not hmac.compare_digest(x_api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key header")
     return x_api_key
+
+
+@lru_cache(maxsize=1)
+def _expected_api_key() -> str:
+    return os.getenv("AI_SERVICE_API_KEY", "")
 
 
 # ─── Startup / shutdown lifecycle ─────────────────────────────────────────────
 @app.on_event("startup")
 async def on_startup() -> None:
     logger.info("AI Service starting up...")
+    if not WARMUP_ON_STARTUP:
+        logger.info("AI service warmup disabled; heavy analyzers initialize lazily")
+        return
     for name, factory in [
         ("ocr", get_ocr_engine),
         ("proctor", get_proctor_analyzer),
+        ("identity_verifier", get_identity_verifier),
         ("question_generator", get_question_generator),
         ("essay_evaluator", get_essay_evaluator),
         ("chat_assistant", get_chat_assistant),
@@ -135,11 +160,13 @@ async def on_startup() -> None:
 @app.get("/health", response_model=HealthResponse, tags=["health"])
 async def health() -> HealthResponse:
     ocr = get_ocr_engine()
+    ocr_ready = ocr.is_ready()
+    runtime = proctor_runtime_status()
     return HealthResponse(
         status="ok",
-        ocr_ready=ocr.is_ready(),
-        cv_ready=get_proctor_analyzer().cv_ready(),
-        tesseract_ready=ocr.is_ready(),
+        ocr_ready=ocr_ready,
+        cv_ready=runtime["cv_ready"],
+        tesseract_ready=ocr_ready,
     )
 
 
@@ -151,6 +178,7 @@ async def health_detailed() -> dict:
             "ocr": get_ocr_engine().is_ready(),
             "proctor": get_proctor_analyzer().is_ready(),
             "proctor_face_detector": get_proctor_analyzer().face_detector_status(),
+            "identity_verifier": True,
             "question_generator": get_question_generator().is_available(),
             "essay_evaluator": get_essay_evaluator().is_available(),
             "performance_predictor": get_performance_predictor().is_available(),
@@ -158,7 +186,7 @@ async def health_detailed() -> dict:
             "chat": get_chat_assistant().is_available(),
             "chat_models": available_models(),
         },
-        "version": "0.2.0",
+        "version": APP_VERSION,
     }
 
 
@@ -176,7 +204,13 @@ async def process_ocr(
     if len(file_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File exceeds 10 MB limit")
     try:
-        result = get_ocr_engine().process(file=file, file_bytes=file_bytes, language=language, max_pages=max_pages)
+        result = await run_in_threadpool(
+            get_ocr_engine().process,
+            file=file,
+            file_bytes=file_bytes,
+            language=language,
+            max_pages=max_pages,
+        )
         return OcrProcessResponse.model_validate(result)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -204,9 +238,12 @@ async def analyze_frame(
         if req.captured_at:
             metadata.setdefault("captured_at", req.captured_at)
             metadata.setdefault("capturedAt", req.captured_at)
-        return FrameAnalysisResponse.model_validate(
-            get_proctor_analyzer().analyze_frame(req.image_base64, metadata)
+        result = await run_in_threadpool(
+            get_proctor_analyzer().analyze_frame,
+            req.image_base64,
+            metadata,
         )
+        return FrameAnalysisResponse.model_validate(result)
     except Exception as exc:
         logger.error("Frame analysis failed", exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -220,17 +257,44 @@ async def analyze_behavior(
     _api_key: str = Depends(verify_api_key),
 ) -> BehaviorAnalysisResponse:
     try:
-        return BehaviorAnalysisResponse.model_validate(
-            get_proctor_analyzer().analyze_behavior(
-                paste_length=req.paste_length,
-                tab_switch_count=req.tab_switch_count,
-                idle_seconds=req.idle_seconds,
-                typing_intervals=req.typing_intervals,
-                metadata=req.metadata,
-            )
+        result = await run_in_threadpool(
+            get_proctor_analyzer().analyze_behavior,
+            paste_length=req.paste_length,
+            tab_switch_count=req.tab_switch_count,
+            idle_seconds=req.idle_seconds,
+            typing_intervals=req.typing_intervals,
+            metadata=req.metadata,
         )
+        return BehaviorAnalysisResponse.model_validate(result)
     except Exception as exc:
         logger.error("Behavior analysis failed", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/identity/verify", response_model=IdentityVerifyResponse, tags=["identity"])
+@limiter.limit("30/minute")
+async def verify_identity(
+    request: Request,
+    req: IdentityVerifyRequest,
+    _api_key: str = Depends(verify_api_key),
+) -> IdentityVerifyResponse:
+    try:
+        result = await run_in_threadpool(
+            get_identity_verifier().verify,
+            document_image_base64=req.document_image_base64,
+            selfie_image_base64=req.selfie_image_base64,
+            expected=req.expected,
+            document_type=req.document_type,
+            metadata={
+                **(req.metadata or {}),
+                "attemptId": req.attempt_id,
+                "studentId": req.student_id,
+                "capturedAt": req.captured_at,
+            },
+        )
+        return IdentityVerifyResponse.model_validate(result)
+    except Exception as exc:
+        logger.error("Identity verification failed", exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -249,14 +313,16 @@ async def generate_questions(
         )
     try:
         if req.topic:
-            result = get_question_generator().generate_from_topic(
+            result = await run_in_threadpool(
+                get_question_generator().generate_from_topic,
                 topic=req.topic,
                 count=req.count,
                 difficulty=req.difficulty,
                 language=req.language,
             )
         else:
-            result = get_question_generator().generate_from_text(
+            result = await run_in_threadpool(
+                get_question_generator().generate_from_text,
                 text=req.text or "",
                 count=req.count,
                 difficulty=req.difficulty,
@@ -283,7 +349,8 @@ async def evaluate_essay(
             detail="Both 'question' and 'answer' must be provided"
         )
     try:
-        result = get_essay_evaluator().evaluate(
+        result = await run_in_threadpool(
+            get_essay_evaluator().evaluate,
             question=req.question,
             answer=req.answer,
             rubric=req.rubric,
@@ -307,7 +374,8 @@ async def predict_performance(
     _api_key: str = Depends(verify_api_key),
 ) -> PerformancePredictionResponse:
     try:
-        result = get_performance_predictor().predict_next_score(
+        result = await run_in_threadpool(
+            get_performance_predictor().predict_next_score,
             student_id=req.student_id,
             history=req.history,
             exam_id=req.exam_id,
@@ -334,7 +402,8 @@ async def get_recommendations(
         except (json.JSONDecodeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="Invalid 'history' JSON") from exc
     try:
-        return get_performance_predictor().get_study_recommendations(
+        return await run_in_threadpool(
+            get_performance_predictor().get_study_recommendations,
             student_id=student_id,
             history=history_list,
         )
@@ -351,7 +420,8 @@ async def analyze_question_quality(
     _api_key: str = Depends(verify_api_key),
 ) -> QuestionQualityResponse:
     try:
-        result = get_quality_analyzer().analyze_question(
+        result = await run_in_threadpool(
+            get_quality_analyzer().analyze_question,
             question_content=req.question_content,
             options=req.options,
             correct_answer=req.correct_answer,
@@ -380,7 +450,11 @@ async def chat_completion(
 ) -> ChatResponse:
     try:
         payload = [m.model_dump() for m in req.messages]
-        result = get_chat_assistant().chat(messages=payload, model=req.model)
+        result = await run_in_threadpool(
+            get_chat_assistant().chat,
+            messages=payload,
+            model=req.model,
+        )
         return ChatResponse.model_validate(result)
     except Exception as exc:
         logger.error("Chat completion failed", exc_info=True)
@@ -395,7 +469,10 @@ async def analyze_difficulty_distribution(
     _api_key: str = Depends(verify_api_key),
 ) -> dict:
     try:
-        return get_quality_analyzer().analyze_difficulty_distribution(questions=questions)
+        return await run_in_threadpool(
+            get_quality_analyzer().analyze_difficulty_distribution,
+            questions=questions,
+        )
     except Exception as exc:
         logger.error("Difficulty distribution analysis failed", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc

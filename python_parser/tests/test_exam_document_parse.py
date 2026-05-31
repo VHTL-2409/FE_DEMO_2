@@ -11,6 +11,7 @@ from app.exam_document_parse import (
     parse_exam_document,
     summarize_question_types,
 )
+from app.schemas import TemplateType
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "template"
 
@@ -42,6 +43,45 @@ def test_parse_exam_document_any_sample(filename: str):
     assert res.report.selectedTemplate is not None
     summary = summarize_question_types(res.questions)
     assert sum(summary.values()) == len(res.questions)
+
+
+def test_parse_exam_document_force_template_pdf_sample():
+    path = TEMPLATE_DIR / "pdf_mau_1.pdf"
+    if not path.is_file():
+        pytest.skip(f"Missing {path}")
+    res = parse_exam_document(
+        path,
+        session_id="unified_api_force_pdf_test",
+        force_template=TemplateType.TEMPLATE_01_MATH_BROKEN,
+    )
+    assert len(res.questions) >= 1
+    assert res.report.selectedTemplate == TemplateType.TEMPLATE_01_MATH_BROKEN
+
+
+def test_parse_exam_document_force_template_docx_sample():
+    path = TEMPLATE_DIR / "docx_mau_2.docx"
+    if not path.is_file():
+        pytest.skip(f"Missing {path}")
+    res = parse_exam_document(
+        path,
+        session_id="unified_api_force_docx_test",
+        force_template=TemplateType.TEMPLATE_05_DOCX_DATABASE,
+    )
+    assert len(res.questions) >= 1
+    assert res.report.selectedTemplate == TemplateType.TEMPLATE_05_DOCX_DATABASE
+
+
+def test_parse_exam_document_mismatched_force_template_does_not_crash():
+    path = TEMPLATE_DIR / "pdf_mau_1.pdf"
+    if not path.is_file():
+        pytest.skip(f"Missing {path}")
+    res = parse_exam_document(
+        path,
+        session_id="unified_api_mismatch_force_test",
+        force_template=TemplateType.TEMPLATE_05_DOCX_DATABASE,
+    )
+    assert len(res.questions) >= 1
+    assert res.report.selectedTemplate is not None
 
 
 def test_summarize_question_types_empty():

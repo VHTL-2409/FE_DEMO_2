@@ -346,6 +346,43 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishAttemptWaiting(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            LocalDateTime joinedAt,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        LocalDateTime issuedAt = LocalDateTime.now();
+        AlertPayload payload = AlertPayload.builder()
+                .type("ATTEMPT_WAITING")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName != null && !studentName.isBlank() ? studentName : student)
+                .email(email)
+                .studentCode(studentCode)
+                .status("WAITING")
+                .riskScore(riskScore)
+                .riskLevel(riskLevel)
+                .joinedAt(joinedAt)
+                .cameraOn(cameraOn)
+                .micOn(micOn)
+                .clientIp(clientIp)
+                .message("Thi sinh dang cho trong phong cho")
+                .issuedAt(issuedAt)
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     public void publishAttemptSubmitted(
             Long examId,
             Long attemptId,
@@ -520,6 +557,7 @@ public class TeacherAlertGateway {
         private List<Long> relatedAttemptIds;
         private String message;
         private LocalDateTime issuedAt;
+        private LocalDateTime joinedAt;
         private LocalDateTime startedAt;
         private LocalDateTime submittedAt;
         private LocalDateTime deadlineAt;

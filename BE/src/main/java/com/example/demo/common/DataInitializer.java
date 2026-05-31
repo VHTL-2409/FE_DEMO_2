@@ -141,7 +141,7 @@ public class DataInitializer implements CommandLineRunner {
         jdbcTemplate.execute("""
             ALTER TABLE exam_attempts
             ADD CONSTRAINT exam_attempts_status_check
-            CHECK (status IN ('IN_PROGRESS', 'PAUSED', 'SUBMITTED', 'AUTO_SUBMITTED', 'STOPPED'))
+            CHECK (status IN ('WAITING', 'IN_PROGRESS', 'PAUSED', 'SUBMITTED', 'AUTO_SUBMITTED', 'STOPPED'))
             """);
     }
 
@@ -161,9 +161,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void ensureExamCodeForExistingExams() {
-        List<Exam> examsWithoutCode = examRepository.findAll().stream()
-            .filter(e -> e.getCode() == null || e.getCode().isBlank())
-            .toList();
+        List<Exam> examsWithoutCode = examRepository.findExamsWithoutCode();
         for (Exam exam : examsWithoutCode) {
             exam.setCode(generateUniqueExamCode());
             examRepository.save(exam);

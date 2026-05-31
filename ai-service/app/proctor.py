@@ -14,6 +14,9 @@ from urllib.request import Request as UrlRequest, urlopen
 import numpy as np
 from PIL import Image
 
+from .config import env_bool, env_float
+from .deepfake import DeepfakeAnalyzer
+
 try:
     import cv2
     DNN_AVAILABLE = hasattr(cv2, 'dnn')
@@ -41,6 +44,15 @@ FACE_DNN_PROTO_URL = "https://raw.githubusercontent.com/opencv/opencv/master/sam
 FACE_DNN_MODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
 
 
+def proctor_runtime_status() -> dict[str, bool]:
+    """Return cheap runtime availability without instantiating heavy analyzers."""
+    return {
+        "cv_ready": cv2 is not None,
+        "dnn_available": DNN_AVAILABLE,
+        "mediapipe_available": MEDIAPIPE_AVAILABLE,
+    }
+
+
 class ProctorAnalyzer:
     """Advanced Proctor Analyzer with Deep Learning-based Face Detection,
     Eye Tracking, and Spoofing Detection."""
@@ -54,11 +66,12 @@ class ProctorAnalyzer:
         self._dnn_model_type = None
         # Ngưỡng confidence để chấp nhận face từ DNN. Tăng ngưỡng thì giảm báo nhầm,
         # nhưng dễ bỏ sót mặt ở góc nghiêng hoặc ánh sáng xấu.
-        self._dnn_confidence_threshold = self._env_float("AI_SERVICE_FACE_DETECTION_THRESHOLD", 0.55)
+        self._dnn_confidence_threshold = env_float("AI_SERVICE_FACE_DETECTION_THRESHOLD", 0.55)
         self._face_detector_backend = "UNAVAILABLE"
         self._face_detector_error = None
-        self._face_model_auto_download = self._env_bool("AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD", True)
-        self._face_model_download_timeout = int(self._env_float("AI_SERVICE_FACE_MODEL_DOWNLOAD_TIMEOUT_SECONDS", 12))
+        self._face_model_auto_download = env_bool("AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD", False)
+        self._face_model_download_timeout = int(env_float("AI_SERVICE_FACE_MODEL_DOWNLOAD_TIMEOUT_SECONDS", 12))
+        self._max_frame_width = int(env_float("AI_SERVICE_MAX_FRAME_WIDTH", 960))
         self._eye_landmarks = None
         self._face_landmark_detector = None
         self._face_mesh = None
@@ -66,6 +79,8 @@ class ProctorAnalyzer:
         self._landmark_error = None
         self._spoofing_model = None
         self._spoofing_dl = False
+        self._deepfake_threshold = env_float("AI_SERVICE_DEEPFAKE_THRESHOLD", 0.82)
+        self._deepfake_analyzer: DeepfakeAnalyzer | None = None
         self._tracking_state: dict[str, dict[str, Any]] = {}
         self._tracking_state_ttl_seconds = 180
         self._max_tracking_states = 256
@@ -77,7 +92,7 @@ class ProctorAnalyzer:
         self._face_position_required_ms = 1500
         # Cùng một loại signal không được bắn liên tục trong mỗi frame.
         # Tránh spam cảnh báo khi trạng thái chỉ nhấp nháy ngắn.
-        self._signal_dedup_ms = int(self._env_float("AI_SERVICE_SIGNAL_DEDUP_SECONDS", 10) * 1000)
+        self._signal_dedup_ms = int(env_float("AI_SERVICE_SIGNAL_DEDUP_SECONDS", 10) * 1000)
         # Gaze cần lặp nhiều frame và đủ thời gian thực mới được chốt.
         # Dùng để lọc nhiễu từ rung camera hoặc liếc mắt rất ngắn.
         self._gaze_required_frames = 3
@@ -92,21 +107,6 @@ class ProctorAnalyzer:
             self._init_spoofing_detector()
         else:
             self._face_detector_error = "OpenCV is not available"
-
-    def _env_bool(self, name: str, default: bool) -> bool:
-        raw = os.getenv(name)
-        if raw is None:
-            return default
-        return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-    def _env_float(self, name: str, default: float) -> float:
-        raw = os.getenv(name)
-        if raw is None or raw.strip() == "":
-            return default
-        try:
-            return float(raw)
-        except ValueError:
-            return default
 
     def _init_haar_cascades(self) -> None:
         """Initialize Haar cascade classifiers."""
@@ -326,7 +326,7 @@ class ProctorAnalyzer:
         tracking_key = self._resolve_tracking_key(metadata)
 
         # Giải mã ảnh base64 từ FE thành ảnh RGB/gray để toàn bộ pipeline dùng chung.
-        image = self._decode_image(image_base64)
+        image = self._resize_for_analysis(self._decode_image(image_base64))
         rgb_array = np.array(image)
         gray = np.array(image.convert("L"))
 
@@ -376,6 +376,14 @@ class ProctorAnalyzer:
         eye_tracking.update(temporal_tracking.get("eye_tracking", {}))
         gaze_analysis.update(temporal_tracking.get("gaze_analysis", {}))
         stability = temporal_tracking.get("stability", {})
+        deepfake_analyzer = self._get_deepfake_analyzer()
+        deepfake_result = deepfake_analyzer.analyze(
+            spoofing_result,
+            face_count,
+            eye_tracking,
+            gaze_analysis,
+            quality_gate,
+        )
 
         signals = []
 
@@ -436,6 +444,24 @@ class ProctorAnalyzer:
                  "reason": f"Possible {spoofing_result['type']} detected",
                  "dlEnhanced": spoofing_result.get("dl_enhanced", False),
                  "recommendation": "Verify identity with manual review"}
+            ))
+
+        if (
+            deepfake_result.get("label") == "DEEPFAKE"
+            and deepfake_result.get("score", 0.0) >= deepfake_analyzer.threshold
+        ):
+            signals.append(self._signal(
+                "DEEPFAKE",
+                "CRITICAL",
+                float(deepfake_result.get("score") or 0.9),
+                {
+                    "reason": "Hybrid deepfake detector flagged the frame",
+                    "livenessScore": deepfake_result.get("livenessScore"),
+                    "modelReady": deepfake_result.get("modelReady"),
+                    "backend": deepfake_result.get("backend"),
+                    "fallbackUsed": deepfake_result.get("fallbackUsed"),
+                    "recommendation": "Verify identity with manual review",
+                },
             ))
 
         # === Signal che khuất mặt hoặc mắt ===
@@ -590,6 +616,11 @@ class ProctorAnalyzer:
             "attention_score": gaze_analysis.get("attention_score", 1.0),
             "gaze_confidence": gaze_analysis.get("gaze_confidence", 0.0),
             "off_screen_duration_ms": gaze_analysis.get("off_duration_ms", 0),
+            "deepfake_valid": bool(deepfake_result.get("valid", False)),
+            "deepfake_score": deepfake_result.get("score"),
+            "liveness_score": deepfake_result.get("livenessScore"),
+            "spoofing_label": deepfake_result.get("label"),
+            "identity_confidence": deepfake_result.get("livenessScore"),
             "visual_overlay": self._build_visual_overlay(rgb_array, face_locations, eye_tracking, gaze_analysis),
             "diagnostics": {
                 "cv_ready": self.cv_ready(),
@@ -602,6 +633,7 @@ class ProctorAnalyzer:
                 "image_height": int(rgb_array.shape[0]) if rgb_array.ndim >= 2 else 0,
                 "face_locations": [list(loc) for loc in face_locations] if face_locations else [],
                 "spoofing_check": spoofing_result,
+                "deepfake": deepfake_result,
                 "occlusion_check": occlusion_result,
                 "position_analysis": position_analysis,
                 "eye_tracking": eye_tracking,
@@ -1985,6 +2017,11 @@ class ProctorAnalyzer:
             "off_screen_duration_ms": 0,
             "attention_score": 0.0,
             "gaze_valid": False,
+            "deepfake_valid": False,
+            "deepfake_score": 0.0,
+            "liveness_score": 0.0,
+            "spoofing_label": "NO_CAMERA",
+            "identity_confidence": 0.0,
             "visual_overlay": {
                 "status": "NO_CAMERA",
                 "label": "Camera tắt",
@@ -2012,6 +2049,17 @@ class ProctorAnalyzer:
                     "confidence": 0.0,
                     "dl_enhanced": False,
                     "method": "camera_off",
+                },
+                "deepfake": {
+                    "valid": False,
+                    "score": 0.0,
+                    "livenessScore": 0.0,
+                    "label": "NO_CAMERA",
+                    "modelReady": False,
+                    "backend": "NO_CAMERA",
+                    "threshold": getattr(self, "_deepfake_threshold", 0.82),
+                    "temporalWindow": {},
+                    "fallbackUsed": True,
                 },
                 "occlusion_check": {
                     "mask_detected": False,
@@ -2348,6 +2396,19 @@ class ProctorAnalyzer:
         raw = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
         image_bytes = base64.b64decode(raw)
         return Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+    def _resize_for_analysis(self, image: Image.Image) -> Image.Image:
+        max_frame_width = int(getattr(self, "_max_frame_width", 960))
+        if max_frame_width <= 0 or image.width <= max_frame_width:
+            return image
+        ratio = max_frame_width / max(image.width, 1)
+        target_size = (max_frame_width, max(1, int(image.height * ratio)))
+        return image.resize(target_size, Image.Resampling.BILINEAR)
+
+    def _get_deepfake_analyzer(self) -> DeepfakeAnalyzer:
+        if getattr(self, "_deepfake_analyzer", None) is None:
+            self._deepfake_analyzer = DeepfakeAnalyzer()
+        return self._deepfake_analyzer
 
     def _signal(self, signal_type: str, severity: str, confidence: float, evidence: dict[str, Any]) -> dict[str, Any]:
         # Chuẩn hóa một signal ra cùng schema để BE đọc thống nhất.

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -56,6 +57,7 @@ class ParserRouter:
         self,
         pdf_path: str,
         session_id: str | None = None,
+        force_template: TemplateType | None = None,
     ) -> ParseResponse:
         """
         Main entry point: route PDF to the best parser and return result.
@@ -63,7 +65,7 @@ class ParserRouter:
         start = time.time()
 
         if pdf_path.lower().endswith(".docx"):
-            return self._route_docx(pdf_path, session_id, start)
+            return self._route_docx(pdf_path, session_id, start, force_template)
 
         # Step 1: Build profile
         profile = build_pdf_profile(pdf_path)
@@ -76,6 +78,7 @@ class ParserRouter:
 
         # Step 2: Select parser (score-based)
         scored = self._score_all_parsers(profile, pdf_path, session_id)
+        scored = self._prefer_forced_parser(scored, force_template)
         parser_cls, parser_score = scored[0]
         parser_instance = parser_cls(pdf_path, session_id)
         print(f"[router] Selected parser: {parser_cls.parser_name} "
@@ -101,7 +104,12 @@ class ParserRouter:
         report.parseTimeMs = int((time.time() - start) * 1000)
 
         if parse_error:
-            report.errors = [*report.errors, f"Primary parser failed: {parse_error}"]
+            prefix = (
+                "Forced parser failed"
+                if force_template is not None and parser_instance.template_type == force_template
+                else "Primary parser failed"
+            )
+            report.errors = [*report.errors, f"{prefix}: {parse_error}"]
 
         return ParseResponse(
             meta=meta,
@@ -114,6 +122,7 @@ class ParserRouter:
         docx_path: str,
         session_id: str | None,
         start: float,
+        force_template: TemplateType | None = None,
     ) -> ParseResponse:
         """
         DOCX-only routing: tránh mở file bằng PyMuPDF; chọn template 04/05 theo nội dung
@@ -147,6 +156,7 @@ class ParserRouter:
             (Template05DocxDatabaseParser, s05),
         ]
         scored.sort(key=lambda x: x[1], reverse=True)
+        scored = self._prefer_forced_parser(scored, force_template)
         parser_cls = scored[0][0]
         parser_instance = parser_cls(docx_path, session_id)
         print(
@@ -171,9 +181,38 @@ class ParserRouter:
         report = validate_parsed(questions, parser_cls.template_type)
         report.parseTimeMs = int((time.time() - start) * 1000)
         if parse_error:
-            report.errors = [*report.errors, f"Primary DOCX parser failed: {parse_error}"]
+            prefix = (
+                "Forced DOCX parser failed"
+                if force_template is not None and parser_instance.template_type == force_template
+                else "Primary DOCX parser failed"
+            )
+            report.errors = [*report.errors, f"{prefix}: {parse_error}"]
 
         return ParseResponse(meta=meta, report=report, questions=questions)
+
+    def _parser_for_template(
+        self,
+        template: TemplateType | None,
+    ) -> Optional[type[BaseParser]]:
+        if template is None:
+            return None
+        for cls in _PARSERS:
+            if cls.template_type == template:
+                return cls
+        return None
+
+    def _prefer_forced_parser(
+        self,
+        scored: list[tuple[type[BaseParser], float]],
+        force_template: TemplateType | None,
+    ) -> list[tuple[type[BaseParser], float]]:
+        forced_cls = self._parser_for_template(force_template)
+        if forced_cls is None:
+            return scored
+        for idx, (cls, score) in enumerate(scored):
+            if cls == forced_cls:
+                return [(cls, score), *scored[:idx], *scored[idx + 1:]]
+        return scored
 
     def _fallback_parse_docx(
         self,
@@ -247,12 +286,20 @@ class ParserRouter:
         return questions, meta, None
 
 
-def route(pdf_path: str, session_id: str | None = None) -> ParseResponse:
+def route(
+    pdf_path: str,
+    session_id: str | None = None,
+    force_template: TemplateType | None = None,
+) -> ParseResponse:
     """
     Shortcut tương đương `ParserRouter().route(...)`.
 
     Để có API một điểm vào có kiểm tra đuôi file / mô tả rõ ràng, dùng
     `app.exam_document_parse.parse_exam_document`.
     """
-    router = ParserRouter()
-    return router.route(pdf_path, session_id)
+    return _default_router().route(pdf_path, session_id, force_template)
+
+
+@lru_cache(maxsize=1)
+def _default_router() -> ParserRouter:
+    return ParserRouter()

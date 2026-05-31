@@ -5,7 +5,9 @@ ocr_utils.py — Optional OCR helpers for scanned PDFs and image uploads.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import io
+import os
 from typing import Optional
 
 try:
@@ -31,7 +33,23 @@ class OcrWord:
 
 
 def is_ocr_available() -> bool:
-    return Image is not None and pytesseract is not None and Output is not None
+    return Image is not None and pytesseract is not None and Output is not None and _tesseract_binary_available()
+
+
+@lru_cache(maxsize=1)
+def _tesseract_binary_available() -> bool:
+    if pytesseract is None:
+        return False
+    tesseract_cmd = getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract")
+    if not tesseract_cmd:
+        return False
+    if os.path.isabs(tesseract_cmd):
+        return os.path.exists(tesseract_cmd)
+    for path_entry in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = os.path.join(path_entry, tesseract_cmd)
+        if os.path.exists(candidate) or os.path.exists(candidate + ".exe"):
+            return True
+    return False
 
 
 def _open_image(image_bytes: bytes):

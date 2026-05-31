@@ -3,6 +3,7 @@ package com.example.demo.api;
 import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.ai.BehaviorAnalysisRequest;
 import com.example.demo.api.dto.ai.FrameAnalysisRequest;
+import com.example.demo.api.dto.ai.IdentityVerifyRequest;
 import com.example.demo.domain.entity.User;
 import com.example.demo.service.AiAssistService;
 import com.example.demo.service.CurrentUserService;
@@ -47,5 +48,23 @@ public class AiAssistController {
     public ApiResponse<Map<String, Object>> analyzeBehavior(@RequestBody BehaviorAnalysisRequest request) {
         currentUserService.requireCurrentUser();
         return ApiResponse.success(aiAssistService.analyzeBehavior(request));
+    }
+
+    @PostMapping("/api/v1/proctor/identity/verify")
+    public ApiResponse<Map<String, Object>> verifyIdentity(@Valid @RequestBody IdentityVerifyRequest request) {
+        User actor = currentUserService.requireCurrentUser();
+        return ApiResponse.success(aiAssistService.verifyIdentity(request, actor));
+    }
+
+    @PostMapping("/api/v1/proctor/identity/recheck")
+    public ApiResponse<Map<String, Object>> recheckIdentity(@Valid @RequestBody FrameAnalysisRequest request) {
+        User actor = currentUserService.requireCurrentUser();
+        return ApiResponse.success(aiAssistService.recheckIdentity(request, actor));
+    }
+
+    @GetMapping("/api/v1/proctor/attempts/{attemptId}/identity-check")
+    public ApiResponse<Map<String, Object>> latestIdentityCheck(@PathVariable Long attemptId) {
+        User actor = currentUserService.requireCurrentUser();
+        return ApiResponse.success(aiAssistService.getLatestIdentityCheck(attemptId, actor));
     }
 }

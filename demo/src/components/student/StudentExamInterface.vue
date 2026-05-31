@@ -20,6 +20,10 @@
             <LucideIcon :name="isOnline ? 'wifi' : 'wifi_off'" size="11" />
             {{ isOnline ? 'Online' : 'Offline' }}
           </span>
+          <span class="ei-device-badge" :class="identityBadgeClass">
+            <LucideIcon :name="identityBadgeIcon" size="11" />
+            {{ identityBadgeLabel }}
+          </span>
         </div>
       </div>
 
@@ -408,7 +412,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
 import { updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionJson, parseQuestionOptions } from '../../services/questionService'
-import { analyzeProctorFrame, sendProctorCameraFrame } from '../../services/proctorService'
+import { analyzeProctorFrame, recheckStudentIdentity, sendProctorCameraFrame } from '../../services/proctorService'
 import { useToast } from '../../composables/useToast'
 import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
 import { useExamProctoring } from '../../composables/useExamProctoring'
@@ -443,6 +447,10 @@ const examTitle = computed(() => route.query.exam || 'Bài thi')
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
 const isPracticeExam = computed(() => String(route.query.isPractice || '') === 'true')
+const identityCheckId = computed(() => String(route.query.identityCheckId || ''))
+const identityVerificationStatus = computed(() => String(route.query.verificationStatus || ''))
+const currentIdentityStatus = ref(String(route.query.verificationStatus || 'NOT_CHECKED').toUpperCase())
+const currentIdentityCheckId = ref(String(route.query.identityCheckId || ''))
 
 const examConfig = ref({
   monitorTabSwitch: true, monitorBlur: true, monitorExitFullscreen: true,
@@ -453,7 +461,9 @@ const examConfig = ref({
   enableAiProctoring: false,
   monitorNetworkInstability: true, monitorSessionRecovery: true,
   monitorQuestionTimingAnomaly: false, monitorAnswerChangeBurst: false,
-  monitorClipboardBurst: false, monitorFullscreenEvasion: true
+  monitorClipboardBurst: false, monitorFullscreenEvasion: true,
+  inExamIdentityCheckEnabled: true,
+  identityCheckIntervalSeconds: 60
 })
 
 const MODAL_COOLDOWN_MS = 3000  // Prevent rapid-fire duplicate modals
@@ -472,6 +482,29 @@ const modal = ref({
 
 const modalIconMap = { warning: 'warning', error: 'error', success: 'check_circle', info: 'info' }
 const modalIcon = computed(() => modalIconMap[modal.value.type] || 'info')
+
+const identityBadgeLabel = computed(() => {
+  const status = currentIdentityStatus.value
+  if (status === 'VERIFIED') return 'ID OK'
+  if (status === 'NEEDS_REVIEW') return 'ID duyệt'
+  if (status === 'REJECTED') return 'ID lỗi'
+  return 'ID chưa rõ'
+})
+
+const identityBadgeIcon = computed(() => {
+  const status = currentIdentityStatus.value
+  if (status === 'VERIFIED') return 'verified_user'
+  if (status === 'NEEDS_REVIEW') return 'flag'
+  if (status === 'REJECTED') return 'error'
+  return 'shield'
+})
+
+const identityBadgeClass = computed(() => {
+  const status = currentIdentityStatus.value
+  if (status === 'VERIFIED') return 'ei-device-badge--ok'
+  if (status === 'NEEDS_REVIEW') return 'ei-device-badge--warn'
+  return 'ei-device-badge--fail'
+})
 
 const closeAllTransientModals = () => {
   if (modal.value.show) lastModalShownAt = 0
@@ -546,6 +579,7 @@ let attemptStatusTimer = null
 let blockBackHandler = null
 let aiFrameInterval = null
 let cameraFrameInterval = null
+let identityRecheckInterval = null
 let cameraFrameSequence = 0
 
 const VIOLATION_COOLDOWN_MS = 5000  // 5s - prevents rapid-fire duplicates during batch, backend handles score dedup
@@ -926,6 +960,8 @@ const buildCameraFramePayloadFromDrawable = (drawable, sourceWidth, sourceHeight
       enableAiProctoring: examConfig.value.enableAiProctoring === true,
       requireCameraMic: examConfig.value.requireCameraMic !== false,
       aiAnalysisReason: examConfig.value.enableAiProctoring === true ? 'AI_PROCTORING' : 'CAMERA_REQUIRED',
+      identityCheckId: identityCheckId.value || null,
+      verificationStatus: identityVerificationStatus.value || null,
       captureSource,
       sourceWidth,
       sourceHeight,
@@ -1255,6 +1291,59 @@ const stopCameraFrameStreamer = () => {
   }
 }
 
+const identityRecheckEnabled = computed(() =>
+  !isPracticeExam.value &&
+  !isSuspended.value &&
+  attemptId.value &&
+  shouldCheckDevices.value &&
+  examConfig.value.inExamIdentityCheckEnabled !== false
+)
+
+const runIdentityRecheck = async () => {
+  if (!identityRecheckEnabled.value) return
+  try {
+    await waitForCameraVideoFrame()
+    if (!identityRecheckEnabled.value) return
+    const payload = await buildCameraFramePayload()
+    if (!payload) return
+    payload.frameId = nextCameraFrameId('identity_recheck')
+    payload.metadata = {
+      ...(payload.metadata || {}),
+      captureSource: 'identity_recheck',
+      checkType: 'PERIODIC',
+      initialIdentityCheckId: currentIdentityCheckId.value || identityCheckId.value || null,
+      previousVerificationStatus: currentIdentityStatus.value
+    }
+    const result = await recheckStudentIdentity(payload)
+    if (result?.verificationStatus) {
+      currentIdentityStatus.value = String(result.verificationStatus).toUpperCase()
+    }
+    if (result?.identityCheckId) {
+      currentIdentityCheckId.value = String(result.identityCheckId)
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[StudentExamInterface] Identity recheck failed', error)
+    }
+  }
+}
+
+const startIdentityRecheckSampler = () => {
+  if (identityRecheckInterval || !identityRecheckEnabled.value) return
+  const seconds = Number(examConfig.value.identityCheckIntervalSeconds || 60)
+  const intervalMs = Math.max(30, Math.min(seconds, 600)) * 1000
+  identityRecheckInterval = window.setInterval(() => {
+    void runIdentityRecheck()
+  }, intervalMs)
+}
+
+const stopIdentityRecheckSampler = () => {
+  if (identityRecheckInterval) {
+    window.clearInterval(identityRecheckInterval)
+    identityRecheckInterval = null
+  }
+}
+
 watch(mediaStreamRef, async (stream) => {
   if (!stream) {
     if (cameraPreviewRef.value) cameraPreviewRef.value.srcObject = null
@@ -1362,6 +1451,8 @@ const buildDeviceFingerprintSeed = () => {
 const getHeartbeatPayload = () => ({
   fullscreen: Boolean(getFullscreenElement()), visibility: document.visibilityState || 'visible',
   cameraOn: cameraReady.value, micOn: micReady.value,
+  identityCheckId: identityCheckId.value || null,
+  verificationStatus: identityVerificationStatus.value || null,
   screenMetrics: { screenWidth: window.screen?.width || null, screenHeight: window.screen?.height || null,
     availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, isExtended: Boolean(window.screen?.isExtended === true), viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null,
     networkType: navigator.connection?.effectiveType || '', online: navigator.onLine !== false },
@@ -1466,15 +1557,19 @@ const ATTEMPT_CONFIG_KEYS = [
   'monitorQuestionTimingAnomaly',
   'monitorAnswerChangeBurst',
   'monitorClipboardBurst',
-  'monitorFullscreenEvasion'
+  'monitorFullscreenEvasion',
+  'inExamIdentityCheckEnabled',
+  'identityCheckIntervalSeconds'
 ]
 
 const applyExamConfigFromAttempt = (detail = {}) => {
   const next = { ...examConfig.value }
   for (const key of ATTEMPT_CONFIG_KEYS) {
-    if (typeof detail[key] === 'boolean') next[key] = detail[key]
+    if (typeof detail[key] === 'boolean' || typeof detail[key] === 'number') next[key] = detail[key]
   }
   examConfig.value = next
+  if (detail.identityStatus) currentIdentityStatus.value = String(detail.identityStatus).toUpperCase()
+  if (detail.identityCheckId) currentIdentityCheckId.value = String(detail.identityCheckId)
 }
 
 const reportViolation = async (eventType, details, cooldownMs = VIOLATION_COOLDOWN_MS, telemetry = {}) => {
@@ -1996,6 +2091,7 @@ onMounted(async () => {
     checkMultiMonitor()
     if (!isSuspended.value) {
       await enforceDeviceAccess()
+      startIdentityRecheckSampler()
     }
     if (attemptId.value && examId.value) {
       await startPhaseOneProctoring()
@@ -2014,6 +2110,7 @@ onUnmounted(() => {
   teardownBlockBackButton()
   stopAiFrameSampler()
   stopCameraFrameStreamer()
+  stopIdentityRecheckSampler()
   stopMediaStream()
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)
@@ -2104,6 +2201,11 @@ const onCancelLeave = () => {
 .ei-device-badge--ok {
   background: var(--ds-success-soft);
   color: var(--ds-success);
+}
+
+.ei-device-badge--warn {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
 }
 
 .ei-device-badge--fail {

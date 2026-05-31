@@ -7,6 +7,28 @@ export const startAttempt = async (examId) => {
   return unwrapApiData(payload)
 }
 
+export const prepareAttempt = async (examId) => {
+  const payload = await apiRequest(`/api/exams/${examId}/attempts/prepare`, {
+    method: 'POST',
+    suppressToast: true
+  })
+  return unwrapApiData(payload)
+}
+
+export const getAttemptEntryStatus = async (attemptId) => {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/entry-status`, {
+    suppressToast: true
+  })
+  return unwrapApiData(payload)
+}
+
+export const agreeAttemptRules = async (attemptId) => {
+  const payload = await apiRequest(`/api/attempts/${attemptId}/rules-agreement`, {
+    method: 'POST'
+  })
+  return unwrapApiData(payload)
+}
+
 export const getDraftAnswers = async (attemptId) => {
   const payload = await apiRequest(`/api/attempts/${attemptId}/draft-answers`)
   return unwrapApiData(payload)

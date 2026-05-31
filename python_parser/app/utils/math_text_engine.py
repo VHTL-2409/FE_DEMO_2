@@ -26,6 +26,7 @@ from typing import Optional
 
 import fitz  # PyMuPDF
 
+from ..config import env_int
 from .ocr_utils import is_ocr_available, ocr_image_bytes_to_words
 from .section_detector import SectionKind, detect_section_header
 
@@ -38,6 +39,9 @@ DEBUG: bool = (
     os.environ.get("PDF_ENGINE_DEBUG", "0") == "1"
     or os.environ.get("PDF_MATH_INGESTION_DEBUG", "0") == "1"
 )
+
+
+OCR_DPI: int = env_int("PDF_MATH_OCR_DPI", 180)
 
 
 # ─── Data classes ────────────────────────────────────────────────────────────
@@ -197,6 +201,7 @@ class MathPdfTextEngine:
 
         # PyMuPDF "words" trả về: [x0, y0, x1, y1, "text", block_no, line_no, word_no]
         raw_words = page.get_text("words")
+        spans = self._extract_span_font_index(page)
 
         words: list[Word] = []
         for item in raw_words:
@@ -209,22 +214,11 @@ class MathPdfTextEngine:
 
             # Lấy font info từ dict spans (để phân biệt superscript)
             font_name, font_size = "", 0.0
-            try:
-                page_dict = page.get_text("dict")
-                for block in page_dict.get("blocks", []):
-                    if block["type"] != 0:
-                        continue
-                    for line in block.get("lines", []):
-                        for span in line.get("spans", []):
-                            sp_x0, sp_y0, sp_x1, sp_y1 = span["bbox"]
-                            if (
-                                abs(sp_x0 - x0) < 2 and abs(sp_y0 - y0) < 2
-                            ):
-                                font_name = span.get("font", "")
-                                font_size = span.get("size", 0.0)
-                                break
-            except Exception:
-                pass
+            for sp_x0, sp_y0, sp_font, sp_size in spans:
+                if abs(sp_x0 - x0) < 2 and abs(sp_y0 - y0) < 2:
+                    font_name = sp_font
+                    font_size = sp_size
+                    break
 
             words.append(Word(
                 text=text,
@@ -244,12 +238,33 @@ class MathPdfTextEngine:
         ocr_words = self._ocr_page_words(page_num, page_rect.width)
         return ocr_words or words
 
+    def _extract_span_font_index(self, page: fitz.Page) -> list[tuple[float, float, str, float]]:
+        try:
+            page_dict = page.get_text("dict")
+        except Exception:
+            return []
+
+        spans: list[tuple[float, float, str, float]] = []
+        for block in page_dict.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    sp_x0, sp_y0, _sp_x1, _sp_y1 = span["bbox"]
+                    spans.append((
+                        float(sp_x0),
+                        float(sp_y0),
+                        span.get("font", ""),
+                        float(span.get("size", 0.0)),
+                    ))
+        return spans
+
     def _ocr_page_words(self, page_num: int, page_width: float) -> list[Word]:
         if not is_ocr_available():
             return []
         try:
             page = self._doc[page_num - 1]
-            dpi = 200
+            dpi = OCR_DPI
             scale = dpi / 72.0
             pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
             image_bytes = pix.tobytes("png")

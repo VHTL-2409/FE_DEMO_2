@@ -2,16 +2,25 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.ai.BehaviorAnalysisRequest;
 import com.example.demo.api.dto.ai.FrameAnalysisRequest;
+import com.example.demo.api.dto.ai.IdentityVerifyRequest;
 import com.example.demo.common.ApiException;
 import com.example.demo.common.VietNamTime;
+import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.FraudWarningCategory;
+import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.SignalSeverity;
+import com.example.demo.domain.entity.StudentIdentityCheck;
+import com.example.demo.domain.entity.StudentProfile;
 import com.example.demo.domain.entity.User;
 import com.example.demo.realtime.TeacherAlertGateway;
 import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
+import com.example.demo.repository.StudentIdentityCheckRepository;
+import com.example.demo.repository.StudentProfileRepository;
 import com.example.demo.service.ProctorEvidenceImageService.StoredEvidenceImage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -48,6 +57,9 @@ public class AiAssistService {
     private final TeacherAlertGateway teacherAlertGateway;
     private final FraudWarningService fraudWarningService;
     private final ProctorEvidenceImageService proctorEvidenceImageService;
+    private final StudentProfileRepository studentProfileRepository;
+    private final StudentIdentityCheckRepository studentIdentityCheckRepository;
+    private final ObjectMapper objectMapper;
     private final Map<Long, Map<String, Object>> latestCameraFrames = new ConcurrentHashMap<>();
     private final Map<Long, CameraSignalClusterState> cameraSignalClusterStates = new ConcurrentHashMap<>();
 
@@ -58,7 +70,10 @@ public class AiAssistService {
             RiskScoringService riskScoringService,
             TeacherAlertGateway teacherAlertGateway,
             FraudWarningService fraudWarningService,
-            ProctorEvidenceImageService proctorEvidenceImageService
+            ProctorEvidenceImageService proctorEvidenceImageService,
+            StudentProfileRepository studentProfileRepository,
+            StudentIdentityCheckRepository studentIdentityCheckRepository,
+            ObjectMapper objectMapper
     ) {
         this.examAttemptRepository = examAttemptRepository;
         this.fraudSignalService = fraudSignalService;
@@ -67,6 +82,9 @@ public class AiAssistService {
         this.teacherAlertGateway = teacherAlertGateway;
         this.fraudWarningService = fraudWarningService;
         this.proctorEvidenceImageService = proctorEvidenceImageService;
+        this.studentProfileRepository = studentProfileRepository;
+        this.studentIdentityCheckRepository = studentIdentityCheckRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Value("${app.ai-service.enabled:true}")
@@ -225,6 +243,152 @@ public class AiAssistService {
         return response;
     }
 
+    public Map<String, Object> verifyIdentity(IdentityVerifyRequest request, User actor) {
+        if (request == null || request.getAttemptId() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing attempt id");
+        }
+        if (request.getDocumentImageBase64() == null || request.getDocumentImageBase64().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing identity document image");
+        }
+        if (request.getSelfieImageBase64() == null || request.getSelfieImageBase64().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing selfie image");
+        }
+
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(request.getAttemptId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureIdentityAccess(attempt, actor);
+        if (request.getStudentId() != null && attempt.getStudent() != null
+                && !request.getStudentId().equals(attempt.getStudent().getId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Student does not match attempt");
+        }
+
+        Map<String, Object> response;
+        if (!enabled) {
+            response = buildIdentityFallbackResponse("NEEDS_REVIEW", "AI service unavailable");
+        } else {
+            try {
+                response = postJson("/identity/verify", buildIdentityPayload(request, attempt));
+            } catch (Exception ex) {
+                log.warn("[AI-Bridge] identity verification unavailable for attemptId={}: {}",
+                        request.getAttemptId(), ex.getMessage());
+                response = buildIdentityFallbackResponse("NEEDS_REVIEW", "AI service unavailable");
+            }
+        }
+        response = normalizeIdentityVerificationResponse(response);
+
+        Map<String, Object> evidenceRefs = storeIdentityEvidence(request);
+        StudentIdentityCheck check = persistIdentityCheck(attempt, request, response, evidenceRefs);
+        response.put("identityCheckId", check.getId());
+        response.put("attemptId", attempt.getId());
+        response.put("studentId", attempt.getStudent() != null ? attempt.getStudent().getId() : null);
+        response.put("evidenceRefs", evidenceRefs);
+
+        safeBridgeAiSignals(attempt.getId(), response, "identity");
+        return response;
+    }
+
+    public Map<String, Object> recheckIdentity(FrameAnalysisRequest request, User actor) {
+        validateFrameRequest(request);
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(request.getAttemptId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureIdentityAccess(attempt, actor);
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Identity recheck is only available for in-progress attempts");
+        }
+
+        Map<String, Object> frameResponse = analyzeFrame(request);
+        String status = derivePeriodicIdentityStatus(frameResponse);
+        String reason = derivePeriodicIdentityReason(frameResponse);
+        Map<String, Object> evidenceRefs = Map.of(
+                "frameId", request.getFrameId() == null ? "" : request.getFrameId(),
+                "capturedAt", request.getCapturedAt() == null ? "" : request.getCapturedAt(),
+                "source", "IN_EXAM_RECHECK"
+        );
+        StudentIdentityCheck check = persistPeriodicIdentityCheck(attempt, status, frameResponse, evidenceRefs, reason);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("available", true);
+        response.put("identityCheckId", check.getId());
+        response.put("attemptId", attempt.getId());
+        response.put("studentId", attempt.getStudent() != null ? attempt.getStudent().getId() : null);
+        response.put("verificationStatus", status);
+        response.put("confidence", check.getConfidence());
+        response.put("checkType", check.getCheckType());
+        response.put("source", check.getSource());
+        response.put("reviewReason", reason);
+        response.put("frameAnalysis", frameResponse);
+        response.put("createdAt", check.getCreatedAt());
+        safeBridgeAiSignals(attempt.getId(), response, "identity_recheck");
+        return response;
+    }
+
+    private Map<String, Object> normalizeIdentityVerificationResponse(Map<String, Object> rawResponse) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        if (rawResponse != null) {
+            response.putAll(rawResponse);
+        }
+
+        String status = firstString(response, "verification_status", "verificationStatus");
+        if (status == null || status.isBlank()) {
+            status = "NEEDS_REVIEW";
+        }
+        status = status.toUpperCase(Locale.ROOT);
+
+        Map<String, Object> faceMatch = asMap(firstPresent(response, "face_match", "faceMatch"));
+        Boolean faceAvailable = asBoolean(firstPresent(faceMatch, "available"));
+        Boolean faceMatched = asBoolean(firstPresent(faceMatch, "matched"));
+        if ("VERIFIED".equals(status)
+                && (Boolean.FALSE.equals(faceAvailable) || Boolean.FALSE.equals(faceMatched))) {
+            status = "NEEDS_REVIEW";
+            response.putIfAbsent("reviewReason", "Face detector unavailable");
+            response.putIfAbsent("review_reason", "Face detector unavailable");
+        }
+
+        Map<String, Object> documentOcr = asMap(firstPresent(response, "document_ocr", "documentOcr"));
+        String ocrText = firstString(documentOcr, "text", "rawText", "raw_text");
+        if (ocrText == null && "REJECTED".equals(status) && !Boolean.FALSE.equals(faceAvailable)) {
+            status = "NEEDS_REVIEW";
+            response.putIfAbsent("reviewReason", "OCR unavailable");
+            response.putIfAbsent("review_reason", "OCR unavailable");
+        }
+
+        Object confidence = firstPresent(response, "confidence");
+        if (confidence == null) {
+            response.put("confidence", 0.0d);
+        }
+        response.put("verificationStatus", status);
+        response.put("verification_status", status);
+        response.putIfAbsent("reviewReason", firstString(response, "review_reason"));
+        response.putIfAbsent("review_reason", firstString(response, "reviewReason"));
+        response.putIfAbsent("matchedFields", asMap(firstPresent(response, "matched_fields", "matchedFields")));
+        response.putIfAbsent("matched_fields", asMap(firstPresent(response, "matchedFields", "matched_fields")));
+        response.putIfAbsent("mismatchedFields", asMap(firstPresent(response, "mismatched_fields", "mismatchedFields")));
+        response.putIfAbsent("mismatched_fields", asMap(firstPresent(response, "mismatchedFields", "mismatched_fields")));
+        response.putIfAbsent("documentOcr", documentOcr);
+        response.putIfAbsent("document_ocr", documentOcr);
+        response.putIfAbsent("faceMatch", faceMatch);
+        response.putIfAbsent("face_match", faceMatch);
+        response.putIfAbsent("liveness", asMap(firstPresent(response, "liveness")));
+        return response;
+    }
+
+    public Map<String, Object> getLatestIdentityCheck(Long attemptId, User actor) {
+        if (attemptId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing attempt id");
+        }
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureIdentityAccess(attempt, actor);
+        return studentIdentityCheckRepository.findTopByAttemptIdOrderByCreatedAtDesc(attemptId)
+                .map(this::toIdentityCheckResponse)
+                .orElseGet(() -> {
+                    Map<String, Object> empty = new LinkedHashMap<>();
+                    empty.put("attemptId", attemptId);
+                    empty.put("verificationStatus", "NOT_CHECKED");
+                    empty.put("available", false);
+                    return empty;
+                });
+    }
+
     private Map<String, Object> buildFramePayload(FrameAnalysisRequest request) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("frame_id", resolveFrameId(request, null, null));
@@ -236,6 +400,208 @@ public class AiAssistService {
         payload.put("capture_source", resolveCaptureSource(request));
         payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
         return payload;
+    }
+
+    private Map<String, Object> buildIdentityPayload(IdentityVerifyRequest request, ExamAttempt attempt) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("attempt_id", request.getAttemptId());
+        payload.put("student_id", attempt.getStudent() != null ? attempt.getStudent().getId() : request.getStudentId());
+        payload.put("document_image_base64", request.getDocumentImageBase64());
+        payload.put("selfie_image_base64", request.getSelfieImageBase64());
+        payload.put("document_type", request.getDocumentType());
+        payload.put("captured_at", request.getCapturedAt());
+        payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
+        payload.put("expected", buildExpectedIdentity(attempt));
+        return payload;
+    }
+
+    private Map<String, Object> buildExpectedIdentity(ExamAttempt attempt) {
+        Map<String, Object> expected = new LinkedHashMap<>();
+        User student = attempt.getStudent();
+        if (student == null) {
+            return expected;
+        }
+        expected.put("studentId", student.getId());
+        expected.put("username", student.getUsername());
+        expected.put("email", student.getEmail());
+        if (student.getFullName() != null) expected.put("fullName", student.getFullName());
+        if (student.getStudentCode() != null) expected.put("studentCode", student.getStudentCode());
+        if (student.getGrade() != null) expected.put("grade", student.getGrade());
+        if (student.getFaculty() != null) expected.put("faculty", student.getFaculty());
+        StudentProfile profile = studentProfileRepository.findByUser(student).orElse(null);
+        if (profile != null) {
+            if (profile.getFullName() != null) expected.put("fullName", profile.getFullName());
+            if (profile.getDisplayName() != null) expected.put("displayName", profile.getDisplayName());
+            if (profile.getDateOfBirth() != null) expected.put("dateOfBirth", profile.getDateOfBirth().toString());
+            if (profile.getEmail() != null) expected.put("profileEmail", profile.getEmail());
+            if (profile.getAvatarUrl() != null) expected.put("avatarUrl", profile.getAvatarUrl());
+        }
+        if (attempt.getExam() != null) {
+            expected.put("examId", attempt.getExam().getId());
+            expected.put("examTitle", attempt.getExam().getTitle());
+            expected.put("className", attempt.getExam().getClassName());
+        }
+        return expected;
+    }
+
+    private Map<String, Object> buildIdentityFallbackResponse(String status, String reason) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "AI_UNAVAILABLE");
+        response.put("verification_status", status);
+        response.put("verificationStatus", status);
+        response.put("confidence", 0.0d);
+        response.put("matched_fields", Map.of());
+        response.put("matchedFields", Map.of());
+        response.put("mismatched_fields", Map.of());
+        response.put("mismatchedFields", Map.of());
+        response.put("document_ocr", Map.of("text", "", "fields", Map.of(), "confidence", 0.0d));
+        response.put("documentOcr", response.get("document_ocr"));
+        response.put("face_match", Map.of("available", false, "matched", false, "confidence", 0.0d, "reason", reason));
+        response.put("faceMatch", response.get("face_match"));
+        response.put("liveness", Map.of("passed", false, "score", 0.0d));
+        response.put("review_reason", reason);
+        response.put("reviewReason", reason);
+        response.put("signals", List.of(buildSignalMap(
+                "IDENTITY_REVIEW_REQUIRED",
+                SignalSeverity.MEDIUM,
+                0.68d,
+                Map.of("reason", reason, "source", "identity_verification_fallback")
+        )));
+        response.put("diagnostics", Map.of("aiServiceEnabled", enabled, "baseUrl", baseUrl));
+        return response;
+    }
+
+    private Map<String, Object> storeIdentityEvidence(IdentityVerifyRequest request) {
+        Map<String, Object> evidenceRefs = new LinkedHashMap<>();
+        try {
+            StoredEvidenceImage document = proctorEvidenceImageService.storeFrameImage(
+                    request.getAttemptId(),
+                    "identity-document",
+                    "IDENTITY_DOCUMENT",
+                    request.getDocumentImageBase64()
+            );
+            evidenceRefs.put("document", evidenceImageRef(document));
+        } catch (Exception ex) {
+            log.warn("[AI-Bridge] Failed to store identity document evidence for attemptId={}: {}",
+                    request.getAttemptId(), ex.getMessage());
+        }
+        try {
+            StoredEvidenceImage selfie = proctorEvidenceImageService.storeFrameImage(
+                    request.getAttemptId(),
+                    "identity-selfie",
+                    "IDENTITY_SELFIE",
+                    request.getSelfieImageBase64()
+            );
+            evidenceRefs.put("selfie", evidenceImageRef(selfie));
+        } catch (Exception ex) {
+            log.warn("[AI-Bridge] Failed to store identity selfie evidence for attemptId={}: {}",
+                    request.getAttemptId(), ex.getMessage());
+        }
+        return evidenceRefs;
+    }
+
+    private Map<String, Object> evidenceImageRef(StoredEvidenceImage image) {
+        if (image == null) {
+            return Map.of();
+        }
+        Map<String, Object> ref = new LinkedHashMap<>();
+        ref.put("imageUrl", image.imageUrl());
+        ref.put("fileName", image.fileName());
+        ref.put("contentType", image.contentType());
+        ref.put("sizeBytes", image.sizeBytes());
+        ref.put("storedAt", image.storedAt());
+        return ref;
+    }
+
+    private StudentIdentityCheck persistIdentityCheck(
+            ExamAttempt attempt,
+            IdentityVerifyRequest request,
+            Map<String, Object> response,
+            Map<String, Object> evidenceRefs
+    ) {
+        String status = firstString(response, "verification_status", "verificationStatus");
+        if (status == null || status.isBlank()) {
+            status = "NEEDS_REVIEW";
+        }
+        double confidence = normalizeConfidence(response != null ? response.get("confidence") : null, 0.0d);
+        Map<String, Object> documentOcr = asMap(firstPresent(response, "document_ocr", "documentOcr"));
+        Map<String, Object> ocrFields = asMap(firstPresent(documentOcr, "fields"));
+        StudentIdentityCheck check = StudentIdentityCheck.builder()
+                .attempt(attempt)
+                .student(attempt.getStudent())
+                .status(status)
+                .confidence(confidence)
+                .documentType(request.getDocumentType())
+                .checkType(String.valueOf(request.getMetadata() != null
+                        ? request.getMetadata().getOrDefault("checkType", "INITIAL")
+                        : "INITIAL"))
+                .source(String.valueOf(request.getMetadata() != null
+                        ? request.getMetadata().getOrDefault("captureSource", "WAITING_ROOM")
+                        : "WAITING_ROOM"))
+                .ocrFieldsJson(writeJson(ocrFields.isEmpty() ? documentOcr : ocrFields))
+                .matchedFieldsJson(writeJson(asMap(firstPresent(response, "matched_fields", "matchedFields"))))
+                .mismatchedFieldsJson(writeJson(asMap(firstPresent(response, "mismatched_fields", "mismatchedFields"))))
+                .faceMatchJson(writeJson(asMap(firstPresent(response, "face_match", "faceMatch"))))
+                .livenessJson(writeJson(asMap(firstPresent(response, "liveness"))))
+                .evidenceRefsJson(writeJson(evidenceRefs))
+                .reviewStatus("VERIFIED".equalsIgnoreCase(status) ? "NONE" : "OPEN")
+                .reviewReason(firstString(response, "review_reason", "reviewReason"))
+                .createdAt(VietNamTime.now())
+                .build();
+        return studentIdentityCheckRepository.save(check);
+    }
+
+    private StudentIdentityCheck persistPeriodicIdentityCheck(
+            ExamAttempt attempt,
+            String status,
+            Map<String, Object> frameResponse,
+            Map<String, Object> evidenceRefs,
+            String reason
+    ) {
+        double confidence = normalizeConfidence(frameResponse != null ? frameResponse.get("confidence") : null, 0.75d);
+        StudentIdentityCheck check = StudentIdentityCheck.builder()
+                .attempt(attempt)
+                .student(attempt.getStudent())
+                .status(status)
+                .confidence(confidence)
+                .documentType("CAMERA_FRAME")
+                .checkType("PERIODIC")
+                .source("IN_EXAM_RECHECK")
+                .ocrFieldsJson(writeJson(Map.of()))
+                .matchedFieldsJson(writeJson(Map.of()))
+                .mismatchedFieldsJson(writeJson(Map.of()))
+                .faceMatchJson(writeJson(asMap(firstPresent(frameResponse, "face", "faceMatch", "face_match"))))
+                .livenessJson(writeJson(asMap(firstPresent(frameResponse, "liveness"))))
+                .evidenceRefsJson(writeJson(evidenceRefs))
+                .reviewStatus("VERIFIED".equalsIgnoreCase(status) ? "NONE" : "OPEN")
+                .reviewReason(reason)
+                .createdAt(VietNamTime.now())
+                .build();
+        return studentIdentityCheckRepository.save(check);
+    }
+
+    private Map<String, Object> toIdentityCheckResponse(StudentIdentityCheck check) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("available", true);
+        response.put("identityCheckId", check.getId());
+        response.put("attemptId", check.getAttempt() != null ? check.getAttempt().getId() : null);
+        response.put("studentId", check.getStudent() != null ? check.getStudent().getId() : null);
+        response.put("verificationStatus", check.getStatus());
+        response.put("confidence", check.getConfidence());
+        response.put("documentType", check.getDocumentType());
+        response.put("checkType", check.getCheckType());
+        response.put("source", check.getSource());
+        response.put("documentOcr", readJsonObject(check.getOcrFieldsJson()));
+        response.put("matchedFields", readJsonObject(check.getMatchedFieldsJson()));
+        response.put("mismatchedFields", readJsonObject(check.getMismatchedFieldsJson()));
+        response.put("faceMatch", readJsonObject(check.getFaceMatchJson()));
+        response.put("liveness", readJsonObject(check.getLivenessJson()));
+        response.put("evidenceRefs", readJsonObject(check.getEvidenceRefsJson()));
+        response.put("reviewStatus", check.getReviewStatus());
+        response.put("reviewReason", check.getReviewReason());
+        response.put("reviewedAt", check.getReviewedAt());
+        response.put("createdAt", check.getCreatedAt());
+        return response;
     }
 
     private Map<String, Object> buildBehaviorPayload(BehaviorAnalysisRequest request) {
@@ -251,6 +617,51 @@ public class AiAssistService {
         payload.put("typing_intervals", request.getTypingIntervals() == null ? List.of() : request.getTypingIntervals());
         payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
         return payload;
+    }
+
+    private String derivePeriodicIdentityStatus(Map<String, Object> frameResponse) {
+        List<?> signals = asList(firstPresent(frameResponse, "recordableSignals", "signals", "warnings"));
+        boolean rejected = false;
+        boolean review = false;
+        for (Object signal : signals) {
+            Map<String, Object> map = asMap(signal);
+            String type = firstString(map, "signalType", "signal_type", "type");
+            if (type == null) {
+                continue;
+            }
+            String normalized = type.toUpperCase(Locale.ROOT);
+            if (normalized.contains("SPOOF") || normalized.contains("DIFFERENT_PERSON")) {
+                rejected = true;
+                break;
+            }
+            if (normalized.contains("FACE_NOT_DETECTED")
+                    || normalized.contains("MULTIPLE_FACES")
+                    || normalized.contains("LOOKING_AWAY")
+                    || normalized.contains("FACE_OBSTRUCTED")
+                    || normalized.contains("VISUAL_IDENTITY")) {
+                review = true;
+            }
+        }
+        if (rejected) {
+            return "REJECTED";
+        }
+        return review ? "NEEDS_REVIEW" : "VERIFIED";
+    }
+
+    private String derivePeriodicIdentityReason(Map<String, Object> frameResponse) {
+        List<?> signals = asList(firstPresent(frameResponse, "recordableSignals", "signals", "warnings"));
+        if (signals.isEmpty()) {
+            return null;
+        }
+        List<String> names = new ArrayList<>();
+        for (Object signal : signals) {
+            Map<String, Object> map = asMap(signal);
+            String type = firstString(map, "signalType", "signal_type", "type");
+            if (type != null && !type.isBlank()) {
+                names.add(type);
+            }
+        }
+        return names.isEmpty() ? null : "Periodic identity recheck signals: " + String.join(", ", names);
     }
 
     private Map<String, Object> buildFrameFallbackResponse(String status, String message) {
@@ -878,6 +1289,60 @@ public class AiAssistService {
         return null;
     }
 
+    private String firstString(Map<String, Object> source, String... keys) {
+        return asString(firstPresent(source, keys));
+    }
+
+    private Map<String, Object> asMap(Object value) {
+        if (value instanceof Map<?, ?> rawMap) {
+            return normalizeObjectMap(rawMap);
+        }
+        return Map.of();
+    }
+
+    private List<?> asList(Object value) {
+        if (value instanceof List<?> list) {
+            return list;
+        }
+        return List.of();
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value == null ? Map.of() : value);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to serialize identity check", ex);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> readJsonObject(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return parsed instanceof Map<?, ?> rawMap ? normalizeObjectMap(rawMap) : Map.of();
+        } catch (Exception ignored) {
+            return Map.of();
+        }
+    }
+
+    private void ensureIdentityAccess(ExamAttempt attempt, User actor) {
+        if (attempt == null || actor == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.ADMIN);
+        boolean isTeacher = actor.getRoles().stream().anyMatch(role -> role.getName() == RoleName.TEACHER);
+        boolean isOwnerStudent = attempt.getStudent() != null && attempt.getStudent().getId() != null
+                && attempt.getStudent().getId().equals(actor.getId());
+        boolean isExamTeacher = attempt.getExam() != null && attempt.getExam().getCreatedBy() != null
+                && attempt.getExam().getCreatedBy().getId().equals(actor.getId());
+        if (!(isAdmin || isOwnerStudent || (isTeacher && isExamTeacher))) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this identity check");
+        }
+    }
+
     private String asUpperCaseString(Object value) {
         String text = asString(value);
         return text == null ? null : text.toUpperCase(Locale.ROOT);
@@ -946,7 +1411,10 @@ public class AiAssistService {
             return;
         }
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId).orElse(null);
-        if (attempt == null || !Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring())) {
+        if (attempt == null) {
+            return;
+        }
+        if (!"identity".equalsIgnoreCase(source) && !Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring())) {
             return;
         }
 

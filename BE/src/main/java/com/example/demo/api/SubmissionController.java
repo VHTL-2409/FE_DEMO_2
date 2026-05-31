@@ -3,6 +3,7 @@ package com.example.demo.api;
 import com.example.demo.api.dto.ApiResponse;
 import com.example.demo.api.dto.submission.AnswerInput;
 import com.example.demo.api.dto.submission.AttemptDetailResponse;
+import com.example.demo.api.dto.submission.AttemptEntryStatusResponse;
 import com.example.demo.api.dto.submission.AttemptFilterResponse;
 import com.example.demo.api.dto.submission.AttemptReportResponse;
 import com.example.demo.api.dto.submission.AttemptSummaryResponse;
@@ -48,12 +49,39 @@ public class SubmissionController {
         this.currentUserService = currentUserService;
     }
 
+    @PostMapping("/exams/{examId}/attempts/prepare")
+    public ApiResponse<StartAttemptResponse> prepare(@PathVariable Long examId, HttpServletRequest request) {
+        User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
+        Exam exam = examService.requireAccessibleExam(examId, student);
+        return ApiResponse.success(submissionService.prepareAttempt(exam, student, ClientIpResolver.resolveClientIp(request)));
+    }
+
     @PostMapping("/exams/{examId}/attempts/start")
     public ApiResponse<StartAttemptResponse> start(@PathVariable Long examId, HttpServletRequest request) {
         User student = currentUserService.requireCurrentUser();
         currentUserService.requireStudentOrAdmin(student);
         Exam exam = examService.requireAccessibleExam(examId, student);
         return ApiResponse.success(submissionService.startAttempt(exam, student, ClientIpResolver.resolveClientIp(request)));
+    }
+
+    @GetMapping("/attempts/{attemptId}/entry-status")
+    public ApiResponse<AttemptEntryStatusResponse> entryStatus(@PathVariable Long attemptId) {
+        return ApiResponse.success(submissionService.getEntryStatus(attemptId, currentUserService.requireCurrentUser()));
+    }
+
+    @PostMapping("/attempts/{attemptId}/rules-agreement")
+    public ApiResponse<AttemptEntryStatusResponse> rulesAgreement(
+            @PathVariable Long attemptId,
+            HttpServletRequest request
+    ) {
+        User student = currentUserService.requireCurrentUser();
+        currentUserService.requireStudentOrAdmin(student);
+        return ApiResponse.success(submissionService.recordRulesAgreement(
+                attemptId,
+                student,
+                ClientIpResolver.resolveClientIp(request),
+                request.getHeader("User-Agent")));
     }
 
     @PostMapping("/attempts/{attemptId}/submit")

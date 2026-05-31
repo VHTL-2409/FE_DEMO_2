@@ -44,4 +44,6 @@ public class AttemptSummaryResponse {
     private Integer saveCount;
     private Integer submitCount;
     private Boolean fullscreenRequired;
+    private String identityStatus;
+    private Long identityCheckId;
 }

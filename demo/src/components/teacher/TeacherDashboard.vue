@@ -19,7 +19,10 @@
             role="tab"
             class="td-tabs__btn"
             :class="{ 'td-tabs__btn--active': activeTab === t.id }"
+            :id="`teacher-dashboard-tab-${t.id}`"
             :aria-selected="activeTab === t.id"
+            :aria-controls="`teacher-dashboard-panel-${t.id}`"
+            :tabindex="activeTab === t.id ? 0 : -1"
             @click="goTab(t.id)"
           >
             <LucideIcon :name="t.icon" class="td-tabs__icon" />
@@ -51,7 +54,13 @@
       </div>
 
       <!-- Tab: overview -->
-      <div v-show="activeTab === 'overview'" class="td-tab-panel">
+      <div
+        v-show="activeTab === 'overview'"
+        id="teacher-dashboard-panel-overview"
+        class="td-tab-panel"
+        role="tabpanel"
+        aria-labelledby="teacher-dashboard-tab-overview"
+      >
 
         <div class="mb-6">
           <DashboardKpiGrid
@@ -86,7 +95,13 @@
       </div>
 
       <!-- Tab: Phân tích (nhúng cùng trang) -->
-      <div v-show="activeTab === 'analytics'" class="td-tab-panel td-tab-panel--embed">
+      <div
+        v-show="activeTab === 'analytics'"
+        id="teacher-dashboard-panel-analytics"
+        class="td-tab-panel td-tab-panel--embed"
+        role="tabpanel"
+        aria-labelledby="teacher-dashboard-tab-analytics"
+      >
         <TeacherAnalyticsDashboard />
       </div>
     </div>

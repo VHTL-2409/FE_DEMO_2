@@ -48,6 +48,11 @@ class TestAnswerKeyExtraction:
         assert result[2] == "B"
         assert result[3] == "D"
 
+    def test_compact_dotted_continuous_format(self):
+        """Format: '1.C2.B3.D4.B' from compact PDF answer keys."""
+        result = extract_answer_key("ÄÃ¡p Ã¡n\n1.C2.B3.D4.B")
+        assert result == {1: "C", 2: "B", 3: "D", 4: "B"}
+
     def test_dash_separated_format(self):
         """Format: '1-C 2-B 3-D'"""
         text = "1-C 2-B 3-D"
@@ -183,6 +188,18 @@ class TestOptionParsing:
         assert "\nB." in split
         assert "\nC." in split
         assert "\nD." in split
+
+    def test_glued_compact_options_without_spaces_split_cleanly(self):
+        """PDF rows glued without whitespace between options should still split."""
+        text = "CÃ¢u 4. Chá»n nghiá»‡m Ä‘Ãºng:\nA.x=1B.x=2C.x=3D.x=4"
+        parser = Template01MathBrokenParser.__new__(Template01MathBrokenParser)
+        options = parser._parse_options(text)
+        assert options == {
+            "A": "x=1",
+            "B": "x=2",
+            "C": "x=3",
+            "D": "x=4",
+        }
 
     def test_regions_to_blocks_trims_section_marker_from_current_mcq(self):
         """Dòng 'Phần II: Tự luận' ở cuối vùng câu không được làm hỏng chính câu MCQ đó."""

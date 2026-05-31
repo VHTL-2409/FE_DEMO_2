@@ -34,8 +34,11 @@ public class ExamAttempt {
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @Column(name = "started_at", nullable = false)
+    @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "joined_at")
+    private LocalDateTime joinedAt;
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
@@ -89,6 +92,18 @@ public class ExamAttempt {
 
     @Column(name = "fullscreen_required")
     private Boolean fullscreenRequired;
+
+    @Column(name = "rules_agreed_at")
+    private LocalDateTime rulesAgreedAt;
+
+    @Column(name = "rules_version_agreed", length = 64)
+    private String rulesVersionAgreed;
+
+    @Column(name = "rules_agreement_ip", length = 64)
+    private String rulesAgreementIp;
+
+    @Column(name = "rules_agreement_user_agent", length = 512)
+    private String rulesAgreementUserAgent;
 
     @Column(name = "last_integrity_check_at")
     private LocalDateTime lastIntegrityCheckAt;

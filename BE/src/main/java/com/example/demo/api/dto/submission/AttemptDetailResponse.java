@@ -64,4 +64,8 @@ public class AttemptDetailResponse {
     private Boolean monitorAnswerChangeBurst;
     private Boolean monitorClipboardBurst;
     private Boolean monitorFullscreenEvasion;
+    private Boolean inExamIdentityCheckEnabled;
+    private Integer identityCheckIntervalSeconds;
+    private String identityStatus;
+    private Long identityCheckId;
 }

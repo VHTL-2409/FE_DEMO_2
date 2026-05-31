@@ -38,6 +38,14 @@ class AnswerExtractor:
 
     # Priority order: most specific patterns first
     FORMATS = [
+        # Format 0: "1.C2.B3.D4.B" (dot-separated pairs glued together)
+        {
+            "name": "compact_dotted_continuous",
+            "pattern": re.compile(
+                r"(?<!\d)(\d{1,3})\.\s*([A-Da-d])(?=\d|$)",
+                re.MULTILINE
+            ),
+        },
         # Format 1: "1.C 2.B" or "1.C, 2.B" or "1.C - 2.B"
         {
             "name": "spaced_dot",

@@ -17,9 +17,22 @@ import java.util.Optional;
 public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> {
     List<ExamAttempt> findByStudent(User student);
 
+    @Query("""
+            SELECT ea FROM ExamAttempt ea
+            LEFT JOIN FETCH ea.exam e
+            LEFT JOIN FETCH e.createdBy
+            LEFT JOIN FETCH ea.student
+            WHERE ea.student = :student
+            ORDER BY ea.startedAt DESC NULLS LAST, ea.id DESC
+            """)
+    List<ExamAttempt> findByStudentWithExamAndUsers(@Param("student") User student, Pageable pageable);
+
     List<ExamAttempt> findByExam(Exam exam);
 
     List<ExamAttempt> findByExamId(Long examId);
+
+    @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam.id = :examId")
+    List<ExamAttempt> findByExamIdWithStudent(@Param("examId") Long examId);
 
     List<ExamAttempt> findByStatusIn(List<AttemptStatus> statuses);
 
@@ -27,6 +40,16 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam = :exam")
     List<ExamAttempt> findByExamWithStudent(@Param("exam") Exam exam);
+
+    @Query("""
+            SELECT ea FROM ExamAttempt ea
+            LEFT JOIN FETCH ea.student
+            LEFT JOIN FETCH ea.exam e
+            LEFT JOIN FETCH e.createdBy
+            WHERE ea.exam = :exam
+            ORDER BY ea.startedAt DESC NULLS LAST, ea.id DESC
+            """)
+    List<ExamAttempt> findByExamWithStudent(@Param("exam") Exam exam, Pageable pageable);
 
     @Query("SELECT ea FROM ExamAttempt ea LEFT JOIN FETCH ea.student WHERE ea.exam = :exam AND ea.startedAt >= :fromInclusive AND ea.startedAt <= :toInclusive ORDER BY ea.startedAt DESC")
     List<ExamAttempt> findByExamAndStartedAtBetween(
@@ -48,6 +71,11 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
     Optional<ExamAttempt> findByIdWithExamAndUsers(@Param("id") Long id);
 
     Optional<ExamAttempt> findFirstByExamAndStudentAndStatus(Exam exam, User student, AttemptStatus status);
+
+    Optional<ExamAttempt> findFirstByExamAndStudentAndStatusInOrderByIdDesc(
+            Exam exam,
+            User student,
+            List<AttemptStatus> statuses);
 
     /**
      * Tim cac attempt cung IP trong ky thi.

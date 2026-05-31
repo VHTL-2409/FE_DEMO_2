@@ -5,6 +5,7 @@ import com.example.demo.api.dto.classmanagement.*;
 import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.ClassEntity;
 import com.example.demo.domain.entity.ClassStudent;
+import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Role;
 import com.example.demo.domain.entity.RoleName;
 import com.example.demo.domain.entity.User;
@@ -131,7 +132,7 @@ public class ClassService {
         }
 
         classEntity = classRepository.save(classEntity);
-        syncExamClassName(previousName, classEntity.getName(), teacher);
+        syncExamClassName(previousName, classEntity.getName(), teacher, classEntity.getId());
         return toClassResponse(classEntity);
     }
 
@@ -271,19 +272,51 @@ public class ClassService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<ClassEntity> findTeacherClassByName(User teacher, String className) {
-        if (teacher == null || className == null || className.isBlank()) {
-            return Optional.empty();
-        }
-        return classRepository.findByTeacherIdAndNameIgnoreCase(teacher.getId(), className.trim());
-    }
+ public Optional<ClassEntity> findTeacherClassByName(User teacher, String className) {
+ if (teacher == null || className == null || className.isBlank()) {
+ return Optional.empty();
+ }
+ return classRepository.findByTeacherIdAndNameIgnoreCase(teacher.getId(), className.trim());
+ }
 
-    @Transactional(readOnly = true)
-    public Optional<ClassEntity> findStudentEnrolledClassForExam(User student, com.example.demo.domain.entity.Exam exam) {
-        if (student == null || exam == null || exam.getCreatedBy() == null) {
-            return Optional.empty();
-        }
-        String className = exam.getClassName();
+ @Transactional(readOnly = true)
+ public Optional<ClassEntity> findManageableClassById(Long classId, User actor) {
+ if (classId == null || actor == null) {
+ return Optional.empty();
+ }
+ return classRepository.findById(classId)
+ .filter(classEntity -> {
+ boolean isAdmin = actor.getRoles().stream()
+ .anyMatch(role -> role.getName().equals(RoleName.ADMIN));
+ return isAdmin || (classEntity.getTeacher() != null && classEntity.getTeacher().getId().equals(actor.getId()));
+ });
+ }
+
+ @Transactional(readOnly = true)
+ public ClassEntity requireAssignableClassForExam(Long classId, User actor) {
+ if (classId == null) {
+ throw new ApiException(HttpStatus.BAD_REQUEST, "classId is required");
+ }
+ ClassEntity classEntity = classRepository.findById(classId)
+ .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Lớp được gán cho bài thi không hợp lệ"));
+ boolean isAdmin = actor.getRoles().stream()
+ .anyMatch(role -> role.getName().equals(RoleName.ADMIN));
+ if (!isAdmin && (classEntity.getTeacher() == null || !classEntity.getTeacher().getId().equals(actor.getId()))) {
+ throw new ApiException(HttpStatus.FORBIDDEN, "Bạn không có quyền gán bài thi cho lớp này");
+ }
+ return classEntity;
+ }
+
+ @Transactional(readOnly = true)
+ public Optional<ClassEntity> findStudentEnrolledClassForExam(User student, Exam exam) {
+ if (student == null || exam == null || exam.getCreatedBy() == null) {
+ return Optional.empty();
+ }
+ if (exam.getClassEntity() != null && exam.getClassEntity().getId() != null) {
+ return classStudentRepository.findByClassEntityIdAndStudentId(exam.getClassEntity().getId(), student.getId())
+ .map(ClassStudent::getClassEntity);
+ }
+ String className = exam.getClassName();
         if (className == null || className.isBlank()) {
             return Optional.empty();
         }
@@ -541,16 +574,21 @@ public class ClassService {
         return "Temp" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 10) + "1a";
     }
 
-    private void syncExamClassName(String previousName, String newName, User teacher) {
-        if (previousName == null || newName == null || previousName.equals(newName) || teacher == null) {
-            return;
-        }
-        List<com.example.demo.domain.entity.Exam> exams = examRepository.findByCreatedBy(teacher);
-        for (com.example.demo.domain.entity.Exam exam : exams) {
-            if (previousName.equalsIgnoreCase(exam.getClassName())) {
-                exam.setClassName(newName);
-            }
-        }
+ private void syncExamClassName(String previousName, String newName, User teacher, Long classId) {
+ if (previousName == null || newName == null || previousName.equals(newName) || teacher == null) {
+ return;
+ }
+ List<com.example.demo.domain.entity.Exam> exams = new ArrayList<>();
+ if (classId != null) {
+ exams.addAll(examRepository.findByClassEntityId(classId));
+ }
+ exams.addAll(examRepository.findByCreatedBy(teacher));
+ for (com.example.demo.domain.entity.Exam exam : exams) {
+ if ((exam.getClassEntity() != null && classId != null && classId.equals(exam.getClassEntity().getId()))
+ || previousName.equalsIgnoreCase(exam.getClassName())) {
+ exam.setClassName(newName);
+ }
+ }
         examRepository.saveAll(exams);
     }
 }

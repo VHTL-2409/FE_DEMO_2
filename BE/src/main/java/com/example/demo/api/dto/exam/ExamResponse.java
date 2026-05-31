@@ -48,7 +48,15 @@ public class ExamResponse {
     private Boolean monitorAnswerSimilarity;
     private Boolean monitorIpFingerprintGraph;
     private Boolean enableAiProctoring;
+    private String rulesText;
+    private String rulesVersion;
+    private Boolean requireRulesAgreement;
+    private Boolean requireIdentityVerification;
+    private String identityReviewPolicy;
+    private Boolean inExamIdentityCheckEnabled;
+    private Integer identityCheckIntervalSeconds;
     private Boolean isArchived;
+    private Long classId;
     private String className;
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;

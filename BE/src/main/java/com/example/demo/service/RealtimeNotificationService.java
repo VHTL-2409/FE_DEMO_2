@@ -194,6 +194,36 @@ public class RealtimeNotificationService {
         );
     }
 
+    public void notifyAttemptWaiting(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            String email,
+            String studentCode,
+            LocalDateTime joinedAt,
+            Integer riskScore,
+            String riskLevel,
+            Boolean cameraOn,
+            Boolean micOn,
+            String clientIp
+    ) {
+        teacherAlertGateway.publishAttemptWaiting(
+                examId,
+                attemptId,
+                student,
+                studentName,
+                email,
+                studentCode,
+                joinedAt,
+                riskScore,
+                riskLevel,
+                cameraOn,
+                micOn,
+                clientIp
+        );
+    }
+
     public void notifyAttemptSubmitted(
             Long examId,
             Long attemptId,

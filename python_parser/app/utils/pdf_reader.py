@@ -9,7 +9,11 @@ from typing import Optional
 
 import fitz  # PyMuPDF
 
+from ..config import env_int
 from .ocr_utils import is_ocr_available, ocr_image_bytes_to_text
+
+
+PDF_READER_OCR_DPI = env_int("PDF_READER_OCR_DPI", 180)
 
 
 @dataclass
@@ -165,7 +169,7 @@ class PdfReader:
         if len(text.strip()) >= 40 or not is_ocr_available():
             return text
         try:
-            dpi = 200
+            dpi = PDF_READER_OCR_DPI
             scale = dpi / 72.0
             pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
             ocr_text = ocr_image_bytes_to_text(

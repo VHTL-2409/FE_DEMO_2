@@ -82,6 +82,77 @@
           </button>
         </p>
       </div>
+
+      <div
+        v-if="identityRequired"
+        class="mt-4 rounded-2xl border px-4 py-4 sm:px-5"
+        style="border-color: var(--ds-border); background: var(--ds-surface)"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-sm font-bold text-[var(--ds-text)]">
+              <LucideIcon name="verified_user" class="text-[var(--ds-primary)]" />
+              Xác minh danh tính
+            </div>
+            <p class="mt-1 text-xs font-medium text-[var(--ds-text-secondary)]">
+              Chụp giấy tờ hoặc thẻ sinh viên và selfie trực tiếp trước khi vào phòng thi.
+            </p>
+          </div>
+          <span
+            class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold"
+            :class="identityBadgeClass"
+          >
+            <LucideIcon :name="identityStatusIcon" />
+            {{ identityStatusText }}
+          </span>
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="block rounded-xl border border-dashed px-3 py-3 text-xs font-semibold text-[var(--ds-text-secondary)]" style="border-color: var(--ds-border)">
+            <span class="mb-2 flex items-center gap-1 text-[var(--ds-text)]">
+              <LucideIcon name="id-card" />
+              Ảnh giấy tờ
+            </span>
+            <input type="file" accept="image/*" class="block w-full text-xs" @change="handleDocumentFile" />
+            <span v-if="documentImageBase64" class="mt-2 inline-flex text-emerald-600">
+              Đã chọn {{ documentFileName || 'ảnh giấy tờ' }}
+            </span>
+          </label>
+          <div class="rounded-xl border border-dashed px-3 py-3 text-xs font-semibold text-[var(--ds-text-secondary)]" style="border-color: var(--ds-border)">
+            <span class="mb-2 flex items-center gap-1 text-[var(--ds-text)]">
+              <LucideIcon name="scan-face" />
+              Selfie từ camera
+            </span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition hover:bg-[var(--ds-gray-50)] dark:hover:bg-[var(--ds-gray-800)]"
+              style="border-color: var(--ds-border); color: var(--ds-primary)"
+              :disabled="isCapturingSelfie || !cameraReady"
+              @click="captureSelfie"
+            >
+              <LucideIcon name="camera" />
+              {{ isCapturingSelfie ? 'Đang chụp...' : 'Chụp selfie' }}
+            </button>
+            <span v-if="selfieImageBase64" class="ml-2 text-emerald-600">Đã chụp</span>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-xs font-medium" :class="identityMessageClass">
+            {{ identityMessage }}
+          </p>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+            style="background: var(--ds-primary)"
+            :disabled="!canRunIdentityCheck"
+            @click="runIdentityVerification"
+          >
+            <LucideIcon name="shield_check" />
+            {{ isVerifyingIdentity ? 'Đang xác minh...' : 'Xác minh danh tính' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- CTA cố định phía dưới (sticky trong khung nội dung — không tràn sang sidebar) -->
@@ -92,7 +163,7 @@
       <div class="mx-auto flex w-full max-w-lg justify-center px-4 py-3">
         <StartExamPanel
           compact
-          join-label="Tham gia bài thi"
+          join-label="Xem quy chế và cam kết"
           :can-start="canStart"
           :is-starting="isStarting"
           :is-ended="isEnded"
@@ -110,12 +181,14 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useNotifications } from '../../composables/useNotifications'
-import { startAttempt } from '../../services/attemptService'
+import { prepareAttempt } from '../../services/attemptService'
 import { getExamDetail } from '../../services/examService'
+import { fetchIdentityCheck, verifyStudentIdentity } from '../../services/proctorService'
+import { updateDeviceStatus } from '../../services/monitoringService'
 import { useToast } from '../../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import { parseBackendDate } from '../../utils/dateUtils'
-import { buildAttemptQuery } from '../../services/studentExamContextStorage'
+import { buildRulesQuery } from '../../services/studentExamContextStorage'
 
 import ExamLobbyHeader from './lobby/ExamLobbyHeader.vue'
 import StartExamPanel from './lobby/StartExamPanel.vue'
@@ -132,6 +205,14 @@ const cameraReady = ref(false)
 const micReady = ref(false)
 const deviceError = ref('')
 const isCheckingDevices = ref(false)
+const documentImageBase64 = ref('')
+const documentFileName = ref('')
+const selfieImageBase64 = ref('')
+const identityStatus = ref('NOT_CHECKED')
+const identityResult = ref(null)
+const isVerifyingIdentity = ref(false)
+const isCapturingSelfie = ref(false)
+const preparedAttempt = ref(null)
 /** Tracks whether a camera check has ever completed (pass or fail).
  *  Used to show "Chưa kiểm tra" vs "OK" / "chưa OK" in the UI. */
 const cameraVerified = ref(false)
@@ -172,6 +253,57 @@ const enableAiProctoring = computed(() => {
   return false
 })
 const cameraGateRequired = computed(() => requireCameraMic.value || enableAiProctoring.value)
+const identityRequired = computed(() => cameraGateRequired.value)
+const identityAccepted = computed(() => ['VERIFIED', 'NEEDS_REVIEW'].includes(String(identityStatus.value || '').toUpperCase()))
+const identityStatusText = computed(() => {
+  switch (String(identityStatus.value || '').toUpperCase()) {
+    case 'VERIFIED': return 'Đã xác minh'
+    case 'NEEDS_REVIEW': return 'Cần duyệt'
+    case 'REJECTED': return 'Cần chụp lại'
+    case 'CHECKING': return 'Đang kiểm tra'
+    default: return 'Chưa xác minh'
+  }
+})
+const identityStatusIcon = computed(() => {
+  switch (String(identityStatus.value || '').toUpperCase()) {
+    case 'VERIFIED': return 'check_circle'
+    case 'NEEDS_REVIEW': return 'flag'
+    case 'REJECTED': return 'error'
+    case 'CHECKING': return 'hourglass_empty'
+    default: return 'shield'
+  }
+})
+const identityBadgeClass = computed(() => {
+  switch (String(identityStatus.value || '').toUpperCase()) {
+    case 'VERIFIED': return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+    case 'NEEDS_REVIEW': return 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+    case 'REJECTED': return 'bg-red-500/10 text-red-700 dark:text-red-400'
+    case 'CHECKING': return 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+    default: return 'bg-gray-500/10 text-gray-500 dark:text-gray-400'
+  }
+})
+const identityMessage = computed(() => {
+  const status = String(identityStatus.value || '').toUpperCase()
+  if (status === 'VERIFIED') return 'Danh tính đã được xác minh.'
+  if (status === 'NEEDS_REVIEW') return identityResult.value?.reviewReason || identityResult.value?.review_reason || 'Giám thị sẽ kiểm tra lại bằng chứng.'
+  if (status === 'REJECTED') return identityResult.value?.reviewReason || identityResult.value?.review_reason || 'Vui lòng chụp lại giấy tờ và selfie rõ hơn.'
+  if (status === 'CHECKING') return 'Hệ thống đang đối chiếu giấy tờ, selfie và hồ sơ thí sinh.'
+  return 'Cần hoàn tất xác minh danh tính trước khi vào bài thi.'
+})
+const identityMessageClass = computed(() => {
+  const status = String(identityStatus.value || '').toUpperCase()
+  if (status === 'VERIFIED') return 'text-emerald-600 dark:text-emerald-400'
+  if (status === 'REJECTED') return 'text-red-600 dark:text-red-400'
+  if (status === 'NEEDS_REVIEW') return 'text-amber-600 dark:text-amber-400'
+  return 'text-[var(--ds-text-secondary)]'
+})
+const canRunIdentityCheck = computed(() =>
+  !isVerifyingIdentity.value &&
+  Boolean(documentImageBase64.value) &&
+  Boolean(selfieImageBase64.value) &&
+  devicesReady.value &&
+  !isEnded.value
+)
 
 /**
  * True when the camera has been verified.
@@ -220,6 +352,7 @@ const micBadgeClass = computed(() => {
 const canStart = computed(() => {
   if (isEnded.value) return false
   if (!devicesReady.value) return false
+  if (identityRequired.value && !identityAccepted.value) return false
   return !startAtDate.value || nowMs.value >= startAtDate.value.getTime()
 })
 
@@ -271,6 +404,28 @@ const refreshExamDetail = async () => {
     // keep fallback query data if refresh fails
   } finally {
     isSyncing.value = false
+  }
+}
+
+const prepareLobbyAttempt = async () => {
+  if (!examId.value) return null
+  try {
+    const prepared = await prepareAttempt(examId.value)
+    preparedAttempt.value = prepared
+    if (prepared?.attemptId && identityRequired.value) {
+      try {
+        const latestCheck = await fetchIdentityCheck(prepared.attemptId)
+        if (latestCheck?.available && latestCheck?.verificationStatus) {
+          identityResult.value = latestCheck
+          identityStatus.value = String(latestCheck.verificationStatus).toUpperCase()
+        }
+      } catch {
+        // Identity check restore is best-effort; a new check can still be run.
+      }
+    }
+    return prepared
+  } catch {
+    return null
   }
 }
 
@@ -333,6 +488,128 @@ watch(cameraGateRequired, (enabled, previous) => {
   }
 })
 
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result || ''))
+  reader.onerror = reject
+  reader.readAsDataURL(file)
+})
+
+const handleDocumentFile = async (event) => {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+  if (!file.type?.startsWith('image/')) {
+    toast.error('Vui lòng chọn file ảnh giấy tờ.')
+    event.target.value = ''
+    return
+  }
+  if (file.size > 6 * 1024 * 1024) {
+    toast.error('Ảnh giấy tờ tối đa 6MB.')
+    event.target.value = ''
+    return
+  }
+  try {
+    documentImageBase64.value = await fileToDataUrl(file)
+    documentFileName.value = file.name
+    identityResult.value = null
+    identityStatus.value = 'NOT_CHECKED'
+  } catch {
+    toast.error('Không thể đọc ảnh giấy tờ.')
+  }
+}
+
+const captureSelfie = async () => {
+  if (!navigator?.mediaDevices?.getUserMedia) {
+    toast.error('Trình duyệt không hỗ trợ camera.')
+    return
+  }
+  isCapturingSelfie.value = true
+  let stream = null
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    const video = document.createElement('video')
+    video.playsInline = true
+    video.muted = true
+    video.srcObject = stream
+    await video.play()
+    await new Promise((resolve, reject) => {
+      const startedAt = Date.now()
+      const tick = () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          resolve()
+          return
+        }
+        if (Date.now() - startedAt > 2500) {
+          reject(new Error('Camera chưa sẵn sàng.'))
+          return
+        }
+        window.setTimeout(tick, 80)
+      }
+      tick()
+    })
+    const width = video.videoWidth
+    const height = video.videoHeight
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    context.drawImage(video, 0, 0, width, height)
+    selfieImageBase64.value = canvas.toDataURL('image/jpeg', 0.82)
+    identityResult.value = null
+    identityStatus.value = 'NOT_CHECKED'
+  } catch {
+    toast.error('Không thể chụp selfie từ camera. Vui lòng kiểm tra quyền camera và thử lại.')
+  } finally {
+    stream?.getTracks?.()?.forEach((track) => track.stop())
+    isCapturingSelfie.value = false
+  }
+}
+
+const ensurePreparedAttempt = async () => {
+  if (preparedAttempt.value?.attemptId) return preparedAttempt.value
+  return prepareLobbyAttempt()
+}
+
+const runIdentityVerification = async () => {
+  if (!canRunIdentityCheck.value || !examId.value) return
+  isVerifyingIdentity.value = true
+  identityStatus.value = 'CHECKING'
+  try {
+    const prepared = await ensurePreparedAttempt()
+    if (!prepared?.attemptId) {
+      throw new Error('Missing prepared attempt')
+    }
+    const result = await verifyStudentIdentity({
+      attemptId: prepared.attemptId,
+      documentImageBase64: documentImageBase64.value,
+      selfieImageBase64: selfieImageBase64.value,
+      documentType: 'STUDENT_ID',
+      capturedAt: new Date().toISOString(),
+      metadata: {
+        examId: examId.value,
+        examCode: examCode.value,
+        cameraOn: cameraReady.value,
+        micOn: micReady.value,
+        captureSource: 'student_waiting_room'
+      }
+    })
+    identityResult.value = result
+    identityStatus.value = String(result?.verificationStatus || result?.verification_status || 'NEEDS_REVIEW').toUpperCase()
+    if (identityStatus.value === 'VERIFIED') {
+      toast.success('Đã xác minh danh tính.')
+    } else if (identityStatus.value === 'NEEDS_REVIEW') {
+      toast.warning('Danh tính cần giám thị duyệt. Bạn vẫn có thể vào thi.')
+    } else {
+      toast.error('Xác minh không đạt. Vui lòng chụp lại.')
+    }
+  } catch {
+    identityStatus.value = 'NOT_CHECKED'
+    toast.error('Không thể xác minh danh tính lúc này.')
+  } finally {
+    isVerifyingIdentity.value = false
+  }
+}
+
 const goToExamInterface = async () => {
   if (!examId.value) {
     toast.error('Thiếu mã bài thi. Vui lòng vào lại từ trang chủ.')
@@ -346,6 +623,8 @@ const goToExamInterface = async () => {
     }
     if (!devicesVerified.value && cameraGateRequired.value) {
       toast.error('Bạn cần bật camera để vào phòng thi.')
+    } else if (identityRequired.value && !identityAccepted.value) {
+      toast.error('Bạn cần xác minh danh tính trước khi vào phòng thi.')
     } else if (startAtDate.value && nowMs.value < startAtDate.value.getTime()) {
       toast.error('Bài thi chưa bắt đầu.')
     }
@@ -354,6 +633,44 @@ const goToExamInterface = async () => {
 
   isStarting.value = true
   try {
+    await refreshExamDetail()
+
+    if (isEnded.value) {
+      toast.error('Bài thi đã kết thúc.')
+      return
+    }
+
+    const prepared = await ensurePreparedAttempt()
+    if (!prepared?.attemptId) {
+      throw new Error('Missing prepared attempt')
+    }
+    try {
+      await updateDeviceStatus(prepared.attemptId, cameraReady.value, micReady.value)
+    } catch {
+      // The rules page will show backend blocked reasons if device status was not stored.
+    }
+    preparedAttempt.value = prepared
+    router.push({
+      path: '/student/exam-rules',
+      query: buildRulesQuery({
+        examTitle: examTitle.value,
+        examId: examId.value,
+        attemptId: prepared.attemptId,
+        examCode: examCode.value,
+        duration: examDuration.value,
+        questions: totalQuestions.value,
+        startAt: startAtRaw.value,
+        endAt: endAtRaw.value,
+        className: examClassName.value,
+        identityCheckId: identityResult.value?.identityCheckId || '',
+        verificationStatus: identityStatus.value,
+        requireCameraMic: cameraGateRequired.value ? 'true' : 'false',
+        enableAiProctoring: enableAiProctoring.value ? 'true' : 'false'
+      })
+    })
+    return
+
+    /*
     const fullscreenReady = await enterExamFullscreen()
     if (!fullscreenReady) {
       toast.warning('Trình duyệt chưa cho phép vào toàn màn hình. Hãy thử lại để bắt đầu bài thi.')
@@ -372,6 +689,8 @@ const goToExamInterface = async () => {
       await exitExamFullscreen()
       if (!devicesVerified.value && cameraGateRequired.value) {
         toast.error('Bạn cần bật camera để vào phòng thi.')
+      } else if (identityRequired.value && !identityAccepted.value) {
+        toast.error('Bạn cần xác minh danh tính trước khi vào phòng thi.')
       } else if (startAtDate.value && nowMs.value < startAtDate.value.getTime()) {
         toast.error('Bài thi chưa bắt đầu.')
       }
@@ -379,6 +698,7 @@ const goToExamInterface = async () => {
     }
 
     const started = await startAttempt(examId.value)
+    preparedAttempt.value = started
     router.push({
       path: '/student/exam-interface',
       query: buildAttemptQuery({
@@ -386,12 +706,15 @@ const goToExamInterface = async () => {
         examId: examId.value,
         attemptId: started.attemptId,
         deadlineAt: started.deadlineAt,
-        remainingSeconds: started.remainingSeconds
+        remainingSeconds: started.remainingSeconds,
+        identityCheckId: identityResult.value?.identityCheckId || '',
+        verificationStatus: identityStatus.value
       })
     })
+    */
   } catch {
     await exitExamFullscreen()
-    toast.error('Không thể bắt đầu bài thi lúc này.')
+    toast.error('Không thể chuyển sang trang quy chế lúc này.')
   } finally {
     isStarting.value = false
   }
@@ -399,6 +722,7 @@ const goToExamInterface = async () => {
 
 onMounted(async () => {
   await refreshExamDetail()
+  await prepareLobbyAttempt()
   if (cameraGateRequired.value) {
     await checkDevices()
   } else {

@@ -119,11 +119,18 @@ public class SubmissionHelper {
     }
 
     public LocalDateTime deadlineAt(ExamAttempt attempt) {
+        if (attempt == null || attempt.getStartedAt() == null || attempt.getExam() == null) {
+            return null;
+        }
         return attempt.getStartedAt().plusMinutes(attempt.getExam().getDurationMinutes());
     }
 
     public long remainingSeconds(ExamAttempt attempt) {
-        long seconds = ChronoUnit.SECONDS.between(VietNamTime.now(), deadlineAt(attempt));
+        LocalDateTime deadline = deadlineAt(attempt);
+        if (deadline == null) {
+            return 0L;
+        }
+        long seconds = ChronoUnit.SECONDS.between(VietNamTime.now(), deadline);
         return Math.max(seconds, 0);
     }
 }

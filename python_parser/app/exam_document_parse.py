@@ -14,7 +14,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Union
 
-from .parser_router import ParserRouter
+from .parser_router import route
 from .schemas import ParseResponse, ParsedQuestion, TemplateType
 
 StrPath = Union[str, Path]
@@ -72,8 +72,7 @@ def parse_exam_document(
     if not path.is_file():
         raise FileNotFoundError(f"Không tìm thấy file: {path}")
 
-    router = ParserRouter()
-    return router.route(str(path), session_id=session_id, force_template=force_template)
+    return route(str(path), session_id=session_id, force_template=force_template)
 
 
 def summarize_question_types(questions: list[ParsedQuestion]) -> dict[str, int]:

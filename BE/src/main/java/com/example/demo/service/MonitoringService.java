@@ -18,6 +18,7 @@ import com.example.demo.repository.FraudWarningRepository;
 import com.example.demo.repository.MonitoringEventRepository;
 import com.example.demo.repository.RiskScoreLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -285,6 +286,77 @@ public class MonitoringService {
                 .toList();
     }
 
+    public TimelineSlice timelineSlice(Long attemptId, User actor, int page, int size) {
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanAccessAttempt(attempt, actor);
+
+        int safePage = Math.min(Math.max(page, 1), 200);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        int windowSize = safePage * safeSize;
+        PageRequest firstWindow = PageRequest.of(0, windowSize);
+
+        List<MonitoringTimelineItem> eventRows = examEventRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
+                .stream()
+                .map(this::toExamEventTimelineItem)
+                .toList();
+        List<MonitoringTimelineItem> monitoringRows = monitoringEventRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
+                .stream()
+                .filter(this::isTimelineMonitoringEvent)
+                .map(this::toLegacyEventTimelineItem)
+                .toList();
+        List<MonitoringTimelineItem> signalRows = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
+                .stream()
+                .map(this::toFraudSignalTimelineItem)
+                .toList();
+        List<MonitoringTimelineItem> warningRows = fraudWarningRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
+                .stream()
+                .map(this::toFraudWarningTimelineItem)
+                .toList();
+        List<MonitoringTimelineItem> riskRows = riskScoreLogRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
+                .stream()
+                .map(this::toRiskTimelineItem)
+                .toList();
+
+        List<MonitoringTimelineItem> rows = java.util.stream.Stream.of(eventRows, monitoringRows, signalRows, warningRows, riskRows)
+                .flatMap(List::stream)
+                .sorted(Comparator.comparing(MonitoringTimelineItem::getAt).reversed())
+                .toList();
+
+        long totalElements = examEventRepository.countByAttempt(attempt)
+                + monitoringEventRepository.countByAttempt(attempt)
+                + fraudSignalRepository.countByAttempt(attempt)
+                + fraudWarningRepository.countByAttempt(attempt)
+                + riskScoreLogRepository.countByAttempt(attempt);
+        int from = Math.min((safePage - 1) * safeSize, rows.size());
+        int to = Math.min(from + safeSize, rows.size());
+        int totalPages = Math.max(1, (int) Math.ceil((double) totalElements / safeSize));
+        return new TimelineSlice(rows.subList(from, to), safePage, safeSize, totalElements, totalPages);
+    }
+
+    private MonitoringTimelineItem toRiskTimelineItem(RiskScoreLog snapshot) {
+        return MonitoringTimelineItem.builder()
+                .id(snapshot.getId())
+                .type("MONITORING_EVENT")
+                .at(snapshot.getCreatedAt())
+                .eventType("RISK_SCORE")
+                .riskScore(snapshot.getScore())
+                .suspicious(snapshot.getLevel().isSuspicious())
+                .riskLevel(snapshot.getLevel().name())
+                .details(snapshot.getActionTaken().name())
+                .breakdown(parseBreakdown(snapshot.getBreakdown()))
+                .build();
+    }
+
+    public record TimelineSlice(
+            List<MonitoringTimelineItem> items,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages
+    ) {
+    }
+
     /**
      * Cập nhật trạng thái thiết bị của học sinh (camera, mic).
      */
@@ -387,7 +459,8 @@ public class MonitoringService {
             case PRINT_SCREEN -> monitoringFlagEnabled(exam.getMonitorPrintScreen());
             case RAPID_QUESTION_SWITCH -> monitoringFlagEnabled(exam.getMonitorRapidQuestionSwitch());
             case MULTI_MONITOR -> monitoringFlagEnabled(exam.getMonitorMultiMonitor());
-            case HEARTBEAT_STALE, DEVICE_FINGERPRINT_CHANGED -> true;
+            case HEARTBEAT_STALE, DEVICE_FINGERPRINT_CHANGED,
+                 RULES_AGREEMENT, IDENTITY_REVIEW_REQUIRED, IDENTITY_RECHECK -> true;
         };
     }
 
@@ -463,7 +536,9 @@ public class MonitoringService {
                 .evidence(warning.getEvidence())
                 .category(warning.getCategory() != null ? warning.getCategory().name() : null)
                 .reviewStatus(warning.getReviewStatus() != null ? warning.getReviewStatus().name() : null)
-                .source("fraud_warnings")
+                .source(warning.getSource() != null && !warning.getSource().isBlank()
+                        ? warning.getSource()
+                        : "fraud_warnings")
                 .build();
     }
 
@@ -582,18 +657,19 @@ public class MonitoringService {
      * Get camera status for all students in an exam.
      */
     public List<CameraStatusResponse> getCameraStatusByExam(Long examId) {
-        List<ExamAttempt> attempts = examAttemptRepository.findByExamId(examId);
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamIdWithStudent(examId);
+        Map<Long, List<FraudSignal>> signalsByAttempt = fraudSignalRepository.findExamCameraSignals(examId, AI_CAMERA_SIGNALS)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(signal -> signal.getAttempt().getId()));
+        Map<Long, List<FraudWarning>> warningsByAttempt = fraudWarningRepository
+                .findExamCameraWarnings(examId, FraudWarningCategory.CAMERA_PROCTORING)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(warning -> warning.getAttempt().getId()));
         List<CameraStatusResponse> statuses = new ArrayList<>();
 
         for (ExamAttempt attempt : attempts) {
-            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt);
-
-            // Filter AI camera signals
-            List<FraudSignal> aiSignals = signals.stream()
-                    .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
-                    .toList();
-            List<FraudWarning> cameraWarnings = fraudWarningRepository
-                    .findByAttemptAndCategoryOrderByCreatedAtDesc(attempt, FraudWarningCategory.CAMERA_PROCTORING);
+            List<FraudSignal> aiSignals = signalsByAttempt.getOrDefault(attempt.getId(), List.of());
+            List<FraudWarning> cameraWarnings = warningsByAttempt.getOrDefault(attempt.getId(), List.of());
 
             // Determine status
             List<String> severities = new ArrayList<>();
@@ -682,58 +758,54 @@ public class MonitoringService {
      * Get AI camera alerts for an exam.
      */
     public List<CameraAlertResponse> getCameraAlertsByExam(Long examId) {
-        List<ExamAttempt> attempts = examAttemptRepository.findByExamId(examId);
+        return getCameraAlertsByExam(examId, 200);
+    }
+
+    public List<CameraAlertResponse> getCameraAlertsByExam(Long examId, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 1000);
+        PageRequest page = PageRequest.of(0, safeLimit);
+        Set<SignalSeverity> alertSeverities = Set.of(SignalSeverity.CRITICAL, SignalSeverity.HIGH);
         List<CameraAlertResponse> alerts = new ArrayList<>();
 
-        for (ExamAttempt attempt : attempts) {
-            List<FraudWarning> cameraWarnings = fraudWarningRepository
-                    .findByAttemptAndCategoryOrderByCreatedAtDesc(attempt, FraudWarningCategory.CAMERA_PROCTORING);
-            for (FraudWarning warning : cameraWarnings.stream()
-                    .filter(w -> w.getSeverity() == SignalSeverity.CRITICAL || w.getSeverity() == SignalSeverity.HIGH)
-                    .limit(10)
-                    .toList()) {
-                alerts.add(CameraAlertResponse.builder()
-                        .id(warning.getId())
-                        .attemptId(attempt.getId())
-                        .studentId(attempt.getStudent().getId())
-                        .studentName(attempt.getStudent().getUsername())
-                        .studentCode(attempt.getStudent().getStudentCode())
-                        .signalType(warning.getWarningType())
-                        .severity(warning.getSeverity().name())
-                        .confidence(warning.getConfidence())
-                        .description(warning.getMessage() != null ? warning.getMessage() : getSignalDescription(warning.getWarningType()))
-                        .acknowledged(warning.getReviewStatus() == FraudWarningReviewStatus.CONFIRMED)
-                        .dismissed(warning.getReviewStatus() == FraudWarningReviewStatus.DISMISSED)
-                        .createdAt(warning.getCreatedAt())
-                        .build());
-            }
+        for (FraudWarning warning : fraudWarningRepository.findExamCameraAlerts(
+                examId, FraudWarningCategory.CAMERA_PROCTORING, alertSeverities, page)) {
+            ExamAttempt attempt = warning.getAttempt();
+            alerts.add(CameraAlertResponse.builder()
+                    .id(warning.getId())
+                    .attemptId(attempt.getId())
+                    .studentId(attempt.getStudent().getId())
+                    .studentName(attempt.getStudent().getUsername())
+                    .studentCode(attempt.getStudent().getStudentCode())
+                    .signalType(warning.getWarningType())
+                    .severity(warning.getSeverity().name())
+                    .confidence(warning.getConfidence())
+                    .description(warning.getMessage() != null ? warning.getMessage() : getSignalDescription(warning.getWarningType()))
+                    .acknowledged(warning.getReviewStatus() == FraudWarningReviewStatus.CONFIRMED)
+                    .dismissed(warning.getReviewStatus() == FraudWarningReviewStatus.DISMISSED)
+                    .createdAt(warning.getCreatedAt())
+                    .build());
+        }
 
-            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt);
-            List<FraudSignal> aiSignals = signals.stream()
-                    .filter(s -> AI_CAMERA_SIGNALS.contains(s.getSignalType()))
-                    .filter(s -> s.getSeverity() == SignalSeverity.CRITICAL || s.getSeverity() == SignalSeverity.HIGH)
-                    .limit(10)
-                    .toList();
-
-            for (FraudSignal signal : aiSignals) {
-                alerts.add(CameraAlertResponse.builder()
-                        .id(signal.getId())
-                        .attemptId(attempt.getId())
-                        .studentId(attempt.getStudent().getId())
-                        .studentName(attempt.getStudent().getUsername())
-                        .studentCode(attempt.getStudent().getStudentCode())
-                        .signalType(signal.getSignalType())
-                        .severity(signal.getSeverity().name())
-                        .confidence(signal.getConfidence())
-                        .description(getSignalDescription(signal.getSignalType()))
-                        .createdAt(signal.getCreatedAt())
-                        .build());
-            }
+        for (FraudSignal signal : fraudSignalRepository.findExamCameraAlerts(
+                examId, AI_CAMERA_SIGNALS, alertSeverities, page)) {
+            ExamAttempt attempt = signal.getAttempt();
+            alerts.add(CameraAlertResponse.builder()
+                    .id(signal.getId())
+                    .attemptId(attempt.getId())
+                    .studentId(attempt.getStudent().getId())
+                    .studentName(attempt.getStudent().getUsername())
+                    .studentCode(attempt.getStudent().getStudentCode())
+                    .signalType(signal.getSignalType())
+                    .severity(signal.getSeverity().name())
+                    .confidence(signal.getConfidence())
+                    .description(getSignalDescription(signal.getSignalType()))
+                    .createdAt(signal.getCreatedAt())
+                    .build());
         }
 
         // Sort by creation time, newest first
         alerts.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-        return alerts;
+        return alerts.stream().limit(safeLimit).toList();
     }
 
     /**

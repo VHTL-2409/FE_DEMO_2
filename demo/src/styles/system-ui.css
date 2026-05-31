@@ -1,0 +1,212 @@
+/* System-wide UI normalization. Imported after feature CSS to keep legacy screens aligned. */
+:root {
+  --color-primary: var(--ds-primary);
+  --color-primary-hover: var(--ds-primary-hover);
+  --color-primary-soft: var(--ds-primary-soft);
+  --color-primary-ring: var(--ds-primary-ring);
+  --color-danger: var(--ds-danger);
+  --color-success: var(--ds-success);
+  --color-warning: var(--ds-warning);
+  --color-text: var(--ds-text);
+  --color-text-secondary: var(--ds-text-secondary);
+  --color-bg: var(--ds-bg);
+  --color-surface: var(--ds-surface);
+  --color-surface-muted: var(--ds-surface-muted);
+  --color-border: var(--ds-border);
+  --color-border-strong: var(--ds-border-strong);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --shadow-sm: var(--ds-shadow-sm);
+  --shadow-md: var(--ds-shadow-md);
+  --shadow-lg: var(--ds-shadow-lg);
+  --shadow-focus: var(--ds-shadow-focus);
+  --font-sans: var(--ds-font);
+  --ui-hover-lift: -1px;
+}
+
+html {
+  color-scheme: light;
+  text-size-adjust: 100%;
+}
+
+body {
+  color: var(--ds-text);
+  background: var(--ds-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img,
+svg,
+canvas,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role='button'],
+[tabindex]:not([tabindex='-1']) {
+  outline-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.ds-surface,
+.portal-surface-card,
+.portal-glass-panel {
+  border-radius: var(--ds-radius-xl);
+  border-color: var(--ds-border);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-surface,
+.teacher-card,
+.staff-surface,
+.staff-surface-strong,
+.staff-surface-muted,
+.staff-metric-card,
+.staff-table-panel,
+.glass-card,
+.modal-content,
+.modal-content-glass,
+.ds-table-wrapper {
+  contain: layout paint;
+}
+
+.staff-table-panel,
+.ds-table-wrapper,
+.teacher-page-shell,
+.portal-route-root {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
+}
+
+.ds-title,
+.ds-text-section-title {
+  letter-spacing: 0;
+  color: var(--ds-text);
+}
+
+.ds-eyebrow {
+  color: var(--ds-primary);
+  font-size: var(--ds-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ds-subtitle {
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-text-sm);
+  line-height: 1.6;
+}
+
+.ds-input,
+.p-inputtext,
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='search'],
+input[type='date'],
+textarea {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-xs);
+  transition:
+    border-color var(--ds-duration-base) var(--ds-easing),
+    box-shadow var(--ds-duration-base) var(--ds-easing),
+    background-color var(--ds-duration-base) var(--ds-easing);
+}
+
+.ds-input:focus,
+.p-inputtext:focus,
+input[type='text']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='number']:focus,
+input[type='search']:focus,
+input[type='date']:focus,
+textarea:focus {
+  border-color: var(--ds-primary);
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.portal-card-lift:hover {
+  transform: translateY(var(--ui-hover-lift));
+  box-shadow: var(--ds-shadow-md);
+}
+
+.portal-btn,
+.portal-nav-link,
+.portal-icon-btn {
+  border-radius: var(--ds-radius-lg);
+}
+
+.portal-btn--primary,
+.portal-nav-link--active {
+  background: var(--ds-primary);
+  color: #fff;
+  box-shadow: 0 6px 18px -12px rgba(79, 70, 229, 0.55);
+}
+
+.portal-btn--primary:hover,
+.portal-nav-link--active:hover {
+  background: var(--ds-primary-hover);
+  box-shadow: 0 10px 22px -16px rgba(79, 70, 229, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (hover: none) {
+  .portal-card-lift:hover,
+  .card-interactive:hover,
+  .staff-action-btn:hover,
+  .portal-btn--primary:hover,
+  .portal-nav-link--active:hover {
+    transform: none;
+    box-shadow: var(--ds-shadow-sm);
+  }
+}

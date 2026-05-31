@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import {
-  getCachedOrRefresh,
   invalidateSession,
   userHasAdminRole,
   userHasTeacherAccess,
@@ -18,14 +17,18 @@ const toast = () => {
 }
 import {
   readAttemptQuery,
+  readRulesQuery,
   readResultQuery,
   readSubmissionQuery,
   readWaitingRoomQuery,
   writeAttemptQuery,
+  writeRulesQuery,
   writeResultQuery,
   writeSubmissionQuery,
   writeWaitingRoomQuery
 } from './services/studentExamContextStorage'
+
+const firstQueryValue = value => Array.isArray(value) ? value[0] : value
 
 const devRoutes = import.meta.env.DEV
   ? [
@@ -117,7 +120,11 @@ const router = createRouter({
     { path: '/teacher/live_monitoring', redirect: '/teacher/live-monitoring' },
     {
       path: '/teacher/live_monitoring/session',
-      redirect: to => ({ path: '/teacher/exams/' + (to.query?.examId || '') + '/monitoring', query: to.query?.examId ? {} : undefined })
+      redirect: to => {
+        const examId = firstQueryValue(to.query?.examId)
+        if (!examId) return '/teacher/live-monitoring'
+        return { path: `/teacher/exams/${encodeURIComponent(examId)}/monitoring` }
+      }
     },
     {
       path: '/teacher/live_monitoring/student-detail',
@@ -138,9 +145,8 @@ const router = createRouter({
     {
       path: '/teacher/live-monitoring/student-detail',
       redirect: to => {
-        const first = value => Array.isArray(value) ? value[0] : value
-        const examId = first(to.query?.examId)
-        const attemptId = first(to.query?.attemptId)
+        const examId = firstQueryValue(to.query?.examId)
+        const attemptId = firstQueryValue(to.query?.attemptId)
         if (examId && attemptId) {
           const { examId: _examId, attemptId: _attemptId, ...query } = to.query || {}
           return {
@@ -166,6 +172,7 @@ const router = createRouter({
     { path: '/student/dashboard', component: () => import('./components/student/StudentDashboard.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-join', component: () => import('./components/student/StudentExamJoinByCode.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-waiting-room', component: () => import('./components/student/StudentExamWaitingRoom.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
+    { path: '/student/exam-rules', component: () => import('./components/student/StudentExamRules.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/exam-interface', component: () => import('./components/student/StudentExamInterface.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'exam' } },
     { path: '/student/submission-confirmation', component: () => import('./components/student/StudentSubmissionConfirmation.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
     { path: '/student/study-history', component: () => import('./components/student/StudentStudyHistory.vue'), meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' } },
@@ -179,8 +186,8 @@ const router = createRouter({
       meta: { requiresAuth: true, studentOnly: true, layout: 'studentPortal' }
     },
     // 404 handler - phải là route cuối cùng
-    { path: '/:pathMatch(.*)*', component: () => import('./components/common/NotFoundPage.vue') },
-    ...devRoutes
+    ...devRoutes,
+    { path: '/:pathMatch(.*)*', component: () => import('./components/common/NotFoundPage.vue') }
   ]
 })
 
@@ -201,6 +208,13 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.path === '/student/exam-interface' && (!to.query?.examId || !to.query?.attemptId)) {
     const restored = readAttemptQuery()
+    if (restored) {
+      return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
+    }
+  }
+
+  if (to.path === '/student/exam-rules' && (!to.query?.examId || !to.query?.attemptId)) {
+    const restored = readRulesQuery()
     if (restored) {
       return next({ path: to.path, query: { ...to.query, ...restored }, replace: true })
     }
@@ -288,6 +302,10 @@ router.afterEach((to) => {
 
   if (to.path === '/student/exam-interface' && to.query?.attemptId && to.query?.examId) {
     writeAttemptQuery(to.query)
+  }
+
+  if (to.path === '/student/exam-rules' && to.query?.attemptId && to.query?.examId) {
+    writeRulesQuery(to.query)
   }
 
   if (to.path === '/student/submission-confirmation' && to.query?.attemptId) {

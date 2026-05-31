@@ -21,6 +21,7 @@ public class JwtService {
     private static final Set<String> KNOWN_WEAK_SECRETS = Set.of(
         "ZGVtby1zZWNyZXQta2V5LWRlbW8tc2VjcmV0LWtleS1kZW1vLXNlY3JldC1rZXk=",
         "c2VjcmV0LWtleS1kZW1v",
+        "CHANGE_ME_in_env",
         "my-secret-key",
         "changeme",
         "secret",

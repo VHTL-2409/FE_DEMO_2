@@ -9,6 +9,8 @@ import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.service.FraudSignalService;
 import com.example.demo.service.RealtimeNotificationService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class IdentityAnomalyService {
+
+    private static final Logger log = LoggerFactory.getLogger(IdentityAnomalyService.class);
 
     @Value("${demo.identity-anomaly.ip-change-dedup-seconds:60}")
     private long ipChangeDedupSeconds;
@@ -62,38 +66,39 @@ public class IdentityAnomalyService {
         boolean isFirstIp = attempt.getInitialClientIp() == null
                 || attempt.getInitialClientIp().isBlank();
 
-        // Debug logging
-        System.out.println("[DEBUG] onProctoringStart: attemptId=" + attempt.getId()
-            + ", studentId=" + attempt.getStudent().getId()
-            + ", examId=" + attempt.getExam().getId()
-            + ", currentStatus=" + attempt.getStatus()
-            + ", originalFingerprint=" + (attempt.getOriginalDeviceFingerprint() != null ? attempt.getOriginalDeviceFingerprint().substring(0, Math.min(16, attempt.getOriginalDeviceFingerprint().length())) + "..." : "null")
-            + ", isFirstFingerprint=" + isFirstFingerprint
-            + ", normalizedFingerprint=" + (normalizedFingerprint != null ? normalizedFingerprint.substring(0, Math.min(16, normalizedFingerprint.length())) + "..." : "null")
-            + ", isFirstIp=" + isFirstIp
-            + ", clientIp=" + clientIp);
+        log.debug(
+                "onProctoringStart attemptId={} studentId={} examId={} status={} originalFingerprint={} isFirstFingerprint={} normalizedFingerprint={} isFirstIp={} clientIp={}",
+                attempt.getId(),
+                attempt.getStudent().getId(),
+                attempt.getExam().getId(),
+                attempt.getStatus(),
+                maskFingerprint(attempt.getOriginalDeviceFingerprint()),
+                isFirstFingerprint,
+                maskFingerprint(normalizedFingerprint),
+                isFirstIp,
+                clientIp);
 
         if (isFirstFingerprint && normalizedFingerprint != null && !normalizedFingerprint.isBlank()) {
             attempt.setOriginalDeviceFingerprint(normalizedFingerprint);
             attempt.setDeviceFingerprint(normalizedFingerprint);
             examAttemptRepository.save(attempt);
-            System.out.println("[DEBUG] onProctoringStart: SET fingerprint for attemptId=" + attempt.getId());
+            log.debug("Stored initial fingerprint for attemptId={}", attempt.getId());
         }
 
         if (isFirstIp && clientIp != null && !clientIp.isBlank()) {
             attempt.setInitialClientIp(clientIp);
             attempt.setCurrentClientIp(clientIp);
             examAttemptRepository.save(attempt);
-            System.out.println("[DEBUG] onProctoringStart: SET IP for attemptId=" + attempt.getId() + ", ip=" + clientIp);
+            log.debug("Stored initial IP for attemptId={} ip={}", attempt.getId(), clientIp);
         }
 
         // Luôn kiểm tra multi-device session sau khi thiết lập fingerprint.
         // Điều này phát hiện trường hợp một attempt mới bắt đầu trong khi một attempt active
         // khác cho cùng học sinh + bài thi tồn tại với fingerprint khác.
         if (normalizedFingerprint != null && !normalizedFingerprint.isBlank()) {
-            System.out.println("[DEBUG] onProctoringStart: calling checkMultiDeviceSession for attemptId=" + attempt.getId());
+            log.debug("Checking multi-device session for attemptId={}", attempt.getId());
             newSignals.addAll(checkMultiDeviceSession(attempt, normalizedFingerprint));
-            System.out.println("[DEBUG] onProctoringStart: checkMultiDeviceSession returned " + newSignals.size() + " signals for attemptId=" + attempt.getId());
+            log.debug("Multi-device check returned {} signals for attemptId={}", newSignals.size(), attempt.getId());
         }
         return newSignals;
     }
@@ -215,7 +220,7 @@ public class IdentityAnomalyService {
     private List<FraudSignal> checkMultiDeviceSession(ExamAttempt attempt, String currentFingerprint) {
         List<FraudSignal> newSignals = new ArrayList<>();
         if (currentFingerprint == null || currentFingerprint.isBlank()) {
-            System.out.println("[DEBUG] checkMultiDeviceSession: null/blank fingerprint, skipping for attemptId=" + attempt.getId());
+            log.debug("Skipping multi-device check because fingerprint is blank for attemptId={}", attempt.getId());
             return newSignals;
         }
 
@@ -226,9 +231,11 @@ public class IdentityAnomalyService {
                         attempt.getId()
                 );
 
-        System.out.println("[DEBUG] checkMultiDeviceSession: attemptId=" + attempt.getId()
-            + ", currentFingerprint=" + currentFingerprint.substring(0, Math.min(16, currentFingerprint.length())) + "..."
-            + ", found " + activeCounterparts.size() + " active counterparts");
+        log.debug(
+                "checkMultiDeviceSession attemptId={} currentFingerprint={} activeCounterparts={}",
+                attempt.getId(),
+                maskFingerprint(currentFingerprint),
+                activeCounterparts.size());
 
         for (ExamAttempt counterpart : activeCounterparts) {
             String counterpartFp = counterpart.getDeviceFingerprint();
@@ -236,22 +243,24 @@ public class IdentityAnomalyService {
                 counterpartFp = counterpart.getOriginalDeviceFingerprint();
             }
             if (counterpartFp == null || counterpartFp.isBlank()) {
-                System.out.println("[DEBUG] checkMultiDeviceSession: counterpart attemptId=" + counterpart.getId() + " has no fingerprint, skipping");
+                log.debug("Skipping counterpart attemptId={} because fingerprint is blank", counterpart.getId());
                 continue;
             }
 
-            System.out.println("[DEBUG] checkMultiDeviceSession: comparing currentFp=" + currentFingerprint.substring(0, Math.min(16, currentFingerprint.length())) + "..."
-                + " with counterpartFp=" + counterpartFp.substring(0, Math.min(16, counterpartFp.length())) + "..."
-                + ", equals=" + counterpartFp.equals(currentFingerprint));
+            log.debug(
+                    "Comparing fingerprints current={} counterpart={} equals={}",
+                    maskFingerprint(currentFingerprint),
+                    maskFingerprint(counterpartFp),
+                    counterpartFp.equals(currentFingerprint));
 
             if (counterpartFp.equals(currentFingerprint)) {
-                System.out.println("[DEBUG] checkMultiDeviceSession: fingerprints match, skipping");
+                log.debug("Skipping counterpart attemptId={} because fingerprints match", counterpart.getId());
                 continue;
             }
 
             String pairSignature = buildPairSignature(attempt.getId(), counterpart.getId());
             if (isRecentIdentitySignalForPair(attempt, "MULTIPLE_DEVICE_SESSION", pairSignature, multiDeviceDedupSeconds)) {
-                System.out.println("[DEBUG] checkMultiDeviceSession: recent signal exists for pair, skipping");
+                log.debug("Skipping pair {} because a recent multi-device signal already exists", pairSignature);
                 continue;
             }
 
@@ -324,5 +333,12 @@ public class IdentityAnomalyService {
         Long min = Math.min(firstId, secondId);
         Long max = Math.max(firstId, secondId);
         return "pair=" + min + "-" + max;
+    }
+
+    private String maskFingerprint(String fingerprint) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return "null";
+        }
+        return fingerprint.substring(0, Math.min(16, fingerprint.length())) + "...";
     }
 }

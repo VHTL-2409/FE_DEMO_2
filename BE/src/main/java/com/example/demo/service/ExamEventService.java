@@ -26,6 +26,8 @@ import com.example.demo.repository.ProctorFlagRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ExamEventService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExamEventService.class);
 
     private final ExamAttemptRepository examAttemptRepository;
     private final ExamEventRepository examEventRepository;
@@ -263,12 +267,13 @@ public class ExamEventService {
         ExamAttempt attempt = requireAttempt(attemptId);
         String normalizedFingerprint = deviceFingerprintService.normalizeFingerprint(deviceFingerprint, userAgent, attempt.getStudent().getId());
         
-        // Debug logging
-        System.out.println("[DEBUG] initProctoringSession called for attemptId=" + attemptId 
-            + ", studentId=" + attempt.getStudent().getId()
-            + ", rawFingerprint=" + (deviceFingerprint != null ? deviceFingerprint.substring(0, Math.min(50, deviceFingerprint.length())) + "..." : "null")
-            + ", normalizedFingerprint=" + (normalizedFingerprint != null ? normalizedFingerprint.substring(0, Math.min(16, normalizedFingerprint.length())) + "..." : "null")
-            + ", clientIp=" + clientIp);
+        log.debug(
+                "initProctoringSession attemptId={} studentId={} rawFingerprint={} normalizedFingerprint={} clientIp={}",
+                attemptId,
+                attempt.getStudent().getId(),
+                maskFingerprint(deviceFingerprint, 50),
+                maskFingerprint(normalizedFingerprint, 16),
+                clientIp);
         
         identityAnomalyService.onProctoringStart(attempt, normalizedFingerprint, clientIp);
     }
@@ -576,5 +581,12 @@ public class ExamEventService {
         } catch (JsonProcessingException e) {
             return Map.of("raw", evidenceJson);
         }
+    }
+
+    private String maskFingerprint(String fingerprint, int visibleChars) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return "null";
+        }
+        return fingerprint.substring(0, Math.min(visibleChars, fingerprint.length())) + "...";
     }
 }

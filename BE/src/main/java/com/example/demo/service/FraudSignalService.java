@@ -139,6 +139,12 @@ public class FraudSignalService {
             case "MULTIPLE_DEVICE_SESSION" -> new SignalDescriptor("MULTIPLE_DEVICE_SESSION", "IDENTITY", "Tài khoản mở từ nhiều thiết bị", 25, SignalSeverity.HIGH, 0.95);
             case "IP_CHANGED" -> new SignalDescriptor("IP_CHANGED", "IDENTITY", "Địa chỉ IP thay đổi", 15, SignalSeverity.MEDIUM, 0.88);
             case "ANSWER_SIMILARITY" -> new SignalDescriptor("ANSWER_SIMILARITY", "IDENTITY", "Đáp án trùng lặp cao", 15, SignalSeverity.HIGH, 0.9);
+            case "IDENTITY_DOCUMENT_MISMATCH" -> new SignalDescriptor("IDENTITY_DOCUMENT_MISMATCH", "IDENTITY", "Thong tin giay to khong khop", riskImpact("IDENTITY_DOCUMENT_MISMATCH", 18), SignalSeverity.HIGH, 0.88);
+            case "IDENTITY_FACE_MISMATCH" -> new SignalDescriptor("IDENTITY_FACE_MISMATCH", "IDENTITY", "Khuon mat khong khop giay to", riskImpact("IDENTITY_FACE_MISMATCH", 22), SignalSeverity.HIGH, 0.84);
+            case "IDENTITY_DOCUMENT_UNREADABLE" -> new SignalDescriptor("IDENTITY_DOCUMENT_UNREADABLE", "IDENTITY", "Khong doc duoc giay to", riskImpact("IDENTITY_DOCUMENT_UNREADABLE", 10), SignalSeverity.HIGH, 0.86);
+            case "IDENTITY_VERIFICATION_SKIPPED" -> new SignalDescriptor("IDENTITY_VERIFICATION_SKIPPED", "IDENTITY", "Chua xac minh danh tinh", riskImpact("IDENTITY_VERIFICATION_SKIPPED", 15), SignalSeverity.MEDIUM, 0.78);
+            case "IDENTITY_REVIEW_REQUIRED" -> new SignalDescriptor("IDENTITY_REVIEW_REQUIRED", "IDENTITY", "Can giam thi duyet danh tinh", riskImpact("IDENTITY_REVIEW_REQUIRED", 12), SignalSeverity.MEDIUM, 0.70);
+            case "LIVENESS_CHALLENGE_FAILED" -> new SignalDescriptor("LIVENESS_CHALLENGE_FAILED", "VISUAL_IDENTITY", "Kiem tra nguoi that khong dat", riskImpact("LIVENESS_CHALLENGE_FAILED", 20), SignalSeverity.HIGH, 0.88);
             case "AI_PHONE_DETECTED" -> new SignalDescriptor("AI_PHONE_DETECTED", "IDENTITY", "Phát hiện điện thoại", 15, SignalSeverity.HIGH, 0.94);
             case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện tiếng ồn", riskImpact("AI_SPEAKING_DETECTED", 10), SignalSeverity.MEDIUM, 0.75);
             // Các tín hiệu phát hiện mới cho AI camera

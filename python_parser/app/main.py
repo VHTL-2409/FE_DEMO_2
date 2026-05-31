@@ -10,18 +10,22 @@ Endpoints:
 from __future__ import annotations
 
 import os
-import uuid
+import shutil
 import tempfile
+import uuid
+from functools import lru_cache
 from pathlib import Path
 
 import fitz
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .schemas import ParseRequest, ParseResponse
+from .config import env_int
 from .parser_router import ParserRouter
 from .profiler import build_pdf_profile
+from .schemas import ParseResponse
+from .utils.pdf_reader import PdfReader
 
 # ─── App setup ────────────────────────────────────────────────────────────────
 
@@ -35,6 +39,11 @@ app = FastAPI(
 TEMP_DIR = tempfile.gettempdir()
 OUTPUT_DIR = os.path.join(TEMP_DIR, "exam_parser_output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"})
+SUPPORTED_EXTENSIONS = frozenset({".pdf", ".docx", *IMAGE_EXTENSIONS})
+
+
+DEFAULT_CROP_DPI = env_int("PARSER_CROP_DPI", 220)
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
@@ -57,18 +66,28 @@ def get_session_id(existing: str | None) -> str:
     return existing or str(uuid.uuid4())
 
 
+@lru_cache(maxsize=1)
+def get_parser_router() -> ParserRouter:
+    return ParserRouter()
+
+
 def save_upload(file: UploadFile) -> str:
     """Save uploaded PDF to temp file, return path."""
     suffix = Path(file.filename or ".pdf").suffix or ".pdf"
     fd, path = tempfile.mkstemp(suffix=suffix, dir=TEMP_DIR)
     os.close(fd)
     with open(path, "wb") as f:
-        f.write(file.file.read())
+        shutil.copyfileobj(file.file, f, length=1024 * 1024)
     return path
 
 
 def _is_supported_image(path: str) -> bool:
-    return Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+    return Path(path).suffix.lower() in IMAGE_EXTENSIONS
+
+
+def _validate_supported_extension(suffix: str) -> None:
+    if suffix.lower() not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(400, "Only PDF, DOCX, and image files are supported")
 
 
 def _convert_image_to_pdf(image_path: str) -> str:
@@ -129,8 +148,7 @@ async def parse_exam_upload(
     # Validate file type
     filename = file.filename or ""
     suffix = Path(filename).suffix.lower()
-    if suffix not in (".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"):
-        raise HTTPException(400, "Only PDF, DOCX, and image files are supported")
+    _validate_supported_extension(suffix)
 
     # Save uploaded file
     uploaded_path = save_upload(file)
@@ -149,7 +167,7 @@ async def parse_exam_upload(
 
     try:
         # Route to best parser
-        router = ParserRouter()
+        router = get_parser_router()
         response = router.route(
             parse_path,
             session_id=sid,
@@ -201,8 +219,7 @@ async def parse_exam_filepath(body: FilePathRequest):
         raise HTTPException(404, f"File not found: {pdf_path}")
 
     suffix = Path(pdf_path).suffix.lower()
-    if suffix not in (".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"):
-        raise HTTPException(400, "Only PDF, DOCX, and image files are supported")
+    _validate_supported_extension(suffix)
 
     sid = get_session_id(body.sessionId)
     parse_path = pdf_path
@@ -210,7 +227,7 @@ async def parse_exam_filepath(body: FilePathRequest):
 
     try:
         parse_path, extra_cleanup = _prepare_parse_input(pdf_path)
-        router = ParserRouter()
+        router = get_parser_router()
         response = router.route(
             parse_path,
             session_id=sid,
@@ -350,35 +367,43 @@ def _save_crop_images(
     pdf_path: str,
     questions: list,
     output_dir: str,
-    dpi: int = 300,
+    dpi: int = DEFAULT_CROP_DPI,
 ) -> dict[int, str]:
     """
     Save cropped PNG images for questions that use image render mode.
     Returns {question_num: image_path}.
     """
-    from .utils.image_cropper import crop_question
-
     saved: dict[int, str] = {}
+    os.makedirs(output_dir, exist_ok=True)
 
-    for q in questions:
-        if q.render.mode.value != "image":
-            continue
-        if not q.render.bbox:
-            continue
+    image_questions = [
+        q for q in questions
+        if q.render.mode.value == "image" and q.render.bbox
+    ]
+    if not image_questions:
+        return saved
 
-        filename = f"q_{q.number:03d}.png"
-        output_path = os.path.join(output_dir, filename)
+    with PdfReader(pdf_path) as reader:
+        page_size_cache: dict[int, tuple[float, float]] = {}
+        for q in image_questions:
+            try:
+                if q.page not in page_size_cache:
+                    page_size_cache[q.page] = reader.get_page_size(q.page)
+                page_width, page_height = page_size_cache[q.page]
+                bbox = tuple(q.render.bbox)
+                x0 = max(0.0, bbox[0] - 8.0)
+                y0 = max(0.0, bbox[1] - 8.0)
+                x1 = min(page_width, bbox[2] + 8.0)
+                y1 = min(page_height, bbox[3] + 8.0)
+                png_bytes = reader.render_page_as_image(q.page, dpi=dpi, clip=(x0, y0, x1, y1))
 
-        result = crop_question(
-            pdf_path=pdf_path,
-            page_num=q.page,
-            bbox=tuple(q.render.bbox),
-            output_path=output_path,
-            dpi=dpi,
-        )
-
-        if result:
-            saved[q.number] = result
+                filename = f"q_{q.number:03d}.png"
+                output_path = os.path.join(output_dir, filename)
+                with open(output_path, "wb") as f:
+                    f.write(png_bytes)
+                saved[q.number] = output_path
+            except Exception as e:
+                print(f"[api] Failed to crop question {getattr(q, 'number', '?')}: {e}", flush=True)
 
     return saved
 

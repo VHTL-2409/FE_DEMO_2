@@ -196,9 +196,7 @@ public class AuthService {
     @Transactional
     public void revokeAllUserTokens(String username) {
         userRepository.findByUsernameWithRoles(username).ifPresent(user -> {
-            int count = refreshTokenRepository.findAll().stream()
-                    .filter(t -> t.getUser().getId().equals(user.getId()))
-                    .toList().size();
+            long count = refreshTokenRepository.countByUser(user);
             refreshTokenRepository.deleteAllByUser(user);
             log.info("Revoked {} refresh tokens for user: {}", count, username);
         });
@@ -265,7 +263,7 @@ public class AuthService {
     }
 
     public List<User> listUsers() {
-        return userRepository.findAll();
+        return userRepository.findAllWithRoles();
     }
 
     @Transactional

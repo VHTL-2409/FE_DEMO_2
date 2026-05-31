@@ -1,4 +1,5 @@
 const WAITING_ROOM_KEY = 'studentExam:waitingRoom'
+const RULES_KEY = 'studentExam:rules'
 const ATTEMPT_KEY = 'studentExam:attempt'
 const SUBMISSION_KEY = 'studentExam:submission'
 const RESULT_KEY = 'studentExam:result'
@@ -52,7 +53,9 @@ export function buildAttemptQuery({
   deadlineAt,
   remainingSeconds,
   startedAt,
-  isPractice
+  isPractice,
+  identityCheckId,
+  verificationStatus
 }) {
   return {
     exam: toStringOrEmpty(examTitle || 'Bài thi'),
@@ -61,7 +64,9 @@ export function buildAttemptQuery({
     deadlineAt: toStringOrEmpty(deadlineAt),
     remainingSeconds: toStringOrEmpty(remainingSeconds),
     startedAt: toStringOrEmpty(startedAt),
-    isPractice: isPractice ? 'true' : undefined
+    isPractice: isPractice ? 'true' : undefined,
+    identityCheckId: toStringOrEmpty(identityCheckId),
+    verificationStatus: toStringOrEmpty(verificationStatus)
   }
 }
 
@@ -99,6 +104,38 @@ export function writeWaitingRoomQuery(query) {
   })
 }
 
+export function buildRulesQuery({
+  examTitle,
+  examId,
+  attemptId,
+  examCode,
+  duration,
+  questions,
+  startAt,
+  endAt,
+  className,
+  identityCheckId,
+  verificationStatus,
+  requireCameraMic,
+  enableAiProctoring
+}) {
+  return {
+    exam: toStringOrEmpty(examTitle || 'BÃ i thi'),
+    examId: toStringOrEmpty(examId),
+    attemptId: toStringOrEmpty(attemptId),
+    examCode: toStringOrEmpty(examCode),
+    duration: toStringOrEmpty(duration),
+    questions: toStringOrEmpty(questions),
+    startAt: toStringOrEmpty(startAt),
+    endAt: toStringOrEmpty(endAt),
+    className: toStringOrEmpty(className),
+    identityCheckId: toStringOrEmpty(identityCheckId),
+    verificationStatus: toStringOrEmpty(verificationStatus),
+    requireCameraMic: toStringOrEmpty(requireCameraMic || 'true'),
+    enableAiProctoring: toStringOrEmpty(enableAiProctoring || 'false')
+  }
+}
+
 export function readWaitingRoomQuery() {
   const value = readKey(WAITING_ROOM_KEY)
   if (!value?.examId) return null
@@ -116,6 +153,45 @@ export function readWaitingRoomQuery() {
   }
 }
 
+export function writeRulesQuery(query) {
+  if (!query?.attemptId || !query?.examId) return
+  writeKey(RULES_KEY, {
+    exam: toStringOrEmpty(query.exam),
+    examId: toStringOrEmpty(query.examId),
+    attemptId: toStringOrEmpty(query.attemptId),
+    examCode: toStringOrEmpty(query.examCode),
+    duration: toStringOrEmpty(query.duration),
+    questions: toStringOrEmpty(query.questions),
+    startAt: toStringOrEmpty(query.startAt),
+    endAt: toStringOrEmpty(query.endAt),
+    className: toStringOrEmpty(query.className),
+    identityCheckId: toStringOrEmpty(query.identityCheckId),
+    verificationStatus: toStringOrEmpty(query.verificationStatus),
+    requireCameraMic: toStringOrEmpty(query.requireCameraMic || 'true'),
+    enableAiProctoring: toStringOrEmpty(query.enableAiProctoring || 'false')
+  })
+}
+
+export function readRulesQuery() {
+  const value = readKey(RULES_KEY)
+  if (!value?.attemptId || !value?.examId) return null
+  return {
+    exam: toStringOrEmpty(value.exam),
+    examId: toStringOrEmpty(value.examId),
+    attemptId: toStringOrEmpty(value.attemptId),
+    examCode: toStringOrEmpty(value.examCode),
+    duration: toStringOrEmpty(value.duration),
+    questions: toStringOrEmpty(value.questions),
+    startAt: toStringOrEmpty(value.startAt),
+    endAt: toStringOrEmpty(value.endAt),
+    className: toStringOrEmpty(value.className),
+    identityCheckId: toStringOrEmpty(value.identityCheckId),
+    verificationStatus: toStringOrEmpty(value.verificationStatus),
+    requireCameraMic: toStringOrEmpty(value.requireCameraMic || 'true'),
+    enableAiProctoring: toStringOrEmpty(value.enableAiProctoring || 'false')
+  }
+}
+
 export function writeAttemptQuery(query) {
   if (!query?.attemptId || !query?.examId) return
   writeKey(ATTEMPT_KEY, {
@@ -125,7 +201,9 @@ export function writeAttemptQuery(query) {
     deadlineAt: toStringOrEmpty(query.deadlineAt),
     remainingSeconds: toStringOrEmpty(query.remainingSeconds),
     startedAt: toStringOrEmpty(query.startedAt),
-    isPractice: toStringOrEmpty(query.isPractice)
+    isPractice: toStringOrEmpty(query.isPractice),
+    identityCheckId: toStringOrEmpty(query.identityCheckId),
+    verificationStatus: toStringOrEmpty(query.verificationStatus)
   })
 }
 
@@ -139,7 +217,9 @@ export function readAttemptQuery() {
     deadlineAt: toStringOrEmpty(value.deadlineAt),
     remainingSeconds: toStringOrEmpty(value.remainingSeconds),
     startedAt: toStringOrEmpty(value.startedAt),
-    isPractice: toStringOrEmpty(value.isPractice)
+    isPractice: toStringOrEmpty(value.isPractice),
+    identityCheckId: toStringOrEmpty(value.identityCheckId),
+    verificationStatus: toStringOrEmpty(value.verificationStatus)
   }
 }
 

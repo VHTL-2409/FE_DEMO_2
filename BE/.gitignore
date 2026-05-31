@@ -5,7 +5,7 @@ target/
 !**/src/test/**/target/
 .md
 docs/
-test/
+/test/
 
 ### STS ###
 .apt_generated
@@ -41,6 +41,7 @@ build/
 ### Logs ###
 logs/
 *.log
+tmp/
 
 
 docs/

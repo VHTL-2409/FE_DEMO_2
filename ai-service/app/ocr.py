@@ -3,10 +3,13 @@ from __future__ import annotations
 import io
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from fastapi import UploadFile
 from PIL import Image, ImageOps
+
+from .config import env_int
 
 try:
     import fitz  # PyMuPDF
@@ -27,6 +30,10 @@ class OcrBlock:
 
 
 class OcrEngine:
+    def __init__(self) -> None:
+        self.pdf_dpi = env_int("AI_SERVICE_OCR_PDF_DPI", 220)
+        self.threshold = env_int("AI_SERVICE_OCR_THRESHOLD", 180)
+
     def is_ready(self) -> bool:
         return pytesseract is not None and self._tesseract_available()
 
@@ -40,8 +47,7 @@ class OcrEngine:
         blocks: list[OcrBlock] = []
         for page_index, image in enumerate(images, start=1):
             prepared = self._preprocess(image)
-            text = pytesseract.image_to_string(prepared, lang=language).strip()
-            confidence = self._average_confidence(prepared, language)
+            text, confidence = self._extract_text_and_confidence(prepared, language)
             blocks.append(OcrBlock(page=page_index, text=text, confidence=confidence))
 
         combined_text = "\n\n".join(block.text for block in blocks if block.text)
@@ -81,7 +87,7 @@ class OcrEngine:
             try:
                 page_limit = min(document.page_count, max_pages)
                 for index in range(page_limit):
-                    pixmap = document.load_page(index).get_pixmap(dpi=300)
+                    pixmap = document.load_page(index).get_pixmap(dpi=self.pdf_dpi)
                     images.append(Image.open(io.BytesIO(pixmap.tobytes("png"))).convert("RGB"))
                 return images
             finally:
@@ -89,10 +95,30 @@ class OcrEngine:
 
         return [Image.open(io.BytesIO(file_bytes)).convert("RGB")]
 
-    def _average_confidence(self, image: Image.Image, language: str) -> float:
+    def _extract_text_and_confidence(self, image: Image.Image, language: str) -> tuple[str, float]:
         data = pytesseract.image_to_data(image, lang=language, output_type=pytesseract.Output.DICT)
         confidences = []
-        for raw_confidence in data.get("conf", []):
+        lines: dict[tuple[int, int, int], list[tuple[int, str]]] = {}
+
+        texts = data.get("text", [])
+        conf_values = data.get("conf", [])
+        block_nums = data.get("block_num", [])
+        par_nums = data.get("par_num", [])
+        line_nums = data.get("line_num", [])
+        word_nums = data.get("word_num", [])
+
+        for idx, raw_text in enumerate(texts):
+            text = (raw_text or "").strip()
+            if text:
+                key = (
+                    int(block_nums[idx]) if idx < len(block_nums) else 0,
+                    int(par_nums[idx]) if idx < len(par_nums) else 0,
+                    int(line_nums[idx]) if idx < len(line_nums) else 0,
+                )
+                word_num = int(word_nums[idx]) if idx < len(word_nums) else idx
+                lines.setdefault(key, []).append((word_num, text))
+
+            raw_confidence = conf_values[idx] if idx < len(conf_values) else None
             try:
                 parsed = float(raw_confidence)
             except (TypeError, ValueError):
@@ -100,13 +126,20 @@ class OcrEngine:
             if parsed >= 0:
                 confidences.append(parsed / 100.0)
         if not confidences:
-            return 0.0
-        return sum(confidences) / len(confidences)
+            confidence = 0.0
+        else:
+            confidence = sum(confidences) / len(confidences)
+
+        text_lines = [
+            " ".join(word for _word_num, word in sorted(words, key=lambda item: item[0]))
+            for _key, words in sorted(lines.items(), key=lambda item: item[0])
+        ]
+        return "\n".join(line for line in text_lines if line).strip(), confidence
 
     def _preprocess(self, image: Image.Image) -> Image.Image:
         grayscale = ImageOps.grayscale(image)
         # Mild contrast cleanup keeps Vietnamese glyphs readable without over-binarizing.
-        return grayscale.point(lambda pixel: 255 if pixel > 180 else pixel)
+        return grayscale.point(lambda pixel: 255 if pixel > self.threshold else pixel)
 
     def _detect_file_type(self, file: UploadFile) -> str:
         filename = (file.filename or "").lower()
@@ -116,6 +149,19 @@ class OcrEngine:
         return "image"
 
     def _tesseract_available(self) -> bool:
+        return _tesseract_available_cached()
+
+
+@lru_cache(maxsize=1)
+def _tesseract_available_cached() -> bool:
+    if pytesseract is None:
+        return False
+    engine = _TesseractPathProbe()
+    return engine.available()
+
+
+class _TesseractPathProbe:
+    def available(self) -> bool:
         tesseract_cmd = getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract")
         return bool(tesseract_cmd) and (os.path.isabs(tesseract_cmd) or self._binary_on_path(tesseract_cmd))
 

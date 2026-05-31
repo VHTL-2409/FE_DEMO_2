@@ -11,7 +11,11 @@ from typing import Optional
 
 import fitz  # PyMuPDF
 
+from .config import env_int
 from .utils.ocr_utils import is_ocr_available, ocr_image_bytes_to_text
+
+
+PROFILER_OCR_DPI = env_int("PDF_PROFILER_OCR_DPI", 180)
 
 
 @dataclass
@@ -191,7 +195,7 @@ def build_pdf_profile(pdf_path: str) -> PdfProfile:
 
         if page_char_count < 40 and is_ocr_available():
             try:
-                dpi = 200
+                dpi = PROFILER_OCR_DPI
                 scale = dpi / 72.0
                 pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
                 ocr_text = ocr_image_bytes_to_text(

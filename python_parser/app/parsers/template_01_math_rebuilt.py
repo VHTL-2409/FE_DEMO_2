@@ -806,6 +806,7 @@ class Template01MathRebuiltParser(BaseParser):
         Handles: "A. x² B. y²", "A. x B. y C. z", "A.x B.y C.z"
         """
         text = self._split_inline_colon_coordinate_options(text)
+        text = self._split_glued_compact_option_markers(text)
 
         # Pattern: option letter followed by dot, then content, then next option letter
         merged_re = re.compile(
@@ -843,6 +844,62 @@ class Template01MathRebuiltParser(BaseParser):
         )
 
         return result
+
+    def _split_glued_compact_option_markers(self, text: str) -> str:
+        """
+        Split compact option rows where PDF extraction glued adjacent columns.
+
+        Examples:
+          "A.S =-3B.S =3C.SD.S =3;-3"
+          "A.x=1B.x=2C.x=3D.x=4"
+        """
+        marker_re = re.compile(r"([A-D])\s*([\.\)ï¼Žï¼‰]|:(?!\s*\())")
+        normalized_lines: list[str] = []
+        order = {letter: idx for idx, letter in enumerate("ABCD")}
+
+        for line in text.split("\n"):
+            matches = list(marker_re.finditer(line))
+            if len(matches) < 2:
+                normalized_lines.append(line)
+                continue
+
+            candidates: list[re.Match[str]] = []
+            for match in matches:
+                letter = match.group(1).upper()
+                start = match.start()
+                prev = line[start - 1] if start > 0 else ""
+
+                at_boundary = start == 0 or prev.isspace()
+                follows_prior_option = (
+                    bool(candidates)
+                    and order[letter] > order[candidates[-1].group(1).upper()]
+                )
+                if at_boundary or follows_prior_option:
+                    candidates.append(match)
+
+            if len(candidates) < 2:
+                normalized_lines.append(line)
+                continue
+
+            parts: list[str] = []
+            prefix = line[:candidates[0].start()].strip()
+            if prefix:
+                parts.append(prefix)
+
+            for idx, match in enumerate(candidates):
+                end = candidates[idx + 1].start() if idx + 1 < len(candidates) else len(line)
+                segment = line[match.start():end].strip()
+                segment = re.sub(
+                    r"^([A-D])\s*([\.\)ï¼Žï¼‰:])\s*",
+                    lambda m: f"{m.group(1).upper()}. ",
+                    segment,
+                ).strip()
+                if segment:
+                    parts.append(segment)
+
+            normalized_lines.append("\n".join(parts))
+
+        return "\n".join(normalized_lines)
 
     def _split_inline_colon_coordinate_options(self, text: str) -> str:
         marker_re = re.compile(r"([A-D])\s*:\s*(?=[\(\{\[])")

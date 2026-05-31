@@ -124,6 +124,20 @@ public class ProctoringController {
             @RequestParam(required = false, defaultValue = "10") Integer size,
             @RequestParam(required = false) String eventType
     ) {
+        if (eventType == null || eventType.isBlank()) {
+            MonitoringService.TimelineSlice slice = monitoringService.timelineSlice(
+                    attemptId,
+                    currentUserService.requireCurrentUser(),
+                    page == null ? 1 : page,
+                    size == null ? 10 : size);
+            return ApiResponse.success(MonitoringTimelinePage.builder()
+                    .items(slice.items())
+                    .page(slice.page())
+                    .size(slice.size())
+                    .totalElements(slice.totalElements())
+                    .totalPages(slice.totalPages())
+                    .build());
+        }
         List<MonitoringTimelineItem> rows = monitoringService.timeline(attemptId, currentUserService.requireCurrentUser())
                 .stream()
                 .sorted((left, right) -> right.getAt().compareTo(left.getAt()))
@@ -177,8 +191,11 @@ public class ProctoringController {
     }
 
     @GetMapping("/exams/{examId}/camera-alerts")
-    public ApiResponse<List<CameraAlertResponse>> getCameraAlerts(@PathVariable Long examId) {
-        List<CameraAlertResponse> alerts = monitoringService.getCameraAlertsByExam(examId);
+    public ApiResponse<List<CameraAlertResponse>> getCameraAlerts(
+            @PathVariable Long examId,
+            @RequestParam(defaultValue = "200") int limit
+    ) {
+        List<CameraAlertResponse> alerts = monitoringService.getCameraAlertsByExam(examId, limit);
         return ApiResponse.success(alerts);
     }
 

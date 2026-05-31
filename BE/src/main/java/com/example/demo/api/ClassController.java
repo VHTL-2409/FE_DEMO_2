@@ -69,10 +69,8 @@ public class ClassController {
     @GetMapping("/{classId}/exams")
     public ApiResponse<List<ExamResponse>> getClassExams(@PathVariable Long classId) {
         var actor = currentUserService.requireCurrentUser();
-        var classEntity = classService.requireManageableClass(classId, actor);
-        return ApiResponse.success(
-                examService.listPublishedExamsByTeacherAndClassName(classEntity.getTeacher(), classEntity.getName())
-        );
+        classService.requireManageableClass(classId, actor);
+        return ApiResponse.success(examService.listActiveExamsByClass(classId));
     }
 
     @PostMapping("/{classId}/students")
