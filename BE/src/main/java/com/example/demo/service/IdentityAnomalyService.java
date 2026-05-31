@@ -158,7 +158,7 @@ public class IdentityAnomalyService {
         );
 
         realtimeNotificationService.notifyFraudSignalRecorded(
-                attempt, signal, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
+                attempt, signal, null, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
                 attempt.getRiskLevel(), Map.of("identityScore", 20)
         );
 
@@ -206,7 +206,7 @@ public class IdentityAnomalyService {
         examAttemptRepository.save(attempt);
 
         realtimeNotificationService.notifyFraudSignalRecorded(
-                attempt, signal, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
+                attempt, signal, null, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
                 attempt.getRiskLevel(), Map.of("identityScore", 15)
         );
 
@@ -306,11 +306,11 @@ public class IdentityAnomalyService {
             );
 
             realtimeNotificationService.notifyFraudSignalRecorded(
-                    attempt, signal, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
+                    attempt, signal, null, attempt.getRiskScore() != null ? attempt.getRiskScore() : 0,
                     attempt.getRiskLevel(), Map.of("identityScore", 25)
             );
             realtimeNotificationService.notifyFraudSignalRecorded(
-                    counterpart, peerSignal, counterpart.getRiskScore() != null ? counterpart.getRiskScore() : 0,
+                    counterpart, peerSignal, null, counterpart.getRiskScore() != null ? counterpart.getRiskScore() : 0,
                     counterpart.getRiskLevel(), Map.of("identityScore", 25)
             );
         }

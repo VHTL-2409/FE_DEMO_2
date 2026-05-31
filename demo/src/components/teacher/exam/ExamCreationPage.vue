@@ -69,9 +69,6 @@
           <div v-show="activeStep === 'settings'" class="ec-merged-section">
             <ExamConfigSection
               v-model:duration="form.durationMinutes"
-              v-model:showAnswers="form.showAnswersAfterEnd"
-              v-model:allowReview="form.allowReview"
-              v-model:showScoreAfterSubmit="form.showScoreAfterSubmit"
               v-model:maxAttempts="form.maxAttempts"
             />
             <ScheduleSection
@@ -103,17 +100,23 @@
             v-model:monitorTabSwitch="form.monitorTabSwitch"
             v-model:monitorBlur="form.monitorBlur"
             v-model:monitorExitFullscreen="form.monitorExitFullscreen"
-            v-model:monitorCopyPaste="form.monitorCopyPaste"
             v-model:monitorIdleTime="form.monitorIdleTime"
-            v-model:monitorDevtools="form.monitorDevtools"
             v-model:monitorDuplicateIp="form.monitorDuplicateIp"
-            v-model:monitorFastSubmit="form.monitorFastSubmit"
             v-model:monitorRightClick="form.monitorRightClick"
             v-model:monitorPrintScreen="form.monitorPrintScreen"
             v-model:monitorRapidQuestionSwitch="form.monitorRapidQuestionSwitch"
             v-model:monitorMultiMonitor="form.monitorMultiMonitor"
             v-model:requireCameraMic="form.requireCameraMic"
+            v-model:monitorFullscreenEvasion="form.monitorFullscreenEvasion"
+            v-model:monitorNetworkInstability="form.monitorNetworkInstability"
+            v-model:monitorSessionRecovery="form.monitorSessionRecovery"
+            v-model:monitorQuestionTimingAnomaly="form.monitorQuestionTimingAnomaly"
+            v-model:monitorAnswerChangeBurst="form.monitorAnswerChangeBurst"
+            v-model:monitorAnswerSimilarity="form.monitorAnswerSimilarity"
+            v-model:monitorIpFingerprintGraph="form.monitorIpFingerprintGraph"
             v-model:enableAiProctoring="form.enableAiProctoring"
+            v-model:aiFaceDetection="form.aiFaceDetection"
+            v-model:aiEyeTracking="form.aiEyeTracking"
           />
 
           </div><!-- end .ec-form-scroll -->
@@ -223,7 +226,7 @@
 import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiError } from '../../../services/apiClient'
-import { createExam, updateExam } from '../../../services/examService'
+import { createExam, updateExam, publishExam } from '../../../services/examService'
 import { persistExamQuestionsFromForm } from '../../../services/questionService'
 import { listClasses } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
@@ -259,9 +262,6 @@ const form = reactive({
   classId: '',
   // Config
   durationMinutes: 60,
-  showAnswersAfterEnd: false,
-  allowReview: true,
-  showScoreAfterSubmit: true,
   maxAttempts: 1,
   // Questions
   questions: [],
@@ -275,17 +275,27 @@ const form = reactive({
   monitorTabSwitch: true,
   monitorBlur: true,
   monitorExitFullscreen: true,
-  monitorCopyPaste: true,
-  monitorIdleTime: true,
-  monitorDevtools: true,
+  monitorCopyPaste: false,
+  monitorIdleTime: false,
+  monitorDevtools: false,
   monitorDuplicateIp: true,
-  monitorFastSubmit: true,
+  monitorFastSubmit: false,
   monitorRightClick: true,
   monitorPrintScreen: true,
-  monitorRapidQuestionSwitch: true,
+  monitorRapidQuestionSwitch: false,
   monitorMultiMonitor: true,
   requireCameraMic: true,
-  enableAiProctoring: true
+  monitorNetworkInstability: false,
+  monitorSessionRecovery: false,
+  monitorQuestionTimingAnomaly: false,
+  monitorAnswerChangeBurst: false,
+  monitorClipboardBurst: false,
+  monitorFullscreenEvasion: true,
+  monitorAnswerSimilarity: false,
+  monitorIpFingerprintGraph: false,
+  enableAiProctoring: false,
+  aiFaceDetection: false,
+  aiEyeTracking: false
 })
 
 // Watch proctoringEnabled to reset related settings when disabled
@@ -304,8 +314,36 @@ watch(() => form.proctoringEnabled, (enabled) => {
     form.monitorPrintScreen = false
     form.monitorRapidQuestionSwitch = false
     form.monitorMultiMonitor = false
+    form.monitorFullscreenEvasion = false
+    form.monitorNetworkInstability = false
+    form.monitorSessionRecovery = false
+    form.monitorQuestionTimingAnomaly = false
+    form.monitorAnswerChangeBurst = false
+    form.monitorClipboardBurst = false
+    form.monitorAnswerSimilarity = false
+    form.monitorIpFingerprintGraph = false
     form.enableAiProctoring = false
+    form.aiFaceDetection = false
+    form.aiEyeTracking = false
   }
+})
+
+watch([() => form.aiFaceDetection, () => form.aiEyeTracking], ([face, eye]) => {
+ if (!form.requireCameraMic && (face || eye)) {
+  form.aiFaceDetection = false
+  form.aiEyeTracking = false
+  form.enableAiProctoring = false
+  return
+ }
+ form.enableAiProctoring = Boolean(face || eye)
+})
+
+watch(() => form.requireCameraMic, (required) => {
+ if (!required) {
+  form.aiFaceDetection = false
+  form.aiEyeTracking = false
+  form.enableAiProctoring = false
+ }
 })
 
 // Available classes loaded from API
@@ -541,8 +579,7 @@ const handleSaveDraft = async () => {
 
   saveState.value = 'saving'
   try {
-    const payload = buildExamPayload()
-    payload.isActive = false
+    const payload = buildExamPayload(false)
 
     if (createdExamId.value) {
       await updateExam(createdExamId.value, payload)
@@ -591,8 +628,7 @@ const handlePublish = async () => {
   saveState.value = 'saving'
 
   try {
-    const payload = buildExamPayload()
-    payload.isActive = true
+    const payload = buildExamPayload(false)
 
     let examId = createdExamId.value
     let createdExam = null
@@ -613,15 +649,15 @@ const handlePublish = async () => {
       await persistExamQuestionsFromForm(examId, form.questions)
     }
 
+    const publishedExam = await publishExam(examId)
+
     // Navigate to waiting room
     toast.success('Xuất bản đề thi thành công!')
     
     // Small delay to ensure toast is shown
     await new Promise(resolve => setTimeout(resolve, 300))
     
-    const finalCode = form.examType === 'free'
-      ? (createdExam?.code || generateExamCode())
-      : null
+    const finalCode = publishedExam?.code || createdExam?.code || ''
       
     const query = {
       examId: String(examId),
@@ -653,7 +689,7 @@ const handlePublish = async () => {
   }
 }
 
-function buildExamPayload() {
+function buildExamPayload(isActive = false) {
   const className = form.examType === 'private'
     ? (availableClasses.value.find(c => c.id == form.classId)?.name || null)
     : null
@@ -668,29 +704,36 @@ function buildExamPayload() {
     durationMinutes: Number(form.durationMinutes) || 60,
     startTime: form.startTime || null,
     endTime: form.endTime || null,
-    isActive: true,
-    monitorTabSwitch: form.monitorTabSwitch,
-    monitorBlur: form.monitorBlur,
-    monitorExitFullscreen: form.monitorExitFullscreen,
-    monitorCopyPaste: form.monitorCopyPaste,
-    monitorIdleTime: form.monitorIdleTime,
-    monitorDevtools: form.monitorDevtools,
-    monitorDuplicateIp: form.monitorDuplicateIp,
-    monitorFastSubmit: form.monitorFastSubmit,
-    monitorRightClick: form.monitorRightClick,
-    monitorPrintScreen: form.monitorPrintScreen,
-    monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
-    monitorMultiMonitor: form.monitorMultiMonitor,
+    isActive,
+    monitorTabSwitch: form.proctoringEnabled ? form.monitorTabSwitch : false,
+    monitorBlur: form.proctoringEnabled ? form.monitorBlur : false,
+    monitorExitFullscreen: form.proctoringEnabled ? form.monitorExitFullscreen : false,
+    monitorCopyPaste: false,
+    monitorIdleTime: form.proctoringEnabled ? form.monitorIdleTime : false,
+    monitorDevtools: false,
+    monitorDuplicateIp: form.proctoringEnabled ? form.monitorDuplicateIp : false,
+    monitorFastSubmit: false,
+    monitorRightClick: form.proctoringEnabled ? form.monitorRightClick : false,
+    monitorPrintScreen: form.proctoringEnabled ? form.monitorPrintScreen : false,
+    monitorRapidQuestionSwitch: form.proctoringEnabled ? form.monitorRapidQuestionSwitch : false,
+    monitorMultiMonitor: form.proctoringEnabled ? form.monitorMultiMonitor : false,
     requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
-    enableAiProctoring: form.proctoringEnabled ? form.enableAiProctoring : false,
+    monitorFullscreenEvasion: form.proctoringEnabled ? form.monitorFullscreenEvasion : false,
+    monitorNetworkInstability: form.proctoringEnabled ? form.monitorNetworkInstability : false,
+    monitorSessionRecovery: form.proctoringEnabled ? form.monitorSessionRecovery : false,
+    monitorQuestionTimingAnomaly: form.proctoringEnabled ? form.monitorQuestionTimingAnomaly : false,
+    monitorAnswerChangeBurst: form.proctoringEnabled ? form.monitorAnswerChangeBurst : false,
+    monitorClipboardBurst: false,
+    monitorAnswerSimilarity: form.proctoringEnabled ? form.monitorAnswerSimilarity : false,
+    monitorIpFingerprintGraph: form.proctoringEnabled ? form.monitorIpFingerprintGraph : false,
+    enableAiProctoring: form.proctoringEnabled && form.requireCameraMic ? form.enableAiProctoring : false,
+    aiFaceDetection: form.proctoringEnabled && form.requireCameraMic ? form.aiFaceDetection : false,
+    aiEyeTracking: form.proctoringEnabled && form.requireCameraMic ? form.aiEyeTracking : false,
     shuffleQuestions: form.shuffleQuestions,
     shuffleAnswers: form.shuffleAnswers,
-    showScoreAfterSubmit: form.showScoreAfterSubmit
+    maxAttempts: Number(form.maxAttempts) || 1,
+    allowReviewAfterSubmit: true
   }
-}
-
-function generateExamCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
 // Auto-mark step complete when data filled

@@ -10,7 +10,6 @@ import com.example.demo.common.ApiException;
 import com.example.demo.domain.entity.Assignment;
 import com.example.demo.domain.entity.Answer;
 import com.example.demo.domain.entity.AttemptStatus;
-import com.example.demo.domain.entity.ClassEntity;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
@@ -81,14 +80,13 @@ public class ExamService {
     public ExamResponse createExam(ExamRequest request, User teacher) {
         currentUserService.requireTeacherOrAdmin(teacher);
         validateExamRequest(request);
-        ClassEntity assignedClass = resolveAssignedClass(request, teacher);
+        ensureAssignedClassBelongsToTeacher(request.getClassName(), teacher);
 
         Exam exam = Exam.builder()
                 .title(request.getTitle())
                 .code(generateUniqueExamCode())
                 .description(request.getDescription())
-                .classEntity(assignedClass)
-                .className(resolveClassName(assignedClass, request.getClassName()))
+                .className(normalizeClassName(request.getClassName()))
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
                 .durationMinutes(request.getDurationMinutes())
@@ -115,17 +113,14 @@ public class ExamService {
                 .monitorFullscreenEvasion(Boolean.TRUE.equals(request.getMonitorFullscreenEvasion()) || request.getMonitorFullscreenEvasion() == null)
                 .monitorAnswerSimilarity(Boolean.TRUE.equals(request.getMonitorAnswerSimilarity()) || request.getMonitorAnswerSimilarity() == null)
                 .monitorIpFingerprintGraph(Boolean.TRUE.equals(request.getMonitorIpFingerprintGraph()) || request.getMonitorIpFingerprintGraph() == null)
-                .enableAiProctoring(Boolean.TRUE.equals(request.getEnableAiProctoring()))
-                .rulesText(normalizeRulesText(request.getRulesText()))
-                .rulesVersion(resolveRulesVersion(request.getRulesVersion(), request.getRulesText()))
-                .requireRulesAgreement(request.getRequireRulesAgreement() == null || Boolean.TRUE.equals(request.getRequireRulesAgreement()))
-                .requireIdentityVerification(resolveRequireIdentityVerification(request.getRequireIdentityVerification(), request.getRequireCameraMic(), request.getEnableAiProctoring()))
-                .identityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()))
-                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(request.getInExamIdentityCheckEnabled(), request.getRequireCameraMic(), request.getEnableAiProctoring()))
-                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()))
+                .enableAiProctoring(requestedAiProctoringEnabled(request))
+                .aiFaceDetection(requestedAiFaceDetection(request))
+                .aiEyeTracking(requestedAiEyeTracking(request))
                 .shuffleQuestions(Boolean.TRUE.equals(request.getShuffleQuestions()))
                 .shuffleAnswers(Boolean.TRUE.equals(request.getShuffleAnswers()))
                 .showScoreAfterSubmit(request.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(request.getShowScoreAfterSubmit()))
+                .maxAttempts(normalizeMaxAttempts(request.getMaxAttempts()))
+                .allowReviewAfterSubmit(request.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(request.getAllowReviewAfterSubmit()))
                 .practice(false)
                 .build();
         return toResponse(examRepository.save(exam));
@@ -284,21 +279,6 @@ public class ExamService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<ExamResponse> listActiveExamsByClass(Long classId) {
-        if (classId == null) {
-            return List.of();
-        }
-        List<Exam> exams = examRepository.findByClassEntityIdAndIsActiveTrueOrderByStartTimeAscIdDesc(classId);
-        if (exams.isEmpty()) return List.of();
-        List<Long> examIds = exams.stream().map(Exam::getId).toList();
-        Map<Long, Long> participantByExam = participantCountsByExamIds(examIds);
-        Map<Long, Long> questionCountByExam = questionCountsByExamIds(examIds);
-        return exams.stream()
-                .map(e -> toResponse(e, participantByExam.getOrDefault(e.getId(), 0L), questionCountByExam.getOrDefault(e.getId(), 0L)))
-                .toList();
-    }
-
     private Map<Long, Long> participantCountsByExamIds(List<Long> examIds) {
         if (examIds == null || examIds.isEmpty()) {
             return Map.of();
@@ -345,11 +325,6 @@ public class ExamService {
                 .durationMinutes(dur)
                 .isActive(true)
                 .createdBy(student)
-                .requireRulesAgreement(false)
-                .requireIdentityVerification(false)
-                .identityReviewPolicy("ALLOW_WITH_WARNING")
-                .inExamIdentityCheckEnabled(false)
-                .identityCheckIntervalSeconds(60)
                 .practice(true)
                 .showScoreAfterSubmit(true)
                 .build();
@@ -384,11 +359,6 @@ public class ExamService {
                 .durationMinutes(durationMinutes)
                 .isActive(true)
                 .createdBy(student)
-                .requireRulesAgreement(false)
-                .requireIdentityVerification(false)
-                .identityReviewPolicy("ALLOW_WITH_WARNING")
-                .inExamIdentityCheckEnabled(false)
-                .identityCheckIntervalSeconds(60)
                 .practice(true)
                 .showScoreAfterSubmit(true)
                 .build();
@@ -504,7 +474,7 @@ public class ExamService {
         validateExamRequest(request);
 
         Exam exam = requireManageableExam(examId, actor);
-        ClassEntity assignedClass = resolveAssignedClass(request, exam.getCreatedBy());
+        ensureAssignedClassBelongsToTeacher(request.getClassName(), exam.getCreatedBy());
 
         LocalDateTime nowInExamZone = LocalDateTime.now(VietNamTime.zone());
         if (exam.getStartTime() != null && !nowInExamZone.isBefore(exam.getStartTime())) {
@@ -516,8 +486,7 @@ public class ExamService {
             exam.setCode(generateUniqueExamCode());
         }
         exam.setDescription(request.getDescription());
-        exam.setClassEntity(assignedClass);
-        exam.setClassName(resolveClassName(assignedClass, request.getClassName()));
+        exam.setClassName(normalizeClassName(request.getClassName()));
         exam.setStartTime(request.getStartTime());
         exam.setEndTime(request.getEndTime());
         exam.setDurationMinutes(request.getDurationMinutes());
@@ -632,23 +601,25 @@ public class ExamService {
         } else if (exam.getEnableAiProctoring() == null) {
             exam.setEnableAiProctoring(Boolean.FALSE);
         }
-        exam.setRulesText(normalizeRulesText(request.getRulesText()));
-        exam.setRulesVersion(resolveRulesVersion(request.getRulesVersion(), exam.getRulesText()));
-        if (request.getRequireRulesAgreement() != null) {
-            exam.setRequireRulesAgreement(request.getRequireRulesAgreement());
-        } else if (exam.getRequireRulesAgreement() == null) {
-            exam.setRequireRulesAgreement(Boolean.TRUE);
+        if (request.getAiFaceDetection() != null) {
+            exam.setAiFaceDetection(request.getAiFaceDetection());
+        } else if (Boolean.FALSE.equals(request.getEnableAiProctoring())) {
+            exam.setAiFaceDetection(Boolean.FALSE);
+        } else if (Boolean.TRUE.equals(request.getEnableAiProctoring()) && exam.getAiFaceDetection() == null) {
+            exam.setAiFaceDetection(Boolean.TRUE);
+        } else if (exam.getAiFaceDetection() == null) {
+            exam.setAiFaceDetection(Boolean.FALSE);
         }
-        exam.setRequireIdentityVerification(resolveRequireIdentityVerification(
-                request.getRequireIdentityVerification(),
-                exam.getRequireCameraMic(),
-                exam.getEnableAiProctoring()));
-        exam.setIdentityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()));
-        exam.setInExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(
-                request.getInExamIdentityCheckEnabled(),
-                exam.getRequireCameraMic(),
-                exam.getEnableAiProctoring()));
-        exam.setIdentityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()));
+        if (request.getAiEyeTracking() != null) {
+            exam.setAiEyeTracking(request.getAiEyeTracking());
+        } else if (Boolean.FALSE.equals(request.getEnableAiProctoring())) {
+            exam.setAiEyeTracking(Boolean.FALSE);
+        } else if (Boolean.TRUE.equals(request.getEnableAiProctoring()) && exam.getAiEyeTracking() == null) {
+            exam.setAiEyeTracking(Boolean.TRUE);
+        } else if (exam.getAiEyeTracking() == null) {
+            exam.setAiEyeTracking(Boolean.FALSE);
+        }
+        exam.setEnableAiProctoring(aiProctoringEnabled(exam));
         if (request.getShuffleQuestions() != null) {
             exam.setShuffleQuestions(request.getShuffleQuestions());
         }
@@ -658,7 +629,19 @@ public class ExamService {
         if (request.getShowScoreAfterSubmit() != null) {
             exam.setShowScoreAfterSubmit(request.getShowScoreAfterSubmit());
         }
-        return toResponse(examRepository.save(exam));
+        if (request.getMaxAttempts() != null) {
+            exam.setMaxAttempts(normalizeMaxAttempts(request.getMaxAttempts()));
+        } else if (exam.getMaxAttempts() == null) {
+            exam.setMaxAttempts(1);
+        }
+        if (request.getAllowReviewAfterSubmit() != null) {
+            exam.setAllowReviewAfterSubmit(request.getAllowReviewAfterSubmit());
+        } else if (exam.getAllowReviewAfterSubmit() == null) {
+            exam.setAllowReviewAfterSubmit(Boolean.TRUE);
+        }
+        Exam saved = examRepository.save(exam);
+        syncPublishedAssignments(saved);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -762,25 +745,21 @@ public class ExamService {
         if (request.getEnableAiProctoring() != null) {
             exam.setEnableAiProctoring(request.getEnableAiProctoring());
         }
-        if (request.getRulesText() != null) {
-            exam.setRulesText(normalizeRulesText(request.getRulesText()));
-            exam.setRulesVersion(resolveRulesVersion(request.getRulesVersion(), exam.getRulesText()));
+        if (request.getAiFaceDetection() != null) {
+            exam.setAiFaceDetection(request.getAiFaceDetection());
+        } else if (Boolean.FALSE.equals(request.getEnableAiProctoring())) {
+            exam.setAiFaceDetection(Boolean.FALSE);
+        } else if (Boolean.TRUE.equals(request.getEnableAiProctoring()) && exam.getAiFaceDetection() == null) {
+            exam.setAiFaceDetection(Boolean.TRUE);
         }
-        if (request.getRequireRulesAgreement() != null) {
-            exam.setRequireRulesAgreement(request.getRequireRulesAgreement());
+        if (request.getAiEyeTracking() != null) {
+            exam.setAiEyeTracking(request.getAiEyeTracking());
+        } else if (Boolean.FALSE.equals(request.getEnableAiProctoring())) {
+            exam.setAiEyeTracking(Boolean.FALSE);
+        } else if (Boolean.TRUE.equals(request.getEnableAiProctoring()) && exam.getAiEyeTracking() == null) {
+            exam.setAiEyeTracking(Boolean.TRUE);
         }
-        if (request.getRequireIdentityVerification() != null) {
-            exam.setRequireIdentityVerification(request.getRequireIdentityVerification());
-        }
-        if (request.getIdentityReviewPolicy() != null) {
-            exam.setIdentityReviewPolicy(normalizeIdentityReviewPolicy(request.getIdentityReviewPolicy()));
-        }
-        if (request.getInExamIdentityCheckEnabled() != null) {
-            exam.setInExamIdentityCheckEnabled(request.getInExamIdentityCheckEnabled());
-        }
-        if (request.getIdentityCheckIntervalSeconds() != null) {
-            exam.setIdentityCheckIntervalSeconds(normalizeIdentityCheckInterval(request.getIdentityCheckIntervalSeconds()));
-        }
+        exam.setEnableAiProctoring(aiProctoringEnabled(exam));
     }
 
     /**
@@ -809,8 +788,8 @@ public class ExamService {
                 .title(exam.getTitle() + " (Đợt mới)")
                 .openAt(request.getStartTime())
                 .closeAt(request.getEndTime())
-                .maxAttempts(1)
-                .allowReviewAfterSubmit(true)
+                .maxAttempts(normalizeMaxAttempts(exam.getMaxAttempts()))
+                .allowReviewAfterSubmit(exam.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(exam.getAllowReviewAfterSubmit()))
                 .isPublished(true)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -848,6 +827,10 @@ public class ExamService {
     @Transactional
     public ExamResponse publishExam(Long examId, User actor) {
         Exam exam = requireManageableExam(examId, actor);
+        if (questionRepository.countByExam(exam) <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Không thể xuất bản đề thi chưa có câu hỏi");
+        }
+        ensurePublishedAssignment(exam, actor);
         exam.setIsActive(true);
         return toResponse(examRepository.save(exam));
     }
@@ -855,8 +838,30 @@ public class ExamService {
     @Transactional
     public ExamResponse unpublishExam(Long examId, User actor) {
         Exam exam = requireManageableExam(examId, actor);
+        for (Assignment assignment : assignmentRepository.findPublishedByExamOrderByCreatedAtDesc(exam)) {
+            assignment.setIsPublished(false);
+            assignmentRepository.save(assignment);
+        }
         exam.setIsActive(false);
         return toResponse(examRepository.save(exam));
+    }
+
+    private void ensurePublishedAssignment(Exam exam, User actor) {
+        if (assignmentRepository.existsByExamAndIsPublishedTrue(exam)) {
+            return;
+        }
+        Assignment assignment = Assignment.builder()
+                .exam(exam)
+                .createdBy(actor)
+                .title(exam.getTitle())
+                .openAt(exam.getStartTime())
+                .closeAt(exam.getEndTime())
+                .maxAttempts(normalizeMaxAttempts(exam.getMaxAttempts()))
+                .allowReviewAfterSubmit(exam.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(exam.getAllowReviewAfterSubmit()))
+                .isPublished(true)
+                .createdAt(LocalDateTime.now(VietNamTime.zone()))
+                .build();
+        assignmentRepository.save(assignment);
     }
 
     @Transactional
@@ -880,7 +885,6 @@ public class ExamService {
                 .title("Bản sao — " + original.getTitle())
                 .code(generateUniqueExamCode())
                 .description(original.getDescription())
-                .classEntity(original.getClassEntity())
                 .className(original.getClassName())
                 .startTime(null)
                 .endTime(null)
@@ -909,17 +913,14 @@ public class ExamService {
                 .monitorFullscreenEvasion(original.getMonitorFullscreenEvasion())
                 .monitorAnswerSimilarity(original.getMonitorAnswerSimilarity())
                 .monitorIpFingerprintGraph(original.getMonitorIpFingerprintGraph())
-                .enableAiProctoring(original.getEnableAiProctoring())
-                .rulesText(original.getRulesText())
-                .rulesVersion(original.getRulesVersion())
-                .requireRulesAgreement(original.getRequireRulesAgreement() == null || Boolean.TRUE.equals(original.getRequireRulesAgreement()))
-                .requireIdentityVerification(resolveRequireIdentityVerification(original.getRequireIdentityVerification(), original.getRequireCameraMic(), original.getEnableAiProctoring()))
-                .identityReviewPolicy(normalizeIdentityReviewPolicy(original.getIdentityReviewPolicy()))
-                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(original.getInExamIdentityCheckEnabled(), original.getRequireCameraMic(), original.getEnableAiProctoring()))
-                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(original.getIdentityCheckIntervalSeconds()))
+                .enableAiProctoring(aiProctoringEnabled(original))
+                .aiFaceDetection(aiFaceDetectionEnabled(original))
+                .aiEyeTracking(aiEyeTrackingEnabled(original))
                 .shuffleQuestions(original.getShuffleQuestions())
                 .shuffleAnswers(original.getShuffleAnswers())
                 .showScoreAfterSubmit(original.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(original.getShowScoreAfterSubmit()))
+                .maxAttempts(normalizeMaxAttempts(original.getMaxAttempts()))
+                .allowReviewAfterSubmit(original.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(original.getAllowReviewAfterSubmit()))
                 .practice(false)
                 .build();
         examRepository.save(copy);
@@ -989,13 +990,11 @@ public class ExamService {
             if (attempt.getStudent() == null) continue;
 
             String statusLabel = switch (attempt.getStatus()) {
-                case WAITING -> "Đang chờ";
                 case IN_PROGRESS -> "Đang thi";
                 case PAUSED -> "Tạm dừng";
                 case SUBMITTED, AUTO_SUBMITTED -> "Đã nộp";
                 case STOPPED -> "Bị dừng";
             };
-            LocalDateTime joinedAt = attempt.getJoinedAt() != null ? attempt.getJoinedAt() : attempt.getStartedAt();
 
             waitingStudents.add(WaitingStudentResponse.builder()
                     .attemptId(attempt.getId())
@@ -1004,10 +1003,10 @@ public class ExamService {
                             attempt.getStudent().getFullName() : attempt.getStudent().getUsername())
                     .studentEmail(attempt.getStudent().getEmail())
                     .status(statusLabel)
-                    .statusCode(attempt.getStatus() != null ? attempt.getStatus().name() : null)
                     .riskScore(attempt.getRiskScore())
                     .suspicious(attempt.getSuspicious())
-                    .joinedAt(joinedAt != null ? DateTimeUtils.toOffset(joinedAt, VietNamTime.zone()).toString() : null)
+                    .joinedAt(attempt.getStartedAt() != null ?
+                            DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()).toString() : null)
                     .build());
         }
 
@@ -1094,12 +1093,6 @@ public class ExamService {
     }
 
     private void enforceStudentClassAccess(Exam exam, User actor) {
-        if (exam.getClassEntity() != null && exam.getClassEntity().getId() != null) {
-            if (!classService.isStudentEnrolled(exam.getClassEntity().getId(), actor.getId())) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "Báº¡n khÃ´ng thuá»™c lá»›p Ä‘Æ°á»£c phÃ©p vÃ o bÃ i thi nÃ y");
-            }
-            return;
-        }
         String className = normalizeClassName(exam.getClassName());
         if (className == null) {
             return;
@@ -1148,28 +1141,24 @@ public class ExamService {
                 && !request.getStartTime().isBefore(request.getEndTime())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "startTime must be strictly before endTime");
         }
+        if (request.getMaxAttempts() != null && request.getMaxAttempts() <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "maxAttempts must be greater than 0");
+        }
     }
 
-    private ClassEntity resolveAssignedClass(ExamRequest request, User teacher) {
-        if (request == null || teacher == null) {
-            return null;
-        }
-        if (request.getClassId() != null) {
-            return classService.requireAssignableClassForExam(request.getClassId(), teacher);
-        }
-        String normalizedClassName = normalizeClassName(request.getClassName());
-        if (normalizedClassName == null) {
-            return null;
-        }
-        return classService.findTeacherClassByName(teacher, normalizedClassName)
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Lá»›p Ä‘Æ°á»£c gÃ¡n cho bÃ i thi khÃ´ng há»£p lá»‡"));
+    private int normalizeMaxAttempts(Integer maxAttempts) {
+        return maxAttempts == null || maxAttempts <= 0 ? 1 : maxAttempts;
     }
 
-    private String resolveClassName(ClassEntity assignedClass, String fallbackClassName) {
-        if (assignedClass != null) {
-            return normalizeClassName(assignedClass.getName());
+    private void syncPublishedAssignments(Exam exam) {
+        for (Assignment assignment : assignmentRepository.findPublishedByExamOrderByCreatedAtDesc(exam)) {
+            assignment.setTitle(exam.getTitle());
+            assignment.setOpenAt(exam.getStartTime());
+            assignment.setCloseAt(exam.getEndTime());
+            assignment.setMaxAttempts(normalizeMaxAttempts(exam.getMaxAttempts()));
+            assignment.setAllowReviewAfterSubmit(exam.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(exam.getAllowReviewAfterSubmit()));
+            assignmentRepository.save(assignment);
         }
-        return normalizeClassName(fallbackClassName);
     }
 
     private void ensureAssignedClassBelongsToTeacher(String className, User teacher) {
@@ -1188,70 +1177,6 @@ public class ExamService {
         }
         String normalized = className.trim();
         return normalized.isEmpty() ? null : normalized;
-    }
-
-    private String normalizeRulesText(String rulesText) {
-        if (rulesText == null || rulesText.trim().isEmpty()) {
-            return null;
-        }
-        return rulesText.trim();
-    }
-
-    private String resolveRulesText(Exam exam) {
-        String custom = exam == null ? null : normalizeRulesText(exam.getRulesText());
-        if (custom != null) {
-            return custom;
-        }
-        return """
-                1. Thí sinh phải tự làm bài, không trao đổi, không sử dụng tài liệu hoặc thiết bị ngoài phạm vi cho phép.
-                2. Thí sinh phải duy trì camera trong suốt thời gian làm bài nếu kỳ thi yêu cầu giám sát.
-                3. Không rời khỏi màn hình thi, không chuyển tab, không mở công cụ phát triển hoặc phần mềm hỗ trợ.
-                4. Hệ thống có thể ghi nhận sự kiện giám sát, ảnh xác minh danh tính và tín hiệu rủi ro để giám thị xem xét.
-                5. Vi phạm quy chế có thể khiến bài thi bị tạm dừng, đình chỉ hoặc chuyển sang trạng thái cần duyệt.
-                """.trim();
-    }
-
-    private String resolveRulesVersion(String explicitVersion, String rulesText) {
-        if (explicitVersion != null && !explicitVersion.trim().isEmpty()) {
-            return explicitVersion.trim();
-        }
-        String source = normalizeRulesText(rulesText);
-        if (source == null) {
-            source = "DEFAULT_ONLINE_EXAM_RULES";
-        }
-        return "rules-" + Integer.toHexString(source.hashCode());
-    }
-
-    private Boolean resolveRequireIdentityVerification(Boolean explicit, Boolean requireCameraMic, Boolean enableAiProctoring) {
-        if (explicit != null) {
-            return explicit;
-        }
-        return Boolean.TRUE.equals(requireCameraMic) || Boolean.TRUE.equals(enableAiProctoring);
-    }
-
-    private Boolean resolveInExamIdentityCheckEnabled(Boolean explicit, Boolean requireCameraMic, Boolean enableAiProctoring) {
-        if (explicit != null) {
-            return explicit;
-        }
-        return Boolean.TRUE.equals(requireCameraMic) || Boolean.TRUE.equals(enableAiProctoring);
-    }
-
-    private String normalizeIdentityReviewPolicy(String policy) {
-        if (policy == null || policy.isBlank()) {
-            return "ALLOW_WITH_WARNING";
-        }
-        String normalized = policy.trim().toUpperCase();
-        if (!normalized.equals("ALLOW_WITH_WARNING") && !normalized.equals("BLOCK_UNTIL_VERIFIED")) {
-            return "ALLOW_WITH_WARNING";
-        }
-        return normalized;
-    }
-
-    private Integer normalizeIdentityCheckInterval(Integer seconds) {
-        if (seconds == null) {
-            return 60;
-        }
-        return Math.max(30, Math.min(seconds, 600));
     }
 
     private String generateUniqueExamCode() {
@@ -1293,7 +1218,6 @@ public class ExamService {
                 .durationMinutes(exam.getDurationMinutes())
                 .isActive(exam.getIsActive())
                 .isArchived(Boolean.TRUE.equals(exam.getIsArchived()))
-                .classId(exam.getClassEntity() == null ? null : exam.getClassEntity().getId())
                 .className(exam.getClassName())
                 .createdBy(exam.getCreatedBy() == null ? null : exam.getCreatedBy().getUsername())
                 .questionCount(questionCount)
@@ -1319,17 +1243,54 @@ public class ExamService {
                 .monitorFullscreenEvasion(exam.getMonitorFullscreenEvasion())
                 .monitorAnswerSimilarity(exam.getMonitorAnswerSimilarity())
                 .monitorIpFingerprintGraph(exam.getMonitorIpFingerprintGraph())
-                .enableAiProctoring(exam.getEnableAiProctoring())
-                .rulesText(resolveRulesText(exam))
-                .rulesVersion(resolveRulesVersion(exam.getRulesVersion(), exam.getRulesText()))
-                .requireRulesAgreement(exam.getRequireRulesAgreement() == null || Boolean.TRUE.equals(exam.getRequireRulesAgreement()))
-                .requireIdentityVerification(resolveRequireIdentityVerification(exam.getRequireIdentityVerification(), exam.getRequireCameraMic(), exam.getEnableAiProctoring()))
-                .identityReviewPolicy(normalizeIdentityReviewPolicy(exam.getIdentityReviewPolicy()))
-                .inExamIdentityCheckEnabled(resolveInExamIdentityCheckEnabled(exam.getInExamIdentityCheckEnabled(), exam.getRequireCameraMic(), exam.getEnableAiProctoring()))
-                .identityCheckIntervalSeconds(normalizeIdentityCheckInterval(exam.getIdentityCheckIntervalSeconds()))
+                .enableAiProctoring(aiProctoringEnabled(exam))
+                .aiFaceDetection(aiFaceDetectionEnabled(exam))
+                .aiEyeTracking(aiEyeTrackingEnabled(exam))
                 .shuffleQuestions(exam.getShuffleQuestions())
                 .shuffleAnswers(exam.getShuffleAnswers())
                 .showScoreAfterSubmit(exam.getShowScoreAfterSubmit() == null || Boolean.TRUE.equals(exam.getShowScoreAfterSubmit()))
+                .maxAttempts(normalizeMaxAttempts(exam.getMaxAttempts()))
+                .allowReviewAfterSubmit(exam.getAllowReviewAfterSubmit() == null || Boolean.TRUE.equals(exam.getAllowReviewAfterSubmit()))
                 .build();
+    }
+
+    private boolean requestedAiProctoringEnabled(ExamRequest request) {
+        return Boolean.TRUE.equals(request.getEnableAiProctoring())
+                || requestedAiFaceDetection(request)
+                || requestedAiEyeTracking(request);
+    }
+
+    private boolean requestedAiFaceDetection(ExamRequest request) {
+        if (request.getAiFaceDetection() != null) {
+            return Boolean.TRUE.equals(request.getAiFaceDetection());
+        }
+        return Boolean.TRUE.equals(request.getEnableAiProctoring());
+    }
+
+    private boolean requestedAiEyeTracking(ExamRequest request) {
+        if (request.getAiEyeTracking() != null) {
+            return Boolean.TRUE.equals(request.getAiEyeTracking());
+        }
+        return Boolean.TRUE.equals(request.getEnableAiProctoring());
+    }
+
+    private boolean aiProctoringEnabled(Exam exam) {
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring())
+                || aiFaceDetectionEnabled(exam)
+                || aiEyeTrackingEnabled(exam);
+    }
+
+    private boolean aiFaceDetectionEnabled(Exam exam) {
+        if (exam.getAiFaceDetection() != null) {
+            return Boolean.TRUE.equals(exam.getAiFaceDetection());
+        }
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring());
+    }
+
+    private boolean aiEyeTrackingEnabled(Exam exam) {
+        if (exam.getAiEyeTracking() != null) {
+            return Boolean.TRUE.equals(exam.getAiEyeTracking());
+        }
+        return Boolean.TRUE.equals(exam.getEnableAiProctoring());
     }
 }

@@ -53,10 +53,6 @@ public class Exam {
     private String className;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id")
-    private ClassEntity classEntity;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
@@ -126,29 +122,11 @@ public class Exam {
     @Column(name = "enable_ai_proctoring")
     private Boolean enableAiProctoring;
 
-    @Column(name = "rules_text", columnDefinition = "TEXT")
-    private String rulesText;
+    @Column(name = "ai_face_detection")
+    private Boolean aiFaceDetection;
 
-    @Column(name = "rules_version", length = 64)
-    private String rulesVersion;
-
-    @Column(name = "require_rules_agreement")
-    @Builder.Default
-    private Boolean requireRulesAgreement = true;
-
-    @Column(name = "require_identity_verification")
-    private Boolean requireIdentityVerification;
-
-    @Column(name = "identity_review_policy", length = 40)
-    @Builder.Default
-    private String identityReviewPolicy = "ALLOW_WITH_WARNING";
-
-    @Column(name = "in_exam_identity_check_enabled")
-    private Boolean inExamIdentityCheckEnabled;
-
-    @Column(name = "identity_check_interval_seconds")
-    @Builder.Default
-    private Integer identityCheckIntervalSeconds = 60;
+    @Column(name = "ai_eye_tracking")
+    private Boolean aiEyeTracking;
 
     @Column(name = "shuffle_questions")
     @Builder.Default
@@ -168,4 +146,12 @@ public class Exam {
     @Column(name = "show_score_after_submit")
     @Builder.Default
     private Boolean showScoreAfterSubmit = true;
+
+    @Column(name = "max_attempts")
+    @Builder.Default
+    private Integer maxAttempts = 1;
+
+    @Column(name = "allow_review_after_submit")
+    @Builder.Default
+    private Boolean allowReviewAfterSubmit = true;
 }

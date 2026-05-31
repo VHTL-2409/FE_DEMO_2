@@ -33,6 +33,7 @@ public class TeacherAlertGateway {
             Long examId,
             Long attemptId,
             FraudSignal signal,
+            Integer scoreContribution,
             int riskScore,
             RiskLevel level,
             Map<String, Integer> breakdown
@@ -43,6 +44,7 @@ public class TeacherAlertGateway {
                 .category(signal.getCategory())
                 .displayMessage(signal.getDisplayMessage())
                 .riskImpact(signal.getRiskImpact())
+                .scoreContribution(scoreContribution)
                 .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
                 .confidence(signal.getConfidence())
                 .evidence(signal.getEvidence())
@@ -452,7 +454,8 @@ public class TeacherAlertGateway {
             Long examId,
             Long attemptId,
             String student,
-            FraudSignal signal
+            FraudSignal signal,
+            Integer scoreContribution
     ) {
         AlertPayload.SignalInfo signalInfo = AlertPayload.SignalInfo.builder()
                 .id(signal.getId())
@@ -460,6 +463,7 @@ public class TeacherAlertGateway {
                 .category(signal.getCategory())
                 .displayMessage(signal.getDisplayMessage())
                 .riskImpact(signal.getRiskImpact())
+                .scoreContribution(scoreContribution)
                 .severity(signal.getSeverity() != null ? signal.getSeverity().name() : null)
                 .confidence(signal.getConfidence())
                 .evidence(signal.getEvidence())
@@ -589,6 +593,7 @@ public class TeacherAlertGateway {
             private String category;
             private String displayMessage;
             private Integer riskImpact;
+            private Integer scoreContribution;
             private String severity;
             private Double confidence;
             private String evidence;

@@ -389,11 +389,11 @@
 
               <div class="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                 <span
-                  v-if="event.riskImpact != null"
+                  v-if="Number(event.scoreContribution) > 0"
                   class="rounded-full px-2 py-1"
                   style="background-color: var(--ds-danger-bg); color: var(--ds-danger)"
                 >
-                  {{ formatRiskImpact(event.riskImpact) }}
+                  {{ formatRiskImpact(event.scoreContribution) }}
                 </span>
               </div>
             </article>
@@ -908,6 +908,7 @@ function behaviorBucketSize(eventType = '') {
 }
 
 function preferBehaviorEvent(candidate = {}, existing = {}) {
+  if (candidate.scoreContribution != null && existing.scoreContribution == null) return true
   if (candidate.riskImpact != null && existing.riskImpact == null) return true
   if (candidate.confidence != null && existing.confidence == null) return true
   if (getSeverityRank(candidate.severity) > getSeverityRank(existing.severity)) return true
@@ -1029,6 +1030,7 @@ function normalizeTimelineItem(item = {}) {
     iconBg: toneSoftBg(tone),
     icon: BEHAVIOR_ICONS[eventType] || 'activity',
     riskImpact: toNumberOrNull(item.riskImpact),
+    scoreContribution: toNumberOrNull(item.scoreContribution),
     confidence: toNumberOrNull(item.confidence),
     source,
     _bucketAt: bucketAt

@@ -279,9 +279,18 @@
                       <span class="smd-tl-item__time">{{ formatTime(evt.at) }}</span>
                     </div>
                     <p v-if="evt.details" class="smd-tl-item__details">{{ evt.details }}</p>
-                    <span class="smd-tl-item__sev" :class="`smd-tl-item__sev--${getSeverityStatus(evt.severity)}`">
-                      {{ getSeverityLabel(evt.severity) }}
-                    </span>
+                    <div class="smd-tl-item__badges">
+                      <span class="smd-tl-item__sev" :class="`smd-tl-item__sev--${getSeverityStatus(evt.severity)}`">
+                        {{ getSeverityLabel(evt.severity) }}
+                      </span>
+                      <span
+                        v-if="Number(evt.scoreContribution) > 0"
+                        class="smd-tl-item__impact"
+                        :class="evt.scoreContribution >= 15 ? 'smd-tl-item__impact--high' : 'smd-tl-item__impact--mid'"
+                      >
+                        {{ formatRiskImpact(evt.scoreContribution) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -865,6 +874,7 @@ function preferTimelineItem(candidate = {}, existing = {}) {
   }
   if (existingType === 'FRAUD_SIGNAL' && candidateType !== 'FRAUD_SIGNAL') return false
   if (candidate.details && !existing.details) return true
+  if (candidate.scoreContribution != null && existing.scoreContribution == null) return true
   if (candidate.riskImpact != null && existing.riskImpact == null) return true
   if (candidate.confidence != null && existing.confidence == null) return true
   const candidateText = normalizeTimelineText(candidate.details || candidate.message || candidate.displayMessage)
@@ -962,6 +972,18 @@ const getVLabel = (type) => {
   return V_LABELS[signalType] || signalType || '—'
 }
 const getSeverityLabel = (s) => SEVERITY_LABELS[s] || s || '—'
+
+function toNumberOrNull(value) {
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function formatRiskImpact(value) {
+  const number = toNumberOrNull(value)
+  if (number == null || number === 0) return ''
+  return number > 0 ? `+${number}` : String(number)
+}
 const getSeverityStatus = (s) => s === 'HIGH' || s === 'CRITICAL' ? 'high' : s === 'MEDIUM' ? 'medium' : 'low'
 const pColor = (l) => l === 'high' ? 'var(--mon-danger)' : l === 'medium' ? 'var(--mon-warning)' : 'var(--mon-info)'
 const sColor = (score) => score >= 60 ? 'var(--mon-danger)' : score >= 30 ? 'var(--mon-warning)' : 'var(--mon-info)'
@@ -1443,6 +1465,12 @@ onUnmounted(() => {
 .smd-tl-item__type { font-size: 0.8rem; font-weight: 700; }
 .smd-tl-item__time { font-size: 0.7rem; color: var(--mon-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
 .smd-tl-item__details { font-size: 0.75rem; color: var(--mon-text-secondary); margin: 0 0 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.smd-tl-item__badges {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
 .smd-tl-item__sev {
   display: inline-flex;
   padding: 0.1rem 0.5rem;
@@ -1453,6 +1481,16 @@ onUnmounted(() => {
 .smd-tl-item__sev--high { background: var(--mon-danger-soft); color: var(--mon-danger); }
 .smd-tl-item__sev--medium { background: var(--mon-warning-soft); color: var(--mon-warning); }
 .smd-tl-item__sev--low { background: var(--mon-info-soft); color: var(--mon-info); }
+.smd-tl-item__impact {
+  display: inline-flex;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.smd-tl-item__impact--high { background: var(--mon-danger-soft); color: var(--mon-danger); }
+.smd-tl-item__impact--mid { background: var(--mon-warning-soft); color: var(--mon-warning); }
 
 /* Realtime list */
 .smd-realtime-list { display: flex; flex-direction: column; }

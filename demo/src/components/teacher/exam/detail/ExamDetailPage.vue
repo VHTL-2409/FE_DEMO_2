@@ -64,7 +64,6 @@
                 v-model:duration="form.durationMinutes"
                 v-model:shuffleQuestions="form.shuffleQuestions"
                 v-model:shuffleAnswers="form.shuffleAnswers"
-                v-model:showScoreAfterSubmit="form.showScoreAfterSubmit"
                 v-model:maxAttempts="form.maxAttempts"
               />
             </div>
@@ -94,17 +93,22 @@
                 v-model:monitorTabSwitch="form.monitorTabSwitch"
                 v-model:monitorBlur="form.monitorBlur"
                 v-model:monitorExitFullscreen="form.monitorExitFullscreen"
-                v-model:monitorCopyPaste="form.monitorCopyPaste"
                 v-model:monitorIdleTime="form.monitorIdleTime"
-                v-model:monitorDevtools="form.monitorDevtools"
                 v-model:monitorDuplicateIp="form.monitorDuplicateIp"
-                v-model:monitorFastSubmit="form.monitorFastSubmit"
                 v-model:monitorRightClick="form.monitorRightClick"
                 v-model:monitorPrintScreen="form.monitorPrintScreen"
                 v-model:monitorRapidQuestionSwitch="form.monitorRapidQuestionSwitch"
                 v-model:monitorMultiMonitor="form.monitorMultiMonitor"
                 v-model:requireCameraMic="form.requireCameraMic"
+                v-model:monitorNetworkInstability="form.monitorNetworkInstability"
+                v-model:monitorSessionRecovery="form.monitorSessionRecovery"
+                v-model:monitorQuestionTimingAnomaly="form.monitorQuestionTimingAnomaly"
+                v-model:monitorAnswerChangeBurst="form.monitorAnswerChangeBurst"
+                v-model:monitorAnswerSimilarity="form.monitorAnswerSimilarity"
+                v-model:monitorIpFingerprintGraph="form.monitorIpFingerprintGraph"
                 v-model:enableAiProctoring="form.enableAiProctoring"
+                v-model:aiFaceDetection="form.aiFaceDetection"
+                v-model:aiEyeTracking="form.aiEyeTracking"
               />
             </div>
 
@@ -402,7 +406,6 @@ const form = reactive({
   durationMinutes: 60,
   shuffleQuestions: false,
   shuffleAnswers: false,
-  showScoreAfterSubmit: true,
   maxAttempts: 1,
   startTime: '',
   endTime: '',
@@ -411,24 +414,56 @@ const form = reactive({
   monitorTabSwitch: true,
   monitorBlur: true,
   monitorExitFullscreen: true,
-  monitorCopyPaste: true,
+  monitorCopyPaste: false,
   monitorIdleTime: true,
-  monitorDevtools: true,
+  monitorDevtools: false,
   monitorDuplicateIp: true,
-  monitorFastSubmit: true,
+  monitorFastSubmit: false,
   monitorRightClick: true,
   monitorPrintScreen: true,
   monitorRapidQuestionSwitch: true,
   monitorMultiMonitor: true,
   requireCameraMic: true,
+  monitorNetworkInstability: true,
+  monitorSessionRecovery: true,
+  monitorQuestionTimingAnomaly: true,
+  monitorAnswerChangeBurst: true,
+  monitorClipboardBurst: false,
+  monitorAnswerSimilarity: true,
+  monitorIpFingerprintGraph: true,
   enableAiProctoring: false,
-  questions: []
+  aiFaceDetection: false,
+  aiEyeTracking: false,
+ questions: []
 })
 
 const computedExam = computed(() => {
   if (!exam.value) return null
   return {
     ...exam.value,
+    monitorTabSwitch: form.monitorTabSwitch,
+    monitorBlur: form.monitorBlur,
+    monitorExitFullscreen: form.monitorExitFullscreen,
+    monitorCopyPaste: form.monitorCopyPaste,
+    monitorIdleTime: form.monitorIdleTime,
+    monitorDevtools: form.monitorDevtools,
+    monitorDuplicateIp: form.monitorDuplicateIp,
+    monitorFastSubmit: form.monitorFastSubmit,
+    monitorRightClick: form.monitorRightClick,
+    monitorPrintScreen: form.monitorPrintScreen,
+    monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
+    monitorMultiMonitor: form.monitorMultiMonitor,
+    requireCameraMic: form.requireCameraMic,
+    monitorNetworkInstability: form.monitorNetworkInstability,
+    monitorSessionRecovery: form.monitorSessionRecovery,
+    monitorQuestionTimingAnomaly: form.monitorQuestionTimingAnomaly,
+    monitorAnswerChangeBurst: form.monitorAnswerChangeBurst,
+    monitorClipboardBurst: form.monitorClipboardBurst,
+    monitorAnswerSimilarity: form.monitorAnswerSimilarity,
+    monitorIpFingerprintGraph: form.monitorIpFingerprintGraph,
+    enableAiProctoring: form.enableAiProctoring,
+    aiFaceDetection: form.aiFaceDetection,
+    aiEyeTracking: form.aiEyeTracking,
     questionCount: form.questions.length || exam.value.questionCount || 0
   }
 })
@@ -446,8 +481,54 @@ const examHasStarted = computed(() => {
 })
 
 watch(form, () => {
-  hasUnsavedChanges = true
+ hasUnsavedChanges = true
 }, { deep: true })
+
+watch([() => form.aiFaceDetection, () => form.aiEyeTracking], ([face, eye]) => {
+ if (!form.requireCameraMic && (face || eye)) {
+  form.aiFaceDetection = false
+  form.aiEyeTracking = false
+  form.enableAiProctoring = false
+  return
+ }
+ form.enableAiProctoring = Boolean(face || eye)
+})
+
+watch(() => form.requireCameraMic, (required) => {
+ if (!required) {
+  form.aiFaceDetection = false
+  form.aiEyeTracking = false
+  form.enableAiProctoring = false
+ }
+})
+
+watch(() => form.proctoringEnabled, (enabled) => {
+  if (!enabled) {
+    form.requireCameraMic = false
+    form.monitorTabSwitch = false
+    form.monitorBlur = false
+    form.monitorExitFullscreen = false
+    form.monitorCopyPaste = false
+    form.monitorIdleTime = false
+    form.monitorDevtools = false
+    form.monitorDuplicateIp = false
+    form.monitorFastSubmit = false
+    form.monitorRightClick = false
+    form.monitorPrintScreen = false
+    form.monitorRapidQuestionSwitch = false
+    form.monitorMultiMonitor = false
+    form.monitorNetworkInstability = false
+    form.monitorSessionRecovery = false
+    form.monitorQuestionTimingAnomaly = false
+    form.monitorAnswerChangeBurst = false
+    form.monitorClipboardBurst = false
+    form.monitorAnswerSimilarity = false
+    form.monitorIpFingerprintGraph = false
+    form.enableAiProctoring = false
+    form.aiFaceDetection = false
+    form.aiEyeTracking = false
+  }
+})
 
 const loadExam = async () => {
   const id = routeExamId.value
@@ -498,27 +579,39 @@ const populateForm = (data) => {
   form.durationMinutes = data.durationMinutes || 60
   form.shuffleQuestions = data.shuffleQuestions || false
   form.shuffleAnswers = data.shuffleAnswers || false
-  form.showScoreAfterSubmit = data.showScoreAfterSubmit !== false
   form.maxAttempts = data.maxAttempts || 1
   form.startTime = data.startTime || ''
   form.endTime = data.endTime || ''
   form.timezone = data.timezone || getBrowserTimezone()
-  form.proctoringEnabled = data.enableAiProctoring === true || data.monitorTabSwitch || data.monitorBlur || data.monitorDevtools
+  form.proctoringEnabled = data.enableAiProctoring === true
+    || data.monitorTabSwitch || data.monitorBlur
+    || data.monitorNetworkInstability || data.monitorSessionRecovery
+    || data.monitorQuestionTimingAnomaly || data.monitorAnswerChangeBurst
+    || data.monitorAnswerSimilarity || data.monitorIpFingerprintGraph
   form.monitorTabSwitch = data.monitorTabSwitch !== false
   form.monitorBlur = data.monitorBlur !== false
   form.monitorExitFullscreen = data.monitorExitFullscreen !== false
-  form.monitorCopyPaste = data.monitorCopyPaste !== false
+  form.monitorCopyPaste = false
   form.monitorIdleTime = data.monitorIdleTime !== false
-  form.monitorDevtools = data.monitorDevtools !== false
+  form.monitorDevtools = false
   form.monitorDuplicateIp = data.monitorDuplicateIp !== false
-  form.monitorFastSubmit = data.monitorFastSubmit !== false
+  form.monitorFastSubmit = false
   form.monitorRightClick = data.monitorRightClick !== false
   form.monitorPrintScreen = data.monitorPrintScreen !== false
   form.monitorRapidQuestionSwitch = data.monitorRapidQuestionSwitch !== false
   form.monitorMultiMonitor = data.monitorMultiMonitor !== false
   form.requireCameraMic = data.requireCameraMic !== false
-  form.enableAiProctoring = data.enableAiProctoring === true
-  hasUnsavedChanges = false
+  form.monitorNetworkInstability = data.monitorNetworkInstability !== false
+  form.monitorSessionRecovery = data.monitorSessionRecovery !== false
+  form.monitorQuestionTimingAnomaly = data.monitorQuestionTimingAnomaly !== false
+  form.monitorAnswerChangeBurst = data.monitorAnswerChangeBurst !== false
+  form.monitorClipboardBurst = false
+  form.monitorAnswerSimilarity = data.monitorAnswerSimilarity !== false
+  form.monitorIpFingerprintGraph = data.monitorIpFingerprintGraph !== false
+  form.aiFaceDetection = form.requireCameraMic && (data.aiFaceDetection != null ? data.aiFaceDetection === true : data.enableAiProctoring === true)
+  form.aiEyeTracking = form.requireCameraMic && (data.aiEyeTracking != null ? data.aiEyeTracking === true : data.enableAiProctoring === true)
+  form.enableAiProctoring = form.requireCameraMic && (data.enableAiProctoring === true || form.aiFaceDetection || form.aiEyeTracking)
+ hasUnsavedChanges = false
 }
 
 const buildPayload = () => ({
@@ -532,39 +625,56 @@ const buildPayload = () => ({
   isActive: exam.value?.isActive || false,
   shuffleQuestions: form.shuffleQuestions,
   shuffleAnswers: form.shuffleAnswers,
-  showScoreAfterSubmit: form.showScoreAfterSubmit,
   maxAttempts: Number(form.maxAttempts) || 1,
-  monitorTabSwitch: form.monitorTabSwitch,
-  monitorBlur: form.monitorBlur,
-  monitorExitFullscreen: form.monitorExitFullscreen,
-  monitorCopyPaste: form.monitorCopyPaste,
-  monitorIdleTime: form.monitorIdleTime,
-  monitorDevtools: form.monitorDevtools,
-  monitorDuplicateIp: form.monitorDuplicateIp,
-  monitorFastSubmit: form.monitorFastSubmit,
-  monitorRightClick: form.monitorRightClick,
-  monitorPrintScreen: form.monitorPrintScreen,
-  monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
-  monitorMultiMonitor: form.monitorMultiMonitor,
-  requireCameraMic: form.requireCameraMic,
-  enableAiProctoring: form.enableAiProctoring
+  monitorTabSwitch: form.proctoringEnabled ? form.monitorTabSwitch : false,
+  monitorBlur: form.proctoringEnabled ? form.monitorBlur : false,
+  monitorExitFullscreen: form.proctoringEnabled ? form.monitorExitFullscreen : false,
+  monitorCopyPaste: false,
+  monitorIdleTime: form.proctoringEnabled ? form.monitorIdleTime : false,
+  monitorDevtools: false,
+  monitorDuplicateIp: form.proctoringEnabled ? form.monitorDuplicateIp : false,
+  monitorFastSubmit: false,
+  monitorRightClick: form.proctoringEnabled ? form.monitorRightClick : false,
+  monitorPrintScreen: form.proctoringEnabled ? form.monitorPrintScreen : false,
+  monitorRapidQuestionSwitch: form.proctoringEnabled ? form.monitorRapidQuestionSwitch : false,
+  monitorMultiMonitor: form.proctoringEnabled ? form.monitorMultiMonitor : false,
+  requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
+  monitorNetworkInstability: form.proctoringEnabled ? form.monitorNetworkInstability : false,
+  monitorSessionRecovery: form.proctoringEnabled ? form.monitorSessionRecovery : false,
+  monitorQuestionTimingAnomaly: form.proctoringEnabled ? form.monitorQuestionTimingAnomaly : false,
+  monitorAnswerChangeBurst: form.proctoringEnabled ? form.monitorAnswerChangeBurst : false,
+  monitorClipboardBurst: false,
+  monitorAnswerSimilarity: form.proctoringEnabled ? form.monitorAnswerSimilarity : false,
+  monitorIpFingerprintGraph: form.proctoringEnabled ? form.monitorIpFingerprintGraph : false,
+  enableAiProctoring: form.proctoringEnabled && form.requireCameraMic ? form.enableAiProctoring : false,
+  aiFaceDetection: form.proctoringEnabled && form.requireCameraMic ? form.aiFaceDetection : false,
+  aiEyeTracking: form.proctoringEnabled && form.requireCameraMic ? form.aiEyeTracking : false
 })
 
 const buildMonitoringPayload = () => ({
-  monitorTabSwitch: form.monitorTabSwitch,
-  monitorBlur: form.monitorBlur,
-  monitorExitFullscreen: form.monitorExitFullscreen,
-  monitorCopyPaste: form.monitorCopyPaste,
-  monitorIdleTime: form.monitorIdleTime,
-  monitorDevtools: form.monitorDevtools,
-  monitorDuplicateIp: form.monitorDuplicateIp,
-  monitorFastSubmit: form.monitorFastSubmit,
-  monitorRightClick: form.monitorRightClick,
-  monitorPrintScreen: form.monitorPrintScreen,
-  monitorRapidQuestionSwitch: form.monitorRapidQuestionSwitch,
-  monitorMultiMonitor: form.monitorMultiMonitor,
-  requireCameraMic: form.requireCameraMic,
-  enableAiProctoring: form.enableAiProctoring
+  monitorTabSwitch: form.proctoringEnabled ? form.monitorTabSwitch : false,
+  monitorBlur: form.proctoringEnabled ? form.monitorBlur : false,
+  monitorExitFullscreen: form.proctoringEnabled ? form.monitorExitFullscreen : false,
+  monitorCopyPaste: false,
+  monitorIdleTime: form.proctoringEnabled ? form.monitorIdleTime : false,
+  monitorDevtools: false,
+  monitorDuplicateIp: form.proctoringEnabled ? form.monitorDuplicateIp : false,
+  monitorFastSubmit: false,
+  monitorRightClick: form.proctoringEnabled ? form.monitorRightClick : false,
+  monitorPrintScreen: form.proctoringEnabled ? form.monitorPrintScreen : false,
+  monitorRapidQuestionSwitch: form.proctoringEnabled ? form.monitorRapidQuestionSwitch : false,
+  monitorMultiMonitor: form.proctoringEnabled ? form.monitorMultiMonitor : false,
+  requireCameraMic: form.proctoringEnabled ? form.requireCameraMic : false,
+  monitorNetworkInstability: form.proctoringEnabled ? form.monitorNetworkInstability : false,
+  monitorSessionRecovery: form.proctoringEnabled ? form.monitorSessionRecovery : false,
+  monitorQuestionTimingAnomaly: form.proctoringEnabled ? form.monitorQuestionTimingAnomaly : false,
+  monitorAnswerChangeBurst: form.proctoringEnabled ? form.monitorAnswerChangeBurst : false,
+  monitorClipboardBurst: false,
+  monitorAnswerSimilarity: form.proctoringEnabled ? form.monitorAnswerSimilarity : false,
+  monitorIpFingerprintGraph: form.proctoringEnabled ? form.monitorIpFingerprintGraph : false,
+  enableAiProctoring: form.proctoringEnabled && form.requireCameraMic ? form.enableAiProctoring : false,
+  aiFaceDetection: form.proctoringEnabled && form.requireCameraMic ? form.aiFaceDetection : false,
+  aiEyeTracking: form.proctoringEnabled && form.requireCameraMic ? form.aiEyeTracking : false
 })
 
 /**

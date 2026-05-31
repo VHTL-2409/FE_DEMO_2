@@ -89,6 +89,7 @@ public class RiskScoreResponse {
         private String category;
         private String displayMessage;
         private Integer riskImpact;
+        private Integer scoreContribution;
         private Double confidence;
         private String severity;
         private String evidence;

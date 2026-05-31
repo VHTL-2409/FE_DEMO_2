@@ -8,19 +8,7 @@
         </div>
         <div>
           <h2 class="eip__header-title">Nhập đề thi PDF / DOCX</h2>
-          <p class="eip__header-sub">Hệ thống tự động nhận diện mẫu và trích xuất câu hỏi từ file PDF hoặc DOCX</p>
         </div>
-      </div>
-      <div class="eip__header-right">
-        <!-- Python service status -->
-        <span
-          v-if="pythonServiceStatus !== null"
-          class="eip__service-chip"
-          :class="pythonServiceStatus ? 'eip__service-chip--ok' : 'eip__service-chip--warn'"
-        >
-          <LucideIcon :name="pythonServiceStatus ? 'check_circle' : 'warning'" size="12" />
-          Python Parser {{ pythonServiceStatus ? 'Online' : 'Offline' }}
-        </span>
       </div>
     </div>
 
@@ -48,9 +36,6 @@
           </div>
           <h3 class="eip__upload-title">Kéo thả file PDF / DOCX vào đây</h3>
           <p class="eip__upload-sub">hoặc click để chọn file · hỗ trợ PDF, DOCX</p>
-          <p class="eip__upload-sub eip__upload-sub--small">
-            Template tự động: Toán vỡ · Tiếng Anh sạch · Toán đáp án lưới · Thương mại điện tử · Cơ sở dữ liệu
-          </p>
           <button type="button" class="eip__upload-btn" @click="fileInputRef?.click()" :disabled="isUploading">
             <LucideIcon name="folder_open" size="16" />
             Chọn file PDF / DOCX
@@ -78,7 +63,6 @@
               <LucideIcon name="sync" size="32" class="eip__spin-icon" />
             </div>
             <h3 class="eip__parsing-title">Đang phân tích file PDF / DOCX...</h3>
-            <p class="eip__parsing-sub">Template detection · Trích xuất câu hỏi · Crop hình ảnh</p>
             <div class="eip__progress-bar">
               <div class="eip__progress-fill" :style="{ width: `${parsingProgress}%` }" />
             </div>
@@ -263,8 +247,7 @@ import {
   getExamImportPreview,
   getExamImportSessions,
   confirmExamImport,
-  waitForExamImportSession,
-  checkPythonParserHealth
+  waitForExamImportSession
 } from '../../../services/importService'
 import { listExams } from '../../../services/examService'
 import { useToast } from '../../../composables/useToast'
@@ -296,7 +279,6 @@ const filterType = ref('')
 const filterConfidence = ref('')
 const parsingProgress = ref(0)
 const parsingStatus = ref('Đang khởi tạo...')
-const pythonServiceStatus = ref(null)
 const availableExams = ref([])
 const selectedExamId = ref('')
 const isConfirming = ref(false)
@@ -337,14 +319,6 @@ const noQuestionsMessage = computed(() => {
 
 // ─── Lifecycle ──────────────────────────────────────────────
 onMounted(async () => {
-  // Check Python parser health
-  try {
-    const health = await checkPythonParserHealth()
-    pythonServiceStatus.value = health?.pythonParserAvailable ?? false
-  } catch {
-    pythonServiceStatus.value = false
-  }
-
   // Load available exams
   try {
     const exams = await listExams()
@@ -628,41 +602,6 @@ watch(expandedIds, (set) => {
 
 .dark .eip__header-title { color: #f1f5f9; }
 
-.eip__header-sub {
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  margin: 0.2rem 0 0;
-}
-
-.eip__header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.eip__service-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: var(--ds-radius-full);
-  font-size: 0.72rem;
-  font-weight: 700;
-  border: 1px solid transparent;
-}
-
-.eip__service-chip--ok {
-  background: var(--ds-success-soft);
-  color: var(--ds-success);
-  border-color: rgba(22, 163, 74, 0.2);
-}
-
-.eip__service-chip--warn {
-  background: var(--ds-warning-soft);
-  color: var(--ds-warning);
-  border-color: rgba(245, 158, 11, 0.2);
-}
-
 /* ── Body ── */
 .eip__body {
   display: grid;
@@ -749,11 +688,6 @@ watch(expandedIds, (set) => {
   font-size: 0.8rem;
   color: var(--ds-text-muted);
   margin: 0;
-}
-
-.eip__upload-sub--small {
-  font-size: 0.72rem;
-  opacity: 0.7;
 }
 
 .eip__upload-btn {
@@ -881,12 +815,6 @@ watch(expandedIds, (set) => {
 }
 
 .dark .eip__parsing-title { color: #f1f5f9; }
-
-.eip__parsing-sub {
-  font-size: 0.78rem;
-  color: var(--ds-text-muted);
-  margin: 0;
-}
 
 .eip__progress-bar {
   width: 100%;

@@ -28,9 +28,11 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Risk Scoring Service - Giai đoạn 1.
@@ -286,8 +288,18 @@ public class RiskScoringService {
         FraudSignal latestSignal = fraudSignalRepository
                 .findTopByAttemptOrderByCreatedAtDesc(attempt)
                 .orElse(null);
+        Map<Long, Integer> scoreContributions = latestSignal != null
+                ? computeScoreContributions(signals)
+                : Map.of();
         if (latestSignal != null) {
-            realtimeNotificationService.notifyFraudSignalRecorded(attempt, latestSignal, totalRisk, level, breakdown);
+            realtimeNotificationService.notifyFraudSignalRecorded(
+                    attempt,
+                    latestSignal,
+                    scoreContributions.get(latestSignal.getId()),
+                    totalRisk,
+                    level,
+                    breakdown
+            );
         }
 
         // Bước 9: Gửi thông báo mức rủi ro nếu là suspicious+ (bao gồm flag và signal mới nhất để FE patch)
@@ -297,6 +309,7 @@ public class RiskScoringService {
                     RiskActionType.NONE,
                     buildDecisionSummary(level, breakdown),
                     latestSignal,
+                    latestSignal != null ? scoreContributions.get(latestSignal.getId()) : null,
                     flag
             );
         }
@@ -394,13 +407,7 @@ public class RiskScoringService {
         long dedupWindow = categoryDedupSeconds(category);
 
         // Sắp xếp theo thời gian tạo tăng dần
-        List<FraudSignal> sorted = signals.stream()
-                .sorted((a, b) -> {
-                    LocalDateTime aTime = a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN;
-                    LocalDateTime bTime = b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN;
-                    return aTime.compareTo(bTime);
-                })
-                .toList();
+        List<FraudSignal> sorted = sortSignalsByCreatedAt(signals);
 
         // Xử lý đặc biệt cho IDENTITY: lấy điểm max (không clustering, mức session)
         if ("IDENTITY".equals(category)) {
@@ -450,6 +457,50 @@ public class RiskScoringService {
 
         // Áp dụng giới hạn category
         return Math.min(totalScore, categoryCap(category));
+    }
+
+    public Map<Long, Integer> computeScoreContributions(List<FraudSignal> signals) {
+        Map<Long, Integer> result = new LinkedHashMap<>();
+        if (signals == null || signals.isEmpty()) {
+            return result;
+        }
+
+        List<FraudSignal> prefix = new ArrayList<>();
+        int previousScore = 0;
+        for (FraudSignal signal : sortSignalsByCreatedAt(signals)) {
+            prefix.add(signal);
+            int nextScore = computeTotalRisk(prefix);
+            int contribution = Math.max(0, nextScore - previousScore);
+            if (signal.getId() != null) {
+                result.put(signal.getId(), contribution);
+            }
+            previousScore = nextScore;
+        }
+        return result;
+    }
+
+    private int computeTotalRisk(List<FraudSignal> signals) {
+        Map<String, Integer> categoryScores = computeCategoryScores(signals, VietNamTime.now());
+        int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), categoryCap("SCREEN_LEAVE"));
+        int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), categoryCap("CLIPBOARD"));
+        int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), categoryCap("TECHNICAL"));
+        int identityScore = Math.min(categoryScores.getOrDefault("IDENTITY", 0), categoryCap("IDENTITY"));
+        int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), categoryCap("HEARTBEAT"));
+        int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), categoryCap("VISUAL_IDENTITY"));
+        int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
+        return Math.min(100, behaviorScore + identityScore + visualIdentityScore);
+    }
+
+    private List<FraudSignal> sortSignalsByCreatedAt(List<FraudSignal> signals) {
+        if (signals == null) {
+            return List.of();
+        }
+        return signals.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator
+                        .comparing((FraudSignal signal) -> signal.getCreatedAt() != null ? signal.getCreatedAt() : LocalDateTime.MIN)
+                        .thenComparing(signal -> signal.getId() != null ? signal.getId() : Long.MIN_VALUE))
+                .toList();
     }
 
     private long categoryDedupSeconds(String category) {
@@ -555,6 +606,7 @@ public class RiskScoringService {
             ProctorFlag flag,
             LocalDateTime now
     ) {
+        Map<Long, Integer> scoreContributions = computeScoreContributions(signals);
         List<RiskScoreResponse.LatestSignalItem> latestSignals = fraudSignalRepository
                 .findTop20ByAttemptOrderByCreatedAtDesc(attempt)
                 .stream()
@@ -564,6 +616,7 @@ public class RiskScoringService {
                         .category(signal.getCategory())
                         .displayMessage(signal.getDisplayMessage())
                         .riskImpact(signal.getRiskImpact())
+                        .scoreContribution(scoreContributions.get(signal.getId()))
                         .confidence(signal.getConfidence())
                         .severity(signal.getSeverity() != null ? signal.getSeverity().name() : "LOW")
                         .evidence(signal.getEvidence())

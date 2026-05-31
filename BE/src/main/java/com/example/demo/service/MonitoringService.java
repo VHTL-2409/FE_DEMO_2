@@ -255,9 +255,11 @@ public class MonitoringService {
                 .map(this::toLegacyEventTimelineItem)
                 .toList();
 
-        List<MonitoringTimelineItem> signalRows = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt)
+        List<FraudSignal> fraudSignals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
+        Map<Long, Integer> scoreContributions = riskScoringService.computeScoreContributions(fraudSignals);
+        List<MonitoringTimelineItem> signalRows = fraudSignals
                 .stream()
-                .map(this::toFraudSignalTimelineItem)
+                .map(signal -> toFraudSignalTimelineItem(signal, scoreContributions.get(signal.getId())))
                 .toList();
 
         List<MonitoringTimelineItem> warningRows = fraudWarningRepository.findByAttemptOrderByCreatedAtDesc(attempt)
@@ -505,7 +507,7 @@ public class MonitoringService {
                 .build();
     }
 
-    private MonitoringTimelineItem toFraudSignalTimelineItem(FraudSignal signal) {
+    private MonitoringTimelineItem toFraudSignalTimelineItem(FraudSignal signal, Integer scoreContribution) {
         return MonitoringTimelineItem.builder()
                 .id(signal.getId())
                 .type("FRAUD_SIGNAL")
@@ -514,6 +516,7 @@ public class MonitoringService {
                 .severity(signal.getSeverity().name())
                 .confidence(signal.getConfidence())
                 .riskImpact(signal.getRiskImpact())
+                .scoreContribution(scoreContribution)
                 .evidence(signal.getEvidence())
                 .details(signal.getSignalType())
                 .category(signal.getCategory())

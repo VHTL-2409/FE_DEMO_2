@@ -82,4 +82,4 @@ ai-service/app/schemas.py
 BE/run-demo-local.bat
 ai-service/tests/*
 baocao/*
-demo_2/*
+*.docx

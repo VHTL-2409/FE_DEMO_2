@@ -45,22 +45,18 @@ public class ExamResponse {
     private Boolean monitorAnswerChangeBurst;
     private Boolean monitorClipboardBurst;
     private Boolean monitorFullscreenEvasion;
-    private Boolean monitorAnswerSimilarity;
-    private Boolean monitorIpFingerprintGraph;
-    private Boolean enableAiProctoring;
-    private String rulesText;
-    private String rulesVersion;
-    private Boolean requireRulesAgreement;
-    private Boolean requireIdentityVerification;
-    private String identityReviewPolicy;
-    private Boolean inExamIdentityCheckEnabled;
-    private Integer identityCheckIntervalSeconds;
-    private Boolean isArchived;
-    private Long classId;
+ private Boolean monitorAnswerSimilarity;
+ private Boolean monitorIpFingerprintGraph;
+ private Boolean enableAiProctoring;
+ private Boolean aiFaceDetection;
+ private Boolean aiEyeTracking;
+ private Boolean isArchived;
     private String className;
     private Boolean shuffleQuestions;
     private Boolean shuffleAnswers;
     private Boolean showScoreAfterSubmit;
+    private Integer maxAttempts;
+    private Boolean allowReviewAfterSubmit;
     /**
      * Monitoring-specific: "LIVE" (in session now) | "UPCOMING" (session starts later today)
      * | "ENDED" (session ended) | "NO_SESSION" (no session created).

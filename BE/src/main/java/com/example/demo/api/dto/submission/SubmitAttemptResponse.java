@@ -15,6 +15,8 @@ public class SubmitAttemptResponse {
     private Double score;
     private Integer riskScore;
     private Boolean suspicious;
+    private Boolean showScoreAfterSubmit;
+    private Boolean allowReviewAfterSubmit;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime submittedAt;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")

@@ -276,7 +276,20 @@ const topViolations = computed(() =>
 .sr-row__cell--violations { min-width: 52px; justify-content: center; }
 .sr-row__cell--risk { flex: 1; min-width: 120px; gap: 0.5rem; }
 .sr-row__cell--tags { min-width: 80px; gap: 0.25rem; }
-.sr-row__cell--actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; margin-left: auto; }
+.sr-row__cell--actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0.38;
+  transition: opacity 0.15s;
+}
+.sr-row:hover .sr-row__cell--actions,
+.sr-row:focus-within .sr-row__cell--actions,
+.sr-row--selected .sr-row__cell--actions {
+  opacity: 1;
+}
 
 /* Violation badge */
 .sr-row__viol-badge {
@@ -288,8 +301,8 @@ const topViolations = computed(() =>
 }
 .sr-row__viol-badge--danger { color: var(--ds-danger); background: var(--ds-danger-bg); }
 .sr-row__viol-badge--warn { color: var(--ds-warning); background: var(--ds-warning-bg); }
-.sr-row__muted { display: flex; align-items: center; justify-content: center; }
-.sr-row__clean-icon { color: var(--ds-success); }
+.sr-row__muted { display: flex; align-items: center; justify-content: center; color: var(--ds-text-muted); }
+.sr-row__clean-icon { color: var(--ds-text-muted); opacity: 0.55; }
 
 /* Risk bar */
 .sr-row__risk-bar {
@@ -335,7 +348,7 @@ const topViolations = computed(() =>
   justify-content: center;
   border-radius: var(--ds-radius-md);
   border: 1px solid var(--ds-border);
-  background: var(--ds-surface);
+  background: transparent;
   color: var(--ds-text-secondary);
   cursor: pointer;
   transition: all 0.15s;

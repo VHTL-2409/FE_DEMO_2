@@ -246,9 +246,11 @@ const requireCameraMic = computed(() => {
   return true
 })
 const enableAiProctoring = computed(() => {
+  if (examDetail.value?.aiFaceDetection === true || examDetail.value?.aiEyeTracking === true) return true
   if (examDetail.value?.enableAiProctoring != null) {
     return examDetail.value.enableAiProctoring === true
   }
+  if (route.query.aiFaceDetection === 'true' || route.query.aiEyeTracking === 'true') return true
   if (route.query.enableAiProctoring === 'true') return true
   return false
 })

@@ -18,6 +18,7 @@ public class MonitoringTimelineItem {
     private String details;
     private Integer riskScore;
     private Integer riskImpact;
+    private Integer scoreContribution;
     private Boolean suspicious;
     private String severity;
     private Double confidence;

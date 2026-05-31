@@ -335,9 +335,36 @@ const handleCreateAssignment = async () => {
       monitorRapidQuestionSwitch: route.query.monitorRapidQuestionSwitch !== 'false',
       monitorMultiMonitor: route.query.monitorMultiMonitor !== 'false',
       requireCameraMic: route.query.requireCameraMic === 'true',
+      monitorNetworkInstability: route.query.monitorNetworkInstability != null
+        ? route.query.monitorNetworkInstability !== 'false'
+        : loadedExam.value?.monitorNetworkInstability !== false,
+      monitorSessionRecovery: route.query.monitorSessionRecovery != null
+        ? route.query.monitorSessionRecovery !== 'false'
+        : loadedExam.value?.monitorSessionRecovery !== false,
+      monitorQuestionTimingAnomaly: route.query.monitorQuestionTimingAnomaly != null
+        ? route.query.monitorQuestionTimingAnomaly !== 'false'
+        : loadedExam.value?.monitorQuestionTimingAnomaly !== false,
+      monitorAnswerChangeBurst: route.query.monitorAnswerChangeBurst != null
+        ? route.query.monitorAnswerChangeBurst !== 'false'
+        : loadedExam.value?.monitorAnswerChangeBurst !== false,
+      monitorClipboardBurst: route.query.monitorClipboardBurst != null
+        ? route.query.monitorClipboardBurst !== 'false'
+        : loadedExam.value?.monitorClipboardBurst !== false,
+      monitorAnswerSimilarity: route.query.monitorAnswerSimilarity != null
+        ? route.query.monitorAnswerSimilarity !== 'false'
+        : loadedExam.value?.monitorAnswerSimilarity !== false,
+      monitorIpFingerprintGraph: route.query.monitorIpFingerprintGraph != null
+        ? route.query.monitorIpFingerprintGraph !== 'false'
+        : loadedExam.value?.monitorIpFingerprintGraph !== false,
       enableAiProctoring: route.query.enableAiProctoring != null
         ? route.query.enableAiProctoring === 'true'
-        : loadedExam.value?.enableAiProctoring === true
+        : loadedExam.value?.enableAiProctoring === true,
+      aiFaceDetection: route.query.aiFaceDetection != null
+        ? route.query.aiFaceDetection === 'true'
+        : (route.query.enableAiProctoring === 'false' ? false : loadedExam.value?.aiFaceDetection === true),
+      aiEyeTracking: route.query.aiEyeTracking != null
+        ? route.query.aiEyeTracking === 'true'
+        : (route.query.enableAiProctoring === 'false' ? false : loadedExam.value?.aiEyeTracking === true)
     })
 
     const assignPayload = {

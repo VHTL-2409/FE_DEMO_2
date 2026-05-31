@@ -167,114 +167,10 @@
             </button>
           </div>
 
-          <div class="ec-toggle-item">
-            <div class="ec-toggle-item__body">
-              <LucideIcon name="call_split" />
-              <div>
-                <p class="ec-toggle-item__title">Chia mã đề</p>
-                <p class="ec-toggle-item__desc">Tạo nhiều mã đề khác nhau từ file gốc</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              class="ec-toggle"
-              :class="localMultipleVersions && 'ec-toggle--on'"
-              @click="localMultipleVersions = !localMultipleVersions"
-            >
-              <span class="ec-toggle__knob" />
-            </button>
-          </div>
         </div>
       </div>
 
-      <!-- Exam code display when multiple versions enabled -->
-      <Transition name="ec-slide">
-        <div v-if="localMultipleVersions" class="exam-code-card">
-          <div class="ecc__header">
-            <div class="ecc__icon">
-              <LucideIcon name="vpn_key" />
-            </div>
-            <div class="ecc__title-group">
-              <p class="ecc__label">Chia mã đề</p>
-              <p class="ecc__desc">Mỗi mã đề sẽ có thứ tự câu hỏi riêng</p>
-            </div>
-          </div>
-          <div class="ecc__body">
-            <div class="ecc__stepper">
-              <button
-                type="button"
-                class="ecc__stepper-btn"
-                :disabled="versionCount <= 2"
-                @click="versionCount = Math.max(2, versionCount - 1)"
-              >
-                <LucideIcon name="remove" />
-              </button>
-              <div class="ecc__stepper-value">
-                <span class="ecc__stepper-num">{{ versionCount }}</span>
-                <span class="ecc__stepper-unit">mã đề</span>
-              </div>
-              <button
-                type="button"
-                class="ecc__stepper-btn"
-                :disabled="versionCount >= 20"
-                @click="versionCount = Math.min(20, versionCount + 1)"
-              >
-                <LucideIcon name="add" />
-              </button>
-            </div>
-            <input
-              v-model.number="versionCount"
-              type="range"
-              min="2"
-              max="20"
-              class="ecc__slider"
-            />
-            <div class="ecc__hint-row">
-              <LucideIcon name="info" size="13" />
-              <span>Tối thiểu 2, tối đa 20 mã đề</span>
-            </div>
-          </div>
-        </div>
-      </Transition>
-
     </div>
-
-    <!-- Version count modal -->
-    <Teleport to="body">
-      <Transition name="ec-modal">
-        <div v-if="showVersionModal" class="ec-modal-overlay" @click.self="showVersionModal = false">
-          <div class="ec-modal ec-modal--sm">
-            <div class="ec-modal__header">
-              <h2 class="ec-modal__title">Số mã đề</h2>
-              <button type="button" class="ec-modal__close" @click="showVersionModal = false">
-                <LucideIcon name="close" />
-              </button>
-            </div>
-            <div class="ec-modal__body">
-              <div class="ec-field">
-                <label class="ec-field__label">Số lượng mã đề</label>
-                <input
-                  v-model.number="versionCount"
-                  type="number"
-                  min="2"
-                  max="20"
-                  class="ec-input ec-input--number"
-                />
-                <p class="ec-field__hint">Tối thiểu 2, tối đa 20 mã đề</p>
-              </div>
-            </div>
-            <div class="ec-modal__footer">
-              <button type="button" class="ec-btn ec-btn--outline" @click="showVersionModal = false">
-                Hủy
-              </button>
-              <button type="button" class="ec-btn ec-btn--primary" @click="showVersionModal = false">
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
     <ConfirmDialog
       v-model="showDeleteAllConfirm"
@@ -312,8 +208,6 @@ const selectedFile = ref(null)
 const fileInput = ref(null)
 const isImporting = ref(false)
 const importError = ref('')
-const showVersionModal = ref(false)
-const versionCount = ref(4)
 const showDeleteAllConfirm = ref(false)
 
 const templateCsvUrl = `${API_BASE_URL}/api/questions/template`
@@ -332,13 +226,6 @@ const localShuffleQuestions = computed({
 const localShuffleAnswers = computed({
   get: () => props.shuffleAnswers,
   set: (v) => emit('update:shuffleAnswers', v)
-})
-
-const localMultipleVersions = computed({
-  get: () => versionCount.value > 1,
-  set: (v) => {
-    if (v) versionCount.value = Math.max(2, versionCount.value)
-  }
 })
 
 const fileSizeLabel = computed(() => {
@@ -1162,163 +1049,6 @@ const handleImport = async () => {
 }
 
 .ec-toggle--on .ec-toggle__knob { transform: translateX(20px); }
-
-/* Exam code card */
-.exam-code-card {
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-xl);
-  overflow: hidden;
-  margin-top: 1rem;
-}
-
-.dark .exam-code-card {
-  border-color: var(--ds-border-strong);
-  background: rgba(2, 132, 199, 0.05);
-}
-
-.ecc__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: var(--ds-primary-soft);
-  border-bottom: 1px solid var(--ds-border);
-}
-
-.dark .ecc__header { background: rgba(79, 70, 229, 0.15); border-color: var(--ds-border-strong); }
-
-.ecc__icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--ds-radius-lg);
-  background: var(--ds-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.dark .ecc__icon { background: var(--ds-primary); }
-
-.ecc__title-group { flex: 1; }
-
-.ecc__label {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--ds-text);
-  margin: 0;
-}
-
-.dark .ecc__label { color: white; }
-
-.ecc__desc {
-  font-size: 0.75rem;
-  color: var(--ds-text-secondary);
-  margin: 0.125rem 0 0;
-}
-
-.dark .ecc__desc { color: var(--ds-text-secondary); }
-
-.ecc__body {
-  padding: 1.25rem;
-  background: var(--ds-surface);
-}
-
-.dark .ecc__body { background: var(--ds-surface); }
-
-.ecc__stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.ecc__stepper-btn {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--ds-radius-lg);
-  border: 1px solid var(--ds-border);
-  background: var(--ds-gray-50);
-  color: var(--ds-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  font-size: 1.25rem;
-}
-
-.dark .ecc__stepper-btn {
-  background: var(--ds-gray-800);
-  border-color: var(--ds-border-strong);
-  color: white;
-}
-
-.ecc__stepper-btn:hover:not(:disabled) {
-  background: var(--ds-primary);
-  color: white;
-  border-color: var(--ds-primary);
-}
-
-.ecc__stepper-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.ecc__stepper-value {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 5rem;
-}
-
-.ecc__stepper-num {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--ds-primary);
-  line-height: 1;
-}
-
-.dark .ecc__stepper-num { color: var(--ds-primary); }
-
-.ecc__stepper-unit {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--ds-text-secondary);
-}
-
-.ecc__slider {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ds-gray-200);
-  outline: none;
-  -webkit-appearance: none;
-  margin-bottom: 0.75rem;
-}
-
-.dark .ecc__slider { background: var(--ds-gray-700); }
-
-.ecc__slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--ds-primary);
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
-}
-
-.ecc__hint-row {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  color: var(--ds-text-muted);
-  justify-content: center;
-}
 
 /* Buttons */
 .ec-btn {

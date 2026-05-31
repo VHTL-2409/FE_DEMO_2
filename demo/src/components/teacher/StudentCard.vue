@@ -171,7 +171,7 @@ const isTerminal = computed(() => isAttemptTerminal(props.student.status))
 
 const violationCount = computed(() => (props.student.reasons || []).length)
 const topViolations = computed(() =>
-  (props.student.reasons || []).slice(0, 3).map(r => ({
+  (props.student.reasons || []).slice(0, 2).map(r => ({
     type: r,
     ...(VIOLATION_MAP[r] || { label: r, icon: 'alert-circle', tagClass: 'sc-card__viol-tag--neutral' })
   }))
@@ -370,8 +370,11 @@ const hasViolationPulse = computed(() =>
   display: flex;
   gap: 0.3rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-  min-height: 24px;
+  margin-bottom: 0.5rem;
+  min-height: 20px;
+}
+.sc-card__violations:has(.sc-card__viol-tag--clean) {
+  display: none;
 }
 .sc-card__viol-tag {
   display: inline-flex;
@@ -403,8 +406,16 @@ const hasViolationPulse = computed(() =>
 .sc-card__actions {
   display: flex;
   gap: 0.375rem;
-  padding-top: 0.625rem;
-  border-top: 1px solid var(--ds-border);
+  padding-top: 0.5rem;
+  border-top: 1px solid transparent;
+  opacity: 0.45;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.sc-card:hover .sc-card__actions,
+.sc-card:focus-within .sc-card__actions,
+.sc-card--selected .sc-card__actions {
+  opacity: 1;
+  border-top-color: var(--ds-border);
 }
 .sc-action {
   flex: 1;
@@ -414,7 +425,7 @@ const hasViolationPulse = computed(() =>
   justify-content: center;
   border-radius: var(--ds-radius-md);
   border: 1px solid var(--ds-border);
-  background: var(--ds-surface);
+  background: transparent;
   color: var(--ds-text-secondary);
   cursor: pointer;
   transition: all 0.15s;
