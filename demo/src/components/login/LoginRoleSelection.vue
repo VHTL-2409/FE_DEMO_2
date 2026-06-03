@@ -338,7 +338,7 @@ const onResendVerification = async () => {
   min-height: 100vh;
   display: flex;
   align-items: stretch;
-  background: #f8fafc;
+  background: var(--ds-bg);
   overflow: hidden;
 }
 
@@ -354,17 +354,14 @@ const onResendVerification = async () => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(79, 70, 229, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 70, 229, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
   background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 70%);
 }
 
 .login-bg__orb {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.32;
-  animation: orb-float 12s ease-in-out infinite alternate;
+  display: none;
 }
 
 .login-bg__orb--1 {
@@ -411,7 +408,10 @@ const onResendVerification = async () => {
 /* ===== Left brand panel ===== */
 .login-brand {
   flex: 0 0 45%;
-  background: linear-gradient(145deg, #3730a3 0%, #4338ca 38%, #4f46e5 68%, #6366f1 100%);
+  background:
+    linear-gradient(180deg, rgba(79, 70, 229, 0.10), transparent 42%),
+    var(--ds-surface);
+  border-right: 1px solid var(--ds-border);
   display: none;
   position: relative;
   overflow: hidden;
@@ -425,10 +425,7 @@ const onResendVerification = async () => {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 18%),
-    radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.06) 0%, transparent 22%),
-    radial-gradient(circle at 100% 100%, rgba(129, 140, 248, 0.2) 0%, transparent 24%);
+  background: linear-gradient(180deg, rgba(79, 70, 229, 0.08), transparent 56%);
   pointer-events: none;
 }
 
@@ -459,9 +456,9 @@ const onResendVerification = async () => {
   gap: 6px;
   padding: 6px 14px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--ds-primary-soft);
+  border: 1px solid var(--ds-primary-border);
+  color: var(--ds-primary);
   font-size: 0.8rem;
   font-weight: 500;
   margin-bottom: 24px;
@@ -472,22 +469,19 @@ const onResendVerification = async () => {
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 2.6rem;
   font-weight: 800;
-  color: white;
+  color: var(--ds-text);
   line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   margin: 0 0 16px 0;
 }
 
 .login-brand__headline-accent {
-  background: linear-gradient(135deg, #a5b4fc, #f472b6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ds-primary);
 }
 
 .login-brand__description {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ds-text-secondary);
   line-height: 1.65;
   margin: 0 0 32px 0;
   max-width: 380px;
@@ -504,7 +498,7 @@ const onResendVerification = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--ds-text);
   font-size: 0.9rem;
 }
 
@@ -512,13 +506,13 @@ const onResendVerification = async () => {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ds-primary);
 }
 
 .login-brand__stats {
@@ -527,7 +521,7 @@ const onResendVerification = async () => {
   gap: 24px;
   margin-top: auto;
   padding-top: 40px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--ds-border);
   animation: brand-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
 }
 
@@ -540,20 +534,20 @@ const onResendVerification = async () => {
 .login-brand__stat strong {
   font-size: 1.4rem;
   font-weight: 800;
-  color: white;
+  color: var(--ds-text);
   font-family: 'Be Vietnam Pro', sans-serif;
 }
 
 .login-brand__stat span {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--ds-text-secondary);
   font-weight: 500;
 }
 
 .login-brand__stat-divider {
   width: 1px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--ds-border);
 }
 
 /* ===== Right form panel ===== */

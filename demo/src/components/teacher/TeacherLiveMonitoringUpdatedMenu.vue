@@ -18,7 +18,7 @@
         <div class="pm-exam-info">
           <div class="pm-exam-badge">
             <span class="pm-exam-badge__dot" />
-            LIVE
+            TRỰC TIẾP
           </div>
           <div class="pm-exam-meta">
             <h1 class="pm-exam-meta__title">
@@ -40,7 +40,7 @@
             :name="isSocketConnected ? 'zap' : 'refresh-cw'"
             :size="12"
           />
-          <span>{{ isSocketConnected ? 'Real-time' : 'Polling' }}</span>
+          <span>{{ isSocketConnected ? 'Thời gian thực' : 'Định kỳ' }}</span>
         </div>
 
         <!-- Timer -->
@@ -803,6 +803,16 @@ function handleTeacherAlert(alert) {
     case 'SUSPICIOUS':
       pushAlert(buildAlert(alert, 'MEDIUM', 'SUSPICIOUS', alert.message || 'Phát hiện hành vi đáng ngờ'))
       addEvent({ type: 'ALERT', message: alert.message || 'Hành vi đáng ngờ', studentName })
+      break
+    case 'IDENTITY_REVIEW_REQUIRED':
+      pushAlert(buildAlert(alert, alert.severity || 'MEDIUM', 'SUSPICIOUS', alert.message || 'Danh tính cần giám thị kiểm tra'))
+      addEvent({ type: 'ALERT', message: alert.message || 'Danh tính cần giám thị kiểm tra', studentName })
+      patchAttemptLocal(alert.attemptId, {
+        identityStatus: alert.verificationStatus || 'NEEDS_REVIEW',
+        identityCheckId: alert.identityCheckId,
+        reviewRequired: true,
+        recommendedAction: alert.recommendedAction || 'REVIEW_IDENTITY'
+      })
       break
     case 'WARNING_SENT':
       addEvent({ type: 'WARN', message: `GV gửi cảnh báo: ${alert.message || ''}`, studentName })

@@ -4,7 +4,7 @@
       <label
         v-if="label || $slots.label"
         :for="fieldId"
-        class="text-sm font-medium text-slate-700 dark:text-slate-300"
+        class="text-sm font-semibold text-[var(--ds-text)]"
       >
         <slot name="label">{{ label }}</slot>
         <span v-if="required" class="text-rose-500" aria-hidden="true"> *</span>
@@ -16,10 +16,10 @@
       :hint-id="hintId"
       :error-id="errorId"
     />
-    <p v-if="hint && !error" :id="hintId" class="text-xs text-slate-500 dark:text-slate-400">
+    <p v-if="hint && !error" :id="hintId" class="text-xs leading-relaxed text-[var(--ds-text-secondary)]">
       {{ hint }}
     </p>
-    <p v-if="error" :id="errorId" class="text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
+    <p v-if="error" :id="errorId" class="text-sm font-semibold text-[var(--ds-danger)]" role="alert">
       {{ error }}
     </p>
   </div>

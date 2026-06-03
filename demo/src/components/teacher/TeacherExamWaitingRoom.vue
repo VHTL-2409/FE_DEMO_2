@@ -97,10 +97,32 @@
                 <span class="wr-status-badge" :class="getStatusBadgeClass(student)">
                   {{ student.status }}
                 </span>
+                <span class="wr-identity-badge" :class="getIdentityBadgeClass(student)">
+                  {{ identityStatusLabel(student) }}
+                </span>
                 <span v-if="student.riskScore > 0" class="wr-risk-indicator" :class="getRiskClass(student.riskScore)">
                   <LucideIcon name="warning" size="14" />
                   {{ student.riskScore }}%
                 </span>
+              </div>
+              <div v-if="student.identityCheckId" class="wr-identity-panel">
+                <div class="wr-identity-panel__meta">
+                  <span v-if="student.identityConfidence != null">Tin cậy {{ Math.round(Number(student.identityConfidence || 0) * 100) }}%</span>
+                  <span v-if="student.identityReviewReason">{{ student.identityReviewReason }}</span>
+                </div>
+                <div class="wr-identity-panel__evidence">
+                  <a v-if="identityEvidenceUrl(student, 'document')" :href="identityEvidenceUrl(student, 'document')" target="_blank" rel="noreferrer">Giấy tờ</a>
+                  <a v-if="identityEvidenceUrl(student, 'documentFaceCrop')" :href="identityEvidenceUrl(student, 'documentFaceCrop')" target="_blank" rel="noreferrer">Mặt giấy tờ</a>
+                  <a v-if="identityEvidenceUrl(student, 'selfie')" :href="identityEvidenceUrl(student, 'selfie')" target="_blank" rel="noreferrer">Selfie</a>
+                </div>
+                <div class="wr-identity-panel__actions">
+                  <button class="wr-btn wr-btn--sm wr-btn--success" :disabled="identityReviewingId === student.identityCheckId" @click.stop="reviewIdentity(student, 'VERIFIED')">
+                    Cho vào thi
+                  </button>
+                  <button class="wr-btn wr-btn--sm wr-btn--danger" :disabled="identityReviewingId === student.identityCheckId" @click.stop="reviewIdentity(student, 'REJECTED')">
+                    Từ chối
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -189,6 +211,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getExamDetail, getWaitingStudents } from '../../services/examService'
+import { reviewIdentityCheck } from '../../services/proctorService'
+import { API_BASE_URL } from '../../services/apiClient'
 import { useToast } from '../../composables/useToast'
 import { useRealtimeChannel } from '../../composables/useRealtimeChannel'
 import { parseBackendDate } from '../../utils/dateUtils.js'
@@ -210,6 +234,7 @@ const isLoading = ref(true)
 const isPolling = ref(false)
 const lastSyncedAt = ref(null)
 const nowMs = ref(Date.now())
+const identityReviewingId = ref(null)
 let pollTimerId = null
 let countdownTimerId = null
 
@@ -398,6 +423,60 @@ function updateStudentRisk(attemptId, riskScore) {
   const idx = waitingStudents.value.findIndex(s => s.attemptId === attemptId)
   if (idx >= 0) {
     waitingStudents.value[idx] = { ...waitingStudents.value[idx], riskScore }
+  }
+}
+
+const normalizeIdentityStatus = (student) => String(student?.identityStatus || student?.verificationStatus || 'NOT_CHECKED').toUpperCase()
+
+const identityStatusLabel = (student) => {
+  const status = normalizeIdentityStatus(student)
+  if (status === 'VERIFIED') return 'Danh tính đã duyệt'
+  if (status === 'NEEDS_REVIEW') return 'Chờ giáo viên duyệt'
+  if (status === 'REJECTED') return 'Danh tính bị từ chối'
+  return 'Chưa xác minh'
+}
+
+const getIdentityBadgeClass = (student) => {
+  const status = normalizeIdentityStatus(student)
+  return {
+    'wr-identity-badge--ok': status === 'VERIFIED',
+    'wr-identity-badge--warn': status === 'NEEDS_REVIEW',
+    'wr-identity-badge--danger': status === 'REJECTED',
+    'wr-identity-badge--muted': status === 'NOT_CHECKED'
+  }
+}
+
+const identityEvidenceUrl = (student, key) => {
+  const refs = student?.identityEvidenceRefs || student?.evidenceRefs || {}
+  const rawUrl = refs?.[key]?.imageUrl || ''
+  if (!rawUrl) return ''
+  if (/^https?:\/\//i.test(rawUrl) || rawUrl.startsWith('data:')) return rawUrl
+  return `${API_BASE_URL}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
+}
+
+const reviewIdentity = async (student, status) => {
+  if (!student?.identityCheckId || identityReviewingId.value) return
+  identityReviewingId.value = student.identityCheckId
+  try {
+    const reviewed = await reviewIdentityCheck(student.identityCheckId, {
+      status,
+      reason: status === 'VERIFIED' ? 'Teacher approved from waiting room' : 'Teacher rejected from waiting room'
+    })
+    waitingStudents.value = waitingStudents.value.map(item => item.attemptId === student.attemptId
+      ? {
+          ...item,
+          identityStatus: reviewed.verificationStatus || status,
+          identityReviewStatus: reviewed.reviewStatus,
+          identityReviewReason: reviewed.reviewReason,
+          identityConfidence: reviewed.confidence,
+          identityEvidenceRefs: reviewed.evidenceRefs || item.identityEvidenceRefs
+        }
+      : item)
+    toast.success(status === 'VERIFIED' ? 'Đã cho thí sinh vào thi.' : 'Đã từ chối danh tính.')
+  } catch (error) {
+    toast.error('Không thể cập nhật duyệt danh tính.')
+  } finally {
+    identityReviewingId.value = null
   }
 }
 
@@ -883,6 +962,7 @@ onUnmounted(() => {
 
 .wr-student-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   padding: 1rem;
@@ -1014,6 +1094,74 @@ onUnmounted(() => {
 
 .wr-risk-indicator--low {
   color: var(--ds-text-muted);
+}
+
+.wr-identity-badge {
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ds-radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wr-identity-badge--ok {
+  background: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.wr-identity-badge--warn {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.wr-identity-badge--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.wr-identity-badge--muted {
+  background: var(--ds-gray-100);
+  color: var(--ds-text-muted);
+}
+
+.wr-identity-panel {
+  flex: 0 0 100%;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+
+.wr-identity-panel__meta,
+.wr-identity-panel__evidence,
+.wr-identity-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.wr-identity-panel__meta {
+  color: var(--ds-text-secondary);
+}
+
+.wr-identity-panel__evidence a {
+  color: var(--ds-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.wr-btn--success {
+  background: var(--ds-success);
+  color: white;
+}
+
+.wr-btn--danger {
+  background: var(--ds-danger);
+  color: white;
 }
 
 /* Action Cards */

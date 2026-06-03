@@ -73,11 +73,26 @@ export const fetchIdentityCheck = async (attemptId) => {
   return unwrapApiData(response)
 }
 
+export const fetchIdentityChecks = async (attemptId) => {
+  const response = await apiRequest(`/api/v1/proctor/attempts/${attemptId}/identity-checks`, {
+    suppressToast: true
+  })
+  return unwrapApiData(response) || []
+}
+
 export const recheckStudentIdentity = async (payload) => {
   const response = await apiRequest('/api/v1/proctor/identity/recheck', {
     method: 'POST',
     body: JSON.stringify(payload),
     suppressToast: true
+  })
+  return unwrapApiData(response)
+}
+
+export const reviewIdentityCheck = async (checkId, payload) => {
+  const response = await apiRequest(`/api/v1/proctor/identity/checks/${checkId}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   })
   return unwrapApiData(response)
 }

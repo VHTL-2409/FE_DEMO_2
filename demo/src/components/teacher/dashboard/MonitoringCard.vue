@@ -13,11 +13,11 @@
       <div class="td-monitor__header-right">
         <div class="td-monitor__connection">
           <LucideIcon name="wifi" td-monitor__connection-icon />
-          <span>Real-time</span>
+          <span>Thời gian thực</span>
         </div>
         <button type="button" class="td-monitor__manage-btn" @click="$emit('go-monitoring-exam', liveExam)">
           <LucideIcon name="open_in_new" />
-          Quản lý Proctoring
+          Quản lý giám sát
         </button>
       </div>
     </div>

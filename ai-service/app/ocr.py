@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from fastapi import UploadFile
@@ -21,6 +23,8 @@ try:
 except Exception:  # pragma: no cover - optional dependency guard
     pytesseract = None
 
+DEFAULT_TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
 
 @dataclass
 class OcrBlock:
@@ -33,6 +37,9 @@ class OcrEngine:
     def __init__(self) -> None:
         self.pdf_dpi = env_int("AI_SERVICE_OCR_PDF_DPI", 220)
         self.threshold = env_int("AI_SERVICE_OCR_THRESHOLD", 180)
+        self.tesseract_cmd = resolve_tesseract_cmd()
+        if pytesseract is not None and self.tesseract_cmd is not None:
+            pytesseract.pytesseract.tesseract_cmd = self.tesseract_cmd
 
     def is_ready(self) -> bool:
         return pytesseract is not None and self._tesseract_available()
@@ -72,7 +79,7 @@ class OcrEngine:
                 for block in blocks
             ],
             "diagnostics": {
-                "tesseract_cmd": getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract"),
+                "tesseract_cmd": self.tesseract_cmd or getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract"),
                 "language": language,
             },
         }
@@ -156,18 +163,28 @@ class OcrEngine:
 def _tesseract_available_cached() -> bool:
     if pytesseract is None:
         return False
-    engine = _TesseractPathProbe()
-    return engine.available()
+    cmd = resolve_tesseract_cmd()
+    if cmd is not None:
+        pytesseract.pytesseract.tesseract_cmd = cmd
+        return True
+    return False
 
 
-class _TesseractPathProbe:
-    def available(self) -> bool:
-        tesseract_cmd = getattr(pytesseract.pytesseract, "tesseract_cmd", "tesseract")
-        return bool(tesseract_cmd) and (os.path.isabs(tesseract_cmd) or self._binary_on_path(tesseract_cmd))
+def resolve_tesseract_cmd() -> str | None:
+    for candidate in (os.getenv("TESSERACT_CMD"), shutil.which("tesseract"), DEFAULT_TESSERACT_CMD):
+        if not candidate:
+            continue
+        path = Path(candidate)
+        if path.exists():
+            return str(path)
+        if not os.path.isabs(candidate) and _binary_on_path(candidate):
+            return candidate
+    return None
 
-    def _binary_on_path(self, name: str) -> bool:
-        for path_entry in os.environ.get("PATH", "").split(os.pathsep):
-            candidate = os.path.join(path_entry, name)
-            if os.path.exists(candidate) or os.path.exists(candidate + ".exe"):
-                return True
-        return False
+
+def _binary_on_path(name: str) -> bool:
+    for path_entry in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = os.path.join(path_entry, name)
+        if os.path.exists(candidate) or os.path.exists(candidate + ".exe"):
+            return True
+    return False

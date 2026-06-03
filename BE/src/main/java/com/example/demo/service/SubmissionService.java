@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.api.dto.submission.AnswerInput;
 import com.example.demo.api.dto.submission.AttemptDetailResponse;
+import com.example.demo.api.dto.submission.AttemptEntryStatusResponse;
 import com.example.demo.api.dto.submission.AttemptFilterResponse;
 import com.example.demo.api.dto.submission.AttemptReportAnswerItem;
 import com.example.demo.api.dto.submission.AttemptReportResponse;
@@ -24,6 +25,7 @@ import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.RiskLevel;
 import com.example.demo.domain.entity.RoleName;
+import com.example.demo.domain.entity.StudentIdentityCheck;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.entity.MonitoringEventType;
 import com.example.demo.repository.AnswerRepository;
@@ -32,6 +34,7 @@ import com.example.demo.repository.ExamAttemptRepository;
 import com.example.demo.repository.FraudSignalRepository;
 import com.example.demo.repository.FraudWarningRepository;
 import com.example.demo.repository.QuestionRepository;
+import com.example.demo.repository.StudentIdentityCheckRepository;
 import com.example.demo.service.helper.SubmissionHelper;
 import lombok.RequiredArgsConstructor;
 
@@ -70,32 +73,104 @@ public class SubmissionService {
     private final QuestionService questionService;
     private final FraudSignalRepository fraudSignalRepository;
     private final FraudWarningRepository fraudWarningRepository;
+    private final StudentIdentityCheckRepository studentIdentityCheckRepository;
+    private final ClassService classService;
 
     @Value("${demo.monitoring.integrity-check.cooldown-seconds:45}")
     private long integrityCheckCooldownSeconds;
 
     @Transactional
-    public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
+    public StartAttemptResponse prepareAttempt(Exam exam, User student, String clientIp) {
         LocalDateTime nowInExamZone = VietNamTime.now();
-        examService.validateExamAvailability(exam, nowInExamZone);
+        examService.validateExamJoinable(exam, nowInExamZone);
+        ensureStudentCanEnterExam(exam, student);
 
-        ExamAttempt existing = examAttemptRepository
-                .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.IN_PROGRESS)
-                .orElse(null);
-        if (existing == null) {
-            existing = examAttemptRepository
-                    .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.PAUSED)
-                    .orElse(null);
-        }
+        ExamAttempt existing = findReusableAttempt(exam, student);
         if (existing != null) {
             enforceIpConsistency(existing, normalizeClientIp(clientIp));
-            publishAttemptJoinedAfterCommit(existing);
             return toStartResponse(existing);
         }
 
         enforceMaxAttempts(exam, student);
 
         String normalizedIp = normalizeClientIp(clientIp);
+
+        ExamAttempt saved = examAttemptRepository.save(
+                ExamAttempt.builder()
+                        .exam(exam)
+                        .student(student)
+                        .joinedAt(VietNamTime.now())
+                        .status(AttemptStatus.WAITING)
+                        .score(0.0)
+                        .riskScore(0)
+                        .riskLevel(RiskLevel.CLEAN)
+                        .suspicious(false)
+                        .clientIp(normalizedIp)
+                        .sessionTokenVersion(1)
+                        .fullscreenRequired(true)
+                        .lastHeartbeatAt(VietNamTime.now())
+                        .lastIntegrityCheckAt(VietNamTime.now())
+                        .build());
+        return toStartResponse(saved);
+    }
+
+    @Transactional
+    public StartAttemptResponse startAttempt(Exam exam, User student, String clientIp) {
+        LocalDateTime nowInExamZone = VietNamTime.now();
+        examService.validateExamAvailability(exam, nowInExamZone);
+        ensureStudentCanEnterExam(exam, student);
+
+        ExamAttempt existing = findReusableAttempt(exam, student);
+        if (existing != null) {
+            enforceIpConsistency(existing, normalizeClientIp(clientIp));
+            if (existing.getStatus() == AttemptStatus.WAITING) {
+                List<String> blocked = entryBlockedReasons(existing);
+                if (!blocked.isEmpty()) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Exam entry requirements are incomplete: " + String.join(",", blocked));
+                }
+                existing.setStartedAt(VietNamTime.now());
+                existing.setStatus(AttemptStatus.IN_PROGRESS);
+                existing.setLastHeartbeatAt(VietNamTime.now());
+                existing = examAttemptRepository.save(existing);
+                duplicateIpDetectionService.detect(existing);
+                monitoringService.recordAttemptHistoryEvent(
+                        existing,
+                        MonitoringEventType.ATTEMPT_START,
+                        buildAttemptStartDetails(existing, normalizeClientIp(clientIp)));
+                publishAttemptStartedAfterCommit(existing);
+            } else {
+                publishAttemptJoinedAfterCommit(existing);
+            }
+            return toStartResponse(existing);
+        }
+
+        enforceMaxAttempts(exam, student);
+
+        String normalizedIp = normalizeClientIp(clientIp);
+
+        if (!Boolean.TRUE.equals(exam.getPractice())
+                && (rulesAgreementRequired(exam) || cameraRequired(exam) || identityRequired(exam))) {
+            ExamAttempt waiting = examAttemptRepository.save(
+                    ExamAttempt.builder()
+                            .exam(exam)
+                            .student(student)
+                            .joinedAt(VietNamTime.now())
+                            .status(AttemptStatus.WAITING)
+                            .score(0.0)
+                            .riskScore(0)
+                            .riskLevel(RiskLevel.CLEAN)
+                            .suspicious(false)
+                            .clientIp(normalizedIp)
+                            .sessionTokenVersion(1)
+                            .fullscreenRequired(true)
+                            .lastHeartbeatAt(VietNamTime.now())
+                            .lastIntegrityCheckAt(VietNamTime.now())
+                            .build());
+            List<String> blocked = entryBlockedReasons(waiting);
+            if (!blocked.isEmpty()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Exam entry requirements are incomplete: " + String.join(",", blocked));
+            }
+        }
 
         ExamAttempt saved = examAttemptRepository.save(
                 ExamAttempt.builder()
@@ -122,6 +197,23 @@ public class SubmissionService {
         publishAttemptStartedAfterCommit(saved);
 
         return toStartResponse(saved);
+    }
+
+    private ExamAttempt findReusableAttempt(Exam exam, User student) {
+        ExamAttempt existing = examAttemptRepository
+                .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.IN_PROGRESS)
+                .orElse(null);
+        if (existing == null) {
+            existing = examAttemptRepository
+                    .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.PAUSED)
+                    .orElse(null);
+        }
+        if (existing == null) {
+            existing = examAttemptRepository
+                    .findFirstByExamAndStudentAndStatus(exam, student, AttemptStatus.WAITING)
+                    .orElse(null);
+        }
+        return existing;
     }
 
     private void enforceMaxAttempts(Exam exam, User student) {
@@ -230,6 +322,7 @@ public class SubmissionService {
     public SubmitAttemptResponse submitAttempt(Long attemptId, User student, SubmitAttemptRequest request) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanOperateStudentAttempt(attempt, student);
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.AUTO_SUBMITTED) {
             return toSubmitResponse(attempt);
@@ -244,6 +337,9 @@ public class SubmissionService {
         }
         if (attempt.getStatus() == AttemptStatus.PAUSED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam attempt is paused pending proctor review");
+        }
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
         }
 
         LocalDateTime now = VietNamTime.now();
@@ -285,6 +381,7 @@ public class SubmissionService {
     public DraftSaveResponse saveDraftAnswers(Long attemptId, User student, String clientIp, List<AnswerInput> answers) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanOperateStudentAttempt(attempt, student);
 
         if (attempt.getStatus() == AttemptStatus.PAUSED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is paused pending proctor review");
@@ -348,6 +445,10 @@ public class SubmissionService {
     public DraftAnswersResponse getDraftAnswers(Long attemptId, User student) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanOperateStudentAttempt(attempt, student);
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
+        }
         List<com.example.demo.domain.entity.Question> orderedQuestions =
                 questionService.orderQuestionsForAttempt(attempt.getExam(), attempt.getId());
         Map<Long, Integer> questionOrder = new java.util.LinkedHashMap<>();
@@ -383,6 +484,10 @@ public class SubmissionService {
     public List<QuestionResponse> listQuestionsForStudentAttempt(Long attemptId, User student) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureCanOperateStudentAttempt(attempt, student);
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
+        }
         return questionService.listByExam(attempt.getExam(), false, student, attemptId);
     }
 
@@ -442,6 +547,7 @@ public class SubmissionService {
         int answeredCount = answerRepository.findByAttempt(attempt).size();
         int totalQuestions = questionRepository.findByExam(attempt.getExam()).size();
         ReviewSummary reviewSummary = buildReviewSummary(attempt);
+        StudentIdentityCheck latestIdentity = latestIdentityCheck(attempt);
 
         return AttemptDetailResponse.builder()
                 .id(attempt.getId())
@@ -497,6 +603,10 @@ public class SubmissionService {
                 .monitorAnswerChangeBurst(monitoringFlagEnabled(attempt.getExam().getMonitorAnswerChangeBurst()))
                 .monitorClipboardBurst(monitoringFlagEnabled(attempt.getExam().getMonitorClipboardBurst()))
                 .monitorFullscreenEvasion(monitoringFlagEnabled(attempt.getExam().getMonitorFullscreenEvasion()))
+                .inExamIdentityCheckEnabled(inExamIdentityCheckEnabled(attempt.getExam()))
+                .identityCheckIntervalSeconds(identityCheckIntervalSeconds(attempt.getExam()))
+                .identityStatus(latestIdentity == null ? "NOT_CHECKED" : latestIdentity.getStatus())
+                .identityCheckId(latestIdentity == null ? null : latestIdentity.getId())
                 .build();
     }
 
@@ -651,6 +761,16 @@ public class SubmissionService {
         }
     }
 
+    private void ensureCanOperateStudentAttempt(ExamAttempt attempt, User actor) {
+        if (attempt == null || actor == null || attempt.getStudent() == null) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this attempt");
+        }
+        if (attempt.getStudent().getId().equals(actor.getId()) || hasRole(actor, RoleName.ADMIN)) {
+            return;
+        }
+        throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to access this attempt");
+    }
+
     private void enforceReviewAllowedForStudent(ExamAttempt attempt, User actor) {
         if (attempt.getStudent().getId().equals(actor.getId())
                 && !resolveAllowReviewAfterSubmit(attempt.getExam())) {
@@ -666,8 +786,9 @@ public class SubmissionService {
     }
 
     public AttemptSummaryResponse toSummary(ExamAttempt attempt) {
-        boolean isPractice = attempt.getExam().getCreatedBy().getId().equals(attempt.getStudent().getId());
+        boolean isPractice = Boolean.TRUE.equals(attempt.getExam().getPractice());
         ReviewSummary reviewSummary = buildReviewSummary(attempt);
+        StudentIdentityCheck latestIdentity = latestIdentityCheck(attempt);
         return AttemptSummaryResponse.builder()
                 .id(attempt.getId())
                 .examId(attempt.getExam().getId())
@@ -698,6 +819,8 @@ public class SubmissionService {
                 .saveCount(attempt.getSaveCount())
                 .submitCount(attempt.getSubmitCount())
                 .fullscreenRequired(attempt.getFullscreenRequired())
+                .identityStatus(latestIdentity == null ? "NOT_CHECKED" : latestIdentity.getStatus())
+                .identityCheckId(latestIdentity == null ? null : latestIdentity.getId())
                 .build();
     }
 
@@ -737,15 +860,232 @@ public class SubmissionService {
         return "\"" + escaped + "\"";
     }
 
+    @Transactional(readOnly = true)
+    public AttemptEntryStatusResponse getEntryStatus(Long attemptId, User actor) {
+        ExamAttempt attempt = requireAttempt(attemptId);
+        ensureCanViewAttempt(attempt, actor);
+        return toEntryStatusResponse(attempt);
+    }
+
+    @Transactional
+    public AttemptEntryStatusResponse recordRulesAgreement(Long attemptId, User student, String clientIp, String userAgent) {
+        ExamAttempt attempt = requireAttempt(attemptId);
+        if (!attempt.getStudent().getId().equals(student.getId()) && !hasRole(student, RoleName.ADMIN)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to confirm rules for this attempt");
+        }
+        Exam exam = attempt.getExam();
+        attempt.setRulesAgreedAt(VietNamTime.now());
+        attempt.setRulesVersionAgreed(resolveRulesVersion(exam));
+        attempt.setRulesAgreementIp(normalizeClientIp(clientIp));
+        attempt.setRulesAgreementUserAgent(userAgent == null ? null : userAgent.substring(0, Math.min(userAgent.length(), 512)));
+        examAttemptRepository.save(attempt);
+        monitoringService.recordAttemptHistoryEvent(
+                attempt,
+                MonitoringEventType.RULES_AGREEMENT,
+                "rulesVersion=" + safe(attempt.getRulesVersionAgreed()) + ";clientIp=" + safe(attempt.getRulesAgreementIp()));
+        return toEntryStatusResponse(attempt);
+    }
+
+    private AttemptEntryStatusResponse toEntryStatusResponse(ExamAttempt attempt) {
+        StudentIdentityCheck latestIdentity = latestIdentityCheck(attempt);
+        String identityStatus = latestIdentity == null ? "NOT_CHECKED" : latestIdentity.getStatus();
+        Exam exam = attempt.getExam();
+        return AttemptEntryStatusResponse.builder()
+                .attemptId(attempt.getId())
+                .examId(exam.getId())
+                .classId(examClassId(exam))
+                .className(exam.getClassName())
+                .status(attempt.getStatus() == null ? null : attempt.getStatus().name())
+                .canStart(entryBlockedReasons(attempt).isEmpty())
+                .blockedReasons(entryBlockedReasons(attempt))
+                .rulesRequired(rulesAgreementRequired(exam))
+                .rulesAccepted(rulesAccepted(attempt))
+                .rulesText(resolveRulesText(exam))
+                .rulesVersion(resolveRulesVersion(exam))
+                .identityRequired(identityRequired(exam))
+                .identityStatus(identityStatus)
+                .identityCheckId(latestIdentity == null ? null : latestIdentity.getId())
+                .identityReviewPolicy(resolveIdentityReviewPolicy(exam))
+                .classMembershipRequired(classMembershipRequired(exam))
+                .classMembershipValid(studentHasClassAccess(attempt))
+                .cameraRequired(cameraRequired(exam))
+                .cameraReady(Boolean.TRUE.equals(attempt.getCameraOn()))
+                .micReady(Boolean.TRUE.equals(attempt.getMicOn()))
+                .inExamIdentityCheckEnabled(inExamIdentityCheckEnabled(exam))
+                .identityCheckIntervalSeconds(identityCheckIntervalSeconds(exam))
+                .rulesAgreedAt(DateTimeUtils.toOffset(attempt.getRulesAgreedAt(), VietNamTime.zone()))
+                .build();
+    }
+
     private StartAttemptResponse toStartResponse(ExamAttempt attempt) {
+        StudentIdentityCheck latestIdentity = latestIdentityCheck(attempt);
+        boolean started = attempt.getStartedAt() != null;
+        Exam exam = attempt.getExam();
         return StartAttemptResponse.builder()
                 .attemptId(attempt.getId())
-                .examId(attempt.getExam().getId())
+                .examId(exam.getId())
+                .classId(examClassId(exam))
+                .className(exam.getClassName())
+                .joinedAt(DateTimeUtils.toOffset(attempt.getJoinedAt(), VietNamTime.zone()))
                 .startedAt(DateTimeUtils.toOffset(attempt.getStartedAt(), VietNamTime.zone()))
-                .deadlineAt(DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()))
-                .remainingSeconds(submissionHelper.remainingSeconds(attempt))
+                .deadlineAt(started ? DateTimeUtils.toOffset(submissionHelper.deadlineAt(attempt), VietNamTime.zone()) : null)
+                .remainingSeconds(started ? submissionHelper.remainingSeconds(attempt) : null)
                 .status(attempt.getStatus().name())
+                .rulesAccepted(rulesAccepted(attempt))
+                .identityStatus(latestIdentity == null ? "NOT_CHECKED" : latestIdentity.getStatus())
+                .identityCheckId(latestIdentity == null ? null : latestIdentity.getId())
+                .classMembershipRequired(classMembershipRequired(exam))
+                .classMembershipValid(studentHasClassAccess(attempt))
+                .inExamIdentityCheckEnabled(inExamIdentityCheckEnabled(exam))
+                .identityCheckIntervalSeconds(identityCheckIntervalSeconds(exam))
+                .entryBlockedReasons(entryBlockedReasons(attempt))
                 .build();
+    }
+
+    private List<String> entryBlockedReasons(ExamAttempt attempt) {
+        List<String> reasons = new ArrayList<>();
+        Exam exam = attempt.getExam();
+        if (rulesAgreementRequired(exam) && !rulesAccepted(attempt)) {
+            reasons.add("MISSING_RULES_AGREEMENT");
+        }
+        if (cameraRequired(exam) && !Boolean.TRUE.equals(attempt.getCameraOn())) {
+            reasons.add("CAMERA_NOT_READY");
+        }
+        if (!studentHasClassAccess(attempt)) {
+            reasons.add("CLASS_MEMBERSHIP_REQUIRED");
+        }
+        if (identityRequired(exam) && !identityAccepted(latestIdentityCheck(attempt), exam)) {
+            reasons.add("IDENTITY_NOT_VERIFIED");
+        }
+        return reasons;
+    }
+
+    private boolean rulesAgreementRequired(Exam exam) {
+        if (exam != null && Boolean.TRUE.equals(exam.getPractice())) {
+            return false;
+        }
+        return exam == null || exam.getRequireRulesAgreement() == null || Boolean.TRUE.equals(exam.getRequireRulesAgreement());
+    }
+
+    private boolean rulesAccepted(ExamAttempt attempt) {
+        return !rulesAgreementRequired(attempt.getExam()) || attempt.getRulesAgreedAt() != null;
+    }
+
+    private boolean cameraRequired(Exam exam) {
+        if (exam != null && Boolean.TRUE.equals(exam.getPractice())) {
+            return false;
+        }
+        return exam != null && (Boolean.TRUE.equals(exam.getRequireCameraMic()) || aiProctoringEnabled(exam));
+    }
+
+    private boolean studentHasClassAccess(ExamAttempt attempt) {
+        if (attempt == null || attempt.getExam() == null || attempt.getStudent() == null) {
+            return true;
+        }
+        Exam exam = attempt.getExam();
+        if (!classMembershipRequired(exam)) {
+            return true;
+        }
+        return classService.findStudentEnrolledClassForExam(attempt.getStudent(), exam).isPresent();
+    }
+
+    private void ensureStudentCanEnterExam(Exam exam, User student) {
+        if (student == null || hasRole(student, RoleName.ADMIN) || !classMembershipRequired(exam)) {
+            return;
+        }
+        if (classService.findStudentEnrolledClassForExam(student, exam).isEmpty()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Student is not enrolled in the class assigned to this exam");
+        }
+    }
+
+    private boolean classMembershipRequired(Exam exam) {
+        if (exam == null || Boolean.TRUE.equals(exam.getPractice())) {
+            return false;
+        }
+        return exam.getClassEntity() != null || (exam.getClassName() != null && !exam.getClassName().isBlank());
+    }
+
+    private Long examClassId(Exam exam) {
+        return exam == null || exam.getClassEntity() == null ? null : exam.getClassEntity().getId();
+    }
+
+    private boolean identityRequired(Exam exam) {
+        if (exam != null && Boolean.TRUE.equals(exam.getPractice())) {
+            return false;
+        }
+        if (exam == null) {
+            return true;
+        }
+        if (exam.getRequireIdentityVerification() != null) {
+            return Boolean.TRUE.equals(exam.getRequireIdentityVerification());
+        }
+        return cameraRequired(exam);
+    }
+
+    private boolean identityAccepted(StudentIdentityCheck check, Exam exam) {
+        if (!identityRequired(exam)) {
+            return true;
+        }
+        if (check == null || check.getStatus() == null) {
+            return false;
+        }
+        String status = check.getStatus().trim().toUpperCase();
+        if ("VERIFIED".equals(status)) {
+            return true;
+        }
+        return "NEEDS_REVIEW".equals(status) && !"STRICT_VERIFIED_ONLY".equals(resolveIdentityReviewPolicy(exam));
+    }
+
+    private StudentIdentityCheck latestIdentityCheck(ExamAttempt attempt) {
+        if (attempt == null || attempt.getId() == null) {
+            return null;
+        }
+        return studentIdentityCheckRepository.findTopByAttemptIdOrderByCreatedAtDesc(attempt.getId()).orElse(null);
+    }
+
+    private String resolveRulesText(Exam exam) {
+        String text = exam == null ? null : exam.getRulesText();
+        if (text != null && !text.isBlank()) {
+            return text.trim();
+        }
+        return String.join("\n",
+                "Không sử dụng tài liệu, thiết bị hoặc phần mềm không được phép.",
+                "Luôn bật camera và microphone khi kỳ thi yêu cầu giám sát.",
+                "Không rời khỏi màn hình thi, không chuyển tab, không sao chép hoặc chia sẻ nội dung đề.",
+                "Người làm bài phải đúng danh tính đã xác minh; hệ thống có thể kiểm tra lại trong quá trình thi.",
+                "Mọi bất thường sẽ được ghi nhận để giám thị xem xét và xử lý theo quy định.");
+    }
+
+    private String resolveRulesVersion(Exam exam) {
+        String version = exam == null ? null : exam.getRulesVersion();
+        return version == null || version.isBlank() ? "default-v1" : version.trim();
+    }
+
+    private String resolveIdentityReviewPolicy(Exam exam) {
+        String policy = exam == null ? null : exam.getIdentityReviewPolicy();
+        if (policy == null || policy.isBlank()) {
+            return "ALLOW_WITH_WARNING";
+        }
+        String normalized = policy.trim().toUpperCase();
+        return "STRICT_VERIFIED_ONLY".equals(normalized) ? normalized : "ALLOW_WITH_WARNING";
+    }
+
+    private boolean inExamIdentityCheckEnabled(Exam exam) {
+        if (exam == null) {
+            return true;
+        }
+        if (exam.getInExamIdentityCheckEnabled() != null) {
+            return Boolean.TRUE.equals(exam.getInExamIdentityCheckEnabled());
+        }
+        return identityRequired(exam);
+    }
+
+    private int identityCheckIntervalSeconds(Exam exam) {
+        Integer value = exam == null ? null : exam.getIdentityCheckIntervalSeconds();
+        if (value == null) {
+            return 60;
+        }
+        return Math.max(30, Math.min(value, 600));
     }
 
     private SubmitAttemptResponse toSubmitResponse(ExamAttempt attempt) {

@@ -11,12 +11,14 @@ const props = defineProps({
   padding: {
     type: String,
     default: 'md',
-    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+    validator: (v) => ['none', 'sm', 'md', 'lg'].includes(v)
   },
-  hoverable: { type: Boolean, default: false }
+  hoverable: { type: Boolean, default: false },
+  interactive: { type: Boolean, default: false }
 })
 
 const paddingClass = {
+  none: '',
   sm: 'p-4',
   md: 'p-6',
   lg: 'p-8'
@@ -25,13 +27,14 @@ const paddingClass = {
 const rootClass = computed(() => {
   const base = [
     'rounded-[var(--ds-radius-xl)] border bg-[var(--ds-surface)] dark:bg-slate-900/88',
-    'border-[var(--ds-border)] shadow-[var(--ds-shadow-sm)]',
+    'border-[var(--ds-border)] shadow-[var(--ds-shadow-sm)] dark:border-slate-700',
     paddingClass[props.padding] || paddingClass.md
   ]
-  if (props.hoverable) {
-    base.push('portal-card-lift dark:border-slate-700')
-  } else {
-    base.push('dark:border-slate-700')
+  if (props.hoverable || props.interactive) {
+    base.push('portal-card-lift transition-[box-shadow,transform,border-color] duration-150')
+  }
+  if (props.interactive) {
+    base.push('cursor-pointer hover:border-[var(--ds-primary-border)]')
   }
   return base
 })

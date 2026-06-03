@@ -117,6 +117,9 @@ public class ProfileService {
         if (request.getDateOfBirth() != null) {
             profile.setDateOfBirth(request.getDateOfBirth());
         }
+        if (request.getCitizenId() != null) {
+            profile.setCitizenId(request.getCitizenId().trim());
+        }
         if (request.getEmail() != null) {
             profile.setEmail(request.getEmail().trim());
         }
@@ -157,6 +160,7 @@ public class ProfileService {
                 profile.getDisplayName(),
                 profile.getFullName(),
                 profile.getDateOfBirth(),
+                profile.getCitizenId(),
                 profile.getEmail(),
                 profile.getPhone(),
                 profile.getAvatarUrl());
@@ -170,6 +174,7 @@ public class ProfileService {
                 profile.getDisplayName(),
                 profile.getFullName(),
                 profile.getDateOfBirth(),
+                null,
                 profile.getEmail(),
                 profile.getPhone(),
                 profile.getAvatarUrl());

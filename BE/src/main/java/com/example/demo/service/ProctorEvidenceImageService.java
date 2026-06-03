@@ -105,6 +105,33 @@ public class ProctorEvidenceImageService {
         }
     }
 
+    public String loadEvidenceImageDataUrl(Long attemptId, String fileName) {
+        if (attemptId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing attempt id");
+        }
+        String safeFileName = safeSegment(fileName, "");
+        if (safeFileName.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing evidence image name");
+        }
+
+        Path attemptDir = storageRoot.resolve("attempt-" + attemptId).normalize();
+        Path target = attemptDir.resolve(safeFileName).normalize();
+        if (!target.startsWith(attemptDir)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Invalid evidence image path");
+        }
+        if (!Files.exists(target) || !Files.isRegularFile(target)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Evidence image not found");
+        }
+
+        try {
+            String contentType = detectContentType(safeFileName, target);
+            String encoded = Base64.getEncoder().encodeToString(Files.readAllBytes(target));
+            return "data:" + contentType + ";base64," + encoded;
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Evidence image not found");
+        }
+    }
+
     private byte[] decodeImage(String imageBase64) {
         if (imageBase64 == null || imageBase64.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Missing camera frame");

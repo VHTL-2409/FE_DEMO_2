@@ -1,12 +1,11 @@
-import { ref, onUnmounted } from 'vue'
+import { getCurrentInstance, ref, onUnmounted } from 'vue'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import { useProctorDashboardStore } from '../stores/proctorDashboardStore'
+import { fetchExamAttempts } from '../services/examMonitoringService'
+import { normalizeSignalCategory, normalizeSignalType } from '../utils/proctorSignalTypes'
 
 const STOMP_CONNECT_TIMEOUT_MS = 1500
-const POLL_INTERVAL_WHEN_CONNECTED_MS = 60_000   // reconcile only when WS is healthy
 const POLL_INTERVAL_WHEN_DISCONNECTED_MS = 8_000 // fallback polling
-
-const resolveAttemptId = (card) => card?.attemptId ?? card?.id
 
 export function useExamMonitoring() {
   const realtime = useRealtimeChannel()
@@ -25,13 +24,9 @@ export function useExamMonitoring() {
     return `/topic/attempts/${attemptId}/proctor-actions`
   }
 
-  function toEventTime(payload) {
-    return payload?.issuedAt || payload?.updatedAt || payload?.createdAt || new Date().toISOString()
-  }
-
   // ── Dev logging ─────────────────────────────────────────────────────────────
   function logRealtime(type, attemptId, payload) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
       const occurredAt = payload?.occurredAt || payload?.issuedAt || payload?.updatedAt
       const latencyMs = occurredAt ? Date.now() - new Date(occurredAt).getTime() : null
       console.debug(`[Realtime] type=${type} attemptId=${attemptId} latencyMs=${latencyMs}`, payload)
@@ -41,7 +36,7 @@ export function useExamMonitoring() {
   // ── Core: applyRealtimeEvent ───────────────────────────────────────────────
   function applyRealtimeEvent(event) {
     if (!event) return
-    const type = String(event.type || '').toUpperCase()
+    const type = normalizeSignalType(event.type || '')
     const attemptId = type === 'FRAUD_WARNING_RECORDED'
       ? String(event.attemptId || event.relatedAttemptIds?.[0] || '')
       : String(event.attemptId || event.id || '')
@@ -68,6 +63,7 @@ export function useExamMonitoring() {
       'WARNING_SENT',
       'FRAUD_SIGNAL_RECORDED',
       'FRAUD_WARNING_RECORDED',
+      'IDENTITY_REVIEW_REQUIRED',
       'SUSPICIOUS_ALERT',
       'AI_CAMERA_SIGNAL',
       'ATTEMPT_PAUSED',
@@ -79,17 +75,20 @@ export function useExamMonitoring() {
     store.addAlert({
       warningId: event.warningId,
       attemptId: event.attemptId || attemptId || null,
-      signalType: signal.signalType || event.signalType || event.warningType || type,
-      warningType: event.warningType,
-      category: event.warningCategory || signal.category || event.category,
-      warningCategory: event.warningCategory,
+      signalType: normalizeSignalType(signal.signalType || event.signalType || event.warningType || type),
+      warningType: normalizeSignalType(event.warningType),
+      category: normalizeSignalCategory(event.warningCategory || signal.category || event.category || (type === 'IDENTITY_REVIEW_REQUIRED' ? 'IDENTITY' : undefined)),
+      warningCategory: normalizeSignalCategory(event.warningCategory),
       type,
-      severity: signal.severity || event.severity || event.riskLevel,
+      severity: normalizeSignalType(signal.severity || event.severity || event.riskLevel),
       confidence: signal.confidence,
       riskImpact: event.riskImpact ?? signal.riskImpact,
       riskScore: event.riskScore,
       message: event.message || signal.displayMessage,
       evidence: event.evidence || signal.evidence,
+      evidenceRefs: event.evidenceRefs,
+      identityCheckId: event.identityCheckId,
+      verificationStatus: event.verificationStatus,
       source: event.source,
       relatedAttemptIds: event.relatedAttemptIds || [],
       reviewStatus: event.reviewStatus,
@@ -221,8 +220,6 @@ export function useExamMonitoring() {
     currentPollInterval = intervalMs || POLL_INTERVAL_WHEN_DISCONNECTED_MS
     pollIntervalId = setInterval(async () => {
       if (!examId.value) return
-      const { fetchExamAttempts } = await import('../services/examMonitoringService').catch(() => ({ fetchExamAttempts: null }))
-      if (!fetchExamAttempts || !examId.value) return
       try {
         const attempts = await fetchExamAttempts(examId.value)
         if (Array.isArray(attempts)) {
@@ -243,8 +240,6 @@ export function useExamMonitoring() {
   // ── Reconciliation: called after websocket reconnect ───────────────────────
   async function reconcile(examIdVal) {
     if (!examIdVal) return
-    const { fetchExamAttempts } = await import('../services/examMonitoringService').catch(() => ({ fetchExamAttempts: null }))
-    if (!fetchExamAttempts) return
     try {
       const attempts = await fetchExamAttempts(examIdVal)
       if (Array.isArray(attempts)) {
@@ -254,9 +249,11 @@ export function useExamMonitoring() {
     }
   }
 
-  onUnmounted(() => {
-    disconnect()
-  })
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      disconnect()
+    })
+  }
 
   return {
     isConnected,

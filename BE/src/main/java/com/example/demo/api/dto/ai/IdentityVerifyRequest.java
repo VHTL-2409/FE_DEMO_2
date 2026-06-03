@@ -2,6 +2,7 @@ package com.example.demo.api.dto.ai;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,9 +17,11 @@ public class IdentityVerifyRequest {
     private Long studentId;
 
     @NotBlank
+    @Size(max = 10_000_000)
     private String documentImageBase64;
 
     @NotBlank
+    @Size(max = 10_000_000)
     private String selfieImageBase64;
 
     private String documentType;

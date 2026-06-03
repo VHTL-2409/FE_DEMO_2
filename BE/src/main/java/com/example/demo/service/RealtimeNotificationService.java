@@ -316,7 +316,8 @@ public class RealtimeNotificationService {
                 "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
                 "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                 "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
-                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS",
+                "IDENTITY_FACE_MISMATCH",
                 "AI_SPEAKING_DETECTED",
                 "FLAT_IMAGE", "SCREEN_DISPLAY"
         ).contains(signalType);

@@ -117,7 +117,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { agreeAttemptRules, getAttemptEntryStatus, startAttempt } from '../../services/attemptService'
-import { updateDeviceStatus } from '../../services/monitoringService'
 import { buildAttemptQuery } from '../../services/studentExamContextStorage'
 import { useToast } from '../../composables/useToast'
 
@@ -128,6 +127,13 @@ const toast = useToast()
 const agreed = ref(false)
 const isStarting = ref(false)
 const entryStatus = ref(null)
+const DEFAULT_RULE_LINES = [
+  'Khong su dung tai lieu, thiet bi hoac phan mem khong duoc phep.',
+  'Luon bat camera va microphone khi ky thi yeu cau giam sat.',
+  'Khong roi khoi man hinh thi, khong chuyen tab, khong sao chep hoac chia se noi dung de.',
+  'Nguoi lam bai phai dung danh tinh da xac minh; he thong co the kiem tra lai trong qua trinh thi.',
+  'Moi bat thuong se duoc ghi nhan de giam thi xem xet va xu ly theo quy dinh.'
+]
 
 const examId = computed(() => Number.parseInt(String(route.query.examId || ''), 10) || null)
 const attemptId = computed(() => Number.parseInt(String(route.query.attemptId || ''), 10) || null)
@@ -137,19 +143,21 @@ const durationLabel = computed(() => `${Number.parseInt(String(route.query.durat
 const questionLabel = computed(() => `${Number.parseInt(String(route.query.questions || '0'), 10) || 0} câu`)
 const startAt = computed(() => String(route.query.startAt || ''))
 const endAt = computed(() => String(route.query.endAt || ''))
-const className = computed(() => String(route.query.className || '').trim())
+const className = computed(() => String(entryStatus.value?.className || route.query.className || '').trim())
 
 const identityStatus = computed(() => String(entryStatus.value?.identityStatus || route.query.verificationStatus || 'NOT_CHECKED').toUpperCase())
 const needsReview = computed(() => identityStatus.value === 'NEEDS_REVIEW')
 const blockedReasons = computed(() => Array.isArray(entryStatus.value?.blockedReasons) ? entryStatus.value.blockedReasons : [])
-const canSubmitAgreement = computed(() => agreed.value && !isStarting.value)
+const hardBlockedReasons = computed(() => blockedReasons.value.filter((reason) => reason !== 'MISSING_RULES_AGREEMENT'))
+const canSubmitAgreement = computed(() => agreed.value && !isStarting.value && hardBlockedReasons.value.length === 0)
 
 const ruleLines = computed(() => {
   const text = entryStatus.value?.rulesText || ''
-  return text
+  const lines = text
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*\d+[\).\s-]*/, '').trim())
+    .map((line) => line.replace(/^\s*\d+[).\s-]*/, '').trim())
     .filter(Boolean)
+  return lines.length ? lines : DEFAULT_RULE_LINES
 })
 
 const proctoringItems = computed(() => [
@@ -187,6 +195,7 @@ const timeLabel = (value) => {
 }
 
 const reasonLabel = (reason) => {
+  if (reason === 'CLASS_MEMBERSHIP_REQUIRED') return 'Bạn chưa thuộc lớp được phép tham gia kỳ thi.'
   const map = {
     MISSING_RULES_AGREEMENT: 'Bạn chưa cam kết quy chế.',
     CAMERA_NOT_READY: 'Camera chưa được backend ghi nhận là sẵn sàng.',
@@ -230,11 +239,14 @@ const confirmAndStart = async () => {
   }
   isStarting.value = true
   try {
-    await updateDeviceStatus(attemptId.value, true, true)
+    if (hardBlockedReasons.value.length) {
+      toast.error(`Chưa đủ điều kiện: ${hardBlockedReasons.value.map(reasonLabel).join(' ')}`)
+      return
+    }
     const status = await agreeAttemptRules(attemptId.value)
     entryStatus.value = status
     if (status?.blockedReasons?.length) {
-      toast.error('Chưa đủ điều kiện vào thi.')
+      toast.error(`Chưa đủ điều kiện: ${status.blockedReasons.map(reasonLabel).join(' ')}`)
       return
     }
     const fullscreenReady = await requestExamFullscreen()
@@ -253,7 +265,9 @@ const confirmAndStart = async () => {
         remainingSeconds: started.remainingSeconds,
         startedAt: started.startedAt,
         identityCheckId: started.identityCheckId || route.query.identityCheckId || '',
-        verificationStatus: started.identityStatus || identityStatus.value
+        verificationStatus: started.identityStatus || identityStatus.value,
+        inExamIdentityCheckEnabled: started.inExamIdentityCheckEnabled ?? entryStatus.value?.inExamIdentityCheckEnabled,
+        identityCheckIntervalSeconds: started.identityCheckIntervalSeconds || entryStatus.value?.identityCheckIntervalSeconds
       })
     })
   } catch (error) {

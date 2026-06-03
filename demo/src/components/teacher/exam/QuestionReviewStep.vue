@@ -183,7 +183,7 @@
                     <div class="ec-qb-live-editor__pane ec-qb-live-editor__pane--preview">
                       <div class="ec-qb-live-editor__header">
                         <span class="ec-qb-live-editor__label">Xem trước trực tiếp</span>
-                        <span class="ec-qb-live-editor__hint">Preview cập nhật theo nội dung đang sửa</span>
+                        <span class="ec-qb-live-editor__hint">Xem trước cập nhật theo nội dung đang sửa</span>
                       </div>
                       <div class="ec-qb-preview-surface" aria-readonly="true">
                         <QuestionRenderer

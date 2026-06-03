@@ -245,6 +245,38 @@ describe('useExamMonitoring', () => {
     expect(store.liveAlerts[0].signalType).toBe('FACE_NOT_DETECTED')
   })
 
+  it('treats visual identity mismatch warnings as realtime proctor alerts', async () => {
+    const { useExamMonitoring } = await import('./useExamMonitoring')
+    const monitoring = useExamMonitoring()
+    const store = useProctorDashboardStore()
+
+    store.setCards([{ id: 777, attemptId: 777, student: 'student7', status: 'IN_PROGRESS', riskScore: 0 }])
+    await monitoring.connect(149)
+
+    const examHandler = mockRealtime.topics[0].handler
+    examHandler({
+      type: 'FRAUD_WARNING_RECORDED',
+      examId: 149,
+      attemptId: 777,
+      student: 'student7',
+      studentName: 'Student Seven',
+      warningCategory: 'VISUAL_IDENTITY',
+      warningType: 'IDENTITY_FACE_MISMATCH',
+      severity: 'HIGH',
+      riskImpact: 22,
+      issuedAt: '2026-05-07T10:13:30+07:00'
+    })
+
+    expect(store.liveAlerts).toHaveLength(1)
+    expect(store.liveAlerts[0]).toMatchObject({
+      attemptId: 777,
+      signalType: 'IDENTITY_FACE_MISMATCH',
+      category: 'VISUAL_IDENTITY',
+      warningCategory: 'VISUAL_IDENTITY',
+      riskImpact: 22
+    })
+  })
+
   it('clears stale attempt subscriptions when switching monitored exam', async () => {
     const { useExamMonitoring } = await import('./useExamMonitoring')
     const monitoring = useExamMonitoring()

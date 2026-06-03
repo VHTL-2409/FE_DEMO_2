@@ -51,7 +51,7 @@
           @click="reviewOnly = !reviewOnly"
         >
           <LucideIcon name="fact_check" :size="16" />
-          Chờ review
+          Chờ rà soát
         </button>
 
         <!-- Clear all -->

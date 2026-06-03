@@ -1,9 +1,18 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { fetchCameraStatus, fetchCameraAlerts, dismissCameraAlert } from '../services/proctorService'
-import { normalizeSignalType, uniqueSignalTypes } from '../utils/proctorSignalTypes'
+import {
+  isCameraRelatedCategory,
+  isCameraRelatedSignal,
+  normalizeSignalCategory,
+  normalizeSignalType,
+  uniqueSignalTypes
+} from '../utils/proctorSignalTypes'
 
 const RECONNECT_DELAY_MS = 5000
 const POLL_INTERVAL_WHEN_DISCONNECTED_MS = 8000
+const LIVE_FRAME_MAX_AGE_MS = 15_000
+const STALE_FRAME_MAX_AGE_MS = 60_000
+const SHOULD_LOG_CAMERA_DEBUG = import.meta.env.DEV && import.meta.env.MODE !== 'test'
 
 function parseMaybeJson(value) {
   if (!value) return {}
@@ -18,6 +27,47 @@ function parseMaybeJson(value) {
 
 function firstDefined(...values) {
   return values.find(value => value !== undefined && value !== null)
+}
+
+function toTimestamp(value) {
+  if (!value) return null
+  const time = new Date(value).getTime()
+  return Number.isFinite(time) ? time : null
+}
+
+function normalizeTimestamp(...values) {
+  return firstDefined(...values.filter(Boolean)) || null
+}
+
+function calculateFrameAgeMs(timestamp) {
+  const time = toTimestamp(timestamp)
+  if (time == null) return null
+  return Math.max(0, Date.now() - time)
+}
+
+function resolveConnectionHealth(camera = {}) {
+  if (!camera.cameraActive) return 'no_camera'
+  const aiStatus = String(camera.aiServiceStatus || camera.ai_service_status || camera.status || '').toUpperCase()
+  if (aiStatus === 'AI_BUSY') return 'ai_busy'
+  if (aiStatus === 'AI_UNAVAILABLE') return 'ai_unavailable'
+  const age = calculateFrameAgeMs(camera.lastFrameAt || camera.latestSignalAt || camera.lastUpdate)
+  if (age == null) return 'unknown'
+  if (age <= LIVE_FRAME_MAX_AGE_MS) return 'live'
+  if (age <= STALE_FRAME_MAX_AGE_MS) return 'stale'
+  return 'offline'
+}
+
+function hasPreviewData(camera = {}) {
+  const overlay = camera.visualOverlay || camera.visual_overlay
+  return Boolean(
+    camera.previewAvailable ||
+    camera.imageBase64 ||
+    camera.image_base64 ||
+    overlay?.imageWidth ||
+    overlay?.imageHeight ||
+    overlay?.faceBoxes?.length ||
+    overlay?.face_boxes?.length
+  )
 }
 
 function uniqueSignalEntries(entries = []) {
@@ -72,12 +122,44 @@ function upsertRecentAlert(alerts = [], alert) {
 function normalizeCameraStatus(camera = {}) {
   const activeSignals = uniqueSignalTypes(camera.activeSignals || [])
   const criticalSignals = uniqueSignalEntries(camera.criticalSignals || [])
-  return {
+  const latestSignalAt = normalizeTimestamp(
+    camera.latestSignalAt,
+    camera.latest_signal_at,
+    criticalSignals[0]?.occurredAt,
+    camera.lastUpdate,
+    camera.updatedAt
+  )
+  const lastFrameAt = normalizeTimestamp(
+    camera.lastFrameAt,
+    camera.last_frame_at,
+    camera.receivedAt,
+    camera.received_at,
+    camera.capturedAt,
+    camera.captured_at,
+    latestSignalAt
+  )
+  const normalized = {
     ...camera,
+    lastFrameAt,
+    latestSignalAt,
+    aiServiceStatus: camera.aiServiceStatus || camera.ai_service_status,
+    visualOverlay: camera.visualOverlay || camera.visual_overlay,
     activeSignals,
     criticalSignals,
     alertCount: criticalSignals.length || Number(camera.alertCount || 0)
   }
+  return {
+    ...normalized,
+    frameAgeMs: calculateFrameAgeMs(lastFrameAt),
+    connectionHealth: camera.connectionHealth || camera.connection_health || resolveConnectionHealth(normalized),
+    previewAvailable: hasPreviewData(normalized)
+  }
+}
+
+function isRealtimeCameraWarningEvent(event = {}) {
+  const warningCategory = normalizeSignalCategory(event.warningCategory || event.category)
+  const warningType = normalizeSignalType(event.warningType || event.signalType || event.type)
+  return isCameraRelatedCategory(warningCategory) || isCameraRelatedSignal(warningType)
 }
 
 function extractAiCameraMetrics(signal = {}, event = {}) {
@@ -97,6 +179,8 @@ function extractAiCameraMetrics(signal = {}, event = {}) {
     offScreenDurationMs: firstDefined(source.offScreenDurationMs, source.off_screen_duration_ms),
     attentionScore: firstDefined(source.attentionScore, source.attention_score),
     visualOverlay: firstDefined(source.visualOverlay, source.visual_overlay),
+    lastFrameAt: firstDefined(source.lastFrameAt, source.last_frame_at, source.receivedAt, source.received_at, source.capturedAt, source.captured_at, source.issuedAt),
+    latestSignalAt: firstDefined(source.latestSignalAt, source.latest_signal_at, source.occurredAt, source.issuedAt, source.createdAt),
     faceDetected: firstDefined(source.faceDetected, source.face_detected),
     faceCount: firstDefined(source.faceCount, source.face_count),
     multipleFaces: firstDefined(source.multipleFaces, source.multiple_faces),
@@ -124,6 +208,11 @@ export function useAiCameraDashboard(examId) {
   const warningCount = computed(() => cameraStatuses.value.filter(c => c.status === 'WARNING').length)
   const criticalCount = computed(() => cameraStatuses.value.filter(c =>
     c.status === 'CRITICAL' || c.status === 'NO_CAMERA').length)
+  const connectionLabel = computed(() => {
+    if (isConnected.value || connectionMode.value === 'websocket') return 'Realtime'
+    if (connectionMode.value === 'polling') return 'Polling'
+    return 'Mất kết nối'
+  })
 
   // Load data from API
   async function loadData() {
@@ -150,7 +239,9 @@ export function useAiCameraDashboard(examId) {
         recentAlerts.value = dedupeRecentAlerts(alerts)
       }
     } catch (err) {
-      console.error('Failed to load camera data:', err)
+      if (SHOULD_LOG_CAMERA_DEBUG) {
+        console.error('Failed to load camera data:', err)
+      }
     } finally {
       loading.value = false
     }
@@ -165,7 +256,7 @@ export function useAiCameraDashboard(examId) {
 
     const type = String(event.type || '').toUpperCase()
     const signal = event.latestSignal || (
-      type === 'FRAUD_WARNING_RECORDED' && event.warningCategory === 'CAMERA_PROCTORING'
+      type === 'FRAUD_WARNING_RECORDED' && isRealtimeCameraWarningEvent(event)
         ? {
             signalType: event.warningType,
             severity: event.severity,
@@ -180,7 +271,7 @@ export function useAiCameraDashboard(examId) {
     const existingIndex = cameraStatuses.value.findIndex(c => c.attemptId === attemptId)
     const camera = existingIndex >= 0 ? cameraStatuses.value[existingIndex] : null
 
-    if (type === 'AI_CAMERA_SIGNAL' || type === 'FRAUD_SIGNAL_RECORDED' || (type === 'FRAUD_WARNING_RECORDED' && event.warningCategory === 'CAMERA_PROCTORING')) {
+    if (type === 'AI_CAMERA_SIGNAL' || type === 'FRAUD_SIGNAL_RECORDED' || (type === 'FRAUD_WARNING_RECORDED' && isRealtimeCameraWarningEvent(event))) {
       // Update existing or add new
       const signalType = normalizeSignalType(firstDefined(signal.signalType, signal.signal_type, event.warningType))
       const severity = normalizeSignalType(signal.severity)
@@ -198,7 +289,7 @@ export function useAiCameraDashboard(examId) {
         // Update existing camera status
         camera.activeSignals = uniqueSignalTypes(camera.activeSignals || [])
         camera.criticalSignals = uniqueSignalEntries(camera.criticalSignals || [])
-        camera.cameraActive = true
+        camera.cameraActive = event.cameraActive ?? event.camera_active ?? true
         Object.assign(camera, aiMetrics)
 
         if (signalType) {
@@ -217,7 +308,7 @@ export function useAiCameraDashboard(examId) {
           camera.alertCount = camera.criticalSignals.length
         }
 
-        camera.lastUpdate = new Date().toISOString()
+        camera.lastUpdate = aiMetrics.lastFrameAt || aiMetrics.latestSignalAt || new Date().toISOString()
         cameraStatuses.value[existingIndex] = normalizeCameraStatus(camera)
       } else {
         // Add new camera status
@@ -225,7 +316,7 @@ export function useAiCameraDashboard(examId) {
         const newCamera = {
           attemptId,
           studentName: event.student || event.studentName || 'Unknown',
-          cameraActive: true,
+          cameraActive: event.cameraActive ?? event.camera_active ?? true,
           status: severity === 'CRITICAL' ? 'CRITICAL' :
                  severity === 'HIGH' ? 'WARNING' : 'OK',
           riskScore: event.riskScore ?? 0,
@@ -233,7 +324,7 @@ export function useAiCameraDashboard(examId) {
           activeSignals: signalType ? [signalType] : [],
           ...aiMetrics,
           criticalSignals,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: aiMetrics.lastFrameAt || aiMetrics.latestSignalAt || new Date().toISOString()
         }
         cameraStatuses.value.push(normalizeCameraStatus(newCamera))
       }
@@ -256,7 +347,7 @@ export function useAiCameraDashboard(examId) {
       // Update risk score only
       if (camera) {
         camera.riskScore = event.riskScore
-        camera.lastUpdate = new Date().toISOString()
+        camera.lastUpdate = event.issuedAt || event.updatedAt || new Date().toISOString()
         cameraStatuses.value[existingIndex] = normalizeCameraStatus(camera)
       }
     }
@@ -265,7 +356,6 @@ export function useAiCameraDashboard(examId) {
   // STOMP/WebSocket connection
   function connectWebSocket() {
     if (typeof window === 'undefined' || !window.Stomp) {
-      console.log('[AiCamera] STOMP not available, using polling')
       connectionMode.value = 'polling'
       startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
       return
@@ -276,7 +366,6 @@ export function useAiCameraDashboard(examId) {
       stompClient = window.Stomp.client(wsUrl)
 
       stompClient.connect({}, () => {
-        console.log('[AiCamera] WebSocket connected')
         isConnected.value = true
         connectionMode.value = 'websocket'
         stopPolling()
@@ -288,11 +377,15 @@ export function useAiCameraDashboard(examId) {
             const payload = JSON.parse(message.body)
             applyRealtimeEvent(payload)
           } catch (err) {
-            console.error('[AiCamera] Failed to parse message:', err)
+            if (SHOULD_LOG_CAMERA_DEBUG) {
+              console.error('[AiCamera] Failed to parse message:', err)
+            }
           }
         })
       }, (error) => {
-        console.error('[AiCamera] WebSocket error:', error)
+        if (SHOULD_LOG_CAMERA_DEBUG) {
+          console.error('[AiCamera] WebSocket error:', error)
+        }
         isConnected.value = false
         connectionMode.value = 'polling'
         startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
@@ -303,7 +396,9 @@ export function useAiCameraDashboard(examId) {
         }, RECONNECT_DELAY_MS)
       })
     } catch (err) {
-      console.error('[AiCamera] Failed to connect WebSocket:', err)
+      if (SHOULD_LOG_CAMERA_DEBUG) {
+        console.error('[AiCamera] Failed to connect WebSocket:', err)
+      }
       connectionMode.value = 'polling'
       startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
     }
@@ -314,11 +409,14 @@ export function useAiCameraDashboard(examId) {
       try {
         stompClient.disconnect()
       } catch (err) {
-        console.error('[AiCamera] Error disconnecting:', err)
+        if (SHOULD_LOG_CAMERA_DEBUG) {
+          console.error('[AiCamera] Error disconnecting:', err)
+        }
       }
       stompClient = null
     }
     isConnected.value = false
+    connectionMode.value = pollIntervalId ? 'polling' : 'disconnected'
     stopPolling()
   }
 
@@ -362,7 +460,6 @@ export function useAiCameraDashboard(examId) {
     // Timeout fallback to polling if WebSocket doesn't connect
     stompTimeoutId = setTimeout(() => {
       if (!isConnected.value) {
-        console.log('[AiCamera] WebSocket connection timeout, using polling')
         connectionMode.value = 'polling'
         startPolling(POLL_INTERVAL_WHEN_DISCONNECTED_MS)
       }
@@ -381,6 +478,7 @@ export function useAiCameraDashboard(examId) {
     recentAlerts,
     isConnected,
     connectionMode,
+    connectionLabel,
 
     // Computed
     totalStudents,

@@ -13,7 +13,7 @@ const props = defineProps({
     type: String,
     default: 'neutral',
     validator: (v) =>
-      ['active', 'ended', 'draft', 'upcoming', 'live', 'warning', 'error', 'neutral', 'info'].includes(v)
+      ['active', 'success', 'ended', 'draft', 'upcoming', 'live', 'warning', 'error', 'neutral', 'info'].includes(v)
   },
   label: { type: String, default: '' },
   size: { type: String, default: 'md', validator: (v) => ['sm', 'md'].includes(v) },
@@ -29,13 +29,14 @@ const chipClass = computed(() => {
 const chipStyle = computed(() => {
   const map = {
     active: { bg: 'var(--ds-success-bg)', color: 'var(--ds-success)', borderColor: 'rgba(22,163,74,0.2)' },
-    ended: { bg: 'var(--ds-accent-bg)', color: 'var(--ds-accent)', borderColor: 'rgba(245,158,11,0.2)' },
+    success: { bg: 'var(--ds-success-bg)', color: 'var(--ds-success)', borderColor: 'rgba(22,163,74,0.2)' },
+    ended: { bg: 'var(--ds-gray-100)', color: 'var(--ds-gray-600)', borderColor: 'rgba(100,116,139,0.16)' },
     draft: { bg: 'var(--ds-gray-100)', color: 'var(--ds-gray-600)', borderColor: 'transparent' },
     upcoming: { bg: 'var(--ds-info-bg)', color: 'var(--ds-info)', borderColor: 'rgba(2,132,199,0.2)' },
     live: { bg: 'var(--ds-accent-bg)', color: 'var(--ds-accent)', borderColor: 'rgba(245,158,11,0.25)' },
     warning: { bg: 'var(--ds-warning-bg)', color: 'var(--ds-warning)', borderColor: 'rgba(217,119,6,0.2)' },
     error: { bg: 'var(--ds-danger-bg)', color: 'var(--ds-danger)', borderColor: 'rgba(220,38,38,0.2)' },
-    neutral: { bg: 'var(--ds-gray-100)', color: 'var(--ds-gray-600)', borderColor: 'transparent' },
+    neutral: { bg: 'var(--ds-gray-100)', color: 'var(--ds-gray-600)', borderColor: 'rgba(100,116,139,0.12)' },
     info: { bg: 'var(--ds-info-bg)', color: 'var(--ds-info)', borderColor: 'rgba(2,132,199,0.2)' }
   }
   const s = map[props.status] || map.neutral
@@ -51,6 +52,7 @@ const chipStyle = computed(() => {
 const dotClass = computed(() => {
   const map = {
     active: 'animate-pulse bg-[var(--ds-success)] w-1.5 h-1.5',
+    success: 'bg-[var(--ds-success)] w-1.5 h-1.5',
     live: 'animate-pulse bg-[var(--ds-accent)] w-1.5 h-1.5',
     warning: 'bg-[var(--ds-warning)] w-1.5 h-1.5',
     error: 'bg-[var(--ds-danger)] w-1.5 h-1.5',

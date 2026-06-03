@@ -8,3 +8,5 @@ opencv-python-headless
 numpy
 openai>=1.0.0,<2.0.0
 slowapi
+insightface==0.7.3
+onnxruntime==1.26.0

@@ -26,6 +26,12 @@ ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS original_device_fingerprint V
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS session_token_version INTEGER;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS fullscreen_required BOOLEAN;
 ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS last_integrity_check_at TIMESTAMP;
+ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;
+ALTER TABLE exam_attempts ALTER COLUMN started_at DROP NOT NULL;
+UPDATE exam_attempts
+SET joined_at = started_at
+WHERE joined_at IS NULL
+  AND started_at IS NOT NULL;
 
 ALTER TABLE exams ADD COLUMN IF NOT EXISTS ai_face_detection BOOLEAN;
 ALTER TABLE exams ADD COLUMN IF NOT EXISTS ai_eye_tracking BOOLEAN;
@@ -166,6 +172,7 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS address VARCHAR(200);
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS grade VARCHAR(50);
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS faculty VARCHAR(100);
+ALTER TABLE IF EXISTS student_profiles ADD COLUMN IF NOT EXISTS citizen_id VARCHAR(20);
 -- Fix NULL values before adding NOT NULL constraint
 UPDATE users SET enabled = TRUE WHERE enabled IS NULL;
 ALTER TABLE IF EXISTS users ALTER COLUMN enabled SET DEFAULT TRUE;

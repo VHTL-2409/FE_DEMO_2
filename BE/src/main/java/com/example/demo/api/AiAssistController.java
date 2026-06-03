@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -66,5 +67,22 @@ public class AiAssistController {
     public ApiResponse<Map<String, Object>> latestIdentityCheck(@PathVariable Long attemptId) {
         User actor = currentUserService.requireCurrentUser();
         return ApiResponse.success(aiAssistService.getLatestIdentityCheck(attemptId, actor));
+    }
+
+    @GetMapping("/api/v1/proctor/attempts/{attemptId}/identity-checks")
+    public ApiResponse<List<Map<String, Object>>> identityCheckHistory(@PathVariable Long attemptId) {
+        User actor = currentUserService.requireCurrentUser();
+        return ApiResponse.success(aiAssistService.getIdentityCheckHistory(attemptId, actor));
+    }
+
+    @PatchMapping("/api/v1/proctor/identity/checks/{checkId}/review")
+    public ApiResponse<Map<String, Object>> reviewIdentityCheck(
+            @PathVariable Long checkId,
+            @RequestBody Map<String, Object> request
+    ) {
+        User actor = currentUserService.requireCurrentUser();
+        String status = request == null ? null : String.valueOf(request.getOrDefault("status", ""));
+        String reason = request == null ? null : String.valueOf(request.getOrDefault("reason", ""));
+        return ApiResponse.success(aiAssistService.reviewIdentityCheck(checkId, status, reason, actor));
     }
 }

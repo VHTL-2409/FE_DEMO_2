@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,6 +21,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class FraudAnalysisService {
+
+    private static final Duration ANALYSIS_WARNING_DEDUP_WINDOW = Duration.ofDays(30);
 
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
@@ -315,22 +318,86 @@ public class FraudAnalysisService {
     }
 
     private StatisticalAnalysisResponse buildStatisticalResponse(Exam exam, ExamAttempt filterAttempt) {
-        List<ExamAttempt> attempts = filterSubmittedAttempts(exam);
+        List<ExamAttempt> examAttempts = filterSubmittedAttempts(exam);
+        List<ExamAttempt> attempts = examAttempts;
         if (filterAttempt != null) {
             attempts = attempts.stream().filter(a -> a.getId().equals(filterAttempt.getId())).collect(Collectors.toList());
         }
+        List<Double> examScores = examAttempts.stream()
+                .map(ExamAttempt::getScore)
+                .filter(Objects::nonNull)
+                .toList();
+
+        double mean = examScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double stdDev = computeStdDev(examScores, mean);
+        double min = examScores.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+        double max = examScores.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+
+        List<StatisticalAnalysisResponse.StatisticalResultItem> results = new ArrayList<>();
+        for (ExamAttempt attempt : attempts) {
+            if (attempt.getScore() == null) {
+                continue;
+            }
+            double zScore = stdDev > 0 ? (attempt.getScore() - mean) / stdDev : 0.0;
+            Integer riskScore = attempt.getRiskScore();
+            Long durationSeconds = attemptDurationSeconds(attempt);
+            long questionCount = Math.max(questionRepository.countByExam(exam), 1);
+            long fastThresholdSeconds = Math.max(
+                    Math.max(fastCompletionMediumMinSeconds, 1L),
+                    questionCount * Math.max(fastCompletionMediumSecondsPerQuestion, 1L)
+            );
+
+            if (Math.abs(zScore) >= 2.0 && examScores.size() >= 5) {
+                SignalSeverity severity = Math.abs(zScore) >= 3.0 ? SignalSeverity.HIGH : SignalSeverity.MEDIUM;
+                Map<String, Object> evidence = buildStatisticalEvidence(attempt, mean, stdDev, zScore, durationSeconds, riskScore);
+                results.add(StatisticalAnalysisResponse.StatisticalResultItem.builder()
+                        .signalType(attempt.getScore() >= mean ? "SCORE_HIGH_OUTLIER" : "SCORE_LOW_OUTLIER")
+                        .severity(severity.name())
+                        .evidence(evidence)
+                        .build());
+                recordStatisticalWarning(attempt, "SCORE_OUTLIER", severity,
+                        "Điểm số lệch đáng kể so với phân bố lớp", evidence);
+            }
+
+            if (riskScore != null && riskScore >= 40 && attempt.getScore() >= Math.max(80.0, mean + stdDev)) {
+                Map<String, Object> evidence = buildStatisticalEvidence(attempt, mean, stdDev, zScore, durationSeconds, riskScore);
+                results.add(StatisticalAnalysisResponse.StatisticalResultItem.builder()
+                        .signalType("HIGH_SCORE_WITH_HIGH_RISK")
+                        .severity(riskScore >= 61 ? SignalSeverity.HIGH.name() : SignalSeverity.MEDIUM.name())
+                        .evidence(evidence)
+                        .build());
+                recordStatisticalWarning(attempt, "HIGH_SCORE_WITH_HIGH_RISK",
+                        riskScore >= 61 ? SignalSeverity.HIGH : SignalSeverity.MEDIUM,
+                        "Điểm cao đi kèm mức rủi ro giám sát cao", evidence);
+            }
+
+            if (durationSeconds != null
+                    && durationSeconds <= fastThresholdSeconds
+                    && attempt.getScore() >= Math.max(75.0, mean + Math.max(stdDev, 5.0))) {
+                Map<String, Object> evidence = buildStatisticalEvidence(attempt, mean, stdDev, zScore, durationSeconds, riskScore);
+                evidence.put("fastThresholdSeconds", fastThresholdSeconds);
+                results.add(StatisticalAnalysisResponse.StatisticalResultItem.builder()
+                        .signalType("FAST_COMPLETION_HIGH_SCORE")
+                        .severity(SignalSeverity.HIGH.name())
+                        .evidence(evidence)
+                        .build());
+                recordStatisticalWarning(attempt, "FAST_COMPLETION_HIGH_SCORE", SignalSeverity.HIGH,
+                        "Hoàn thành rất nhanh nhưng đạt điểm cao", evidence);
+            }
+        }
+
         return StatisticalAnalysisResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
                 .totalAttempts(attempts.size())
                 .scoreStats(StatisticalAnalysisResponse.ScoreStats.builder()
-                        .mean(0)
-                        .stdDev(0)
-                        .min(0)
-                        .max(0)
-                        .count(0)
+                        .mean(round(mean))
+                        .stdDev(round(stdDev))
+                        .min(round(min))
+                        .max(round(max))
+                        .count(examScores.size())
                         .build())
-                .statisticalResults(List.of())
+                .statisticalResults(results)
                 .build();
     }
 
@@ -353,11 +420,60 @@ public class FraudAnalysisService {
         if (filterAttempt != null) {
             attempts = attempts.stream().filter(a -> a.getId().equals(filterAttempt.getId())).collect(Collectors.toList());
         }
+        List<String> anomalies = new ArrayList<>();
+        for (ExamAttempt attempt : attempts) {
+            List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
+            if (signals.isEmpty()) {
+                continue;
+            }
+            Map<String, Long> counts = signals.stream()
+                    .collect(Collectors.groupingBy(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()), Collectors.counting()));
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "TAB_SWITCH", "Chuyển tab nhiều lần", tabSwitchMediumThreshold, tabSwitchHighThreshold,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "WINDOW_BLUR", "Cửa sổ mất focus nhiều lần", windowBlurMediumThreshold, windowBlurHighThreshold,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "EXIT_FULLSCREEN", "Thoát toàn màn hình nhiều lần", fullscreenExitMediumThreshold, fullscreenExitHighThreshold,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "COPY_PASTE", "Sao chép hoặc dán nội dung bất thường", 1L, 2L,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "DEVTOOLS_OPEN", "Mở công cụ nhà phát triển", 1L, 1L,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+            addBehaviorAnomaly(anomalies, attempt, counts,
+                    "PRINT_SCREEN", "Chụp màn hình trong lúc thi", 1L, 2L,
+                    FraudWarningCategory.SESSION_INTEGRITY);
+
+            long heartbeatCount = countSignals(counts, "HEARTBEAT_STALE", "NETWORK_INSTABILITY", "SESSION_RECOVERY");
+            if (heartbeatCount >= heartbeatMediumThreshold) {
+                SignalSeverity severity = severityForCount(heartbeatCount, heartbeatMediumThreshold, heartbeatHighThreshold);
+                Map<String, Object> evidence = buildBehaviorEvidence(attempt, "HEARTBEAT_OR_RECONNECT", heartbeatCount, "Mất kết nối hoặc khôi phục phiên bất thường");
+                anomalies.add(formatAnomaly(attempt, "HEARTBEAT_OR_RECONNECT", severity, heartbeatCount));
+                recordBehaviorWarning(attempt, FraudWarningCategory.SESSION_INTEGRITY, "HEARTBEAT_OR_RECONNECT", severity,
+                        "Mất kết nối hoặc khôi phục phiên bất thường", evidence);
+            }
+
+            Map<String, Long> cameraCounts = counts.entrySet().stream()
+                    .filter(e -> isCameraSignal(e.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            for (Map.Entry<String, Long> entry : cameraCounts.entrySet()) {
+                if (entry.getValue() <= 0) continue;
+                SignalSeverity severity = severityForCount(entry.getValue(), 1L, 3L);
+                Map<String, Object> evidence = buildBehaviorEvidence(attempt, entry.getKey(), entry.getValue(), "Tín hiệu AI camera cần rà soát");
+                anomalies.add(formatAnomaly(attempt, entry.getKey(), severity, entry.getValue()));
+                recordBehaviorWarning(attempt, FraudWarningCategory.CAMERA_PROCTORING, entry.getKey(), severity,
+                        "Tín hiệu AI camera cần rà soát", evidence);
+            }
+        }
         return BehaviorAnalysisResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
                 .totalAttempts(attempts.size())
-                .anomalies(List.of())
+                .anomalies(anomalies)
+                .analyzedAt(com.example.demo.common.VietNamTime.now())
                 .build();
     }
 
@@ -447,6 +563,8 @@ public class FraudAnalysisService {
         PlagiarismAnalysisResponse plagiarism = buildPlagiarismResponse(exam, filterAttempt);
         TimingAnalysisResponse timing = buildTimingResponse(exam, filterAttempt);
         IpReputationAnalysisResponse ipReputation = buildIpResponse(exam);
+        StatisticalAnalysisResponse statistical = buildStatisticalResponse(exam, filterAttempt);
+        BehaviorAnalysisResponse behavior = buildBehaviorResponse(exam, filterAttempt);
 
         List<ComprehensiveAnalysisResponse.FlaggedAttemptItem> flagged = new ArrayList<>();
         for (ExamAttempt attempt : attempts) {
@@ -479,6 +597,8 @@ public class FraudAnalysisService {
                 .flaggedAttempts(flaggedCount)
                 .plagiarism(plagiarism)
                 .timing(timing)
+                .statistical(statistical)
+                .behavior(behavior)
                 .ipReputation(ipReputation)
                 .flaggedAttemptItems(flagged)
                 .suspiciousPatterns(patterns)
@@ -554,7 +674,7 @@ public class FraudAnalysisService {
         evidence.put("commonQuestions", pair.commonQuestions());
         evidence.put("sameAnswers", pair.sameAnswers());
         evidence.put("timeCorrelation", timeCorrelation);
-        fraudWarningService.recordWarning(
+        recordAnalysisWarning(
                 exam,
                 null,
                 FraudWarningCategory.ANSWER_PATTERN,
@@ -577,7 +697,7 @@ public class FraudAnalysisService {
             long highThreshold
     ) {
         SignalSeverity severity = severityForCount(count, mediumThreshold, highThreshold);
-        fraudWarningService.recordWarning(
+        recordAnalysisWarning(
                 attempt.getExam(),
                 attempt,
                 FraudWarningCategory.SESSION_INTEGRITY,
@@ -614,7 +734,7 @@ public class FraudAnalysisService {
                 questionCount * Math.max(fastCompletionHighSecondsPerQuestion, 1L)
         );
         highThresholdSeconds = Math.min(highThresholdSeconds, mediumThresholdSeconds);
-        fraudWarningService.recordWarning(
+        recordAnalysisWarning(
                 exam,
                 attempt,
                 FraudWarningCategory.TIMING_PATTERN,
@@ -642,7 +762,7 @@ public class FraudAnalysisService {
                 .map(a -> a.getStudent().getUsername())
                 .distinct()
                 .toList();
-        fraudWarningService.recordWarning(
+        recordAnalysisWarning(
                 exam,
                 null,
                 FraudWarningCategory.IDENTITY_NETWORK,
@@ -658,6 +778,173 @@ public class FraudAnalysisService {
                 "ip_reputation",
                 relatedAttemptIds
         );
+    }
+
+    private void addBehaviorAnomaly(
+            List<String> anomalies,
+            ExamAttempt attempt,
+            Map<String, Long> counts,
+            String signalType,
+            String title,
+            long mediumThreshold,
+            long highThreshold,
+            FraudWarningCategory category
+    ) {
+        long count = countSignals(counts, signalType);
+        if (count < Math.max(mediumThreshold, 1L)) {
+            return;
+        }
+        SignalSeverity severity = severityForCount(count, mediumThreshold, highThreshold);
+        Map<String, Object> evidence = buildBehaviorEvidence(attempt, signalType, count, title);
+        anomalies.add(formatAnomaly(attempt, signalType, severity, count));
+        recordBehaviorWarning(attempt, category, signalType, severity, title, evidence);
+    }
+
+    private Map<String, Object> buildBehaviorEvidence(ExamAttempt attempt, String signalType, long count, String message) {
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("attemptId", attempt.getId());
+        evidence.put("studentUsername", attempt.getStudent() != null ? attempt.getStudent().getUsername() : null);
+        evidence.put("signalType", signalType);
+        evidence.put("count", count);
+        evidence.put("message", message);
+        evidence.put("riskScore", attempt.getRiskScore());
+        evidence.put("riskLevel", attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : null);
+        return evidence;
+    }
+
+    private String formatAnomaly(ExamAttempt attempt, String signalType, SignalSeverity severity, long count) {
+        String username = attempt.getStudent() != null ? attempt.getStudent().getUsername() : "unknown";
+        return username + " - " + signalType + " x" + count + " (" + severity.name() + ")";
+    }
+
+    private void recordBehaviorWarning(
+            ExamAttempt attempt,
+            FraudWarningCategory category,
+            String type,
+            SignalSeverity severity,
+            String message,
+            Map<String, Object> evidence
+    ) {
+        recordAnalysisWarning(
+                attempt.getExam(),
+                attempt,
+                category,
+                type,
+                severity,
+                confidenceForSeverity(severity),
+                message,
+                evidence,
+                "behavior_analysis",
+                List.of(attempt.getId())
+        );
+    }
+
+    private Map<String, Object> buildStatisticalEvidence(
+            ExamAttempt attempt,
+            double mean,
+            double stdDev,
+            double zScore,
+            Long durationSeconds,
+            Integer riskScore
+    ) {
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("attemptId", attempt.getId());
+        evidence.put("studentUsername", attempt.getStudent() != null ? attempt.getStudent().getUsername() : null);
+        evidence.put("score", attempt.getScore());
+        evidence.put("mean", round(mean));
+        evidence.put("stdDev", round(stdDev));
+        evidence.put("zScore", round(zScore));
+        evidence.put("durationSeconds", durationSeconds);
+        evidence.put("riskScore", riskScore);
+        evidence.put("riskLevel", attempt.getRiskLevel() != null ? attempt.getRiskLevel().name() : null);
+        return evidence;
+    }
+
+    private void recordStatisticalWarning(
+            ExamAttempt attempt,
+            String type,
+            SignalSeverity severity,
+            String message,
+            Map<String, Object> evidence
+    ) {
+        recordAnalysisWarning(
+                attempt.getExam(),
+                attempt,
+                FraudWarningCategory.POST_EXAM_STATISTICAL,
+                type,
+                severity,
+                confidenceForSeverity(severity),
+                message,
+                evidence,
+                "statistical_analysis",
+                List.of(attempt.getId())
+        );
+    }
+
+    private void recordAnalysisWarning(
+            Exam exam,
+            ExamAttempt attempt,
+            FraudWarningCategory category,
+            String warningType,
+            SignalSeverity severity,
+            double confidence,
+            String message,
+            Object evidence,
+            String source,
+            List<Long> relatedAttemptIds
+    ) {
+        fraudWarningService.recordWarningWithDedupWindow(
+                exam,
+                attempt,
+                category,
+                warningType,
+                severity,
+                confidence,
+                message,
+                evidence,
+                source,
+                relatedAttemptIds,
+                ANALYSIS_WARNING_DEDUP_WINDOW
+        );
+    }
+
+    private double confidenceForSeverity(SignalSeverity severity) {
+        if (severity == SignalSeverity.CRITICAL) return 0.95;
+        if (severity == SignalSeverity.HIGH) return 0.85;
+        if (severity == SignalSeverity.MEDIUM) return 0.72;
+        return 0.6;
+    }
+
+    private double computeStdDev(List<Double> values, double mean) {
+        if (values == null || values.size() < 2) {
+            return 0.0;
+        }
+        double variance = values.stream()
+                .mapToDouble(v -> (v - mean) * (v - mean))
+                .sum() / values.size();
+        return Math.sqrt(Math.max(variance, 0.0));
+    }
+
+    private double round(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private boolean isCameraSignal(String type) {
+        String canonical = FraudSignalTypeNormalizer.canonical(type);
+        return Set.of(
+                "NO_CAMERA", "NO_MIC",
+                "FACE_NOT_DETECTED", "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED",
+                "FACE_OBSTRUCTED_MASK", "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE",
+                "FACE_TOO_FAR", "FACE_TOO_CLOSE", "FACE_TURNED_AWAY", "FACE_NOT_CENTERED",
+                "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
+                "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
+                "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
+                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS",
+                "FLAT_IMAGE", "SCREEN_DISPLAY", "AI_PHONE_DETECTED", "AI_SPEAKING_DETECTED"
+        ).contains(canonical);
     }
 
     private Long attemptDurationSeconds(ExamAttempt attempt) {

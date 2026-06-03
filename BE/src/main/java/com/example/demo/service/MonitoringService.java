@@ -41,6 +41,7 @@ public class MonitoringService {
     private final FraudWarningRepository fraudWarningRepository;
     private final RiskScoreLogRepository riskScoreLogRepository;
     private final ExamEventService examEventService;
+    private final FraudWarningService fraudWarningService;
     private final RealtimeNotificationService realtimeNotificationService;
     private final AuditLogService auditLogService;
     private final AuditLogRepository auditLogRepository;
@@ -309,7 +310,7 @@ public class MonitoringService {
                 .toList();
         List<MonitoringTimelineItem> signalRows = fraudSignalRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
                 .stream()
-                .map(this::toFraudSignalTimelineItem)
+                .map(signal -> toFraudSignalTimelineItem(signal, null))
                 .toList();
         List<MonitoringTimelineItem> warningRows = fraudWarningRepository.findByAttemptOrderByCreatedAtDesc(attempt, firstWindow)
                 .stream()
@@ -370,8 +371,10 @@ public class MonitoringService {
         if (!attempt.getStudent().getId().equals(actor.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only the student can update their own device status");
         }
-        // Cho phép cập nhật heartbeat ngay cả khi attempt đang PAUSED
-        boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.IN_PROGRESS;
+        // WAITING attempts need device readiness before the student can start.
+        // PAUSED attempts still refresh heartbeat timestamps without changing readiness.
+        boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.WAITING
+                || attempt.getStatus() == AttemptStatus.IN_PROGRESS;
         Boolean previousCameraOn = attempt.getCameraOn();
         Boolean previousMicOn = attempt.getMicOn();
         if (allowFullUpdate) {
@@ -651,7 +654,8 @@ public class MonitoringService {
             "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
             "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
             "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
-            "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+            "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS",
+            "IDENTITY_FACE_MISMATCH",
             "AI_SPEAKING_DETECTED",
             "FLAT_IMAGE", "SCREEN_DISPLAY"
     );
@@ -772,6 +776,9 @@ public class MonitoringService {
 
         for (FraudWarning warning : fraudWarningRepository.findExamCameraAlerts(
                 examId, FraudWarningCategory.CAMERA_PROCTORING, alertSeverities, page)) {
+            if (isDismissedCameraWarning(warning)) {
+                continue;
+            }
             ExamAttempt attempt = warning.getAttempt();
             alerts.add(CameraAlertResponse.builder()
                     .id(warning.getId())
@@ -784,13 +791,18 @@ public class MonitoringService {
                     .confidence(warning.getConfidence())
                     .description(warning.getMessage() != null ? warning.getMessage() : getSignalDescription(warning.getWarningType()))
                     .acknowledged(warning.getReviewStatus() == FraudWarningReviewStatus.CONFIRMED)
-                    .dismissed(warning.getReviewStatus() == FraudWarningReviewStatus.DISMISSED)
+                    .dismissed(warning.getReviewStatus() == FraudWarningReviewStatus.DISMISSED
+                            || warning.getReviewStatus() == FraudWarningReviewStatus.FALSE_POSITIVE
+                            || warning.getReviewStatus() == FraudWarningReviewStatus.RESOLVED)
                     .createdAt(warning.getCreatedAt())
                     .build());
         }
 
         for (FraudSignal signal : fraudSignalRepository.findExamCameraAlerts(
                 examId, AI_CAMERA_SIGNALS, alertSeverities, page)) {
+            if (hasDismissedCameraWarning(signal)) {
+                continue;
+            }
             ExamAttempt attempt = signal.getAttempt();
             alerts.add(CameraAlertResponse.builder()
                     .id(signal.getId())
@@ -814,17 +826,71 @@ public class MonitoringService {
     /**
      * Acknowledge a camera alert.
      */
+    @Transactional
     public void acknowledgeCameraAlert(Long alertId, User actor) {
-        // Implementation depends on Alert entity structure
-        // For now, this is a placeholder
+        reviewCameraAlert(alertId, FraudWarningReviewStatus.CONFIRMED, actor);
     }
 
     /**
      * Dismiss a camera alert.
      */
+    @Transactional
     public void dismissCameraAlert(Long alertId, User actor) {
-        // Implementation depends on Alert entity structure
-        // For now, this is a placeholder
+        reviewCameraAlert(alertId, FraudWarningReviewStatus.DISMISSED, actor);
+    }
+
+    private void reviewCameraAlert(Long alertId, FraudWarningReviewStatus status, User actor) {
+        if (alertId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Alert id is required");
+        }
+
+        Optional<FraudWarning> warning = fraudWarningRepository.findById(alertId);
+        if (warning.isPresent()) {
+            FraudWarning cameraWarning = warning.get();
+            if (cameraWarning.getCategory() != FraudWarningCategory.CAMERA_PROCTORING) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Alert is not an AI camera warning");
+            }
+            ensureCanManageAttempt(cameraWarning.getAttempt(), actor);
+            fraudWarningService.reviewWarning(alertId, status, cameraReviewNote(status), actor);
+            return;
+        }
+
+        FraudSignal signal = fraudSignalRepository.findById(alertId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Camera alert not found: " + alertId));
+        if (!AI_CAMERA_SIGNALS.contains(FraudSignalTypeNormalizer.canonical(signal.getSignalType()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Alert is not an AI camera signal");
+        }
+        ensureCanManageAttempt(signal.getAttempt(), actor);
+
+        FraudWarning recorded = fraudWarningService.recordFromFraudSignal(signal)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Camera signal cannot be reviewed as a warning"));
+        fraudWarningService.reviewWarning(recorded.getId(), status, cameraReviewNote(status), actor);
+    }
+
+    private String cameraReviewNote(FraudWarningReviewStatus status) {
+        if (status == FraudWarningReviewStatus.CONFIRMED) {
+            return "Camera alert acknowledged from proctor dashboard";
+        }
+        return "Camera alert dismissed from proctor dashboard";
+    }
+
+    private boolean isDismissedCameraWarning(FraudWarning warning) {
+        FraudWarningReviewStatus status = warning.getReviewStatus();
+        return status == FraudWarningReviewStatus.DISMISSED
+                || status == FraudWarningReviewStatus.FALSE_POSITIVE
+                || status == FraudWarningReviewStatus.RESOLVED;
+    }
+
+    private boolean hasDismissedCameraWarning(FraudSignal signal) {
+        if (signal == null || signal.getAttempt() == null) {
+            return false;
+        }
+        String canonicalType = FraudSignalTypeNormalizer.canonical(signal.getSignalType());
+        return fraudWarningRepository
+                .findByAttemptAndCategoryOrderByCreatedAtDesc(signal.getAttempt(), FraudWarningCategory.CAMERA_PROCTORING)
+                .stream()
+                .filter(this::isDismissedCameraWarning)
+                .anyMatch(warning -> canonicalType.equals(FraudSignalTypeNormalizer.canonical(warning.getWarningType())));
     }
 
     private String determineCameraStatus(Collection<String> severities, Boolean cameraOn) {
@@ -975,6 +1041,7 @@ public class MonitoringService {
                 Map.entry("PRINTED_PHOTO", "Printed photo suspected"),
                 Map.entry("SCREEN_REPLAY", "Screen replay suspected"),
                 Map.entry("DEEPFAKE", "Deepfake suspected"),
+                Map.entry("LOW_LIVENESS", "Low liveness suspected"),
                 Map.entry("FLAT_IMAGE", "Flat image suspected"),
                 Map.entry("SCREEN_DISPLAY", "Screen display suspected")
         );

@@ -50,7 +50,7 @@ const { containerRef, isVisible } = useIntersectionObserver({
   flex-direction: column;
   gap: 1.5rem;
   padding: 1.5rem;
-  max-width: 1640px;
+  max-width: var(--ds-content-max);
   width: 100%;
   margin: 0 auto;
   contain: layout style;
@@ -125,17 +125,17 @@ const { containerRef, isVisible } = useIntersectionObserver({
 
 /* Responsive - large screens */
 @media (min-width: 1400px) {
-  .sdl { max-width: 1640px; }
+  .sdl { max-width: 1440px; }
   .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 360px; }
 }
 
 @media (min-width: 1600px) {
-  .sdl { max-width: 1720px; }
+  .sdl { max-width: 1520px; }
   .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 400px; }
 }
 
 @media (min-width: 1920px) {
-  .sdl { max-width: 1800px; }
+  .sdl { max-width: 1600px; }
   .sdl__main:has(.sdl__sidebar) { grid-template-columns: 1fr 440px; }
 }
 

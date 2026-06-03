@@ -1,11 +1,11 @@
 <template>
   <main class="ai-dashboard">
-    <!-- Header -->
     <header class="ai-dashboard__header">
       <div class="ai-dashboard__header-left">
         <button
           type="button"
           class="ai-dashboard__back-btn"
+          title="Quay lại"
           @click="$router.back()"
         >
           <LucideIcon name="arrow-left" :size="18" />
@@ -13,7 +13,7 @@
         <div>
           <h1 class="ai-dashboard__title">Giám sát camera AI</h1>
           <p class="ai-dashboard__subtitle">
-            {{ examTitle }} · {{ connectionLabel }}
+            {{ examTitle }} · <span :class="connectionClass">{{ connectionLabel }}</span>
           </p>
         </div>
       </div>
@@ -50,9 +50,8 @@
       </div>
     </header>
 
-    <!-- Filters -->
     <div class="ai-dashboard__filters">
-      <select v-model="statusFilter" class="ai-dashboard__select">
+      <select v-model="statusFilter" class="ai-dashboard__select" aria-label="Lọc trạng thái">
         <option value="">Tất cả trạng thái</option>
         <option value="OK">OK</option>
         <option value="WARNING">Cảnh báo</option>
@@ -60,10 +59,21 @@
         <option value="NO_CAMERA">Không có camera</option>
       </select>
 
-      <select v-model="sortBy" class="ai-dashboard__select">
+      <select v-model="signalFilter" class="ai-dashboard__select" aria-label="Lọc tín hiệu">
+        <option value="">Tất cả tín hiệu</option>
+        <option
+          v-for="signal in signalOptions"
+          :key="signal"
+          :value="signal"
+        >
+          {{ formatSignalType(signal) }}
+        </option>
+      </select>
+
+      <select v-model="sortBy" class="ai-dashboard__select" aria-label="Sắp xếp">
         <option value="risk">Theo rủi ro</option>
-        <option value="name">Theo tên</option>
         <option value="recent">Mới nhất</option>
+        <option value="name">Theo tên</option>
       </select>
 
       <div class="ai-dashboard__search">
@@ -75,9 +85,18 @@
           class="ai-dashboard__search-input"
         />
       </div>
+
+      <button
+        type="button"
+        class="ai-dashboard__clear-btn"
+        :disabled="!hasActiveFilters"
+        @click="clearFilters"
+      >
+        Xóa lọc
+      </button>
     </div>
 
-    <div class="ai-dashboard__content" :class="{ 'ai-dashboard__content--with-alerts': recentAlerts.length }">
+    <div class="ai-dashboard__content" :class="{ 'ai-dashboard__content--with-alerts': visibleAlerts.length }">
       <section class="ai-dashboard__main" aria-label="Danh sách camera">
         <div v-if="loading && !cameraStatuses.length" class="ai-dashboard__loading">
           <div class="ai-dashboard__spinner" />
@@ -86,7 +105,7 @@
 
         <div v-else-if="!filteredCameraStatuses.length" class="ai-dashboard__empty">
           <LucideIcon name="camera-off" :size="48" />
-          <p>Không có dữ liệu camera</p>
+          <p>Không có dữ liệu camera phù hợp</p>
         </div>
 
         <div v-else class="ai-dashboard__grid">
@@ -99,38 +118,48 @@
         </div>
       </section>
 
-      <aside v-if="recentAlerts.length" class="ai-dashboard__alerts">
+      <aside v-if="visibleAlerts.length" class="ai-dashboard__alerts">
         <div class="ai-dashboard__alerts-header">
           <h3>
             <LucideIcon name="alert-triangle" :size="16" />
             Cảnh báo gần đây
           </h3>
-          <span class="ai-dashboard__alerts-count">{{ recentAlerts.length }}</span>
+          <span class="ai-dashboard__alerts-count">{{ visibleAlerts.length }}</span>
         </div>
 
         <div class="ai-dashboard__alerts-list">
           <article
-            v-for="alert in recentAlerts"
+            v-for="alert in visibleAlerts"
             :key="alert.id"
             class="ai-dashboard__alert-item"
-            :class="`ai-dashboard__alert-item--${alert.severity?.toLowerCase()}`"
+            :class="`ai-dashboard__alert-item--${String(alert.severity || '').toLowerCase()}`"
           >
             <div class="ai-dashboard__alert-info">
-              <span class="ai-dashboard__alert-student">{{ alert.studentName }}</span>
+              <span class="ai-dashboard__alert-student">{{ alert.studentName || 'Chưa rõ thí sinh' }}</span>
               <span class="ai-dashboard__alert-signal">{{ formatSignalType(alert.signalType) }}</span>
               <span v-if="alert.riskImpact != null" class="ai-dashboard__alert-risk">
-                +{{ alert.riskImpact }} risk
+                +{{ alert.riskImpact }} rủi ro
               </span>
             </div>
             <span class="ai-dashboard__alert-time">{{ formatTime(alert.createdAt) }}</span>
-            <button
-              type="button"
-              class="ai-dashboard__alert-dismiss"
-              title="Bỏ qua"
-              @click.stop="dismissAlertHandler(alert.id)"
-            >
-              <LucideIcon name="x" :size="14" />
-            </button>
+            <div class="ai-dashboard__alert-actions">
+              <button
+                type="button"
+                class="ai-dashboard__alert-action"
+                title="Mở chi tiết thí sinh"
+                @click.stop="openStudentDetailByAlert(alert)"
+              >
+                <LucideIcon name="eye" :size="14" />
+              </button>
+              <button
+                type="button"
+                class="ai-dashboard__alert-action"
+                title="Bỏ qua cảnh báo"
+                @click.stop="dismissAlertHandler(alert.id)"
+              >
+                <LucideIcon name="x" :size="14" />
+              </button>
+            </div>
           </article>
         </div>
       </aside>
@@ -145,22 +174,22 @@ import LucideIcon from '../../common/LucideIcon.vue'
 import CameraStatusCard from './CameraStatusCard.vue'
 import { useAiCameraDashboard } from '../../../composables/useAiCameraDashboard'
 import { useToast } from '../../../composables/useToast'
-import { normalizeSignalType } from '../../../utils/proctorSignalTypes'
+import { normalizeSignalType, uniqueSignalTypes } from '../../../utils/proctorSignalTypes'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
 const examId = computed(() => route.params.examId)
-const examTitle = computed(() => route.query.title || 'Exam')
+const examTitle = computed(() => route.query.title || 'Bài thi')
 
-// Use AI Camera Dashboard composable with WebSocket
 const {
   loading,
   cameraStatuses,
   recentAlerts,
   isConnected,
   connectionMode,
+  connectionLabel,
   totalStudents,
   okCount,
   warningCount,
@@ -169,52 +198,78 @@ const {
   dismissAlert
 } = useAiCameraDashboard(examId)
 
-const connectionLabel = computed(() => {
-  const mode = String(connectionMode.value || '').toLowerCase()
-  return isConnected.value || mode === 'websocket' ? 'Realtime' : 'Polling'
-})
-
-// Local state
 const statusFilter = ref('')
+const signalFilter = ref('')
 const sortBy = ref('risk')
 const searchQuery = ref('')
+
+const connectionClass = computed(() => {
+  if (isConnected.value || connectionMode.value === 'websocket') return 'ai-dashboard__connection--live'
+  if (connectionMode.value === 'polling') return 'ai-dashboard__connection--polling'
+  return 'ai-dashboard__connection--lost'
+})
+
+const signalOptions = computed(() => {
+  const signals = cameraStatuses.value.flatMap(camera => camera.activeSignals || [])
+  const alertSignals = recentAlerts.value.map(alert => alert.signalType)
+  return uniqueSignalTypes([...signals, ...alertSignals]).sort()
+})
+
+const hasActiveFilters = computed(() =>
+  Boolean(statusFilter.value || signalFilter.value || searchQuery.value || sortBy.value !== 'risk')
+)
 
 const filteredCameraStatuses = computed(() => {
   let result = [...cameraStatuses.value]
 
-  // Status filter
   if (statusFilter.value) {
     if (statusFilter.value === 'NO_CAMERA') {
-      result = result.filter(c => !c.cameraActive)
+      result = result.filter(camera => !camera.cameraActive)
     } else {
-      result = result.filter(c => c.status === statusFilter.value)
+      result = result.filter(camera => camera.status === statusFilter.value)
     }
   }
 
-  // Search
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(c =>
-      c.studentName?.toLowerCase().includes(query) ||
-      c.studentCode?.toLowerCase().includes(query)
+  if (signalFilter.value) {
+    result = result.filter(camera =>
+      uniqueSignalTypes(camera.activeSignals || []).includes(signalFilter.value)
     )
   }
 
-  // Sort
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(camera =>
+      camera.studentName?.toLowerCase().includes(query) ||
+      camera.studentCode?.toLowerCase().includes(query)
+    )
+  }
+
   switch (sortBy.value) {
     case 'risk':
       result.sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0))
       break
     case 'name':
-      result.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''))
+      result.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || '', 'vi'))
       break
     case 'recent':
-      result.sort((a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate))
+      result.sort((a, b) => new Date(b.lastFrameAt || b.lastUpdate || 0) - new Date(a.lastFrameAt || a.lastUpdate || 0))
       break
   }
 
   return result
 })
+
+const visibleAlerts = computed(() => {
+  if (!signalFilter.value) return recentAlerts.value
+  return recentAlerts.value.filter(alert => normalizeSignalType(alert.signalType) === signalFilter.value)
+})
+
+function clearFilters() {
+  statusFilter.value = ''
+  signalFilter.value = ''
+  sortBy.value = 'risk'
+  searchQuery.value = ''
+}
 
 async function dismissAlertHandler(alertId) {
   const success = await dismissAlert(alertId)
@@ -226,7 +281,12 @@ async function dismissAlertHandler(alertId) {
 }
 
 function openStudentDetail(camera) {
+  if (!camera?.attemptId) return
   router.push(`/teacher/exams/${examId.value}/monitoring/student/${camera.attemptId}`)
+}
+
+function openStudentDetailByAlert(alert) {
+  openStudentDetail(alert)
 }
 
 function formatSignalType(signal) {
@@ -236,6 +296,7 @@ function formatSignalType(signal) {
     NO_MIC: 'Micro tắt',
     FACE_NOT_DETECTED: 'Không thấy mặt',
     MULTIPLE_FACES: 'Nhiều mặt',
+    IDENTITY_FACE_MISMATCH: 'Mặt không khớp',
     FACE_SPOOFING_SUSPECTED: 'Nghi giả mạo',
     FACE_OBSTRUCTED_MASK: 'Che mặt',
     EYES_OBSTRUCTED: 'Mắt bị che',
@@ -243,7 +304,7 @@ function formatSignalType(signal) {
     EYES_CLOSED_PROLONGED: 'Nhắm mắt lâu',
     GAZE_OFF_SCREEN: 'Nhìn lệch',
     RAPID_EYE_MOVEMENT: 'Mắt đảo nhanh',
-    AI_SPEAKING_DETECTED: 'Tiếng ồn',
+    AI_SPEAKING_DETECTED: 'Có tiếng nói',
     VERY_LOW_LIGHTING: 'Rất tối',
     LOW_LIGHTING: 'Thiếu sáng',
     OVEREXPOSED_FRAME: 'Cháy sáng',
@@ -251,8 +312,12 @@ function formatSignalType(signal) {
     BLURRY_FRAME: 'Mờ',
     FACE_TURNED_AWAY: 'Quay mặt đi',
     PARTIAL_FACE_VISIBLE: 'Mặt không rõ',
+    FACE_TOO_FAR: 'Quá xa',
+    FACE_TOO_CLOSE: 'Quá gần',
+    FACE_NOT_CENTERED: 'Lệch tâm',
     SCREEN_REPLAY: 'Phát lại màn hình',
     SCREEN_DISPLAY: 'Màn hình khác',
+    LOW_LIVENESS: 'Nghi không phải người thật',
     PRINTED_PHOTO: 'Ảnh in',
     FLAT_IMAGE: 'Ảnh phẳng',
     DEEPFAKE: 'Deepfake'
@@ -263,26 +328,13 @@ function formatSignalType(signal) {
 function formatTime(timestamp) {
   if (!timestamp) return ''
   const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   })
 }
-
-// Lifecycle - composable handles this
-// onMounted(() => {
-//   void loadData()
-//   pollInterval = setInterval(() => {
-//     void loadData()
-//   }, 5000)
-// })
-//
-// onUnmounted(() => {
-//   if (pollInterval) {
-//     clearInterval(pollInterval)
-//   }
-// })
 </script>
 
 <style scoped>
@@ -293,7 +345,6 @@ function formatTime(timestamp) {
   font-family: var(--ds-font);
 }
 
-/* Header */
 .ai-dashboard__header {
   display: flex;
   justify-content: space-between;
@@ -307,18 +358,29 @@ function formatTime(timestamp) {
   flex-wrap: wrap;
 }
 
-.ai-dashboard__header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-3);
-}
-
+.ai-dashboard__header-left,
+.ai-dashboard__header-right,
+.ai-dashboard__stats-summary,
+.ai-dashboard__alerts-header h3,
+.ai-dashboard__refresh-btn,
+.ai-dashboard__alert-actions,
+.ai-dashboard__alert-action,
 .ai-dashboard__back-btn {
   display: flex;
   align-items: center;
+}
+
+.ai-dashboard__header-left {
+  gap: var(--ds-space-3);
+}
+
+.ai-dashboard__header-right {
+  gap: var(--ds-space-4);
+}
+
+.ai-dashboard__back-btn,
+.ai-dashboard__alert-action {
   justify-content: center;
-  width: 40px;
-  height: 40px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
   background: var(--ds-surface-muted);
@@ -327,7 +389,13 @@ function formatTime(timestamp) {
   transition: all var(--ds-duration-base);
 }
 
-.ai-dashboard__back-btn:hover {
+.ai-dashboard__back-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.ai-dashboard__back-btn:hover,
+.ai-dashboard__alert-action:hover {
   color: var(--ds-primary);
   background: var(--ds-primary-soft);
   border-color: var(--ds-primary-border);
@@ -346,14 +414,22 @@ function formatTime(timestamp) {
   color: var(--ds-text-secondary);
 }
 
-.ai-dashboard__header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-4);
+.ai-dashboard__connection--live {
+  color: var(--ds-success);
+  font-weight: 700;
+}
+
+.ai-dashboard__connection--polling {
+  color: var(--ds-warning);
+  font-weight: 700;
+}
+
+.ai-dashboard__connection--lost {
+  color: var(--ds-danger);
+  font-weight: 700;
 }
 
 .ai-dashboard__stats-summary {
-  display: flex;
   gap: var(--ds-space-3);
 }
 
@@ -391,27 +467,34 @@ function formatTime(timestamp) {
   font-weight: 600;
 }
 
-.ai-dashboard__refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-  padding: var(--ds-space-2) var(--ds-space-4);
+.ai-dashboard__refresh-btn,
+.ai-dashboard__clear-btn,
+.ai-dashboard__select,
+.ai-dashboard__search-input {
   border: 1.5px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
   background: var(--ds-surface);
   color: var(--ds-text);
   font-size: var(--ds-text-sm);
+}
+
+.ai-dashboard__refresh-btn,
+.ai-dashboard__clear-btn {
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-2) var(--ds-space-4);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--ds-duration-base);
 }
 
-.ai-dashboard__refresh-btn:hover:not(:disabled) {
+.ai-dashboard__refresh-btn:hover:not(:disabled),
+.ai-dashboard__clear-btn:hover:not(:disabled) {
   border-color: var(--ds-primary);
   color: var(--ds-primary);
 }
 
-.ai-dashboard__refresh-btn:disabled {
+.ai-dashboard__refresh-btn:disabled,
+.ai-dashboard__clear-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -424,7 +507,6 @@ function formatTime(timestamp) {
   to { transform: rotate(360deg); }
 }
 
-/* Filters */
 .ai-dashboard__filters {
   display: flex;
   gap: var(--ds-space-3);
@@ -434,11 +516,6 @@ function formatTime(timestamp) {
 
 .ai-dashboard__select {
   padding: var(--ds-space-2) var(--ds-space-4);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface);
-  color: var(--ds-text);
-  font-size: var(--ds-text-sm);
   font-weight: 600;
   cursor: pointer;
   min-width: 160px;
@@ -446,8 +523,8 @@ function formatTime(timestamp) {
 
 .ai-dashboard__search {
   flex: 1;
-  min-width: 200px;
-  max-width: 320px;
+  min-width: 220px;
+  max-width: 360px;
   position: relative;
 }
 
@@ -462,11 +539,6 @@ function formatTime(timestamp) {
 .ai-dashboard__search-input {
   width: 100%;
   padding: var(--ds-space-2) var(--ds-space-3) var(--ds-space-2) calc(var(--ds-space-3) + 24px);
-  border: 1.5px solid var(--ds-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-surface);
-  color: var(--ds-text);
-  font-size: var(--ds-text-sm);
   outline: none;
   transition: border-color var(--ds-duration-base);
 }
@@ -483,21 +555,19 @@ function formatTime(timestamp) {
 }
 
 .ai-dashboard__content--with-alerts {
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
 }
 
 .ai-dashboard__main {
   min-width: 0;
 }
 
-/* Grid */
 .ai-dashboard__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--ds-space-4);
 }
 
-/* Loading & Empty */
 .ai-dashboard__loading,
 .ai-dashboard__empty {
   display: flex;
@@ -518,7 +588,6 @@ function formatTime(timestamp) {
   animation: spin 0.8s linear infinite;
 }
 
-/* Alerts Panel */
 .ai-dashboard__alerts {
   position: sticky;
   top: var(--ds-space-4);
@@ -540,8 +609,6 @@ function formatTime(timestamp) {
 }
 
 .ai-dashboard__alerts-header h3 {
-  display: flex;
-  align-items: center;
   gap: var(--ds-space-2);
   margin: 0;
   font-size: var(--ds-text-sm);
@@ -571,7 +638,7 @@ function formatTime(timestamp) {
 
 .ai-dashboard__alert-item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--ds-space-2);
   padding: var(--ds-space-2) var(--ds-space-3);
@@ -602,19 +669,20 @@ function formatTime(timestamp) {
   min-width: 0;
 }
 
-.ai-dashboard__alert-student {
-  font-weight: 700;
-  color: var(--ds-text);
+.ai-dashboard__alert-student,
+.ai-dashboard__alert-signal {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.ai-dashboard__alert-student {
+  font-weight: 700;
+  color: var(--ds-text);
+}
+
 .ai-dashboard__alert-signal {
   color: var(--ds-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ai-dashboard__alert-risk {
@@ -634,26 +702,15 @@ function formatTime(timestamp) {
   font-variant-numeric: tabular-nums;
 }
 
-.ai-dashboard__alert-dismiss {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: var(--ds-radius-sm);
-  background: transparent;
-  color: var(--ds-text-muted);
-  cursor: pointer;
-  transition: all var(--ds-duration-fast);
+.ai-dashboard__alert-actions {
+  gap: 4px;
 }
 
-.ai-dashboard__alert-dismiss:hover {
-  background: var(--ds-gray-100);
-  color: var(--ds-text);
+.ai-dashboard__alert-action {
+  width: 26px;
+  height: 26px;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .ai-dashboard__content,
   .ai-dashboard__content--with-alerts {
@@ -675,22 +732,15 @@ function formatTime(timestamp) {
     padding: var(--ds-space-3);
   }
 
-  .ai-dashboard__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .ai-dashboard__header-right {
+  .ai-dashboard__header,
+  .ai-dashboard__header-right,
+  .ai-dashboard__filters {
     flex-direction: column;
     align-items: stretch;
   }
 
   .ai-dashboard__stats-summary {
     justify-content: space-between;
-  }
-
-  .ai-dashboard__filters {
-    flex-direction: column;
   }
 
   .ai-dashboard__search {

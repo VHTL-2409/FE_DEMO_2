@@ -57,7 +57,9 @@ export function buildAttemptQuery({
   startedAt,
   isPractice,
   identityCheckId,
-  verificationStatus
+  verificationStatus,
+  inExamIdentityCheckEnabled,
+  identityCheckIntervalSeconds
 }) {
   return {
     exam: toStringOrEmpty(examTitle || 'Bài thi'),
@@ -68,7 +70,9 @@ export function buildAttemptQuery({
     startedAt: toStringOrEmpty(startedAt),
     isPractice: isPractice ? 'true' : undefined,
     identityCheckId: toStringOrEmpty(identityCheckId),
-    verificationStatus: toStringOrEmpty(verificationStatus)
+    verificationStatus: toStringOrEmpty(verificationStatus),
+    inExamIdentityCheckEnabled: typeof inExamIdentityCheckEnabled === 'boolean' ? String(inExamIdentityCheckEnabled) : toStringOrEmpty(inExamIdentityCheckEnabled),
+    identityCheckIntervalSeconds: toStringOrEmpty(identityCheckIntervalSeconds)
   }
 }
 
@@ -122,6 +126,8 @@ export function buildRulesQuery({
   className,
   identityCheckId,
   verificationStatus,
+  identityReviewPolicy,
+  identityCheckIntervalSeconds,
   requireCameraMic,
   enableAiProctoring
 }) {
@@ -137,6 +143,8 @@ export function buildRulesQuery({
     className: toStringOrEmpty(className),
     identityCheckId: toStringOrEmpty(identityCheckId),
     verificationStatus: toStringOrEmpty(verificationStatus),
+    identityReviewPolicy: toStringOrEmpty(identityReviewPolicy || 'ALLOW_WITH_WARNING'),
+    identityCheckIntervalSeconds: toStringOrEmpty(identityCheckIntervalSeconds),
     requireCameraMic: toStringOrEmpty(requireCameraMic || 'true'),
     enableAiProctoring: toStringOrEmpty(enableAiProctoring || 'false')
   }
@@ -175,6 +183,8 @@ export function writeRulesQuery(query) {
     className: toStringOrEmpty(query.className),
     identityCheckId: toStringOrEmpty(query.identityCheckId),
     verificationStatus: toStringOrEmpty(query.verificationStatus),
+    identityReviewPolicy: toStringOrEmpty(query.identityReviewPolicy || 'ALLOW_WITH_WARNING'),
+    identityCheckIntervalSeconds: toStringOrEmpty(query.identityCheckIntervalSeconds),
     requireCameraMic: toStringOrEmpty(query.requireCameraMic || 'true'),
     enableAiProctoring: toStringOrEmpty(query.enableAiProctoring || 'false')
   })
@@ -195,6 +205,8 @@ export function readRulesQuery() {
     className: toStringOrEmpty(value.className),
     identityCheckId: toStringOrEmpty(value.identityCheckId),
     verificationStatus: toStringOrEmpty(value.verificationStatus),
+    identityReviewPolicy: toStringOrEmpty(value.identityReviewPolicy || 'ALLOW_WITH_WARNING'),
+    identityCheckIntervalSeconds: toStringOrEmpty(value.identityCheckIntervalSeconds),
     requireCameraMic: toStringOrEmpty(value.requireCameraMic || 'true'),
     enableAiProctoring: toStringOrEmpty(value.enableAiProctoring || 'false')
   }
@@ -211,7 +223,9 @@ export function writeAttemptQuery(query) {
     startedAt: toStringOrEmpty(query.startedAt),
     isPractice: toStringOrEmpty(query.isPractice),
     identityCheckId: toStringOrEmpty(query.identityCheckId),
-    verificationStatus: toStringOrEmpty(query.verificationStatus)
+    verificationStatus: toStringOrEmpty(query.verificationStatus),
+    inExamIdentityCheckEnabled: toStringOrEmpty(query.inExamIdentityCheckEnabled),
+    identityCheckIntervalSeconds: toStringOrEmpty(query.identityCheckIntervalSeconds)
   })
 }
 
@@ -227,7 +241,9 @@ export function readAttemptQuery() {
     startedAt: toStringOrEmpty(value.startedAt),
     isPractice: toStringOrEmpty(value.isPractice),
     identityCheckId: toStringOrEmpty(value.identityCheckId),
-    verificationStatus: toStringOrEmpty(value.verificationStatus)
+    verificationStatus: toStringOrEmpty(value.verificationStatus),
+    inExamIdentityCheckEnabled: toStringOrEmpty(value.inExamIdentityCheckEnabled),
+    identityCheckIntervalSeconds: toStringOrEmpty(value.identityCheckIntervalSeconds)
   }
 }
 

@@ -30,6 +30,8 @@
   --ds-bg: var(--ds-gray-50);
   --ds-surface: #ffffff;
   --ds-surface-muted: var(--ds-gray-50);
+  --ds-surface-hover: #f8fafc;
+  --ds-surface-strong: #ffffff;
   --ds-border: var(--ds-gray-200);
   --ds-border-strong: rgba(148, 163, 184, 0.24);
 
@@ -115,6 +117,7 @@
   --ds-shadow-xl: 0 24px 48px -30px rgba(15, 23, 42, 0.28), 0 10px 20px -16px rgba(79, 70, 229, 0.2);
   --ds-shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.16);
   --ds-shadow-focus-danger: 0 0 0 3px rgba(220, 38, 38, 0.16);
+  --ds-shadow-focus-inset: inset 0 0 0 1px rgba(79, 70, 229, 0.32), 0 0 0 3px rgba(79, 70, 229, 0.14);
 
   /* Transitions */
   --ds-duration-fast: 100ms;
@@ -128,12 +131,18 @@
   --ds-sidebar-collapsed: 64px;
   --ds-topbar-height: 64px;
   --ds-content-max: 1280px;
+  --ds-reading-max: 72ch;
+  --ds-control-height-sm: 2.25rem;
+  --ds-control-height-md: 2.5rem;
+  --ds-control-height-lg: 2.75rem;
 }
 
 .dark {
   --ds-bg: #0f172a;
   --ds-surface: #1e293b;
   --ds-surface-muted: #0f172a;
+  --ds-surface-hover: #263449;
+  --ds-surface-strong: #263449;
   --ds-border: #334155;
   --ds-border-strong: rgba(148, 163, 184, 0.18);
   --ds-text: #f1f5f9;

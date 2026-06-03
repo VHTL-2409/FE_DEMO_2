@@ -1,265 +1,553 @@
 <template>
-  <div class="gf">
-    <!-- Header -->
-    <div class="gf__header">
-      <div class="gf__header-left">
-        <LucideIcon name="shield_check" class="gf__header-icon" />
+  <section class="fraud-panel">
+    <header class="fraud-panel__header">
+      <div class="fraud-panel__title-wrap">
+        <LucideIcon
+          name="shield-alert"
+          class="fraud-panel__title-icon"
+        />
         <div>
-          <h3 class="gf__title">Phân tích gian lận trắc nghiệm &amp; chấm điểm</h3>
-          <p class="gf__subtitle">Tương đồng đáp án, thời gian làm bài, IP và kết quả chấm điểm</p>
+          <h2 class="fraud-panel__title">
+            Phân tích gian lận và chấm điểm
+          </h2>
+          <p class="fraud-panel__subtitle">
+            Tổng hợp đáp án, thời gian, IP, hành vi phiên thi, thống kê điểm và cảnh báo cần rà soát.
+          </p>
         </div>
       </div>
-      <div class="gf__header-right">
-        <select v-model="selectedExamId" class="gf__select" @change="loadExam">
-          <option value="">Chọn bài thi</option>
-          <option v-for="exam in exams" :key="exam.id" :value="exam.id">
+      <div class="fraud-panel__actions">
+        <select
+          v-model="selectedExamId"
+          class="fraud-panel__select"
+          @change="resetResults"
+        >
+          <option value="">
+            Chọn bài thi
+          </option>
+          <option
+            v-for="exam in exams"
+            :key="exam.id"
+            :value="exam.id"
+          >
             {{ exam.title }}
           </option>
         </select>
-        <button type="button" class="gf__btn gf__btn--primary" @click="runFullAnalysis" :disabled="!selectedExamId || loading">
+        <button
+          type="button"
+          class="fraud-panel__button fraud-panel__button--ghost"
+          :disabled="!selectedExamId || loading"
+          @click="loadWarnings"
+        >
+          <LucideIcon name="refresh-cw" />
+          Tải cảnh báo
+        </button>
+        <button
+          type="button"
+          class="fraud-panel__button fraud-panel__button--primary"
+          :disabled="!selectedExamId || loading"
+          @click="runFullAnalysis"
+        >
           <LucideIcon name="play" />
           Phân tích
         </button>
       </div>
+    </header>
+
+    <div
+      v-if="loading"
+      class="fraud-panel__loading"
+    >
+      <div class="fraud-panel__spinner" />
+      <span>{{ loadingMessage }}</span>
     </div>
 
-    <!-- Loading state -->
-    <div v-if="loading" class="gf__loading">
-      <div class="gf__spinner" />
-      <p>{{ loadingMessage }}</p>
+    <div
+      v-else-if="!selectedExamId"
+      class="fraud-panel__empty"
+    >
+      <LucideIcon name="search" />
+      <h3>Chọn bài thi để bắt đầu phân tích</h3>
+      <p>Dữ liệu phân tích sẽ được tổng hợp từ bài làm đã nộp, tín hiệu giám sát và cảnh báo đã ghi nhận.</p>
     </div>
 
-    <!-- Results -->
-    <div v-else-if="hasResults" class="gf__results">
-
-      <!-- Summary Cards -->
-      <div class="gf__summary-cards">
-        <div class="gf__card gf__card--plagiarism" @click="activeTab = 'plagiarism'">
-          <LucideIcon name="file_text" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ plagiarismReports.length }}</span>
-            <span class="gf__card-label">Cặp trùng đáp án</span>
-          </div>
-          <div class="gf__card-badge gf__card-badge--warning" v-if="plagiarismReports.length > 0">
-            {{ plagiarismReports.length }}
-          </div>
-        </div>
-
-        <div class="gf__card gf__card--timing" @click="activeTab = 'timing'">
-          <LucideIcon name="timer" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ timingResults.length }}</span>
-            <span class="gf__card-label">Bất thường thời gian</span>
-          </div>
-        </div>
-
-        <div class="gf__card gf__card--ip" @click="activeTab = 'ip'">
-          <LucideIcon name="globe" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ ipResults.length }}</span>
-            <span class="gf__card-label">Bất thường IP</span>
-          </div>
-        </div>
-
-        <div class="gf__card gf__card--grading" @click="activeTab = 'grading'">
-          <LucideIcon name="award" />
-          <div class="gf__card-content">
-            <span class="gf__card-number">{{ gradingResult ? gradingResult.finalScore.toFixed(1) : '---' }}</span>
-            <span class="gf__card-label">Điểm IRT</span>
-          </div>
-        </div>
+    <template v-else>
+      <div class="fraud-panel__summary">
+        <button
+          type="button"
+          class="fraud-panel__metric"
+          @click="activeTab = 'warnings'"
+        >
+          <span class="fraud-panel__metric-label">Cảnh báo cần duyệt</span>
+          <strong>{{ pendingWarningCount }}</strong>
+          <small>{{ warningSummary.totalWarnings || 0 }} cảnh báo tổng</small>
+        </button>
+        <button
+          type="button"
+          class="fraud-panel__metric"
+          @click="activeTab = 'overview'"
+        >
+          <span class="fraud-panel__metric-label">Thí sinh bị gắn cờ</span>
+          <strong>{{ comprehensiveResult?.flaggedAttempts || flaggedAttemptItems.length }}</strong>
+          <small>{{ comprehensiveResult?.totalAttempts || 0 }} bài đã xét</small>
+        </button>
+        <button
+          type="button"
+          class="fraud-panel__metric"
+          @click="activeTab = 'overview'"
+        >
+          <span class="fraud-panel__metric-label">Rủi ro cao nhất</span>
+          <strong>{{ highestRiskScore }}</strong>
+          <small>{{ highestRiskLevel }}</small>
+        </button>
+        <button
+          type="button"
+          class="fraud-panel__metric"
+          @click="activeTab = 'plagiarism'"
+        >
+          <span class="fraud-panel__metric-label">Cặp đáp án đáng ngờ</span>
+          <strong>{{ plagiarismReports.length }}</strong>
+          <small>{{ timingResults.length + behaviorAnomalies.length }} tín hiệu hành vi</small>
+        </button>
       </div>
 
-      <!-- Tab Navigation -->
-      <div class="gf__tabs">
+      <nav
+        class="fraud-panel__tabs"
+        aria-label="Nhóm phân tích gian lận"
+      >
         <button
           v-for="tab in tabs"
           :key="tab.id"
           type="button"
-          class="gf__tab"
-          :class="{ 'gf__tab--active': activeTab === tab.id }"
+          class="fraud-panel__tab"
+          :class="{ 'fraud-panel__tab--active': activeTab === tab.id }"
           @click="activeTab = tab.id"
         >
           <LucideIcon :name="tab.icon" />
-          {{ tab.label }}
-          <span class="gf__tab-count" v-if="tab.count > 0">{{ tab.count }}</span>
+          <span>{{ tab.label }}</span>
+          <em v-if="tab.count">{{ tab.count }}</em>
         </button>
+      </nav>
+
+      <div
+        v-if="errorMessage"
+        class="fraud-panel__notice fraud-panel__notice--error"
+      >
+        <LucideIcon name="alert-triangle" />
+        <span>{{ errorMessage }}</span>
       </div>
 
-      <!-- Tab Content: Plagiarism -->
-      <div v-if="activeTab === 'plagiarism'" class="gf__tab-content">
-        <div v-if="plagiarismReports.length === 0" class="gf__empty">
-          <LucideIcon name="check_circle" />
-          <p>Không phát hiện cặp đáp án trùng bất thường</p>
-        </div>
-        <div v-else class="gf__plagiarism-list">
-          <div v-for="report in plagiarismReports" :key="report.id" class="gf__plagiarism-item">
-            <div class="gf__plagiarism-header">
-              <div class="gf__plagiarism-pair">
-                <span class="gf__student-tag">{{ report.student1Name }}</span>
-                <LucideIcon name="arrow_right" />
-                <span class="gf__student-tag">{{ report.student2Name }}</span>
-              </div>
-              <span
-                class="gf__severity-badge"
-                :class="{
-                  'gf__severity-badge--critical': report.verdict === 'NGHIEM_TRONG',
-                  'gf__severity-badge--high': report.verdict === 'CAO',
-                  'gf__severity-badge--medium': report.verdict === 'TRUNG_BINH'
-                }"
-              >
-                {{ report.verdict }}
-              </span>
-            </div>
-            <div class="gf__plagiarism-body">
-              <div class="gf__plagiarism-metric">
-                <span class="gf__metric-label">Độ tương đồng</span>
-                <div class="gf__progress-bar">
-                  <div
-                    class="gf__progress-fill"
-                    :class="{
-                      'gf__progress-fill--critical': report.similarityScore > 0.95,
-                      'gf__progress-fill--high': report.similarityScore > 0.85,
-                      'gf__progress-fill--warning': report.similarityScore > 0.75
-                    }"
-                    :style="{ width: (report.similarityScore * 100) + '%' }"
-                  />
-                </div>
-                <span class="gf__metric-value">{{ (report.similarityScore * 100).toFixed(1) }}%</span>
-              </div>
-              <div class="gf__plagiarism-meta">
-                <span>{{ report.commonQuestions }} câu hỏi chung</span>
-                <span v-if="report.timeCorrelation">Có tương quan thời gian</span>
-              </div>
-              <p class="gf__plagiarism-recommendation">{{ report.recommendation }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab Content: Timing -->
-      <div v-if="activeTab === 'timing'" class="gf__tab-content">
-        <div v-if="timingResults.length === 0" class="gf__empty">
-          <LucideIcon name="check_circle" />
-          <p>Không phát hiện bất thường thời gian</p>
-        </div>
-        <div v-else class="gf__timing-list">
-          <div v-for="(result, idx) in timingResults" :key="result.signalType + '-' + idx" class="gf__timing-item">
-            <div class="gf__timing-icon" :class="`gf__timing-icon--${(result.severity || 'low').toLowerCase()}`">
-              <LucideIcon name="alert_triangle" />
-            </div>
-            <div class="gf__timing-content">
-              <div class="gf__timing-header">
-                <span class="gf__timing-type">{{ result.signalType }}</span>
-                <span class="gf__timing-time">{{ formatTime(result.timestampMs) }}</span>
-              </div>
-              <p class="gf__timing-message">{{ result.evidence?.message || result.signalType }}</p>
-              <div class="gf__timing-details">
-                <span v-for="(v, k) in result.evidence" :key="k" class="gf__timing-detail">
-                  {{ k }}: {{ v }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab Content: IP Reputation -->
-      <div v-if="activeTab === 'ip'" class="gf__tab-content">
-        <div v-if="ipResults.length === 0" class="gf__empty">
-          <LucideIcon name="check_circle" />
-          <p>Không phát hiện bất thường IP</p>
-        </div>
-        <div v-else class="gf__ip-list">
-          <div v-for="result in ipResults" :key="result.ipAddress" class="gf__ip-item">
-            <div class="gf__ip-header">
-              <span class="gf__ip-address">{{ result.ipAddress }}</span>
-              <span v-if="result.isVpn" class="gf__ip-badge gf__ip-badge--vpn">VPN</span>
-              <span v-if="result.isProxy" class="gf__ip-badge gf__ip-badge--proxy">Proxy</span>
-              <span v-if="result.isTor" class="gf__ip-badge gf__ip-badge--tor">Tor</span>
-            </div>
-            <div class="gf__ip-body">
-              <span v-if="result.hostname">Hostname: {{ result.hostname }}</span>
-              <span v-if="result.geoLocation">{{ result.geoLocation.city }}, {{ result.geoLocation.country }}</span>
-              <span v-if="result.subnetCount">Subnet: {{ result.subnetCount }} nguoi</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab Content: Grading -->
-      <div v-if="activeTab === 'grading'" class="gf__tab-content">
-        <div v-if="!gradingResult" class="gf__empty">
-          <LucideIcon name="info" />
-          <p>Chưa có kết quả chấm điểm</p>
-        </div>
-        <div v-else class="gf__grading-grid">
-          <!-- Score Summary -->
-          <div class="gf__grade-card gf__grade-card--main">
-            <div class="gf__grade-circle" :class="gradeCircleClass">
-              <span class="gf__grade-score">{{ gradingResult.finalScore.toFixed(1) }}</span>
-              <span class="gf__grade-max">/ {{ gradingResult.maxScore }}</span>
-            </div>
-            <div class="gf__grade-breakdown">
-              <div class="gf__grade-item">
-                <span>Điểm thô</span>
-                <span>{{ gradingResult.rawScore.toFixed(1) }}</span>
-              </div>
-              <div class="gf__grade-item" v-if="gradingResult.irtResult">
-                <span>Điểm IRT</span>
-                <span>{{ gradingResult.irtResult.irtScore.toFixed(1) }}</span>
-              </div>
-              <div class="gf__grade-item" v-if="gradingResult.peerResult">
-                <span>Percentile</span>
-                <span>{{ gradingResult.peerResult.percentile.toFixed(0) }}%</span>
-              </div>
-              <div class="gf__grade-item" v-if="gradingResult.peerResult">
-                <span>Xếp hạng</span>
-                <span>{{ gradingResult.peerResult.rank }} / {{ gradingResult.peerResult.totalPeers }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Question Analysis -->
-          <div class="gf__grade-card" v-if="gradingResult.questionAnalyses?.length">
-            <h4 class="gf__grade-card-title">Phân tích câu hỏi</h4>
-            <div class="gf__question-list">
+      <section
+        v-if="activeTab === 'overview'"
+        class="fraud-panel__section"
+      >
+        <div class="fraud-panel__grid fraud-panel__grid--two">
+          <article class="fraud-panel__card">
+            <h3>Mẫu gian lận nổi bật</h3>
+            <div
+              v-if="suspiciousPatterns.length"
+              class="fraud-panel__list"
+            >
               <div
-                v-for="qa in gradingResult.questionAnalyses"
-                :key="qa.questionId"
-                class="gf__question-item"
+                v-for="pattern in suspiciousPatterns"
+                :key="pattern.id"
+                class="fraud-panel__row"
               >
-                <span class="gf__question-difficulty" :class="`gf__question-difficulty--${qa.difficulty > 0.7 ? 'easy' : qa.difficulty > 0.3 ? 'medium' : 'hard'}`">
-                  {{ (qa.difficulty * 100).toFixed(0) }}%
-                </span>
-                <span class="gf__question-content">{{ qa.content?.substring(0, 60) }}...</span>
-                <span class="gf__question-quality" :class="`gf__question-quality--${(qa.quality || 'medium').toLowerCase()}`">
-                  {{ qa.quality }}
-                </span>
+                <div>
+                  <strong>{{ pattern.title || pattern.patternType }}</strong>
+                  <p>{{ pattern.studentUsername }} · {{ pattern.description }}</p>
+                </div>
+                <span :class="severityClass(pattern.severity)">{{ labelSeverity(pattern.severity) }}</span>
               </div>
             </div>
+            <p
+              v-else
+              class="fraud-panel__muted"
+            >
+              Chưa phát hiện mẫu gian lận nổi bật.
+            </p>
+          </article>
+
+          <article class="fraud-panel__card">
+            <h3>Thí sinh cần rà soát</h3>
+            <div
+              v-if="flaggedAttemptItems.length"
+              class="fraud-panel__list"
+            >
+              <div
+                v-for="item in flaggedAttemptItems"
+                :key="item.attemptId"
+                class="fraud-panel__row"
+              >
+                <div>
+                  <strong>{{ item.studentUsername }}</strong>
+                  <p>{{ formatIndicators(item.fraudIndicators) }}</p>
+                </div>
+                <span :class="riskClass(item.riskScore)">{{ item.riskScore }}</span>
+              </div>
+            </div>
+            <p
+              v-else
+              class="fraud-panel__muted"
+            >
+              Không có thí sinh bị gắn cờ trong kết quả hiện tại.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section
+        v-if="activeTab === 'warnings'"
+        class="fraud-panel__section"
+      >
+        <div class="fraud-panel__toolbar">
+          <select
+            v-model="warningFilters.reviewStatus"
+            class="fraud-panel__select fraud-panel__select--compact"
+          >
+            <option value="">
+              Tất cả trạng thái
+            </option>
+            <option value="NEEDS_REVIEW">
+              Cần duyệt
+            </option>
+            <option value="CONFIRMED">
+              Đã xác nhận
+            </option>
+            <option value="FALSE_POSITIVE">
+              Báo sai
+            </option>
+            <option value="RESOLVED">
+              Đã xử lý
+            </option>
+            <option value="DISMISSED">
+              Đã bỏ qua
+            </option>
+          </select>
+          <select
+            v-model="warningFilters.severity"
+            class="fraud-panel__select fraud-panel__select--compact"
+          >
+            <option value="">
+              Tất cả mức độ
+            </option>
+            <option value="CRITICAL">
+              Nghiêm trọng
+            </option>
+            <option value="HIGH">
+              Cao
+            </option>
+            <option value="MEDIUM">
+              Trung bình
+            </option>
+            <option value="LOW">
+              Thấp
+            </option>
+          </select>
+          <select
+            v-model="warningFilters.category"
+            class="fraud-panel__select fraud-panel__select--compact"
+          >
+            <option value="">
+              Tất cả nhóm
+            </option>
+            <option
+              v-for="category in warningCategories"
+              :key="category"
+              :value="category"
+            >
+              {{ labelCategory(category) }}
+            </option>
+          </select>
+          <button
+            type="button"
+            class="fraud-panel__button fraud-panel__button--ghost"
+            :disabled="loading"
+            @click="generateWarnings"
+          >
+            <LucideIcon name="sparkles" />
+            Tạo từ tín hiệu
+          </button>
+        </div>
+
+        <div
+          v-if="filteredWarnings.length"
+          class="fraud-panel__warning-list"
+        >
+          <article
+            v-for="warning in filteredWarnings"
+            :key="warning.id"
+            class="fraud-panel__warning"
+          >
+            <div class="fraud-panel__warning-main">
+              <div class="fraud-panel__warning-head">
+                <strong>{{ warning.message || warning.type }}</strong>
+                <span :class="severityClass(warning.severity)">{{ labelSeverity(warning.severity) }}</span>
+                <span class="fraud-panel__chip">{{ labelReviewStatus(warning.reviewStatus) }}</span>
+              </div>
+              <p>{{ warning.studentName || warning.studentUsername || 'Nhóm thí sinh' }} · {{ labelCategory(warning.category) }} · {{ formatDate(warning.createdAt) }}</p>
+              <div class="fraud-panel__evidence">
+                {{ summarizeEvidence(warning.evidence) }}
+              </div>
+            </div>
+            <div class="fraud-panel__review">
+              <button
+                type="button"
+                @click="reviewWarningItem(warning, 'CONFIRMED')"
+              >
+                Xác nhận
+              </button>
+              <button
+                type="button"
+                @click="reviewWarningItem(warning, 'FALSE_POSITIVE')"
+              >
+                Báo sai
+              </button>
+              <button
+                type="button"
+                @click="reviewWarningItem(warning, 'RESOLVED')"
+              >
+                Đã xử lý
+              </button>
+            </div>
+          </article>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không có cảnh báo phù hợp bộ lọc.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'statistics'"
+        class="fraud-panel__section"
+      >
+        <div class="fraud-panel__grid fraud-panel__grid--stats">
+          <div class="fraud-panel__stat">
+            <span>Trung bình</span><strong>{{ scoreStats.mean ?? 0 }}</strong>
+          </div>
+          <div class="fraud-panel__stat">
+            <span>Độ lệch chuẩn</span><strong>{{ scoreStats.stdDev ?? 0 }}</strong>
+          </div>
+          <div class="fraud-panel__stat">
+            <span>Thấp nhất</span><strong>{{ scoreStats.min ?? 0 }}</strong>
+          </div>
+          <div class="fraud-panel__stat">
+            <span>Cao nhất</span><strong>{{ scoreStats.max ?? 0 }}</strong>
           </div>
         </div>
-      </div>
-    </div>
+        <div
+          v-if="statisticalResults.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="(item, idx) in statisticalResults"
+            :key="`${item.signalType}-${idx}`"
+            class="fraud-panel__row"
+          >
+            <div>
+              <strong>{{ labelSignal(item.signalType) }}</strong>
+              <p>{{ summarizeEvidence(item.evidence) }}</p>
+            </div>
+            <span :class="severityClass(item.severity)">{{ labelSeverity(item.severity) }}</span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không có bất thường thống kê.
+        </p>
+      </section>
 
-    <!-- Empty state -->
-    <div v-else class="gf__empty-state">
-      <LucideIcon name="search" />
-      <h3>Chọn bài thi để bắt đầu phân tích</h3>
-      <p>Hệ thống sẽ phân tích đáp án, thời gian, IP và kết quả chấm điểm</p>
-    </div>
-  </div>
+      <section
+        v-if="activeTab === 'behavior'"
+        class="fraud-panel__section"
+      >
+        <div
+          v-if="behaviorAnomalies.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="(item, idx) in behaviorAnomalies"
+            :key="idx"
+            class="fraud-panel__row"
+          >
+            <strong>{{ item }}</strong>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không có bất thường hành vi.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'plagiarism'"
+        class="fraud-panel__section"
+      >
+        <div
+          v-if="plagiarismReports.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="report in plagiarismReports"
+            :key="report.id"
+            class="fraud-panel__row"
+          >
+            <div>
+              <strong>{{ report.student1Name }} ↔ {{ report.student2Name }}</strong>
+              <p>{{ report.sameAnswers }}/{{ report.commonQuestions }} câu giống nhau · {{ report.recommendation }}</p>
+            </div>
+            <span :class="similarityClass(report.similarityScore)">{{ formatPercent(report.similarityScore) }}</span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không phát hiện cặp đáp án trùng bất thường.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'timing'"
+        class="fraud-panel__section"
+      >
+        <div
+          v-if="timingResults.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="(item, idx) in timingResults"
+            :key="`${item.signalType}-${idx}`"
+            class="fraud-panel__row"
+          >
+            <div>
+              <strong>{{ labelSignal(item.signalType) }}</strong>
+              <p>{{ summarizeEvidence(item.evidence) }}</p>
+            </div>
+            <span :class="severityClass(item.severity)">{{ labelSeverity(item.severity) }}</span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không phát hiện bất thường thời gian.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'ip'"
+        class="fraud-panel__section"
+      >
+        <div
+          v-if="ipResults.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="item in ipResults"
+            :key="item.ipAddress"
+            class="fraud-panel__row"
+          >
+            <div>
+              <strong>{{ item.ipAddress }}</strong>
+              <p>{{ item.studentCount || 0 }} thí sinh · {{ formatList(item.studentUsernames) }}</p>
+            </div>
+            <span :class="severityClass(item.riskLevel)">{{ labelSeverity(item.riskLevel) }}</span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Không phát hiện bất thường IP.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'ml-risk'"
+        class="fraud-panel__section"
+      >
+        <div
+          v-if="mlRiskResults.length"
+          class="fraud-panel__list fraud-panel__list--spaced"
+        >
+          <div
+            v-for="item in sortedMlRiskResults"
+            :key="item.attemptId"
+            class="fraud-panel__row"
+          >
+            <div>
+              <strong>{{ item.studentUsername || `Attempt #${item.attemptId}` }}</strong>
+              <p>
+                Rule: {{ item.ruleBasedScore ?? 0 }} · {{ mlScoreLabel(item) }} · Combined: {{ item.combinedScore ?? 0 }}
+              </p>
+              <p>{{ mlSourceLabel(item) }}</p>
+              <p>{{ summarizeMlFeatures(item.topFeatures) }}</p>
+            </div>
+            <span :class="severityClass(item.combinedLevel || item.mlRiskLevel || item.ruleBasedLevel)">
+              {{ labelSeverity(item.combinedLevel || item.mlRiskLevel || item.ruleBasedLevel) }}
+            </span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Chưa có kết quả ML risk cho bài thi này.
+        </p>
+      </section>
+
+      <section
+        v-if="activeTab === 'grading'"
+        class="fraud-panel__section"
+      >
+        <article
+          v-if="gradingResult"
+          class="fraud-panel__card fraud-panel__card--grading"
+        >
+          <div class="fraud-panel__grade">
+            <strong>{{ formatScore(gradingResult.finalScore) }}</strong>
+            <span>/ {{ gradingResult.maxScore || 100 }}</span>
+          </div>
+          <div class="fraud-panel__grade-details">
+            <p>Điểm thô: <strong>{{ formatScore(gradingResult.rawScore) }}</strong></p>
+            <p>Độ tin cậy IRT: <strong>{{ gradingResult.irtResult?.reliability ?? '-' }}</strong></p>
+            <p>Số bài so sánh: <strong>{{ gradingResult.peerResult?.totalPeers ?? 0 }}</strong></p>
+          </div>
+        </article>
+        <p
+          v-else
+          class="fraud-panel__muted fraud-panel__muted--center"
+        >
+          Chưa có kết quả chấm điểm.
+        </p>
+      </section>
+    </template>
+  </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { listExams } from '../../../services/examService'
+import { useToast } from '../../../composables/useToast'
 import {
+  fetchFraudWarningsByExam,
+  generateFraudWarningsForExam,
+  reviewFraudWarning,
+  runComprehensiveExamAnalysis,
+  runExamBehaviorAnalysis,
+  runExamStatisticalAnalysis,
+  runGradingByExam,
+  runIpReputationAnalysis,
   runPlagiarismAnalysis,
   runExamTimingAnalysis,
-  runIpReputationAnalysis,
-  runGradingByExam,
+  runMlRiskByExam
 } from '../../../services/fraudAnalysisService'
 
 const props = defineProps({
@@ -269,584 +557,737 @@ const props = defineProps({
   }
 })
 
+const toast = useToast()
 const selectedExamId = ref(props.initialExamId ? String(props.initialExamId) : '')
-const activeTab = ref('plagiarism')
+const activeTab = ref('overview')
 const loading = ref(false)
 const loadingMessage = ref('')
+const errorMessage = ref('')
 const exams = ref([])
 
-const plagiarismReports = ref([])
-const timingResults = ref([])
-const ipResults = ref([])
+const warningSummary = ref({})
+const plagiarismResult = ref(null)
+const timingResult = ref(null)
+const ipResult = ref(null)
 const gradingResult = ref(null)
+const comprehensiveResult = ref(null)
+const statisticalResult = ref(null)
+const behaviorResult = ref(null)
+const mlRiskResults = ref([])
 
-const hasResults = computed(() =>
-  plagiarismReports.value.length > 0 ||
-  timingResults.value.length > 0 ||
-  ipResults.value.length > 0 ||
-  gradingResult.value !== null
-)
-
-const tabs = computed(() => [
-  { id: 'plagiarism', label: 'Đáp án', icon: 'file_text', count: plagiarismReports.value.length },
-  { id: 'timing', label: 'Thời gian', icon: 'timer', count: timingResults.value.length },
-  { id: 'ip', label: 'IP', icon: 'globe', count: ipResults.value.length },
-  { id: 'grading', label: 'Chấm điểm', icon: 'award', count: gradingResult.value ? 1 : 0 }
-])
-
-const gradeCircleClass = computed(() => {
-  const score = gradingResult.value?.finalScore || 0
-  const max = gradingResult.value?.maxScore || 100
-  const pct = max > 0 ? score / max : 0
-  if (pct >= 0.8) return 'gf__grade-circle--green'
-  if (pct >= 0.6) return 'gf__grade-circle--yellow'
-  return 'gf__grade-circle--red'
+const warningFilters = reactive({
+  reviewStatus: '',
+  severity: '',
+  category: ''
 })
 
 onMounted(async () => {
   exams.value = await listExams()
+  if (selectedExamId.value) {
+    await runFullAnalysis()
+  }
 })
 
-async function loadExam() {
-  if (!selectedExamId.value) return
-  plagiarismReports.value = []
-  timingResults.value = []
-  ipResults.value = []
+const warnings = computed(() => warningSummary.value?.warnings || [])
+const plagiarismReports = computed(() => plagiarismResult.value?.plagiarismReports || comprehensiveResult.value?.plagiarism?.plagiarismReports || [])
+const timingResults = computed(() => timingResult.value?.timingResults || comprehensiveResult.value?.timing?.timingResults || [])
+const ipResults = computed(() => ipResult.value?.ipResults || comprehensiveResult.value?.ipReputation?.ipResults || [])
+const scoreStats = computed(() => statisticalResult.value?.scoreStats || comprehensiveResult.value?.statistical?.scoreStats || {})
+const statisticalResults = computed(() => statisticalResult.value?.statisticalResults || comprehensiveResult.value?.statistical?.statisticalResults || [])
+const behaviorAnomalies = computed(() => behaviorResult.value?.anomalies || comprehensiveResult.value?.behavior?.anomalies || [])
+const suspiciousPatterns = computed(() => comprehensiveResult.value?.suspiciousPatterns || [])
+const flaggedAttemptItems = computed(() => comprehensiveResult.value?.flaggedAttemptItems || [])
+const sortedMlRiskResults = computed(() => [...mlRiskResults.value].sort((a, b) => Number(b.combinedScore || b.ruleBasedScore || 0) - Number(a.combinedScore || a.ruleBasedScore || 0)))
+const pendingWarningCount = computed(() => warnings.value.filter(item => item.reviewStatus === 'NEEDS_REVIEW').length)
+const warningCategories = computed(() => [...new Set(warnings.value.map(item => item.category).filter(Boolean))])
+
+const highestRiskScore = computed(() => {
+  const candidates = [
+    ...flaggedAttemptItems.value.map(item => Number(item.riskScore || 0)),
+    ...mlRiskResults.value.map(item => Number(item.combinedScore || item.ruleBasedScore || 0))
+  ]
+  return candidates.length ? Math.max(...candidates) : 0
+})
+
+const highestRiskLevel = computed(() => {
+  const item = [...flaggedAttemptItems.value]
+    .sort((a, b) => Number(b.riskScore || 0) - Number(a.riskScore || 0))[0]
+  return item?.riskLevel || (highestRiskScore.value >= 61 ? 'HIGH_RISK' : highestRiskScore.value >= 40 ? 'SUSPICIOUS' : 'CLEAN')
+})
+
+const filteredWarnings = computed(() => warnings.value.filter(item => {
+  if (warningFilters.reviewStatus && item.reviewStatus !== warningFilters.reviewStatus) return false
+  if (warningFilters.severity && item.severity !== warningFilters.severity) return false
+  if (warningFilters.category && item.category !== warningFilters.category) return false
+  return true
+}))
+
+const tabs = computed(() => [
+  { id: 'overview', label: 'Tổng quan', icon: 'layout-dashboard', count: suspiciousPatterns.value.length },
+  { id: 'warnings', label: 'Cảnh báo', icon: 'alert-triangle', count: pendingWarningCount.value },
+  { id: 'statistics', label: 'Thống kê', icon: 'bar-chart-2', count: statisticalResults.value.length },
+  { id: 'behavior', label: 'Hành vi', icon: 'activity', count: behaviorAnomalies.value.length },
+  { id: 'plagiarism', label: 'Đáp án', icon: 'file_text', count: plagiarismReports.value.length },
+  { id: 'timing', label: 'Thời gian', icon: 'timer', count: timingResults.value.length },
+  { id: 'ip', label: 'IP', icon: 'globe', count: ipResults.value.length },
+  { id: 'ml-risk', label: 'ML risk', icon: 'psychology', count: mlRiskResults.value.length },
+  { id: 'grading', label: 'Chấm điểm', icon: 'award', count: gradingResult.value ? 1 : 0 }
+])
+
+function resetResults() {
+  errorMessage.value = ''
+  warningSummary.value = {}
+  plagiarismResult.value = null
+  timingResult.value = null
+  ipResult.value = null
   gradingResult.value = null
+  comprehensiveResult.value = null
+  statisticalResult.value = null
+  behaviorResult.value = null
+  mlRiskResults.value = []
 }
 
 async function runFullAnalysis() {
   if (!selectedExamId.value) return
-
   loading.value = true
-  plagiarismReports.value = []
-  timingResults.value = []
-  ipResults.value = []
-  gradingResult.value = null
-
+  errorMessage.value = ''
+  resetResults()
   try {
-    loadingMessage.value = 'Đang phân tích tương đồng đáp án...'
-    const plagiarismResp = await runPlagiarismAnalysis(selectedExamId.value)
-    plagiarismReports.value = plagiarismResp?.plagiarismReports || []
+    loadingMessage.value = 'Đang phân tích tổng hợp...'
+    const [
+      comprehensive,
+      plagiarism,
+      timing,
+      ip,
+      statistical,
+      behavior,
+      grading,
+      mlRisk
+    ] = await Promise.allSettled([
+      runComprehensiveExamAnalysis(selectedExamId.value),
+      runPlagiarismAnalysis(selectedExamId.value),
+      runExamTimingAnalysis(selectedExamId.value),
+      runIpReputationAnalysis(selectedExamId.value),
+      runExamStatisticalAnalysis(selectedExamId.value),
+      runExamBehaviorAnalysis(selectedExamId.value),
+      runGradingByExam(selectedExamId.value),
+      runMlRiskByExam(selectedExamId.value)
+    ])
 
-    loadingMessage.value = 'Đang phân tích thời gian...'
-    const timingResp = await runExamTimingAnalysis(selectedExamId.value)
-    timingResults.value = timingResp?.timingResults || []
+    comprehensiveResult.value = unwrapSettled(comprehensive)
+    plagiarismResult.value = unwrapSettled(plagiarism)
+    timingResult.value = unwrapSettled(timing)
+    ipResult.value = unwrapSettled(ip)
+    statisticalResult.value = unwrapSettled(statistical)
+    behaviorResult.value = unwrapSettled(behavior)
+    gradingResult.value = unwrapSettled(grading)
+    mlRiskResults.value = unwrapSettled(mlRisk) || []
 
-    loadingMessage.value = 'Đang phân tích IP...'
-    const ipResp = await runIpReputationAnalysis(selectedExamId.value)
-    ipResults.value = ipResp?.ipResults || []
-
-    loadingMessage.value = 'Đang tải kết quả chấm điểm...'
-    const gradeResp = await runGradingByExam(selectedExamId.value)
-    gradingResult.value = gradeResp || null
-
-    loadingMessage.value = 'Hoàn thành!'
+    loadingMessage.value = 'Đang tải cảnh báo...'
+    await loadWarnings()
+    const failed = [comprehensive, plagiarism, timing, ip, statistical, behavior, grading, mlRisk].filter(r => r.status === 'rejected').length
+    if (failed) {
+      errorMessage.value = `${failed} nhóm phân tích chưa tải được. Các phần còn lại vẫn có thể rà soát.`
+    }
   } catch (error) {
-    console.error('Analysis failed:', error)
-    loadingMessage.value = 'Lỗi phân tích: ' + (error?.message || 'Unknown error')
+    errorMessage.value = error?.message || 'Không thể chạy phân tích gian lận.'
   } finally {
     loading.value = false
+    loadingMessage.value = ''
   }
 }
 
-function formatTime(timestampMs) {
-  if (!timestampMs) return ''
-  const d = new Date(timestampMs)
-  return d.toLocaleString('vi-VN')
+async function loadWarnings() {
+  if (!selectedExamId.value) return
+  const summary = await fetchFraudWarningsByExam(selectedExamId.value)
+  warningSummary.value = summary || {}
+}
+
+async function generateWarnings() {
+  if (!selectedExamId.value) return
+  loading.value = true
+  loadingMessage.value = 'Đang tạo cảnh báo từ tín hiệu giám sát...'
+  try {
+    const result = await generateFraudWarningsForExam(selectedExamId.value)
+    await loadWarnings()
+    toast.success(`Đã ghi nhận ${result?.recorded || 0} cảnh báo từ tín hiệu.`)
+  } catch (error) {
+    errorMessage.value = error?.message || 'Không thể tạo cảnh báo từ tín hiệu.'
+  } finally {
+    loading.value = false
+    loadingMessage.value = ''
+  }
+}
+
+async function reviewWarningItem(warning, status) {
+  if (!warning?.id) return
+  try {
+    await reviewFraudWarning(warning.id, status, '')
+    await loadWarnings()
+    toast.success('Đã cập nhật trạng thái cảnh báo.')
+  } catch (error) {
+    errorMessage.value = error?.message || 'Không thể cập nhật cảnh báo.'
+  }
+}
+
+function unwrapSettled(result) {
+  return result.status === 'fulfilled' ? result.value : null
+}
+
+function labelSeverity(value) {
+  const map = { CRITICAL: 'Nghiêm trọng', HIGH: 'Cao', HIGH_RISK: 'Cao', MEDIUM: 'Trung bình', SUSPICIOUS: 'Đáng ngờ', LOW: 'Thấp', CLEAN: 'Sạch' }
+  return map[String(value || '').toUpperCase()] || value || '-'
+}
+
+function labelCategory(value) {
+  const map = {
+    ANSWER_PATTERN: 'Mẫu đáp án',
+    TIMING_PATTERN: 'Thời gian',
+    SYNCHRONIZATION: 'Đồng bộ hành vi',
+    SESSION_INTEGRITY: 'Phiên thi',
+    IDENTITY_NETWORK: 'Danh tính/IP',
+    CAMERA_PROCTORING: 'AI camera',
+    POST_EXAM_STATISTICAL: 'Thống kê sau thi'
+  }
+  return map[value] || value || 'Khác'
+}
+
+function labelReviewStatus(value) {
+  const map = {
+    NEEDS_REVIEW: 'Cần duyệt',
+    CONFIRMED: 'Đã xác nhận',
+    FALSE_POSITIVE: 'Báo sai',
+    RESOLVED: 'Đã xử lý',
+    DISMISSED: 'Đã bỏ qua'
+  }
+  return map[value] || value || '-'
+}
+
+function labelSignal(value) {
+  return String(value || '').replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase())
+}
+
+function severityClass(value) {
+  const normalized = String(value || '').toUpperCase()
+  return {
+    'fraud-panel__badge': true,
+    'fraud-panel__badge--danger': ['CRITICAL', 'HIGH', 'HIGH_RISK'].includes(normalized),
+    'fraud-panel__badge--warn': ['MEDIUM', 'SUSPICIOUS'].includes(normalized),
+    'fraud-panel__badge--neutral': !['CRITICAL', 'HIGH', 'HIGH_RISK', 'MEDIUM', 'SUSPICIOUS'].includes(normalized)
+  }
+}
+
+function riskClass(score) {
+  const value = Number(score || 0)
+  return severityClass(value >= 61 ? 'HIGH' : value >= 40 ? 'MEDIUM' : 'LOW')
+}
+
+function similarityClass(score) {
+  const value = Number(score || 0)
+  return severityClass(value >= 0.95 ? 'HIGH' : value >= 0.9 ? 'MEDIUM' : 'LOW')
+}
+
+function summarizeEvidence(evidence) {
+  if (!evidence) return 'Không có bằng chứng chi tiết.'
+  if (typeof evidence === 'string') return evidence
+  const message = evidence.message || evidence.details
+  if (message) return String(message)
+  const entries = Object.entries(evidence).filter(([, value]) => value !== null && value !== undefined)
+  return entries.slice(0, 4).map(([key, value]) => `${key}: ${formatEvidenceValue(value)}`).join(' · ') || 'Không có bằng chứng chi tiết.'
+}
+
+function summarizeMlFeatures(features) {
+  if (!Array.isArray(features) || !features.length) return 'Chưa có feature nổi bật.'
+  return features
+    .slice(0, 3)
+    .map(feature => `${labelSignal(feature.featureName)}: ${formatScore(feature.value)}`)
+    .join(' · ')
+}
+
+function mlScoreLabel(item) {
+  const source = String(item?.scoringSource || item?.mlAnalysis?.source || '').toUpperCase()
+  if (source === 'RULE_BASED' || item?.modelType === 'RULE_BASED') {
+    return 'ML: chưa bật'
+  }
+  if (source === 'STATISTICAL_FALLBACK') {
+    return `Fallback: ${formatScore(item?.mlScore)}`
+  }
+  return `ML: ${formatScore(item?.mlScore)}`
+}
+
+function mlSourceLabel(item) {
+  const source = String(item?.scoringSource || item?.mlAnalysis?.source || '').toUpperCase()
+  const algorithm = item?.algorithm || item?.mlAnalysis?.algorithm || item?.modelVersion || ''
+  const map = {
+    RULE_BASED: 'Nguồn: rule-based, external ML chưa bật.',
+    EXTERNAL_ML: `Nguồn: external ML${algorithm ? ` (${algorithm})` : ''}.`,
+    STATISTICAL_FALLBACK: `Nguồn: fallback thống kê${algorithm ? ` (${algorithm})` : ''}.`,
+    '': item?.modelType === 'RULE_BASED' ? 'Nguồn: rule-based, external ML chưa bật.' : 'Nguồn risk chưa xác định.'
+  }
+  return map[source] || `Nguồn: ${source.toLowerCase().replaceAll('_', ' ')}${algorithm ? ` (${algorithm})` : ''}.`
+}
+
+function formatEvidenceValue(value) {
+  if (Array.isArray(value)) return value.join(', ')
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function formatIndicators(values) {
+  return Array.isArray(values) && values.length ? values.map(labelSignal).join(', ') : 'Có dấu hiệu cần rà soát'
+}
+
+function formatList(values) {
+  return Array.isArray(values) && values.length ? values.join(', ') : 'Không có danh sách thí sinh'
+}
+
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(1)}%`
+}
+
+function formatScore(value) {
+  return Number(value || 0).toFixed(1)
+}
+
+function formatDate(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('vi-VN')
 }
 </script>
 
 <style scoped>
-.gf {
+.fraud-panel {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.gf__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 1rem;
+  padding: 1.25rem;
+  color: var(--ds-text, #172033);
 }
 
-.gf__header-left {
+.fraud-panel__header,
+.fraud-panel__actions,
+.fraud-panel__title-wrap,
+.fraud-panel__tabs,
+.fraud-panel__toolbar,
+.fraud-panel__warning-head,
+.fraud-panel__review {
   display: flex;
   align-items: center;
+}
+
+.fraud-panel__header {
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fraud-panel__title-wrap {
   gap: 0.75rem;
+  min-width: 260px;
 }
 
-.gf__header-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--color-primary, #3b82f6);
+.fraud-panel__title-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--ds-primary, #2563eb);
+  flex: 0 0 auto;
 }
 
-.gf__title {
-  font-size: 1.25rem;
-  font-weight: 700;
+.fraud-panel__title {
   margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.3;
 }
 
-.gf__subtitle {
+.fraud-panel__subtitle,
+.fraud-panel__muted,
+.fraud-panel__row p,
+.fraud-panel__warning p,
+.fraud-panel__metric small {
+  color: var(--ds-text-muted, #64748b);
+}
+
+.fraud-panel__subtitle {
+  margin: 0.15rem 0 0;
   font-size: 0.875rem;
-  color: var(--color-text-muted, #6b7280);
-  margin: 0;
 }
 
-.gf__header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.fraud-panel__actions,
+.fraud-panel__toolbar {
+  gap: 0.625rem;
+  flex-wrap: wrap;
 }
 
-.gf__select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border, #e5e7eb);
+.fraud-panel__select {
+  min-height: 2.5rem;
+  min-width: 210px;
+  border: 1px solid var(--ds-border, #d9e2ef);
   border-radius: 0.5rem;
-  font-size: 0.875rem;
-  background: var(--color-surface, #fff);
+  background: var(--ds-surface, #fff);
+  padding: 0 0.75rem;
+  color: inherit;
 }
 
-.gf__btn {
-  display: flex;
+.fraud-panel__select--compact {
+  min-width: 150px;
+}
+
+.fraud-panel__button {
+  min-height: 2.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0 0.875rem;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
-  border: none;
-  transition: opacity 0.2s;
 }
 
-.gf__btn--primary {
-  background: var(--color-primary, #3b82f6);
-  color: #fff;
-}
-
-.gf__btn--primary:disabled {
-  opacity: 0.5;
+.fraud-panel__button:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Summary Cards */
-.gf__summary-cards {
+.fraud-panel__button svg,
+.fraud-panel__tab svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.fraud-panel__button--primary {
+  background: var(--ds-primary, #2563eb);
+  color: #fff;
+}
+
+.fraud-panel__button--ghost {
+  background: var(--ds-surface, #fff);
+  border-color: var(--ds-border, #d9e2ef);
+  color: var(--ds-text, #172033);
+}
+
+.fraud-panel__summary {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
-.gf__card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e5e7eb);
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-
-.gf__card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-1px);
-}
-
-.gf__card-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.gf__card-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.gf__card-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #6b7280);
-  margin-top: 0.25rem;
-}
-
-.gf__card-badge {
-  margin-left: auto;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.gf__card-badge--warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-/* Tabs */
-.gf__tabs {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
-  padding-bottom: 0.5rem;
-}
-
-.gf__tab {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: none;
+.fraud-panel__metric,
+.fraud-panel__card,
+.fraud-panel__warning,
+.fraud-panel__stat {
+  border: 1px solid var(--ds-border, #d9e2ef);
   border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  background: var(--ds-surface, #fff);
+}
+
+.fraud-panel__metric {
+  text-align: left;
+  padding: 1rem;
   cursor: pointer;
-  color: var(--color-text-muted, #6b7280);
-  transition: background 0.2s, color 0.2s;
 }
 
-.gf__tab:hover {
-  background: var(--color-bg-subtle, #f3f4f6);
+.fraud-panel__metric strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.65rem;
 }
 
-.gf__tab--active {
-  background: var(--color-primary, #3b82f6);
-  color: #fff;
+.fraud-panel__metric-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ds-text-muted, #64748b);
 }
 
-.gf__tab-count {
-  padding: 0 0.375rem;
-  background: rgba(255,255,255,0.2);
-  border-radius: 9999px;
+.fraud-panel__tabs {
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.fraud-panel__tab {
+  min-height: 2.25rem;
+  border: 1px solid var(--ds-border, #d9e2ef);
+  border-radius: 0.5rem;
+  background: var(--ds-surface, #fff);
+  color: var(--ds-text-muted, #64748b);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.75rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fraud-panel__tab--active {
+  border-color: var(--ds-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ds-primary, #2563eb);
+}
+
+.fraud-panel__tab em {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
   font-size: 0.75rem;
 }
 
-/* Tab Content */
-.gf__tab-content {
-  padding: 1rem 0;
+.fraud-panel__section {
+  min-height: 220px;
 }
 
-/* Plagiarism */
-.gf__plagiarism-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.fraud-panel__grid {
+  display: grid;
+  gap: 0.875rem;
 }
 
-.gf__plagiarism-item {
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.75rem;
-  overflow: hidden;
+.fraud-panel__grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.gf__plagiarism-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: var(--color-bg-subtle, #f9fafb);
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+.fraud-panel__grid--stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.gf__plagiarism-pair {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.gf__student-tag {
-  padding: 0.25rem 0.75rem;
-  background: var(--color-primary, #3b82f6);
-  color: #fff;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.gf__severity-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.gf__severity-badge--critical { background: #fee2e2; color: #991b1b; }
-.gf__severity-badge--high { background: #fed7aa; color: #9a3412; }
-.gf__severity-badge--medium { background: #fef3c7; color: #92400e; }
-
-.gf__plagiarism-body {
+.fraud-panel__card,
+.fraud-panel__stat {
   padding: 1rem;
 }
 
-.gf__plagiarism-metric {
+.fraud-panel__card h3 {
+  margin: 0 0 0.875rem;
+  font-size: 1rem;
+}
+
+.fraud-panel__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.fraud-panel__list--spaced {
+  gap: 0.625rem;
+}
+
+.fraud-panel__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.875rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--ds-border-subtle, #edf2f7);
+}
+
+.fraud-panel__row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.fraud-panel__row p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.fraud-panel__badge,
+.fraud-panel__chip {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fraud-panel__badge--danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.fraud-panel__badge--warn {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+.fraud-panel__badge--neutral,
+.fraud-panel__chip {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+
+.fraud-panel__warning-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+}
+
+.fraud-panel__warning {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.fraud-panel__warning-head {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fraud-panel__warning p {
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.fraud-panel__evidence {
+  padding: 0.625rem;
+  border-radius: 0.4rem;
+  background: var(--ds-surface-muted, #f8fafc);
+  font-size: 0.8rem;
+  color: var(--ds-text-muted, #64748b);
+}
+
+.fraud-panel__review {
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fraud-panel__review button {
+  min-height: 2rem;
+  border: 1px solid var(--ds-border, #d9e2ef);
+  border-radius: 0.4rem;
+  background: #fff;
+  padding: 0 0.55rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fraud-panel__stat span {
+  color: var(--ds-text-muted, #64748b);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.fraud-panel__stat strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+}
+
+.fraud-panel__card--grading {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 1.25rem;
 }
 
-.gf__progress-bar {
-  flex: 1;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.gf__progress-fill {
-  height: 100%;
-  border-radius: 9999px;
-  background: #3b82f6;
-  transition: width 0.3s;
-}
-
-.gf__progress-fill--critical { background: #dc2626; }
-.gf__progress-fill--high { background: #ea580c; }
-.gf__progress-fill--warning { background: #d97706; }
-
-.gf__plagiarism-meta {
+.fraud-panel__grade {
+  width: 8rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--ds-primary, #2563eb);
   display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #6b7280);
-  margin-bottom: 0.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.gf__plagiarism-recommendation {
-  font-size: 0.875rem;
-  color: var(--color-text, #374151);
+.fraud-panel__grade strong {
+  font-size: 2rem;
+}
+
+.fraud-panel__grade-details p {
+  margin: 0.35rem 0;
+}
+
+.fraud-panel__loading,
+.fraud-panel__empty,
+.fraud-panel__muted--center,
+.fraud-panel__notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fraud-panel__loading,
+.fraud-panel__empty {
+  min-height: 260px;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.fraud-panel__empty svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ds-text-muted, #64748b);
+}
+
+.fraud-panel__empty h3,
+.fraud-panel__empty p {
   margin: 0;
 }
 
-/* Timing */
-.gf__timing-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.gf__timing-item {
-  display: flex;
-  gap: 0.75rem;
+.fraud-panel__notice {
+  justify-content: flex-start;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
   padding: 0.75rem;
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.5rem;
 }
 
-.gf__timing-icon {
-  width: 32px;
-  height: 32px;
+.fraud-panel__notice--error {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+
+.fraud-panel__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--ds-border, #d9e2ef);
+  border-top-color: var(--ds-primary, #2563eb);
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  animation: fraud-spin 0.8s linear infinite;
 }
 
-.gf__timing-icon--high, .gf__timing-icon--critical { background: #fee2e2; color: #dc2626; }
-.gf__timing-icon--medium { background: #fef3c7; color: #d97706; }
-.gf__timing-icon--low { background: #f3f4f6; color: #6b7280; }
-
-.gf__timing-content { flex: 1; }
-.gf__timing-header { display: flex; justify-content: space-between; margin-bottom: 0.25rem; }
-.gf__timing-type { font-weight: 600; font-size: 0.875rem; }
-.gf__timing-time { font-size: 0.75rem; color: var(--color-text-muted, #6b7280); }
-.gf__timing-message { font-size: 0.875rem; margin: 0.25rem 0; }
-.gf__timing-details { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-.gf__timing-detail {
-  padding: 0.125rem 0.5rem;
-  background: var(--color-bg-subtle, #f3f4f6);
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-family: monospace;
+@keyframes fraud-spin {
+  to { transform: rotate(360deg); }
 }
 
-/* IP */
-.gf__ip-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+@media (max-width: 900px) {
+  .fraud-panel__summary,
+  .fraud-panel__grid--two,
+  .fraud-panel__grid--stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fraud-panel__warning {
+    grid-template-columns: 1fr;
+  }
 }
 
-.gf__ip-item {
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
+@media (max-width: 640px) {
+  .fraud-panel {
+    padding: 1rem;
+  }
+
+  .fraud-panel__summary,
+  .fraud-panel__grid--two,
+  .fraud-panel__grid--stats {
+    grid-template-columns: 1fr;
+  }
+
+  .fraud-panel__actions,
+  .fraud-panel__select,
+  .fraud-panel__button {
+    width: 100%;
+  }
+
+  .fraud-panel__card--grading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
-
-.gf__ip-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.gf__ip-address {
-  font-family: monospace;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.gf__ip-badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.gf__ip-badge--vpn { background: #fee2e2; color: #991b1b; }
-.gf__ip-badge--proxy { background: #fef3c7; color: #92400e; }
-.gf__ip-badge--tor { background: #ede9fe; color: #5b21b6; }
-
-.gf__ip-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #6b7280);
-}
-
-/* Grading */
-.gf__grading-grid {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 1.5rem;
-}
-
-.gf__grade-card {
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-}
-
-.gf__grade-card--main {}
-
-.gf__grade-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.gf__grade-circle--green { background: #dcfce7; color: #166534; }
-.gf__grade-circle--yellow { background: #fef3c7; color: #92400e; }
-.gf__grade-circle--red { background: #fee2e2; color: #991b1b; }
-
-.gf__grade-max { font-size: 0.875rem; font-weight: 400; }
-
-.gf__grade-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.gf__grade-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.gf__grade-breakdown .gf__grade-item span:first-child { color: var(--color-text-muted, #6b7280); }
-
-.gf__grade-card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
-}
-
-.gf__question-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.gf__question-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  background: var(--color-bg-subtle, #f9fafb);
-}
-
-.gf__question-difficulty {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  min-width: 40px;
-  text-align: center;
-}
-
-.gf__question-difficulty--easy { background: #dcfce7; color: #166534; }
-.gf__question-difficulty--medium { background: #fef3c7; color: #92400e; }
-.gf__question-difficulty--hard { background: #fee2e2; color: #991b1b; }
-
-.gf__question-content {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--color-text, #374151);
-}
-
-.gf__question-quality {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.gf__question-quality--easy { background: #dcfce7; color: #166534; }
-.gf__question-quality--medium { background: #fef3c7; color: #92400e; }
-.gf__question-quality--hard { background: #fee2e2; color: #991b1b; }
-
-/* Empty states */
-.gf__empty, .gf__empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 3rem;
-  color: var(--color-text-muted, #6b7280);
-  text-align: center;
-}
-
-.gf__empty svg, .gf__empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
-
-/* Loading */
-.gf__loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 4rem;
-}
-
-.gf__spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-border, #e5e7eb);
-  border-top-color: var(--color-primary, #3b82f6);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>

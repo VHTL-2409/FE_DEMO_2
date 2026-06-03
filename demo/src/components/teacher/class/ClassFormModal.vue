@@ -51,11 +51,26 @@
             ></textarea>
             <span class="cfm-hint">{{ form.description?.length || 0 }}/500 ký tự</span>
           </div>
+
+          <div v-if="!classItem" class="cfm-form-group">
+            <label class="cfm-label">File Excel danh sach hoc sinh <span class="cfm-required">*</span></label>
+            <input
+              ref="fileInput"
+              type="file"
+              class="cfm-input"
+              accept=".xlsx,.xls"
+              required
+              @change="handleRosterFile"
+            />
+            <span class="cfm-hint cfm-hint--left">
+              Bat buoc co cot username, fullName, studentCode, citizenId, birthDate.
+            </span>
+          </div>
         </form>
 
         <div class="cfm-modal__footer">
           <button type="button" class="cfm-btn cfm-btn--outline" @click="close">Hủy</button>
-          <button type="button" class="cfm-btn cfm-btn--primary" :disabled="loading || !form.name?.trim()" @click="handleSubmit">
+          <button type="button" class="cfm-btn cfm-btn--primary" :disabled="loading || !canSubmit" @click="handleSubmit">
             <span v-if="loading" class="cfm-spinner"></span>
             <template v-else>
               <LucideIcon name="check" />
@@ -69,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import LucideIcon from '../../common/LucideIcon.vue'
 
 const props = defineProps({
@@ -85,6 +100,14 @@ const form = ref({
   subject: '',
   description: ''
 })
+const rosterFile = ref(null)
+const fileInput = ref(null)
+
+const canSubmit = computed(() => {
+  if (!form.value.name?.trim()) return false
+  if (!props.classItem && !rosterFile.value) return false
+  return true
+})
 
 watch(() => props.modelValue, (val) => {
   if (val) {
@@ -93,6 +116,8 @@ watch(() => props.modelValue, (val) => {
       subject: props.classItem?.subject || '',
       description: props.classItem?.description || ''
     }
+    rosterFile.value = null
+    if (fileInput.value) fileInput.value.value = ''
   }
 })
 
@@ -110,12 +135,22 @@ const close = () => {
   emit('update:modelValue', false)
 }
 
+const handleRosterFile = (event) => {
+  const file = event.target.files?.[0] || null
+  const lower = String(file?.name || '').toLowerCase()
+  rosterFile.value = lower.endsWith('.xlsx') || lower.endsWith('.xls') ? file : null
+  if (file && !rosterFile.value && fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
 const handleSubmit = () => {
-  if (!form.value.name?.trim()) return
+  if (!canSubmit.value) return
   emit('submit', {
     name: form.value.name.trim(),
     subject: form.value.subject?.trim() || null,
-    description: form.value.description?.trim() || null
+    description: form.value.description?.trim() || null,
+    file: rosterFile.value
   })
 }
 </script>
@@ -279,6 +314,10 @@ const handleSubmit = () => {
   font-size: 0.7rem;
   color: var(--ds-text-muted);
   text-align: right;
+}
+
+.cfm-hint--left {
+  text-align: left;
 }
 
 .dark .cfm-hint { color: #94a3b8; }

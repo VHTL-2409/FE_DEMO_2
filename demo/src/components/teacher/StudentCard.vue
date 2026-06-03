@@ -135,7 +135,7 @@ import {
 const VIOLATION_MAP = {
   TAB_SWITCH: { label: 'Tab', icon: 'layers', tagClass: 'sc-card__viol-tag--warn' },
   COPY_PASTE: { label: 'Copy', icon: 'copy', tagClass: 'sc-card__viol-tag--danger' },
-  DEVTOOLS_OPEN: { label: 'DevTools', icon: 'code', tagClass: 'sc-card__viol-tag--danger' },
+  DEVTOOLS_OPEN: { label: 'Công cụ phát triển', icon: 'code', tagClass: 'sc-card__viol-tag--danger' },
   EXIT_FULLSCREEN: { label: 'Fullscreen', icon: 'minimize', tagClass: 'sc-card__viol-tag--warn' },
   DUPLICATE_IP: { label: 'IP trùng', icon: 'globe', tagClass: 'sc-card__viol-tag--danger' },
   MULTI_MONITOR: { label: 'Multi', icon: 'monitor', tagClass: 'sc-card__viol-tag--danger' }

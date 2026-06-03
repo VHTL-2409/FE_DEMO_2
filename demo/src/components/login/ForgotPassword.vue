@@ -1,63 +1,56 @@
 <template>
-  <div
-    class="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-primary-50/40 p-4 portal-scrollbar dark:from-slate-950 dark:via-background-dark dark:to-primary-900/20"
-  >
-    <div
-      class="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white/98 p-8 shadow-soft dark:border-slate-700 dark:bg-slate-900/98"
-    >
-      <div class="text-center mb-8">
-        <div class="size-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <LucideIcon name="lock_reset" size="30" />
+  <div class="auth-page">
+    <BaseCard class="auth-card" padding="lg">
+      <div class="auth-header">
+        <div class="auth-icon">
+          <LucideIcon name="lock_reset" size="28" />
         </div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Quên mật khẩu</h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">Nhập email đăng ký để nhận link đặt lại mật khẩu qua Gmail</p>
+        <h1>Quên mật khẩu</h1>
+        <p>Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
       </div>
 
-      <form v-if="!emailSent" class="space-y-4" @submit.prevent="onSubmit">
-        <BaseField label="Email" v-slot="{ inputId, hintId, errorId }">
-          <BaseInput
-            :id="inputId"
-            v-model="email"
-            type="email"
-            required
-            autocomplete="email"
-            placeholder="email-cua-ban@gmail.com"
-            :hint-id="hintId"
-            :error-id="errorId"
-          />
+      <form v-if="!emailSent" class="auth-form" @submit.prevent="onSubmit">
+        <BaseField label="Email" required hint="Dùng email đã liên kết với tài khoản EduExam.">
+          <template #default="{ inputId, hintId }">
+            <BaseInput
+              :id="inputId"
+              v-model="email"
+              type="email"
+              autocomplete="email"
+              placeholder="email-cua-ban@gmail.com"
+              :described-by="hintId"
+              size="lg"
+            />
+          </template>
         </BaseField>
 
-        <BaseButton type="submit" class="w-full" size="lg" :loading="isSubmitting">
-          {{ isSubmitting ? 'Đang gửi...' : 'Gửi link đặt lại mật khẩu' }}
+        <BaseButton type="submit" class="w-full" size="lg" icon="send" :loading="isSubmitting">
+          {{ isSubmitting ? 'Đang gửi...' : 'Gửi liên kết đặt lại mật khẩu' }}
         </BaseButton>
       </form>
 
-      <div v-else class="space-y-4">
-        <div v-if="resetUrl" class="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-          <p class="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">Chế độ demo (chưa cấu hình Gmail):</p>
-          <p class="text-slate-600 dark:text-slate-400 text-sm mb-2">Sao chép link dưới đây để đặt lại mật khẩu:</p>
-          <a :href="fullResetUrl" target="_blank" class="text-primary text-sm font-semibold break-all hover:underline block">
+      <div v-else class="auth-form">
+        <div v-if="resetUrl" class="auth-alert auth-alert--warning">
+          <strong>Chế độ demo</strong>
+          <p>Sao chép liên kết dưới đây để đặt lại mật khẩu:</p>
+          <a :href="fullResetUrl" target="_blank" rel="noreferrer">
             {{ fullResetUrl }}
           </a>
         </div>
-        <div v-else class="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-          <p class="text-green-800 dark:text-green-200 text-sm font-medium flex items-center gap-2">
-            <LucideIcon name="mark_email_read" />
-            Đã gửi email. Vui lòng kiểm tra hộp thư (kể cả thư mục spam).
-          </p>
+        <div v-else class="auth-alert auth-alert--success">
+          <LucideIcon name="mark_email_read" />
+          <p>Đã gửi email. Vui lòng kiểm tra hộp thư, bao gồm cả thư mục spam.</p>
         </div>
-        <BaseButton variant="secondary" type="button" class="w-full" @click="onSendAnother">
+        <BaseButton variant="secondary" type="button" class="w-full" icon="refresh_cw" @click="onSendAnother">
           Gửi lại email khác
         </BaseButton>
       </div>
 
-      <RouterLink
-        to="/login"
-        class="mt-6 block text-center text-sm font-semibold text-primary hover:underline portal-focus rounded-lg"
-      >
-        ← Quay lại đăng nhập
+      <RouterLink to="/login" class="auth-back">
+        <LucideIcon name="arrow_back" size="16" />
+        Quay lại đăng nhập
       </RouterLink>
-    </div>
+    </BaseCard>
   </div>
 </template>
 
@@ -66,6 +59,7 @@ import { ref, computed } from 'vue'
 import { forgotPassword } from '../../services/authService'
 import { useToast } from '../../composables/useToast'
 import BaseButton from '../shared/BaseButton.vue'
+import BaseCard from '../shared/BaseCard.vue'
 import BaseField from '../shared/BaseField.vue'
 import BaseInput from '../shared/BaseInput.vue'
 
@@ -94,7 +88,7 @@ const onSubmit = async () => {
     emailSent.value = true
     if (data?.resetUrl) {
       resetUrl.value = data.resetUrl
-      toast.info('Chế độ demo: Sử dụng link bên dưới.')
+      toast.info('Chế độ demo: sử dụng liên kết bên dưới.')
     } else {
       toast.success('Đã gửi email. Vui lòng kiểm tra hộp thư.')
     }
@@ -105,3 +99,106 @@ const onSubmit = async () => {
   }
 }
 </script>
+
+<style scoped>
+.auth-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(248, 250, 252, 0.92)),
+    var(--ds-bg);
+}
+
+.auth-card {
+  width: min(100%, 440px);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.auth-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+}
+
+.auth-header h1 {
+  margin: 0;
+  color: var(--ds-text);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.auth-header p {
+  margin: 0.5rem 0 0;
+  color: var(--ds-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-alert {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid;
+  border-radius: var(--ds-radius-lg);
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.auth-alert p {
+  margin: 0;
+}
+
+.auth-alert a {
+  color: var(--ds-primary);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.auth-alert--warning {
+  background: var(--ds-warning-bg);
+  border-color: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.auth-alert--success {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  background: var(--ds-success-bg);
+  border-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  color: var(--ds-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-back:hover {
+  text-decoration: underline;
+}
+</style>

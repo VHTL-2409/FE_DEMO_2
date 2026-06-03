@@ -91,8 +91,8 @@ const formattedValue = computed(() => {
 }
 
 .ssc:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+  box-shadow: var(--ds-shadow-md);
 }
 
 .ssc--primary:hover { border-color: var(--ds-primary-border); box-shadow: 0 12px 28px rgba(79, 70, 229, 0.15); }
@@ -112,7 +112,7 @@ const formattedValue = computed(() => {
 }
 
 .ssc:hover .ssc__icon-wrap {
-  transform: scale(1.15) rotate(-6deg);
+  transform: translateY(-1px);
 }
 
 .ssc__icon-wrap--primary { background: var(--ds-primary-soft); color: var(--ds-primary); }
@@ -150,7 +150,7 @@ const formattedValue = computed(() => {
   color: var(--ds-text);
   margin: 0;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .dark .ssc__value { color: var(--ds-text); }
@@ -196,7 +196,7 @@ const formattedValue = computed(() => {
   }
 
   .ssc:hover {
-    transform: translateY(-1px) scale(1.01);
+    transform: none;
   }
 }
 

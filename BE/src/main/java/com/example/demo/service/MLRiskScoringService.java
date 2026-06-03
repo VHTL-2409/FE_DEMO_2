@@ -9,8 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -62,6 +68,9 @@ public class MLRiskScoringService {
     @Value("${app.ml.risk-scoring.confidence-threshold:0.7}")
     private double confidenceThreshold;
 
+    @Value("${app.ai-service.api-key:${APP_AI_SERVICE_API_KEY:${AI_SERVICE_API_KEY:}}}")
+    private String aiServiceApiKey;
+
     // Feature weights for fallback when external ML is enabled but unavailable.
     private static final Map<String, Double> ANOMALY_WEIGHTS = Map.ofEntries(
             // Browser Events
@@ -112,6 +121,7 @@ public class MLRiskScoringService {
             Map.entry("PRINTED_PHOTO", 0.95),
             Map.entry("SCREEN_REPLAY", 0.92),
             Map.entry("DEEPFAKE", 0.98),
+            Map.entry("LOW_LIVENESS", 0.88),
             Map.entry("FLAT_IMAGE", 0.80),
             Map.entry("SCREEN_DISPLAY", 0.75)
     );
@@ -167,8 +177,8 @@ public class MLRiskScoringService {
         MLModelStatusResponse.MLModelStatusResponseBuilder builder = MLModelStatusResponse.builder()
                 .modelType("HybridRiskScoring")
                 .modelVersion("1.0.0")
-                .status(mlEnabled ? "READY" : "DISABLED")
-                .algorithm(mlEnabled ? "RandomForest + RuleBased" : "RuleBased");
+                .status(mlEnabled ? "CHECKING" : "DISABLED")
+                .algorithm(mlEnabled ? "ExternalML + RuleBased" : "RuleBased");
 
         if (!mlEnabled) {
             builder.message("ML risk scoring is disabled. Rule-based risk scoring is the canonical source.")
@@ -178,12 +188,33 @@ public class MLRiskScoringService {
                            "Avoid enabling statistical fallback as a second risk source"
                    ));
         } else {
-            builder.message("ML risk scoring is enabled and ready.")
-                   .recommendations(List.of(
-                           "Monitor model accuracy over time",
-                           "Retrain model periodically with new data",
-                           "Collect more labeled samples for better accuracy"
-                   ));
+            Map<?, ?> status = queryMlServiceStatus();
+            if (status.isEmpty()) {
+                builder.status("UNAVAILABLE")
+                       .algorithm("ExternalML + RuleBased")
+                       .warnings(List.of("External ML risk service is enabled but unavailable. Attempts will use statistical fallback."))
+                       .message("ML risk scoring is enabled, but the external service is not reachable.")
+                       .recommendations(List.of(
+                               "Start the AI service and verify /ml/risk/status",
+                               "Keep app.ml.risk-scoring.enabled=false until the service is stable",
+                               "Review fallback scoring before trusting high-risk decisions"
+                       ));
+            } else {
+                boolean available = booleanFrom(status, "available").orElse(false);
+                boolean trainedModelLoaded = booleanFrom(status, "trainedModelLoaded", "trained_model_loaded").orElse(false);
+                String algorithm = stringFrom(status, "algorithm").orElse("ExternalMLRiskModel");
+                String version = stringFrom(status, "version", "modelVersion", "model_version").orElse("1.0.0");
+                builder.status(available ? (trainedModelLoaded ? "READY" : "HEURISTIC_READY") : "UNAVAILABLE")
+                       .modelVersion(version)
+                       .algorithm(algorithm)
+                       .warnings(trainedModelLoaded ? List.of() : List.of("External risk service is available but no trained model is loaded."))
+                       .message(stringFrom(status, "message").orElse("ML risk scoring service status received."))
+                       .recommendations(List.of(
+                               "Monitor model accuracy over time",
+                               "Use HEURISTIC_READY as baseline only, not as a trained ML model",
+                               "Collect labeled samples before switching to trained-model decisions"
+                       ));
+            }
         }
 
         return builder.build();
@@ -236,6 +267,9 @@ public class MLRiskScoringService {
                 .suspicious(suspicious)
                 .modelVersion("1.0.0")
                 .modelType(mlEnabled ? "ML_HYBRID" : "RULE_BASED")
+                .scoringStatus(mlResult.getStatus())
+                .scoringSource(mlResult.getSource())
+                .algorithm(mlResult.getAlgorithm())
                 .topFeatures(topFeatures)
                 .mlAnalysis(buildMLAnalysis(mlResult, signals, features))
                 .analyzedAt(VietNamTime.now())
@@ -303,7 +337,16 @@ public class MLRiskScoringService {
     }
 
     private MLRiskPredictionRequest.TemporalFeatures extractTemporalFeatures(List<FraudSignal> signals, ExamAttempt attempt) {
-        LocalDateTime startTime = attempt.getStartedAt();
+        LocalDateTime startTime = attempt.getStartedAt() != null
+                ? attempt.getStartedAt()
+                : attempt.getJoinedAt();
+        if (startTime == null) {
+            startTime = signals.stream()
+                    .map(FraudSignal::getCreatedAt)
+                    .filter(Objects::nonNull)
+                    .min(LocalDateTime::compareTo)
+                    .orElse(VietNamTime.now());
+        }
         LocalDateTime endTime = attempt.getSubmittedAt() != null ? attempt.getSubmittedAt() : VietNamTime.now();
         long durationMinutes = Duration.between(startTime, endTime).toMinutes();
 
@@ -318,8 +361,11 @@ public class MLRiskScoringService {
                 .examDurationMinutes(durationMinutes)
                 .timeSinceStartMinutes(Duration.between(startTime, VietNamTime.now()).toMinutes())
                 .sessionStartTime(startTime)
-                .lastActivityTime(signals.isEmpty() ? startTime :
-                        signals.get(signals.size() - 1).getCreatedAt())
+                .lastActivityTime(signals.stream()
+                        .map(FraudSignal::getCreatedAt)
+                        .filter(Objects::nonNull)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(startTime))
                 .impossiblyFastAnswers(impossiblyFast)
                 .build();
     }
@@ -390,7 +436,7 @@ public class MLRiskScoringService {
             double weight = ANOMALY_WEIGHTS.getOrDefault(FraudSignalTypeNormalizer.canonical(signal.getSignalType()), 0.5);
             int signalScore = (int) (weight * 10);
 
-            if (clusterStart == null) {
+            if (signalTime == null || clusterStart == null) {
                 clusterStart = signalTime;
                 clusterMax = signalScore;
             } else {
@@ -410,9 +456,17 @@ public class MLRiskScoringService {
 
     private MLAnalysisResult performMLAnalysis(List<FraudSignal> signals,
                                                MLRiskPredictionRequest features,
-                                               ExamAttempt attempt) {
+        ExamAttempt attempt) {
         if (!mlEnabled) {
-            return new MLAnalysisResult(0.0, 0.0, "DISABLED", 0.0);
+            return new MLAnalysisResult(
+                    0.0,
+                    0.0,
+                    "DISABLED",
+                    0.0,
+                    "DISABLED",
+                    "RULE_BASED",
+                    "RuleBased"
+            );
         }
 
         // Statistical anomaly scoring only remains as fallback for a failed external ML call.
@@ -427,14 +481,126 @@ public class MLRiskScoringService {
             log.warn("ML service call failed, using statistical fallback: {}", e.getMessage());
         }
 
-        return new MLAnalysisResult(anomalyScore, confidence, riskLevel, fraudProbability);
+        return new MLAnalysisResult(
+                anomalyScore,
+                confidence,
+                riskLevel,
+                fraudProbability,
+                "FALLBACK_STATISTICAL",
+                "STATISTICAL_FALLBACK",
+                "WeightedSignalStatisticalFallback"
+        );
     }
 
     private MLAnalysisResult callMLService(MLRiskPredictionRequest features) {
-        // TODO: Implement actual ML service call
-        // For now, use statistical fallback
-        double anomalyScore = calculateAnomalyScore(List.of(), features);
-        return new MLAnalysisResult(anomalyScore, 0.7, "MEDIUM", anomalyScore / 100.0);
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Math.max(mlTimeoutMs, 1000));
+        factory.setReadTimeout(Math.max(mlTimeoutMs, 1000));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (aiServiceApiKey != null && !aiServiceApiKey.isBlank()) {
+            headers.set("X-API-Key", aiServiceApiKey.trim());
+        }
+
+        RestTemplate restTemplate = new RestTemplate(factory);
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                mlServiceUrl.replaceAll("/+$", "") + "/ml/risk/predict",
+                new HttpEntity<>(features, headers),
+                Map.class
+        );
+
+        Map<?, ?> body = response.getBody();
+        if (body == null || body.isEmpty()) {
+            throw new IllegalStateException("ML service returned empty response");
+        }
+
+        double mlScore = numberFrom(body, "mlScore", "ml_score", "score", "riskScore", "risk_score", "combinedScore", "combined_score").orElse(0.0);
+        double confidence = numberFrom(body, "confidence", "mlConfidence", "ml_confidence").orElse(0.7);
+        double fraudProbability = numberFrom(body, "fraudProbability", "fraud_probability", "probability")
+                .orElse(Math.max(0.0, Math.min(1.0, mlScore / 100.0)));
+        String riskLevel = stringFrom(body, "riskLevel", "risk_level", "level", "mlRiskLevel", "ml_risk_level")
+                .orElse(resolveLevel((int) Math.round(mlScore)));
+        Map<?, ?> diagnostics = body.get("diagnostics") instanceof Map<?, ?> map ? map : Map.of();
+        String algorithm = stringFrom(diagnostics, "algorithm")
+                .or(() -> stringFrom(body, "algorithm", "model", "modelVersion", "model_version"))
+                .orElse("ExternalMLRiskModel");
+
+        return new MLAnalysisResult(
+                Math.max(0.0, Math.min(100.0, mlScore)),
+                Math.max(0.0, Math.min(1.0, confidence)),
+                riskLevel,
+                Math.max(0.0, Math.min(1.0, fraudProbability)),
+                "READY",
+                "EXTERNAL_ML",
+                algorithm
+        );
+    }
+
+    private Map<?, ?> queryMlServiceStatus() {
+        try {
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(Math.max(mlTimeoutMs, 1000));
+            factory.setReadTimeout(Math.max(mlTimeoutMs, 1000));
+
+            HttpHeaders headers = new HttpHeaders();
+            if (aiServiceApiKey != null && !aiServiceApiKey.isBlank()) {
+                headers.set("X-API-Key", aiServiceApiKey.trim());
+            }
+
+            RestTemplate restTemplate = new RestTemplate(factory);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    mlServiceUrl.replaceAll("/+$", "") + "/ml/risk/status",
+                    org.springframework.http.HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+            Map<?, ?> body = response.getBody();
+            return body == null ? Map.of() : body;
+        } catch (Exception e) {
+            log.warn("ML service status probe failed: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private Optional<Double> numberFrom(Map<?, ?> source, String... keys) {
+        for (String key : keys) {
+            Object value = source.get(key);
+            if (value instanceof Number number) {
+                return Optional.of(number.doubleValue());
+            }
+            if (value != null && !String.valueOf(value).isBlank()) {
+                try {
+                    return Optional.of(Double.parseDouble(String.valueOf(value)));
+                } catch (NumberFormatException ignored) {
+                    // Try next key.
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> stringFrom(Map<?, ?> source, String... keys) {
+        for (String key : keys) {
+            Object value = source.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return Optional.of(String.valueOf(value).trim());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Boolean> booleanFrom(Map<?, ?> source, String... keys) {
+        for (String key : keys) {
+            Object value = source.get(key);
+            if (value instanceof Boolean bool) {
+                return Optional.of(bool);
+            }
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return Optional.of(Boolean.parseBoolean(String.valueOf(value)));
+            }
+        }
+        return Optional.empty();
     }
 
     private double calculateAnomalyScore(List<FraudSignal> signals, MLRiskPredictionRequest features) {
@@ -599,12 +765,18 @@ public class MLRiskScoringService {
                                                 List<FraudSignal> signals,
                                                 MLRiskPredictionRequest features) {
         Map<String, Object> analysis = new LinkedHashMap<>();
+        analysis.put("status", mlResult.getStatus());
+        analysis.put("source", mlResult.getSource());
+        analysis.put("algorithm", mlResult.getAlgorithm());
         if (!mlEnabled) {
             analysis.put("mode", "RULE_BASED_ONLY");
+            analysis.put("message", "External ML risk scoring is disabled; combined score uses rule-based scoring only.");
             analysis.put("detectedPatterns", List.of());
             analysis.put("warnings", List.of());
             return analysis;
         }
+
+        analysis.put("mode", "EXTERNAL_ML".equals(mlResult.getSource()) ? "ML_HYBRID" : "STATISTICAL_FALLBACK");
 
         // Categorize signals
         Map<String, Long> byCategory = signals.stream()
@@ -651,5 +823,8 @@ public class MLRiskScoringService {
         double confidence;
         String riskLevel;
         double fraudProbability;
+        String status;
+        String source;
+        String algorithm;
     }
 }

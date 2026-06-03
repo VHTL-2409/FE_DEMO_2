@@ -117,6 +117,13 @@
             v-model:enableAiProctoring="form.enableAiProctoring"
             v-model:aiFaceDetection="form.aiFaceDetection"
             v-model:aiEyeTracking="form.aiEyeTracking"
+            v-model:rulesText="form.rulesText"
+            v-model:rulesVersion="form.rulesVersion"
+            v-model:requireRulesAgreement="form.requireRulesAgreement"
+            v-model:requireIdentityVerification="form.requireIdentityVerification"
+            v-model:identityReviewPolicy="form.identityReviewPolicy"
+            v-model:inExamIdentityCheckEnabled="form.inExamIdentityCheckEnabled"
+            v-model:identityCheckIntervalSeconds="form.identityCheckIntervalSeconds"
           />
 
           </div><!-- end .ec-form-scroll -->
@@ -295,7 +302,14 @@ const form = reactive({
   monitorIpFingerprintGraph: false,
   enableAiProctoring: false,
   aiFaceDetection: false,
-  aiEyeTracking: false
+  aiEyeTracking: false,
+  rulesText: '',
+  rulesVersion: 'default-v1',
+  requireRulesAgreement: true,
+  requireIdentityVerification: true,
+  identityReviewPolicy: 'ALLOW_WITH_WARNING',
+  inExamIdentityCheckEnabled: true,
+  identityCheckIntervalSeconds: 60
 })
 
 // Watch proctoringEnabled to reset related settings when disabled
@@ -325,6 +339,8 @@ watch(() => form.proctoringEnabled, (enabled) => {
     form.enableAiProctoring = false
     form.aiFaceDetection = false
     form.aiEyeTracking = false
+    form.requireIdentityVerification = false
+    form.inExamIdentityCheckEnabled = false
   }
 })
 
@@ -339,10 +355,19 @@ watch([() => form.aiFaceDetection, () => form.aiEyeTracking], ([face, eye]) => {
 })
 
 watch(() => form.requireCameraMic, (required) => {
- if (!required) {
+  if (!required) {
   form.aiFaceDetection = false
   form.aiEyeTracking = false
   form.enableAiProctoring = false
+  form.inExamIdentityCheckEnabled = false
+ }
+})
+
+watch(() => form.requireIdentityVerification, (required) => {
+ if (!required) {
+  form.inExamIdentityCheckEnabled = false
+ } else if (form.proctoringEnabled && form.requireCameraMic) {
+  form.inExamIdentityCheckEnabled = true
  }
 })
 
@@ -729,6 +754,13 @@ function buildExamPayload(isActive = false) {
     enableAiProctoring: form.proctoringEnabled && form.requireCameraMic ? form.enableAiProctoring : false,
     aiFaceDetection: form.proctoringEnabled && form.requireCameraMic ? form.aiFaceDetection : false,
     aiEyeTracking: form.proctoringEnabled && form.requireCameraMic ? form.aiEyeTracking : false,
+    rulesText: form.rulesText || null,
+    rulesVersion: form.rulesVersion || null,
+    requireRulesAgreement: form.requireRulesAgreement,
+    requireIdentityVerification: form.proctoringEnabled && form.requireCameraMic ? form.requireIdentityVerification : false,
+    identityReviewPolicy: form.identityReviewPolicy,
+    inExamIdentityCheckEnabled: form.proctoringEnabled && form.requireCameraMic && form.requireIdentityVerification ? form.inExamIdentityCheckEnabled : false,
+    identityCheckIntervalSeconds: Number(form.identityCheckIntervalSeconds) || 60,
     shuffleQuestions: form.shuffleQuestions,
     shuffleAnswers: form.shuffleAnswers,
     maxAttempts: Number(form.maxAttempts) || 1,

@@ -140,7 +140,7 @@ public class FraudSignalService {
             case "IP_CHANGED" -> new SignalDescriptor("IP_CHANGED", "IDENTITY", "Địa chỉ IP thay đổi", 15, SignalSeverity.MEDIUM, 0.88);
             case "ANSWER_SIMILARITY" -> new SignalDescriptor("ANSWER_SIMILARITY", "IDENTITY", "Đáp án trùng lặp cao", 15, SignalSeverity.HIGH, 0.9);
             case "IDENTITY_DOCUMENT_MISMATCH" -> new SignalDescriptor("IDENTITY_DOCUMENT_MISMATCH", "IDENTITY", "Thong tin giay to khong khop", riskImpact("IDENTITY_DOCUMENT_MISMATCH", 18), SignalSeverity.HIGH, 0.88);
-            case "IDENTITY_FACE_MISMATCH" -> new SignalDescriptor("IDENTITY_FACE_MISMATCH", "IDENTITY", "Khuon mat khong khop giay to", riskImpact("IDENTITY_FACE_MISMATCH", 22), SignalSeverity.HIGH, 0.84);
+            case "IDENTITY_FACE_MISMATCH" -> new SignalDescriptor("IDENTITY_FACE_MISMATCH", "VISUAL_IDENTITY", "Khuon mat khong khop giay to", riskImpact("IDENTITY_FACE_MISMATCH", 22), SignalSeverity.HIGH, 0.84);
             case "IDENTITY_DOCUMENT_UNREADABLE" -> new SignalDescriptor("IDENTITY_DOCUMENT_UNREADABLE", "IDENTITY", "Khong doc duoc giay to", riskImpact("IDENTITY_DOCUMENT_UNREADABLE", 10), SignalSeverity.HIGH, 0.86);
             case "IDENTITY_VERIFICATION_SKIPPED" -> new SignalDescriptor("IDENTITY_VERIFICATION_SKIPPED", "IDENTITY", "Chua xac minh danh tinh", riskImpact("IDENTITY_VERIFICATION_SKIPPED", 15), SignalSeverity.MEDIUM, 0.78);
             case "IDENTITY_REVIEW_REQUIRED" -> new SignalDescriptor("IDENTITY_REVIEW_REQUIRED", "IDENTITY", "Can giam thi duyet danh tinh", riskImpact("IDENTITY_REVIEW_REQUIRED", 12), SignalSeverity.MEDIUM, 0.70);
@@ -176,6 +176,7 @@ public class FraudSignalService {
             case "PRINTED_PHOTO" -> new SignalDescriptor("PRINTED_PHOTO", "AI_SPOOFING", "Phát hiện ảnh in", riskImpact("PRINTED_PHOTO", 25), SignalSeverity.CRITICAL, 0.88);
             case "SCREEN_REPLAY" -> new SignalDescriptor("SCREEN_REPLAY", "AI_SPOOFING", "Phát hiện phát lại màn hình", riskImpact("SCREEN_REPLAY", 25), SignalSeverity.CRITICAL, 0.75);
             case "DEEPFAKE" -> new SignalDescriptor("DEEPFAKE", "AI_SPOOFING", "Nghi vấn Deepfake", riskImpact("DEEPFAKE", 30), SignalSeverity.CRITICAL, 0.90);
+            case "LOW_LIVENESS" -> new SignalDescriptor("LOW_LIVENESS", "AI_SPOOFING", "Dấu hiệu không phải người thật", riskImpact("LOW_LIVENESS", 22), SignalSeverity.HIGH, 0.82);
             case "FLAT_IMAGE" -> new SignalDescriptor("FLAT_IMAGE", "AI_SPOOFING", "Hình ảnh phẳng (không có chiều sâu)", riskImpact("FLAT_IMAGE", 20), SignalSeverity.HIGH, 0.72);
             case "SCREEN_DISPLAY" -> new SignalDescriptor("SCREEN_DISPLAY", "AI_SPOOFING", "Hình ảnh từ màn hình", riskImpact("SCREEN_DISPLAY", 18), SignalSeverity.HIGH, 0.68);
             default -> new SignalDescriptor(normalized, "OTHER", normalized.replace("_", " "), 5, SignalSeverity.LOW, 0.6);

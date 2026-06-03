@@ -20,6 +20,10 @@
             <LucideIcon :name="isOnline ? 'wifi' : 'wifi_off'" size="11" />
             {{ isOnline ? 'Online' : 'Offline' }}
           </span>
+          <span v-if="identityRecheckEnabled" class="ei-device-badge" :class="identityRecheckBadgeClass">
+            <LucideIcon :name="identityRecheckIcon" size="11" />
+            ID {{ identityRecheckLabel }}
+          </span>
         </div>
       </div>
 
@@ -268,7 +272,7 @@
               Mic {{ micReady ? 'bật' : 'tắt' }}
             </span>
             <span class="ei-cam-status__chip ei-cam-status__chip--info">
-              {{ aiCameraAnalysisRequested ? 'AI 1 fps' : 'Camera 1 fps' }}
+              {{ aiCameraAnalysisRequested ? 'AI mỗi 3 giây' : 'Camera 1 fps' }}
             </span>
           </div>
 
@@ -408,7 +412,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getAttemptDetail, getDraftAnswers, saveDraftAnswers, submitAttempt } from '../../services/attemptService'
 import { updateDeviceStatus } from '../../services/monitoringService'
 import { listExamQuestions, parseQuestionJson, parseQuestionOptions } from '../../services/questionService'
-import { analyzeProctorFrame, sendProctorCameraFrame } from '../../services/proctorService'
+import { analyzeProctorFrame, recheckStudentIdentity, sendProctorCameraFrame } from '../../services/proctorService'
 import { useToast } from '../../composables/useToast'
 import { useAutoSaveDraft } from '../../composables/useAutoSaveDraft'
 import { useExamProctoring } from '../../composables/useExamProctoring'
@@ -418,6 +422,7 @@ import { useMicrophoneSpeechDetector } from '../../composables/useMicrophoneSpee
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useExamSessionStore } from '../../stores/examSessionStore'
 import { parseBackendDate } from '../../utils/dateUtils.js'
+import { detectMultiMonitor } from '../../utils/multiMonitorDetection.js'
 import { buildSubmissionQuery } from '../../services/studentExamContextStorage'
 import QuestionRenderer from './questions/QuestionRenderer.vue'
 import MathDisplay from '../shared/MathDisplay.vue'
@@ -527,6 +532,7 @@ const hiddenStartedAt = ref(null)
 const fullscreenExitStartedAt = ref(null)
 const fullscreenExitCount = ref(0)
 const multiMonitorDetected = ref(false)
+const lastMultiMonitorEvidence = ref(null)
 const questionEnteredAt = ref(Date.now())
 const reconnectCount = ref(0)
 const offlineStartedAt = ref(null)
@@ -546,6 +552,7 @@ let attemptStatusTimer = null
 let blockBackHandler = null
 let aiFrameInterval = null
 let cameraFrameInterval = null
+let identityRecheckInterval = null
 let cameraFrameSequence = 0
 
 const VIOLATION_COOLDOWN_MS = 5000  // 5s - prevents rapid-fire duplicates during batch, backend handles score dedup
@@ -553,12 +560,15 @@ const LONG_VIOLATION_COOLDOWN_MS = 10000  // 10s - longer cooldown for severe vi
 const BLUR_GRACE_MS = 1200
 const DEVTOOLS_GAP_PX = 160
 const LONG_SCREEN_LEAVE_THRESHOLD_MS = 30_000
-// Keep AI face checks close to the teacher camera stream cadence.
-const AI_FRAME_INTERVAL_MS = 1_000
+// Production default: keep AI analysis advisory and light on small VPS deployments.
+const AI_FRAME_INTERVAL_MS = 3_000
 const CAMERA_FRAME_INTERVAL_MS = 1_000
 const FRAME_SEND_RETRY_DELAY_MS = 250
 const FRAME_SEND_MAX_ATTEMPTS = 2
-const AI_FRAME_WIDTH = 480
+const AI_FRAME_BUSY_MIN_COOLDOWN_MS = 2_000
+const AI_FRAME_BUSY_MAX_COOLDOWN_MS = 15_000
+const AI_FRAME_UNAVAILABLE_COOLDOWN_MS = 10_000
+const AI_FRAME_WIDTH = 640
 const AI_FRAME_JPEG_QUALITY = 0.6
 const SPEECH_VAD_INTERVAL_MS = 250
 const SPEECH_VAD_MIN_DURATION_MS = 1200
@@ -650,6 +660,7 @@ const shouldCheckDevices = computed(() => !isPracticeExam.value && (
 ))
 const aiFrameInFlight = ref(false)
 const cameraFrameInFlight = ref(false)
+const aiFrameCooldownUntilMs = ref(0)
 const cameraFrameTransport = ref({
   phase: 'idle',
   captured: false,
@@ -664,7 +675,8 @@ const cameraFrameTransport = ref({
   lastCaptureSource: '',
   lastMode: '',
   lastAckStatus: '',
-  lastAckMessage: ''
+  lastAckMessage: '',
+  lastRetryAfterMs: 0
 })
 const aiCameraAnalysisRequested = computed(() =>
   examConfig.value.enableAiProctoring === true
@@ -687,6 +699,35 @@ const cameraFrameStreamingEnabled = computed(() =>
 const aiFrameAnalysisEnabled = computed(() =>
   cameraFrameTransportEnabled.value && aiCameraAnalysisRequested.value
 )
+const identityRecheckStatus = ref(String(route.query.verificationStatus || 'NOT_CHECKED').toUpperCase())
+const identityRecheckInFlight = ref(false)
+const identityRecheckEnabled = computed(() => {
+  if (isPracticeExam.value || isSuspended.value || !attemptId.value) return false
+  if (String(route.query.inExamIdentityCheckEnabled || 'true') === 'false') return false
+  return cameraFrameTransportEnabled.value && shouldCheckDevices.value
+})
+const identityRecheckIntervalMs = computed(() => {
+  const seconds = Number.parseInt(String(route.query.identityCheckIntervalSeconds || '60'), 10)
+  return Math.max(30, Number.isFinite(seconds) ? seconds : 60) * 1000
+})
+const identityRecheckBadgeClass = computed(() => {
+  if (identityRecheckInFlight.value) return 'ei-device-badge--warn'
+  if (identityRecheckStatus.value === 'VERIFIED') return 'ei-device-badge--ok'
+  if (identityRecheckStatus.value === 'NEEDS_REVIEW') return 'ei-device-badge--warn'
+  return 'ei-device-badge--fail'
+})
+const identityRecheckIcon = computed(() => {
+  if (identityRecheckInFlight.value) return 'progress_activity'
+  if (identityRecheckStatus.value === 'VERIFIED') return 'verified_user'
+  if (identityRecheckStatus.value === 'NEEDS_REVIEW') return 'flag'
+  return 'shield'
+})
+const identityRecheckLabel = computed(() => {
+  if (identityRecheckInFlight.value) return 'kiểm tra'
+  if (identityRecheckStatus.value === 'VERIFIED') return 'ổn'
+  if (identityRecheckStatus.value === 'NEEDS_REVIEW') return 'cần duyệt'
+  return 'chưa rõ'
+})
 const examProgressStats = computed(() => {
   let answered = 0; let marked = 0; let skipped = 0; let notVisited = 0
   for (const question of questions.value) {
@@ -982,6 +1023,43 @@ const normalizeFrameSendError = (error) => {
   return status ? `HTTP ${status}: ${message}` : message
 }
 
+const clampAiFrameCooldown = (retryAfterMs, fallbackMs) => {
+  const parsed = Number.parseInt(String(retryAfterMs || ''), 10)
+  const value = Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs
+  return Math.min(AI_FRAME_BUSY_MAX_COOLDOWN_MS, Math.max(AI_FRAME_BUSY_MIN_COOLDOWN_MS, value))
+}
+
+const applyAiFrameBackoffFromAck = (ack) => {
+  const aiStatus = String(ack?.aiServiceStatus || ack?.status || ack?.message || '').toUpperCase()
+  if (aiStatus.includes('AI_BUSY')) {
+    const cooldownMs = clampAiFrameCooldown(ack?.retryAfterMs, AI_FRAME_BUSY_MIN_COOLDOWN_MS)
+    aiFrameCooldownUntilMs.value = Date.now() + cooldownMs
+    return cooldownMs
+  }
+  if (aiStatus.includes('AI_UNAVAILABLE') || aiStatus.includes('UNAVAILABLE')) {
+    aiFrameCooldownUntilMs.value = Date.now() + AI_FRAME_UNAVAILABLE_COOLDOWN_MS
+    return AI_FRAME_UNAVAILABLE_COOLDOWN_MS
+  }
+  if (aiStatus === 'OK' || aiStatus === 'DONE' || ack?.backendAnalysisReceived === true) {
+    aiFrameCooldownUntilMs.value = 0
+  }
+  return 0
+}
+
+const applyAiFrameBackoffFromError = (error) => {
+  const payload = error?.payload || {}
+  if (error?.status === 429 || error?.status === 503) {
+    const cooldownMs = clampAiFrameCooldown(payload.retryAfterMs || payload.retry_after_ms, AI_FRAME_BUSY_MIN_COOLDOWN_MS)
+    aiFrameCooldownUntilMs.value = Date.now() + cooldownMs
+    return cooldownMs
+  }
+  if (error?.status === 0 || error?.name === 'TypeError') {
+    aiFrameCooldownUntilMs.value = Date.now() + AI_FRAME_UNAVAILABLE_COOLDOWN_MS
+    return AI_FRAME_UNAVAILABLE_COOLDOWN_MS
+  }
+  return 0
+}
+
 const canRetryFrameSend = (error, attemptIndex) => {
   if (attemptIndex >= FRAME_SEND_MAX_ATTEMPTS - 1) return false
   const status = error?.status
@@ -1005,6 +1083,7 @@ const sendFrameTransportRequest = async (payload, mode) => {
       if (!isAcked) {
         throw new Error('BE không trả ACK frame')
       }
+      const retryAfterMs = mode === 'ai' ? applyAiFrameBackoffFromAck(ack) : 0
       updateCameraFrameTransport({
         phase: 'acknowledged',
         captured: true,
@@ -1013,6 +1092,7 @@ const sendFrameTransportRequest = async (payload, mode) => {
         lastAckAt: ack.receivedAt || new Date().toISOString(),
         lastAckStatus: ack.transportStatus || 'ACKNOWLEDGED',
         lastAckMessage: ack.transportMessage || ack.message || ack.status || '',
+        lastRetryAfterMs: retryAfterMs,
         lastSendError: '',
         lastMode: mode,
         lastPayloadSize: ack.payloadBytes || estimateFramePayloadBytes(payload),
@@ -1021,6 +1101,7 @@ const sendFrameTransportRequest = async (payload, mode) => {
       return ack
     } catch (error) {
       lastError = error
+      if (mode === 'ai') applyAiFrameBackoffFromError(error)
       if (!canRetryFrameSend(error, attemptIndex)) break
       await new Promise((resolve) => window.setTimeout(resolve, FRAME_SEND_RETRY_DELAY_MS))
     }
@@ -1037,6 +1118,7 @@ const sendFrameTransportRequest = async (payload, mode) => {
       const ack = await sendProctorCameraFrame(payload)
       const isAcked = Boolean(ack && (ack.accepted === true || ack.acknowledged === true || ack.transportStatus === 'ACKNOWLEDGED'))
       if (isAcked) {
+        const retryAfterMs = applyAiFrameBackoffFromAck(ack)
         updateCameraFrameTransport({
           phase: 'acknowledged',
           captured: true,
@@ -1044,9 +1126,10 @@ const sendFrameTransportRequest = async (payload, mode) => {
           acknowledged: true,
           lastAckAt: ack.receivedAt || new Date().toISOString(),
           lastAckStatus: ack.transportStatus || 'ACKNOWLEDGED',
-          lastAckMessage: ack.transportMessage || ack.message || ack.status || '',
+          lastAckMessage: `AI chậm/tạm lỗi; ${ack.transportMessage || ack.message || ack.status || 'BE đã nhận camera'}`,
+          lastRetryAfterMs: retryAfterMs,
           lastSendError: '',
-          lastMode: 'camera',
+          lastMode: 'ai_fallback',
           lastPayloadSize: ack.payloadBytes || estimateFramePayloadBytes(payload),
           frameId: ack.frameId || payload.frameId || ''
         })
@@ -1055,6 +1138,7 @@ const sendFrameTransportRequest = async (payload, mode) => {
       lastError = new Error('BE không trả ACK frame')
     } catch (fallbackError) {
       lastError = fallbackError
+      applyAiFrameBackoffFromError(fallbackError)
     }
   }
 
@@ -1065,12 +1149,23 @@ const sendFrameTransportRequest = async (payload, mode) => {
     acknowledged: false,
     lastSendError: normalizeFrameSendError(lastError),
     lastMode: mode,
+    lastRetryAfterMs: mode === 'ai' ? Math.max(0, aiFrameCooldownUntilMs.value - Date.now()) : 0,
     lastPayloadSize: estimateFramePayloadBytes(payload)
   })
   throw lastError || new Error('Không gửi được frame')
 }
 
 const frameTransportLabel = computed(() => {
+  const state = cameraFrameTransport.value
+  if (state.phase === 'acknowledged' && (state.lastMode === 'ai' || state.lastMode === 'ai_fallback')) {
+    const aiStatus = String(state.lastAckMessage || state.lastAckStatus || '').toUpperCase()
+    if (aiStatus.includes('AI_BUSY')) {
+      return 'AI đang bận'
+    }
+    if (aiStatus.includes('AI_UNAVAILABLE') || aiStatus.includes('UNAVAILABLE')) {
+      return 'AI chậm/tạm lỗi'
+    }
+  }
   switch (cameraFrameTransport.value.phase) {
     case 'captured':
       return 'Đã chụp'
@@ -1092,6 +1187,8 @@ const frameTransportDetail = computed(() => {
   }
   if (state.phase === 'acknowledged') {
     const parts = []
+    if (state.lastAckMessage) parts.push(state.lastAckMessage)
+    if (state.lastRetryAfterMs) parts.push(`giãn ${Math.ceil(state.lastRetryAfterMs / 1000)}s`)
     if (state.lastAckAt) {
       try {
         parts.push(`ACK ${new Date(state.lastAckAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`)
@@ -1113,6 +1210,11 @@ const frameTransportDetail = computed(() => {
 })
 
 const frameTransportToneClass = computed(() => {
+  const state = cameraFrameTransport.value
+  const aiStatus = String(state.lastAckMessage || state.lastAckStatus || '').toUpperCase()
+  if (state.phase === 'acknowledged' && (aiStatus.includes('AI_BUSY') || aiStatus.includes('AI_UNAVAILABLE'))) {
+    return 'ei-cam-transport--pending'
+  }
   switch (cameraFrameTransport.value.phase) {
     case 'acknowledged':
       return 'ei-cam-transport--ok'
@@ -1140,6 +1242,7 @@ const markFrameCapturedForSend = (payload, mode) => {
     lastMode: mode,
     lastAckStatus: '',
     lastAckMessage: '',
+    lastRetryAfterMs: 0,
     lastSendError: ''
   })
 }
@@ -1208,6 +1311,7 @@ const captureAndSendCameraFrame = async () => {
 
 const captureAndSendAiFrame = async () => {
   if (!aiFrameAnalysisEnabled.value || aiFrameInFlight.value) return
+  if (Date.now() < aiFrameCooldownUntilMs.value) return
   aiFrameInFlight.value = true
   try {
     await waitForCameraVideoFrame()
@@ -1226,6 +1330,46 @@ const captureAndSendAiFrame = async () => {
     // AI camera is advisory; keep the exam flow running if a sample fails.
   } finally {
     aiFrameInFlight.value = false
+  }
+}
+
+const captureAndRecheckIdentity = async () => {
+  if (!identityRecheckEnabled.value || identityRecheckInFlight.value) return
+  identityRecheckInFlight.value = true
+  try {
+    await waitForCameraVideoFrame()
+    if (!identityRecheckEnabled.value) return
+    const payload = await buildCameraFramePayload()
+    if (!payload) return
+    payload.metadata = {
+      ...(payload.metadata || {}),
+      captureSource: 'identity_recheck',
+      checkType: 'PERIODIC',
+      initialIdentityCheckId: route.query.identityCheckId || ''
+    }
+    const result = await recheckStudentIdentity(payload)
+    identityRecheckStatus.value = String(result?.verificationStatus || result?.status || identityRecheckStatus.value || 'NEEDS_REVIEW').toUpperCase()
+  } catch (error) {
+    identityRecheckStatus.value = 'NEEDS_REVIEW'
+    if (import.meta.env.DEV) {
+      console.warn('[StudentExamInterface] Identity recheck failed', error)
+    }
+  } finally {
+    identityRecheckInFlight.value = false
+  }
+}
+
+const startIdentityRecheckSampler = () => {
+  if (identityRecheckInterval || !identityRecheckEnabled.value) return
+  identityRecheckInterval = window.setInterval(() => {
+    void captureAndRecheckIdentity()
+  }, identityRecheckIntervalMs.value)
+}
+
+const stopIdentityRecheckSampler = () => {
+  if (identityRecheckInterval) {
+    window.clearInterval(identityRecheckInterval)
+    identityRecheckInterval = null
   }
 }
 
@@ -1287,6 +1431,11 @@ watch(aiFrameAnalysisEnabled, (enabled) => {
   else stopAiFrameSampler()
 })
 
+watch(identityRecheckEnabled, (enabled) => {
+  if (enabled) startIdentityRecheckSampler()
+  else stopIdentityRecheckSampler()
+})
+
 const syncRiskState = (payload) => {
   if (!payload || typeof payload !== 'object') return
   const nextRiskScore = typeof payload.riskScore === 'number' ? payload.riskScore : payload.score
@@ -1314,7 +1463,7 @@ const handleRealtimeProctorMessage = (payload = {}) => {
   if (type === 'MONITORING_CONFIG_UPDATED') {
     applyExamConfigFromAttempt(payload)
     syncFullscreenState()
-    checkMultiMonitor()
+    void checkMultiMonitor()
     return
   }
 
@@ -1368,7 +1517,8 @@ const getHeartbeatPayload = () => ({
   cameraOn: cameraReady.value, micOn: micReady.value,
   screenMetrics: { screenWidth: window.screen?.width || null, screenHeight: window.screen?.height || null,
     availWidth: window.screen?.availWidth || null, availHeight: window.screen?.availHeight || null, isExtended: Boolean(window.screen?.isExtended === true), viewportWidth: window.innerWidth || null, viewportHeight: window.innerHeight || null,
-    networkType: navigator.connection?.effectiveType || '', online: navigator.onLine !== false },
+    networkType: navigator.connection?.effectiveType || '', online: navigator.onLine !== false,
+    multiMonitor: lastMultiMonitorEvidence.value || null },
   telemetry: buildTelemetrySnapshot()
 })
 
@@ -1399,6 +1549,8 @@ const buildTelemetrySnapshot = (overrides = {}) => ({
   offlineDurationMs: lastOfflineDurationMs.value,
   networkType: navigator.connection?.effectiveType || '',
   screenExtended: Boolean(window.screen?.isExtended === true),
+  multiMonitorDetected: multiMonitorDetected.value,
+  multiMonitor: lastMultiMonitorEvidence.value,
   ...overrides
 })
 
@@ -1632,7 +1784,7 @@ const syncAttemptStatus = async () => {
     }
     if (!isPracticeExam.value) {
       await refreshPhaseOneRisk()
-      checkMultiMonitor()
+      void checkMultiMonitor()
     }
   } catch { /* ignore */ }
 }
@@ -1698,7 +1850,7 @@ const handleFullscreenChange = () => {
     return
   }
   if (inFs) {
-    checkMultiMonitor()
+    void checkMultiMonitor()
     return
   }
   if (!wasFullscreen) return
@@ -1756,34 +1908,19 @@ const goNext = () => {
 const handleRightClick = (e) => { if (examConfig.value.monitorRightClick !== false) { e.preventDefault(); e.stopPropagation(); void reportViolation('RIGHT_CLICK', 'Chuột phải bị chặn', VIOLATION_COOLDOWN_MS) } }
 const handlePrintScreen = (e) => { if (examConfig.value.monitorPrintScreen !== false && (e.key === 'PrintScreen' || e.keyCode === 44)) { e.preventDefault(); void reportViolation('PRINT_SCREEN', 'Phát hiện phím Print Screen', LONG_VIOLATION_COOLDOWN_MS) } }
 
-const checkMultiMonitor = () => {
+const checkMultiMonitor = async () => {
   if (examConfig.value.monitorMultiMonitor === false) return false
-  const screen = window.screen || {}
-  const sw = screen.width || 0
-  const sh = screen.height || 0
-  const aw = screen.availWidth || 0
-  const ah = screen.availHeight || 0
-  const screenX = Number.isFinite(window.screenX) ? window.screenX : (Number.isFinite(window.screenLeft) ? window.screenLeft : 0)
-  const screenY = Number.isFinite(window.screenY) ? window.screenY : (Number.isFinite(window.screenTop) ? window.screenTop : 0)
-  const extendedByScreenApi = screen.isExtended === true
-  const extendedByGeometry = sw > 0 && aw > 0 && (sw - aw > 100 || sh - ah > 100)
-  const extendedDisplayDetected = extendedByScreenApi || extendedByGeometry
-  if (!extendedDisplayDetected) {
+  const result = await detectMultiMonitor()
+  lastMultiMonitorEvidence.value = result.evidence
+  if (!result.detected) {
     multiMonitorDetected.value = false
     return false
   }
   if (multiMonitorDetected.value) return true
   multiMonitorDetected.value = true
   void reportViolation('MULTI_MONITOR', 'Phát hiện nhiều màn hình', LONG_VIOLATION_COOLDOWN_MS, {
-    screenExtended: extendedByScreenApi,
-    screenWidth: sw || null,
-    screenHeight: sh || null,
-    availWidth: aw || null,
-    availHeight: ah || null,
-    screenX,
-    screenY,
-    viewportWidth: window.innerWidth || null,
-    viewportHeight: window.innerHeight || null
+    ...result.evidence,
+    detected: true
   })
   return true
 }
@@ -1798,6 +1935,11 @@ const handleNetworkOnline = () => {
   reconnectCount.value += 1
   lastOfflineDurationMs.value = offlineStartedAt.value ? Math.max(0, Date.now() - offlineStartedAt.value) : 0
   offlineStartedAt.value = null
+}
+
+const handleViewportChange = () => {
+  if (isPracticeExam.value || isSuspended.value) return
+  void checkMultiMonitor()
 }
 
 const persistDraftToServer = async () => {
@@ -1977,6 +2119,8 @@ const attachEventListeners = () => {
   document.addEventListener('paste', handleCopyPaste)
   window.addEventListener('offline', handleNetworkOffline)
   window.addEventListener('online', handleNetworkOnline)
+  window.addEventListener('resize', handleViewportChange)
+  window.addEventListener('orientationchange', handleViewportChange)
 }
 
 const removeEventListeners = () => {
@@ -1993,6 +2137,8 @@ const removeEventListeners = () => {
   document.removeEventListener('paste', handleCopyPaste)
   window.removeEventListener('offline', handleNetworkOffline)
   window.removeEventListener('online', handleNetworkOnline)
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('orientationchange', handleViewportChange)
 }
 
 onMounted(async () => {
@@ -2002,7 +2148,7 @@ onMounted(async () => {
   if (!isPracticeExam.value) {
     await syncAttemptStatus()
     syncFullscreenState()
-    checkMultiMonitor()
+    void checkMultiMonitor()
     if (!isSuspended.value) {
       await enforceDeviceAccess()
     }
@@ -2023,6 +2169,7 @@ onUnmounted(() => {
   teardownBlockBackButton()
   stopAiFrameSampler()
   stopCameraFrameStreamer()
+  stopIdentityRecheckSampler()
   stopMediaStream()
   if (timerId) clearInterval(timerId)
   if (attemptStatusTimer) clearInterval(attemptStatusTimer)
@@ -2118,6 +2265,11 @@ const onCancelLeave = () => {
 .ei-device-badge--fail {
   background: var(--ds-danger-soft);
   color: var(--ds-danger);
+}
+
+.ei-device-badge--warn {
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
 }
 
 .ei-topbar__timer {

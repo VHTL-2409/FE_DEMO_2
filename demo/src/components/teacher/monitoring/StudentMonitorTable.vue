@@ -200,7 +200,7 @@
                     :class="{ 'smt__review-chip--active': student.reviewRequired }"
                   >
                     <LucideIcon :name="student.reviewRequired ? 'fact_check' : 'check_circle'" />
-                    {{ student.reviewRequired ? 'Cần review' : 'Ổn định' }}
+                    {{ student.reviewRequired ? 'Cần rà soát' : 'Ổn định' }}
                   </span>
                   <p class="smt__review-action">
                     {{ reviewActionLabel(student.recommendedAction) }}
@@ -419,7 +419,7 @@ const reviewActionLabel = (action) => {
   const map = {
     PAUSE_AND_REVIEW: 'Tạm dừng và kiểm tra',
     WARN_AND_ESCALATE: 'Cảnh báo và theo dõi',
-    REVIEW_ATTEMPT: 'Mở hồ sơ review',
+    REVIEW_ATTEMPT: 'Mở hồ sơ rà soát',
     CONTINUE_MONITORING: 'Tiếp tục giám sát'
   }
   return map[action] || 'Tiếp tục giám sát'

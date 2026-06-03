@@ -8,7 +8,7 @@
       <div class="mch__title-group">
         <div class="mch__live-badge" :class="isConnected ? 'mch__live-badge--live' : 'mch__live-badge--off'">
           <span class="mch__live-dot" />
-          <span class="mch__live-label">{{ isConnected ? 'LIVE' : 'KẾT NỐI' }}</span>
+          <span class="mch__live-label">{{ isConnected ? 'TRỰC TIẾP' : 'KẾT NỐI' }}</span>
         </div>
         <div class="mch__title-text">
           <h1 class="mch__title">{{ examTitle }}</h1>

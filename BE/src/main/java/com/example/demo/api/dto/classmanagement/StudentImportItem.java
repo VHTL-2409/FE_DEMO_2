@@ -23,6 +23,9 @@ public class StudentImportItem {
     @Size(max = 50, message = "Mã sinh viên không được vượt quá 50 ký tự")
     private String studentCode;
 
+    @Size(max = 20)
+    private String citizenId;
+
     private String birthDate;
 
     @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")

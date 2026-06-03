@@ -10,13 +10,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   show: { type: Boolean, default: true },
   shadow: { type: Boolean, default: true },
   maxWidth: { type: String, default: '7xl' }
 })
 
-const containerClass = defineSlots()?.default
-  ? 'max-w-7xl'
-  : ''
+const containerClass = computed(() => ({
+  none: '',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
+  '6xl': 'max-w-6xl',
+  '7xl': 'max-w-7xl'
+}[props.maxWidth] || 'max-w-7xl'))
 </script>

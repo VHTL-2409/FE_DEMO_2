@@ -14,7 +14,7 @@ from urllib.request import Request as UrlRequest, urlopen
 import numpy as np
 from PIL import Image
 
-from .config import env_bool, env_float
+from .config import env_bool, env_float, env_int
 from .deepfake import DeepfakeAnalyzer
 
 try:
@@ -71,7 +71,8 @@ class ProctorAnalyzer:
         self._face_detector_error = None
         self._face_model_auto_download = env_bool("AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD", False)
         self._face_model_download_timeout = int(env_float("AI_SERVICE_FACE_MODEL_DOWNLOAD_TIMEOUT_SECONDS", 12))
-        self._max_frame_width = int(env_float("AI_SERVICE_MAX_FRAME_WIDTH", 960))
+        self._max_frame_width = env_int("AI_SERVICE_MAX_FRAME_WIDTH", 640)
+        self._max_frame_pixels = env_int("AI_SERVICE_MAX_FRAME_PIXELS", 1_200_000)
         self._eye_landmarks = None
         self._face_landmark_detector = None
         self._face_mesh = None
@@ -84,21 +85,23 @@ class ProctorAnalyzer:
         self._tracking_state: dict[str, dict[str, Any]] = {}
         self._tracking_state_ttl_seconds = 180
         self._max_tracking_states = 256
-        self._face_issue_required_frames = 2
-        self._face_issue_required_ms = 1500
-        self._eye_missing_required_frames = 2
-        self._eye_missing_required_ms = 1500
-        self._face_position_required_frames = 2
-        self._face_position_required_ms = 1500
+        self._face_issue_required_frames = env_int("AI_SERVICE_FACE_ISSUE_REQUIRED_FRAMES", 2)
+        self._face_issue_required_ms = env_int("AI_SERVICE_FACE_ISSUE_REQUIRED_MS", 1500)
+        self._eye_missing_required_frames = env_int("AI_SERVICE_EYE_MISSING_REQUIRED_FRAMES", 2)
+        self._eye_missing_required_ms = env_int("AI_SERVICE_EYE_MISSING_REQUIRED_MS", 1500)
+        self._face_position_required_frames = env_int("AI_SERVICE_FACE_POSITION_REQUIRED_FRAMES", 2)
+        self._face_position_required_ms = env_int("AI_SERVICE_FACE_POSITION_REQUIRED_MS", 1500)
         # Cùng một loại signal không được bắn liên tục trong mỗi frame.
         # Tránh spam cảnh báo khi trạng thái chỉ nhấp nháy ngắn.
         self._signal_dedup_ms = int(env_float("AI_SERVICE_SIGNAL_DEDUP_SECONDS", 10) * 1000)
         # Gaze cần lặp nhiều frame và đủ thời gian thực mới được chốt.
         # Dùng để lọc nhiễu từ rung camera hoặc liếc mắt rất ngắn.
-        self._gaze_required_frames = 3
-        self._gaze_required_ms = 2500
-        self._eye_closure_required_frames = 2
-        self._eye_closure_required_ms = 2000
+        self._gaze_required_frames = env_int("AI_SERVICE_GAZE_REQUIRED_FRAMES", 3)
+        self._gaze_required_ms = env_int("AI_SERVICE_GAZE_REQUIRED_MS", 2500)
+        self._eye_closure_required_frames = env_int("AI_SERVICE_EYE_CLOSURE_REQUIRED_FRAMES", 2)
+        self._eye_closure_required_ms = env_int("AI_SERVICE_EYE_CLOSURE_REQUIRED_MS", 2000)
+        self._liveness_required_frames = env_int("AI_SERVICE_LIVENESS_REQUIRED_FRAMES", 3)
+        self._liveness_required_ms = env_int("AI_SERVICE_LIVENESS_REQUIRED_MS", 2500)
 
         if cv2 is not None:
             self._init_haar_cascades()
@@ -295,6 +298,9 @@ class ProctorAnalyzer:
             "error": getattr(self, "_face_detector_error", None),
             "autoDownload": getattr(self, "_face_model_auto_download", False),
             "modelDir": str(FACE_MODEL_DIR),
+            "threshold": getattr(self, "_dnn_confidence_threshold", None),
+            "maxFrameWidth": getattr(self, "_max_frame_width", None),
+            "maxFramePixels": getattr(self, "_max_frame_pixels", None),
             "landmarkBackend": getattr(self, "_landmark_backend", "UNAVAILABLE"),
             "landmarkReady": self.eye_landmark_ready(),
             "landmarkError": getattr(self, "_landmark_error", None),
@@ -368,6 +374,7 @@ class ProctorAnalyzer:
             tracking_key,
             sample_time,
             face_count,
+            face_locations,
             eye_tracking,
             gaze_analysis,
             quality_gate,
@@ -383,6 +390,8 @@ class ProctorAnalyzer:
             eye_tracking,
             gaze_analysis,
             quality_gate,
+            temporal_tracking.get("liveness", {}),
+            self._extract_face_crop(rgb_array, face_locations),
         )
 
         signals = []
@@ -438,11 +447,14 @@ class ProctorAnalyzer:
 
         # === Signal nghi vấn giả mạo ảnh/màn hình ===
         if spoofing_result["detected"]:
+            spoof_signal_type = self._spoofing_signal_type(spoofing_result.get("type"))
             signals.append(self._signal(
-                "FACE_SPOOFING_SUSPECTED", "CRITICAL", spoofing_result["confidence"],
+                spoof_signal_type, "CRITICAL", spoofing_result["confidence"],
                 {"spoofingType": spoofing_result["type"],
                  "reason": f"Possible {spoofing_result['type']} detected",
                  "dlEnhanced": spoofing_result.get("dl_enhanced", False),
+                 "method": spoofing_result.get("method"),
+                 "details": spoofing_result.get("details", {}),
                  "recommendation": "Verify identity with manual review"}
             ))
 
@@ -460,6 +472,27 @@ class ProctorAnalyzer:
                     "modelReady": deepfake_result.get("modelReady"),
                     "backend": deepfake_result.get("backend"),
                     "fallbackUsed": deepfake_result.get("fallbackUsed"),
+                    "recommendation": "Verify identity with manual review",
+                },
+            ))
+
+        if (
+            deepfake_result.get("label") == "LOW_LIVENESS"
+            and deepfake_result.get("livenessStatus") == "SPOOF"
+            and quality_gate.get("eye_valid", False)
+        ):
+            signals.append(self._signal(
+                "LOW_LIVENESS",
+                "HIGH",
+                float(max(deepfake_result.get("score") or 0.72, deepfake_result.get("livenessScore") or 0.0)),
+                {
+                    "reason": "Low temporal liveness across camera frames",
+                    "livenessScore": deepfake_result.get("livenessScore"),
+                    "livenessStatus": deepfake_result.get("livenessStatus"),
+                    "temporalWindow": deepfake_result.get("temporalWindow"),
+                    "evidence": deepfake_result.get("evidence"),
+                    "modelReady": deepfake_result.get("modelReady"),
+                    "backend": deepfake_result.get("backend"),
                     "recommendation": "Verify identity with manual review",
                 },
             ))
@@ -619,7 +652,12 @@ class ProctorAnalyzer:
             "deepfake_valid": bool(deepfake_result.get("valid", False)),
             "deepfake_score": deepfake_result.get("score"),
             "liveness_score": deepfake_result.get("livenessScore"),
+            "liveness_status": deepfake_result.get("livenessStatus"),
             "spoofing_label": deepfake_result.get("label"),
+            "spoof_type": deepfake_result.get("spoofType"),
+            "model_ready": deepfake_result.get("modelReady"),
+            "liveness_evidence": deepfake_result.get("evidence"),
+            "temporal_window_ms": (deepfake_result.get("temporalWindow") or {}).get("windowMs"),
             "identity_confidence": deepfake_result.get("livenessScore"),
             "visual_overlay": self._build_visual_overlay(rgb_array, face_locations, eye_tracking, gaze_analysis),
             "diagnostics": {
@@ -856,6 +894,24 @@ class ProctorAnalyzer:
             "AI_NO_MIC": "NO_MIC",
             "AI_EYES_MISSING": "EYES_NOT_DETECTED",
             "AI_FACE_TURNED": "FACE_TURNED_AWAY",
+            "AI_DEEPFAKE": "DEEPFAKE",
+            "AI_PRINTED_PHOTO": "PRINTED_PHOTO",
+            "PHOTO_ATTACK": "PRINTED_PHOTO",
+            "PRINT_ATTACK": "PRINTED_PHOTO",
+            "PAPER_PHOTO": "PRINTED_PHOTO",
+            "AI_SCREEN_REPLAY": "SCREEN_REPLAY",
+            "REPLAY_ATTACK": "SCREEN_REPLAY",
+            "VIDEO_REPLAY": "SCREEN_REPLAY",
+            "VIDEO_ATTACK": "SCREEN_REPLAY",
+            "AI_SCREEN_DISPLAY": "SCREEN_DISPLAY",
+            "DISPLAY_ATTACK": "SCREEN_DISPLAY",
+            "SCREEN_ATTACK": "SCREEN_DISPLAY",
+            "AI_FLAT_IMAGE": "FLAT_IMAGE",
+            "FLAT_FACE": "FLAT_IMAGE",
+            "FLAT_TEXTURE": "FLAT_IMAGE",
+            "AI_LOW_LIVENESS": "LOW_LIVENESS",
+            "LOW_LIVE_SCORE": "LOW_LIVENESS",
+            "MODEL_SPOOF": "DEEPFAKE",
             "NO_MICROPHONE": "NO_MIC",
             "MIC_OFF": "NO_MIC",
             "MIC_DISABLED": "NO_MIC",
@@ -886,6 +942,12 @@ class ProctorAnalyzer:
             "NO_MIC": 870,
             "FACE_NOT_DETECTED": 860,
             "FACE_SPOOFING_SUSPECTED": 850,
+            "DEEPFAKE": 845,
+            "PRINTED_PHOTO": 840,
+            "SCREEN_REPLAY": 835,
+            "SCREEN_DISPLAY": 830,
+            "FLAT_IMAGE": 825,
+            "LOW_LIVENESS": 820,
             "GAZE_OFF_SCREEN": 700,
             "FACE_TURNED_AWAY": 600,
             "EYES_NOT_DETECTED": 550,
@@ -1567,6 +1629,19 @@ class ProctorAnalyzer:
 
         return {"detected": False, "type": None, "confidence": 0.0}
 
+    def _spoofing_signal_type(self, spoof_type: Any) -> str:
+        normalized = self._canonical_signal_type(spoof_type) or ""
+        type_map = {
+            "DEEPFAKE": "DEEPFAKE",
+            "FACE_SWAP": "DEEPFAKE",
+            "GAN": "DEEPFAKE",
+            "PRINTED_PHOTO": "PRINTED_PHOTO",
+            "FLAT_IMAGE": "FLAT_IMAGE",
+            "SCREEN_REPLAY": "SCREEN_REPLAY",
+            "SCREEN_DISPLAY": "SCREEN_DISPLAY",
+        }
+        return type_map.get(normalized, "FACE_SPOOFING_SUSPECTED")
+
     # === Gaze Analysis ===
     def _analyze_gaze(self, eye_tracking: dict, face_locations: list, frame_shape: tuple) -> dict:
         """Analyze per-frame gaze direction from normalized pupil positions."""
@@ -1639,6 +1714,7 @@ class ProctorAnalyzer:
         tracking_key: str | None,
         sample_time: float | None,
         face_count: int,
+        face_locations: list,
         eye_tracking: dict,
         gaze_analysis: dict,
         quality_gate: dict[str, Any] | None = None,
@@ -1656,6 +1732,7 @@ class ProctorAnalyzer:
                     "stateful": False,
                 },
                 "signal_filter": {},
+                "liveness": {},
             }
 
         now_ms = self._to_millis(sample_time)
@@ -1672,6 +1749,8 @@ class ProctorAnalyzer:
                 "closed_streak": 0,
                 "off_screen_streak": 0,
                 "gaze_history": [],
+                "liveness_history": [],
+                "blink_count": 0,
                 "last_primary_direction": "CENTER",
                 "last_eye_state": "UNKNOWN",
                 "face_status": "UNKNOWN",
@@ -1782,15 +1861,19 @@ class ProctorAnalyzer:
                     "stateful": True,
                 },
                 "signal_filter": {},
+                "liveness": {},
             }
 
         eye_state = str(eye_tracking.get("eye_state", "UNKNOWN")).upper()
+        previous_eye_state = str(state.get("last_eye_state", "UNKNOWN")).upper()
         is_closed = eye_state == "CLOSED"
         if is_closed:
             if state["closed_since_ms"] is None:
                 state["closed_since_ms"] = now_ms
             state["closed_streak"] = int(state.get("closed_streak", 0)) + 1
         else:
+            if previous_eye_state == "CLOSED" and eye_state in {"OPEN", "PARTIAL"}:
+                state["blink_count"] = int(state.get("blink_count", 0)) + 1
             state["closed_since_ms"] = None
             state["closed_streak"] = 0
 
@@ -1843,6 +1926,20 @@ class ProctorAnalyzer:
             if prev_dir != "CENTER" and curr_dir != "CENTER" and prev_dir != curr_dir:
                 movement_count += 1
         rapid_eye_movement = movement_count >= 3 and len(gaze_history) >= 4
+        liveness_history = state.setdefault("liveness_history", [])
+        liveness_history.append(self._build_liveness_sample(
+            now_ms,
+            face_locations,
+            eye_tracking,
+            current_direction,
+            current_confidence,
+        ))
+        liveness_history[:] = [item for item in liveness_history if now_ms - int(item["ts"]) <= 10_000]
+        liveness_summary = self._summarize_liveness_history(
+            liveness_history,
+            int(state.get("blink_count", 0)),
+            now_ms,
+        )
 
         attention_score = float(gaze_analysis.get("attention_score", 1.0))
         if prolonged_eye_closure:
@@ -1876,6 +1973,7 @@ class ProctorAnalyzer:
                 "stateful": True,
             },
             "signal_filter": {},
+            "liveness": liveness_summary,
         }
 
     def _ensure_tracking_state_defaults(self) -> None:
@@ -1894,6 +1992,101 @@ class ProctorAnalyzer:
         self._gaze_required_ms = getattr(self, "_gaze_required_ms", 2500)
         self._eye_closure_required_frames = getattr(self, "_eye_closure_required_frames", 2)
         self._eye_closure_required_ms = getattr(self, "_eye_closure_required_ms", 2000)
+        self._liveness_required_frames = getattr(self, "_liveness_required_frames", 3)
+        self._liveness_required_ms = getattr(self, "_liveness_required_ms", 2500)
+
+    def _build_liveness_sample(
+        self,
+        now_ms: int,
+        face_locations: list,
+        eye_tracking: dict,
+        direction: str,
+        confidence: float,
+    ) -> dict[str, Any]:
+        face_center = None
+        face_area = None
+        if face_locations and len(face_locations) == 1:
+            x, y, w, h = face_locations[0]
+            face_center = (round(float(x + w / 2), 3), round(float(y + h / 2), 3))
+            face_area = float(max(w * h, 0))
+
+        pupil_points = []
+        for point in eye_tracking.get("pupil_positions") or []:
+            if isinstance(point, dict):
+                try:
+                    pupil_points.append((float(point.get("x", 0.5)), float(point.get("y", 0.5))))
+                except Exception:
+                    pass
+
+        return {
+            "ts": now_ms,
+            "faceCenter": face_center,
+            "faceArea": face_area,
+            "eyeState": str(eye_tracking.get("eye_state", "UNKNOWN")).upper(),
+            "pupils": pupil_points,
+            "direction": direction,
+            "confidence": round(float(confidence), 3),
+        }
+
+    def _summarize_liveness_history(
+        self,
+        history: list[dict[str, Any]],
+        blink_count: int,
+        now_ms: int,
+    ) -> dict[str, Any]:
+        if not history:
+            return {"sampleCount": 0, "windowMs": 0, "ready": False}
+        sample_count = len(history)
+        first_ts = int(history[0].get("ts", now_ms))
+        window_ms = max(0, now_ms - first_ts)
+        face_motion = self._motion_score([item.get("faceCenter") for item in history])
+        area_motion = self._scalar_motion_score([item.get("faceArea") for item in history])
+        pupil_motion = self._pupil_motion_score(history)
+        ready = sample_count >= self._liveness_required_frames and window_ms >= self._liveness_required_ms
+        static_sequence = bool(
+            ready
+            and blink_count <= 0
+            and face_motion < 0.008
+            and area_motion < 0.008
+            and pupil_motion < 0.008
+        )
+        return {
+            "sampleCount": sample_count,
+            "windowMs": int(window_ms),
+            "ready": ready,
+            "blinkCount": int(blink_count),
+            "faceMotionScore": round(face_motion, 4),
+            "faceAreaMotionScore": round(area_motion, 4),
+            "pupilMotionScore": round(pupil_motion, 4),
+            "staticSequence": static_sequence,
+        }
+
+    def _motion_score(self, points: list[Any]) -> float:
+        numeric = [p for p in points if isinstance(p, (list, tuple)) and len(p) >= 2]
+        if len(numeric) < 2:
+            return 0.0
+        xs = np.array([float(p[0]) for p in numeric], dtype=np.float32)
+        ys = np.array([float(p[1]) for p in numeric], dtype=np.float32)
+        span = max(float(np.mean(np.sqrt(xs * xs + ys * ys))), 1.0)
+        return float((np.std(xs) + np.std(ys)) / span)
+
+    def _scalar_motion_score(self, values: list[Any]) -> float:
+        numeric = [float(v) for v in values if v is not None]
+        if len(numeric) < 2:
+            return 0.0
+        mean = max(abs(float(np.mean(numeric))), 1.0)
+        return float(np.std(numeric) / mean)
+
+    def _pupil_motion_score(self, history: list[dict[str, Any]]) -> float:
+        centers = []
+        for item in history:
+            pupils = item.get("pupils") or []
+            if not pupils:
+                continue
+            xs = [float(p[0]) for p in pupils]
+            ys = [float(p[1]) for p in pupils]
+            centers.append((float(np.mean(xs)), float(np.mean(ys))))
+        return self._motion_score(centers)
 
     def _prune_tracking_state(self, now_ms: int) -> None:
         if not self._tracking_state:
@@ -2394,8 +2587,13 @@ class ProctorAnalyzer:
     def _decode_image(self, image_base64: str) -> Image.Image:
         # Bỏ prefix data URL nếu có, giải base64 sang bytes rồi mở bằng PIL.
         raw = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
-        image_bytes = base64.b64decode(raw)
-        return Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image_bytes = base64.b64decode(raw, validate=True)
+        image = Image.open(io.BytesIO(image_bytes))
+        width, height = image.size
+        max_pixels = int(getattr(self, "_max_frame_pixels", 1_200_000) or 0)
+        if max_pixels > 0 and width * height > max_pixels:
+            raise ValueError("image pixel count exceeds configured limit")
+        return image.convert("RGB")
 
     def _resize_for_analysis(self, image: Image.Image) -> Image.Image:
         max_frame_width = int(getattr(self, "_max_frame_width", 960))
@@ -2409,6 +2607,25 @@ class ProctorAnalyzer:
         if getattr(self, "_deepfake_analyzer", None) is None:
             self._deepfake_analyzer = DeepfakeAnalyzer()
         return self._deepfake_analyzer
+
+    def _extract_face_crop(self, rgb_array: np.ndarray, face_locations: list) -> np.ndarray | None:
+        if rgb_array is None or not face_locations or len(face_locations) != 1:
+            return None
+        try:
+            x, y, w, h = [int(v) for v in face_locations[0]]
+            if w <= 0 or h <= 0:
+                return None
+            height, width = rgb_array.shape[:2]
+            pad_x = int(w * 0.12)
+            pad_y = int(h * 0.12)
+            x1 = max(0, x - pad_x)
+            y1 = max(0, y - pad_y)
+            x2 = min(width, x + w + pad_x)
+            y2 = min(height, y + h + pad_y)
+            crop = rgb_array[y1:y2, x1:x2]
+            return crop if crop.size else None
+        except Exception:
+            return None
 
     def _signal(self, signal_type: str, severity: str, confidence: float, evidence: dict[str, Any]) -> dict[str, Any]:
         # Chuẩn hóa một signal ra cùng schema để BE đọc thống nhất.

@@ -40,6 +40,22 @@ public class ClassController {
         return ApiResponse.success(classService.createClass(request, teacher), "Tạo lớp học thành công");
     }
 
+    @PostMapping("/create-with-roster")
+    public ApiResponse<ClassResponse> createClassWithRoster(
+            @RequestPart("name") String name,
+            @RequestPart(value = "description", required = false) String description,
+            @RequestPart(value = "subject", required = false) String subject,
+            @RequestPart("file") MultipartFile file) {
+        var teacher = currentUserService.requireCurrentUser();
+        CreateClassRequest request = new CreateClassRequest();
+        request.setName(name);
+        request.setDescription(description);
+        request.setSubject(subject);
+        return ApiResponse.success(
+                classService.createClassWithRoster(request, file, teacher),
+                "Create class and import roster successfully");
+    }
+
     @GetMapping("/{classId}")
     public ApiResponse<ClassResponse> getClass(@PathVariable Long classId) {
         var teacher = currentUserService.requireCurrentUser();

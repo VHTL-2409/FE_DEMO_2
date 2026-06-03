@@ -478,7 +478,7 @@ const BEHAVIOR_LABELS = {
   EXIT_FULLSCREEN: 'Thoát toàn màn hình',
   LONG_SCREEN_LEAVE: 'Rời màn hình lâu',
   COPY_PASTE: 'Sao chép / dán',
-  DEVTOOLS_OPEN: 'Mở DevTools',
+  DEVTOOLS_OPEN: 'Mở công cụ phát triển',
   RIGHT_CLICK: 'Click chuột phải',
   PRINT_SCREEN: 'Chụp màn hình',
   RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh',
@@ -640,7 +640,7 @@ const PATTERN_RULES = [
     threshold: 1,
     icon: 'terminal',
     title: 'Mở công cụ phát triển',
-    description: (count) => `${count} lần mở DevTools`,
+    description: (count) => `${count} lần mở công cụ phát triển`,
     level: () => 'HIGH'
   },
   {

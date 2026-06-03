@@ -49,6 +49,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         ensureQuestionSchemaCompatibility();
+        ensureWaitingAttemptSchemaCompatibility();
         ensureAttemptStatusConstraint();
         ensureExamMonitoringColumns();
         ensureExamCodeForExistingExams();
@@ -121,6 +122,17 @@ public class DataInitializer implements CommandLineRunner {
                 .correctAnswer("B")
                 .build());
         }
+    }
+
+    private void ensureWaitingAttemptSchemaCompatibility() {
+        jdbcTemplate.execute("ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP");
+        jdbcTemplate.execute("ALTER TABLE exam_attempts ALTER COLUMN started_at DROP NOT NULL");
+        jdbcTemplate.execute("""
+            UPDATE exam_attempts
+            SET joined_at = started_at
+            WHERE joined_at IS NULL
+              AND started_at IS NOT NULL
+            """);
     }
 
     private void ensureAttemptStatusConstraint() {

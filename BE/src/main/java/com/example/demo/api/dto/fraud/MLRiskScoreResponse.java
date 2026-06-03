@@ -36,6 +36,9 @@ public class MLRiskScoreResponse {
     // ML model info
     private String modelVersion;
     private String modelType;
+    private String scoringStatus;
+    private String scoringSource;
+    private String algorithm;
 
     // Feature importance (top 5)
     private List<FeatureImportance> topFeatures;

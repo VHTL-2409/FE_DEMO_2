@@ -19,4 +19,10 @@ public class WaitingStudentResponse {
     private Integer riskScore;
     private Boolean suspicious;
     private String joinedAt;
+    private String identityStatus;
+    private Long identityCheckId;
+    private String identityReviewStatus;
+    private String identityReviewReason;
+    private Double identityConfidence;
+    private Object identityEvidenceRefs;
 }

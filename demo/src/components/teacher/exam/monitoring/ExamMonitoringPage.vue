@@ -30,7 +30,7 @@
               :class="`emp-status-badge--${examStatus.toLowerCase()}`"
             >
               <i class="emp-status-dot" />
-              {{ examStatus === 'LIVE' ? 'LIVE' : examStatus === 'ENDED' ? 'Đã kết thúc' : examStatus }}
+              {{ examStatus === 'LIVE' ? 'Đang diễn ra' : examStatus === 'ENDED' ? 'Đã kết thúc' : examStatus }}
             </span>
           </div>
           <h1 class="emp-title">{{ examTitle }}</h1>
@@ -41,10 +41,10 @@
           <span
             class="emp-conn"
             :class="isConnected ? 'emp-conn--on' : 'emp-conn--off'"
-            :title="isConnected ? 'Kết nối realtime' : 'Đang dùng polling'"
+            :title="isConnected ? 'Kết nối thời gian thực' : 'Đang cập nhật định kỳ'"
           >
             <i class="emp-conn-dot" />
-            {{ isConnected ? 'Realtime' : 'Polling' }}
+            {{ isConnected ? 'Thời gian thực' : 'Định kỳ' }}
           </span>
           <button
             class="emp-icon-btn"
@@ -121,7 +121,7 @@
           <label class="emp-sort">
             <span>Sắp xếp</span>
             <select v-model="sortBy" name="monitoringSort" aria-label="Sắp xếp">
-              <option value="riskScore">Risk cao nhất</option>
+              <option value="riskScore">Rủi ro cao nhất</option>
               <option value="latestSignalAt">Tín hiệu mới nhất</option>
               <option value="name">Tên (A-Z)</option>
             </select>
@@ -156,7 +156,7 @@
             <span class="emp-th">Học sinh</span>
             <span class="emp-th emp-th--center">Trạng thái</span>
             <span class="emp-th emp-th--center">Rủi ro</span>
-            <span class="emp-th">Flag</span>
+            <span class="emp-th">Cờ xử lý</span>
             <span class="emp-th">Hành vi mới</span>
           </div>
 
@@ -288,6 +288,9 @@
                 class="emp-panel-summary__chip emp-panel-summary__chip--flag"
               >
                 {{ getFlagStatusLabel(selectedCard.activeFlagStatus) }}
+              </span>
+              <span class="emp-panel-summary__chip emp-panel-summary__chip--identity">
+                ID: {{ getIdentityLabel(selectedCard._identityStatus) }}
               </span>
               <span class="emp-panel-summary__chip emp-panel-summary__chip--signal">
                 {{ getSignalLabel(selectedCard.latestSignalType) }} · {{ formatTimeAgo(selectedCard.latestSignalAt || selectedCard.lastSignalAt) }}
@@ -456,6 +459,7 @@ const SIGNAL_LABELS = {
   PRINTED_PHOTO: 'Ảnh in',
   SCREEN_REPLAY: 'Phát lại màn hình',
   DEEPFAKE: 'Nghi vấn deepfake',
+  LOW_LIVENESS: 'Nghi không phải người thật',
   FLAT_IMAGE: 'Ảnh phẳng',
   SCREEN_DISPLAY: 'Ảnh từ màn hình',
   TAB_SWITCH: 'Chuyển tab',
@@ -463,7 +467,7 @@ const SIGNAL_LABELS = {
   LONG_SCREEN_LEAVE: 'Rời màn hình lâu',
   EXIT_FULLSCREEN: 'Thoát toàn màn hình',
   COPY_PASTE: 'Sao chép / dán',
-  DEVTOOLS_OPEN: 'Mở DevTools',
+  DEVTOOLS_OPEN: 'Mở công cụ phát triển',
   RIGHT_CLICK: 'Chuột phải',
   PRINT_SCREEN: 'Chụp màn hình',
   MULTI_MONITOR: 'Nhiều màn hình',
@@ -528,7 +532,7 @@ const enrichedCards = computed(() => cards.value.map(card => {
   else if (/PAUSED/.test(statusStr)) statusToken = 'PAUSED'
   else if (/ACTIVE|IN_PROGRESS/.test(statusStr)) statusToken = 'ONLINE'
 
-  const identityStatus = card.identityStatus || card.identityVerified ? 'VERIFIED' : 'UNVERIFIED'
+  const identityStatus = normalizeIdentityStatus(card.identityStatus || (card.identityVerified ? 'VERIFIED' : 'NOT_CHECKED'))
 
   return {
     ...card,
@@ -543,6 +547,19 @@ const enrichedCards = computed(() => cards.value.map(card => {
     _isTerminal: statusToken === 'SUBMITTED' || statusToken === 'STOPPED'
   }
 }))
+
+const normalizeIdentityStatus = (status) => {
+  const normalized = String(status || 'NOT_CHECKED').toUpperCase()
+  if (['VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'NOT_CHECKED'].includes(normalized)) return normalized
+  return 'NOT_CHECKED'
+}
+
+const getIdentityLabel = (status) => ({
+  VERIFIED: 'Đã xác minh',
+  NEEDS_REVIEW: 'Cần duyệt',
+  REJECTED: 'Từ chối',
+  NOT_CHECKED: 'Chưa kiểm tra'
+}[normalizeIdentityStatus(status)] || 'Chưa kiểm tra')
 
 const cards = computed(() => store.cards)
 
@@ -626,7 +643,7 @@ const monitoringMetrics = computed(() => [
   {
     label: 'Đang thi',
     value: onlineCount.value,
-    note: 'Theo dõi realtime',
+    note: 'Theo dõi thời gian thực',
     icon: 'user-check',
     tone: 'success'
   },
@@ -638,7 +655,7 @@ const monitoringMetrics = computed(() => [
     tone: 'danger'
   },
   {
-    label: 'Flag mở',
+    label: 'Cờ đang mở',
     value: openFlagCount.value,
     note: 'Chưa xử lý',
     icon: 'flag',

@@ -2,6 +2,7 @@ ALTER TABLE exams
     ADD COLUMN IF NOT EXISTS rules_text TEXT,
     ADD COLUMN IF NOT EXISTS rules_version VARCHAR(64),
     ADD COLUMN IF NOT EXISTS require_rules_agreement BOOLEAN DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS class_id BIGINT,
     ADD COLUMN IF NOT EXISTS require_identity_verification BOOLEAN,
     ADD COLUMN IF NOT EXISTS identity_review_policy VARCHAR(40) DEFAULT 'ALLOW_WITH_WARNING',
     ADD COLUMN IF NOT EXISTS in_exam_identity_check_enabled BOOLEAN,
@@ -19,6 +20,9 @@ ALTER TABLE student_identity_checks
 
 CREATE INDEX IF NOT EXISTS idx_exam_attempts_rules_agreed
     ON exam_attempts(exam_id, student_id, rules_agreed_at);
+
+CREATE INDEX IF NOT EXISTS idx_exams_class_id
+    ON exams(class_id);
 
 CREATE INDEX IF NOT EXISTS idx_identity_checks_attempt_type_created
     ON student_identity_checks(attempt_id, check_type, created_at DESC);

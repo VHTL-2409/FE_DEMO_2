@@ -78,6 +78,7 @@ export const SPOOFING_SIGNALS = {
   PRINTED_PHOTO: { label: 'Ảnh in giả', severity: 'CRITICAL', icon: 'image' },
   SCREEN_REPLAY: { label: 'Phát lại màn hình', severity: 'CRITICAL', icon: 'monitor' },
   DEEPFAKE: { label: 'Deepfake', severity: 'CRITICAL', icon: 'alert-octagon' },
+  LOW_LIVENESS: { label: 'Nghi không phải người thật', severity: 'HIGH', icon: 'shield-alert' },
   FLAT_IMAGE: { label: 'Hình ảnh phẳng', severity: 'HIGH', icon: 'square' },
   SCREEN_DISPLAY: { label: 'Hình từ màn hình', severity: 'HIGH', icon: 'monitor' }
 }

@@ -228,7 +228,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../../../services/apiClient'
-import { listClasses, createClass, updateClass, deleteClass } from '../../../services/classService'
+import { listClasses, createClassWithRoster, updateClass, deleteClass } from '../../../services/classService'
 import { useToast } from '../../../composables/useToast'
 import LucideIcon from '../../common/LucideIcon.vue'
 import TeacherPageHeader from '../common/TeacherPageHeader.vue'
@@ -378,7 +378,7 @@ const handleSubmit = async (formData) => {
       await updateClass(selectedClass.value.id, formData)
       toast.success('Cập nhật lớp học thành công.')
     } else {
-      const result = await createClass(formData)
+      const result = await createClassWithRoster(formData)
       if (result && result.classCode) {
         createdClassCode.value = result.classCode
         showSuccessModal.value = true

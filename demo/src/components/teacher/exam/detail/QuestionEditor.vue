@@ -373,7 +373,7 @@ const processImportFile = async (file) => {
   const validTypes = ['.csv', '.xlsx', '.pdf', '.docx', '.json']
   const ext = '.' + file.name.split('.').pop().toLowerCase()
   if (!validTypes.includes(ext)) {
-    importError.value = 'Dinh dang khong ho tro. Chi chap nhan: .csv, .xlsx, .pdf, .docx, .json'
+    importError.value = 'Định dạng không hỗ trợ. Chỉ chấp nhận: .csv, .xlsx, .pdf, .docx, .json'
     return
   }
 
@@ -412,15 +412,15 @@ const processImportFile = async (file) => {
         localQuestions.value = [...localQuestions.value, ...mapped]
         openImportMenu.value = false
       } else {
-        importError.value = 'Không tìm thấy câu hỏi nào trong file.'
+        importError.value = 'Không tìm thấy câu hỏi nào trong tệp.'
       }
     } else if (status.status === 'FAILED') {
-      importError.value = status.error || 'Xử lý file thất bại.'
+      importError.value = status.error || 'Xử lý tệp thất bại.'
     } else {
       importError.value = 'Hết thời gian chờ. Vui lòng thử lại.'
     }
   } catch (err) {
-    importError.value = err instanceof Error ? err.message : 'Lỗi khi xử lý file.'
+    importError.value = err instanceof Error ? err.message : 'Lỗi khi xử lý tệp.'
   } finally {
     importLoading.value = false
     if (fileInput.value) fileInput.value.value = ''

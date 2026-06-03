@@ -14,6 +14,8 @@ import java.util.List;
 public class StartAttemptResponse {
     private Long attemptId;
     private Long examId;
+    private Long classId;
+    private String className;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime joinedAt;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
@@ -25,6 +27,8 @@ public class StartAttemptResponse {
     private Boolean rulesAccepted;
     private String identityStatus;
     private Long identityCheckId;
+    private Boolean classMembershipRequired;
+    private Boolean classMembershipValid;
     private Boolean inExamIdentityCheckEnabled;
     private Integer identityCheckIntervalSeconds;
     private List<String> entryBlockedReasons;

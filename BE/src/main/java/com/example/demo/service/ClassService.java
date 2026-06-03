@@ -8,11 +8,13 @@ import com.example.demo.domain.entity.ClassStudent;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.Role;
 import com.example.demo.domain.entity.RoleName;
+import com.example.demo.domain.entity.StudentProfile;
 import com.example.demo.domain.entity.User;
 import com.example.demo.repository.ClassRepository;
 import com.example.demo.repository.ClassStudentRepository;
 import com.example.demo.repository.ExamRepository;
 import com.example.demo.repository.RoleRepository;
+import com.example.demo.repository.StudentProfileRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +31,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +54,7 @@ public class ClassService {
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
     private final RoleRepository roleRepository;
+    private final StudentProfileRepository studentProfileRepository;
     private final CurrentUserService currentUserService;
     private final PasswordEncoder passwordEncoder;
     private final StudentImportFileParser studentImportFileParser;
@@ -108,6 +113,16 @@ public class ClassService {
 
         classEntity = classRepository.save(classEntity);
         return toClassResponse(classEntity);
+    }
+
+    @Transactional
+    public ClassResponse createClassWithRoster(CreateClassRequest request, MultipartFile file, User teacher) {
+        ClassResponse created = createClass(request, teacher);
+        ImportStudentsResponse imported = importStudentsFromFile(created.getId(), file, true, teacher);
+        if (imported.getSuccessCount() <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Roster file does not contain any valid students");
+        }
+        return getClassDetail(created.getId(), teacher);
     }
 
     @Transactional
@@ -432,6 +447,8 @@ public class ClassService {
     }
 
     private StudentImportResult processStudentImport(StudentImportItem item, ClassEntity classEntity, boolean mandatory) {
+        validateRequiredRosterIdentity(item);
+        LocalDate dateOfBirth = parseRosterBirthDate(item.getBirthDate(), item.getUsername());
         Optional<User> existingUser = userRepository.findByUsername(item.getUsername().trim().toLowerCase());
 
         User student;
@@ -453,7 +470,7 @@ public class ClassService {
                 student.setEmail(item.getEmail().trim().toLowerCase());
             }
             if (item.getStudentCode() != null) {
-                student.setStudentCode(item.getStudentCode());
+                student.setStudentCode(item.getStudentCode().trim());
             }
             if (item.getPhone() != null) {
                 student.setPhone(item.getPhone());
@@ -478,8 +495,8 @@ public class ClassService {
                     .username(item.getUsername().trim().toLowerCase())
                     .email(defaultEmail)
                     .password(passwordEncoder.encode(generateTemporaryPassword()))
-                    .fullName(item.getFullName() != null ? item.getFullName().trim() : item.getUsername())
-                    .studentCode(item.getStudentCode())
+                    .fullName(item.getFullName().trim())
+                    .studentCode(item.getStudentCode().trim())
                     .phone(item.getPhone())
                     .address(item.getAddress())
                     .grade(item.getGrade())
@@ -490,6 +507,7 @@ public class ClassService {
             student.getRoles().add(requireStudentRole());
             student = userRepository.save(student);
         }
+        upsertStudentIdentityProfile(student, item, dateOfBirth);
 
         if (student.getRoles().stream().noneMatch(role -> role.getName().equals(RoleName.STUDENT))) {
             student.getRoles().add(requireStudentRole());
@@ -561,8 +579,57 @@ public class ClassService {
                 .studentId(classStudent.getStudent().getId())
                 .studentUsername(classStudent.getStudent().getUsername())
                 .studentEmail(classStudent.getStudent().getEmail())
+                .fullName(classStudent.getStudent().getFullName())
+                .studentCode(classStudent.getStudent().getStudentCode())
+                .citizenId(studentProfileRepository.findByUser(classStudent.getStudent()).map(StudentProfile::getCitizenId).orElse(null))
+                .dateOfBirth(studentProfileRepository.findByUser(classStudent.getStudent()).map(StudentProfile::getDateOfBirth).orElse(null))
                 .joinedAt(toOffset(classStudent.getJoinedAt()))
                 .build();
+    }
+
+    private void validateRequiredRosterIdentity(StudentImportItem item) {
+        List<String> missing = new ArrayList<>();
+        if (item == null || item.getUsername() == null || item.getUsername().isBlank()) missing.add("username");
+        if (item == null || item.getFullName() == null || item.getFullName().isBlank()) missing.add("fullName");
+        if (item == null || item.getBirthDate() == null || item.getBirthDate().isBlank()) missing.add("birthDate");
+        if (item == null || item.getStudentCode() == null || item.getStudentCode().isBlank()) missing.add("studentCode");
+        if (item == null || item.getCitizenId() == null || item.getCitizenId().isBlank()) missing.add("citizenId");
+        if (!missing.isEmpty()) {
+            String username = item == null || item.getUsername() == null ? "<unknown>" : item.getUsername();
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Student " + username + " is missing required fields: " + String.join(", ", missing));
+        }
+    }
+
+    private LocalDate parseRosterBirthDate(String raw, String username) {
+        String value = raw == null ? "" : raw.trim();
+        List<DateTimeFormatter> formats = List.of(
+                DateTimeFormatter.ISO_LOCAL_DATE,
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        );
+        for (DateTimeFormatter formatter : formats) {
+            try {
+                return LocalDate.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+                // try next format
+            }
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Student " + username + " has invalid birthDate: " + value);
+    }
+
+    private void upsertStudentIdentityProfile(User student, StudentImportItem item, LocalDate dateOfBirth) {
+        StudentProfile profile = studentProfileRepository.findByUser(student)
+                .orElseGet(() -> StudentProfile.builder().user(student).build());
+        profile.setFullName(item.getFullName().trim());
+        profile.setDateOfBirth(dateOfBirth);
+        profile.setCitizenId(item.getCitizenId().trim());
+        if (item.getEmail() != null && !item.getEmail().isBlank()) {
+            profile.setEmail(item.getEmail().trim().toLowerCase(Locale.ROOT));
+        }
+        if (item.getPhone() != null && !item.getPhone().isBlank()) {
+            profile.setPhone(item.getPhone().trim());
+        }
+        studentProfileRepository.save(profile);
     }
 
     private Role requireStudentRole() {

@@ -170,6 +170,7 @@ public class RiskScoringService {
             Map.entry("PRINTED_PHOTO", 25),
             Map.entry("SCREEN_REPLAY", 25),
             Map.entry("DEEPFAKE", 30),
+            Map.entry("LOW_LIVENESS", 22),
             Map.entry("FLAT_IMAGE", 20),
             Map.entry("SCREEN_DISPLAY", 18)
     );
@@ -225,6 +226,7 @@ public class RiskScoringService {
             Map.entry("PRINTED_PHOTO", "VISUAL_IDENTITY"),
             Map.entry("SCREEN_REPLAY", "VISUAL_IDENTITY"),
             Map.entry("DEEPFAKE", "VISUAL_IDENTITY"),
+            Map.entry("LOW_LIVENESS", "VISUAL_IDENTITY"),
             Map.entry("FLAT_IMAGE", "VISUAL_IDENTITY"),
             Map.entry("SCREEN_DISPLAY", "VISUAL_IDENTITY")
     );

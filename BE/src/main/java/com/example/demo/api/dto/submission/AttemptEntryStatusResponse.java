@@ -13,6 +13,8 @@ import java.util.List;
 public class AttemptEntryStatusResponse {
     private Long attemptId;
     private Long examId;
+    private Long classId;
+    private String className;
     private String status;
     private Boolean canStart;
     private List<String> blockedReasons;
@@ -24,6 +26,8 @@ public class AttemptEntryStatusResponse {
     private String identityStatus;
     private Long identityCheckId;
     private String identityReviewPolicy;
+    private Boolean classMembershipRequired;
+    private Boolean classMembershipValid;
     private Boolean cameraRequired;
     private Boolean cameraReady;
     private Boolean micReady;

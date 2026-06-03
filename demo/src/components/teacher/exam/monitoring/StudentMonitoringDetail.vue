@@ -181,58 +181,63 @@
           <!-- Risk summary -->
           <section class="smd-card">
             <div class="smd-card__head">
-              <h2 class="smd-card__title">Tóm tắt giám sát</h2>
+              <div>
+                <h2 class="smd-card__title">C?nh b?o ?ang m?</h2>
+                <p class="smd-card__subtitle">Ch? gi? c?c t?n hi?u c?n t?c ??ng ??n quy?t ??nh gi?m s?t.</p>
+              </div>
+              <span class="smd-count">{{ activeAlertItems.length }}</span>
             </div>
-
-            <div class="smd-risk-summary">
-              <div v-if="riskData.evidenceSummary?.length" class="smd-reasons">
+            <div v-if="activeAlertItems.length" class="smd-alert-list">
+              <article
+                v-for="alert in activeAlertItems"
+                :key="alert.key"
+                class="smd-alert-item"
+                :class="`smd-alert-item--${alert.tone}`"
+              >
+                <div class="smd-alert-item__main">
+                  <strong class="smd-alert-item__label">{{ alert.label }}</strong>
+                  <p v-if="alert.message" class="smd-alert-item__message">{{ alert.message }}</p>
+                </div>
+                <div class="smd-alert-item__meta">
+                  <span v-if="alert.impact" class="smd-alert-item__impact">{{ alert.impact }}</span>
+                  <time>{{ formatTime(alert.time) }}</time>
+                </div>
+              </article>
+            </div>
+            <div v-else class="smd-empty smd-empty--sm">
+              <LucideIcon name="check-circle" :size="20" />
+              <p>Ch?a c? c?nh b?o c?n x? l?</p>
+            </div>
+            <div class="smd-live-snapshot">
+              <div class="smd-live-snapshot__head">
+                <span class="smd-live-snapshot__label">Di?n bi?n m?i nh?t</span>
                 <span
-                  v-for="(reason, i) in riskData.evidenceSummary.slice(0, 3)"
-                  :key="i"
-                  class="smd-reason-tag"
+                  class="smd-live-badge"
+                  :class="isConnected ? 'smd-live-badge--on' : 'smd-live-badge--off'"
                 >
-                  {{ reason }}
+                  {{ isConnected ? '?ang c?p nh?t' : 'C?p nh?t ??nh k?' }}
                 </span>
               </div>
-              <div v-else class="smd-empty smd-empty--sm">
-                <LucideIcon name="check-circle" :size="20" />
-                <p>Chưa có bằng chứng cần xử lý</p>
-              </div>
-
-              <div class="smd-live-snapshot">
-                <div class="smd-live-snapshot__head">
-                  <span class="smd-live-snapshot__label">Diễn biến mới nhất</span>
+              <div v-if="latestRealtimeSignal" class="smd-live-snapshot__body">
+                <div class="smd-live-snapshot__row">
+                  <span class="smd-live-snapshot__type">{{ getSignalLabel(latestRealtimeSignal.signalType) }}</span>
                   <span
-                    class="smd-live-badge"
-                    :class="isConnected ? 'smd-live-badge--on' : 'smd-live-badge--off'"
+                    v-if="Number(latestRealtimeSignal.scoreContribution) > 0"
+                    class="smd-live-snapshot__impact"
+                    :class="latestRealtimeSignal.scoreContribution >= 15 ? 'smd-live-snapshot__impact--high' : 'smd-live-snapshot__impact--mid'"
                   >
-                    {{ isConnected ? 'Đang cập nhật' : 'Cập nhật định kỳ' }}
+                    {{ formatRiskImpact(latestRealtimeSignal.scoreContribution) }}
                   </span>
                 </div>
-
-                <div v-if="latestRealtimeSignal" class="smd-live-snapshot__body">
-                  <div class="smd-live-snapshot__row">
-                    <span class="smd-live-snapshot__type">{{ getSignalLabel(latestRealtimeSignal.signalType) }}</span>
-                    <span
-                      v-if="Number(latestRealtimeSignal.scoreContribution) > 0"
-                      class="smd-live-snapshot__impact"
-                      :class="latestRealtimeSignal.scoreContribution >= 15 ? 'smd-live-snapshot__impact--high' : 'smd-live-snapshot__impact--mid'"
-                    >
-                      {{ formatRiskImpact(latestRealtimeSignal.scoreContribution) }}
-                    </span>
-                  </div>
-                  <p v-if="latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence" class="smd-live-snapshot__msg">
-                    {{ latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence }}
-                  </p>
-                </div>
-
-                <div v-else class="smd-live-snapshot__empty">
-                  Đang chờ tín hiệu mới
-                </div>
+                <p v-if="latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence" class="smd-live-snapshot__msg">
+                  {{ latestRealtimeSignal.displayMessage || latestRealtimeSignal.evidence }}
+                </p>
+              </div>
+              <div v-else class="smd-live-snapshot__empty">
+                ?ang ch? t?n hi?u m?i
               </div>
             </div>
           </section>
-
           <!-- Timeline -->
           <section class="smd-card">
             <div class="smd-card__head">
@@ -260,33 +265,39 @@
               <p>Chưa có sự kiện nào</p>
             </div>
 
-            <div v-else class="smd-timeline">
-              <article
-                v-for="event in paginatedTimeline"
-                :key="event._key"
-                class="smd-event"
-              >
-                <span
-                  class="smd-event__dot"
-                  :style="{ background: getEventColor(event.eventType) }"
-                />
-                <div class="smd-event__body">
-                  <span class="smd-event__type">{{ getEventLabel(event.eventType) }}</span>
-                  <p v-if="event.displayMessage || event.details" class="smd-event__msg">
-                    {{ event.displayMessage || event.details }}
-                  </p>
-                  <span
-                    v-if="Number(event.scoreContribution) > 0"
-                    class="smd-event__impact"
-                    :class="event.scoreContribution >= 15 ? 'smd-event__impact--high' : 'smd-event__impact--mid'"
+            <div v-else class="smd-timeline-table-wrap">
+              <table class="smd-timeline-table">
+                <thead>
+                  <tr>
+                    <th>S? ki?n</th>
+                    <th>Lo?i</th>
+                    <th>Tr?ng th?i</th>
+                    <th>Th?i ?i?m</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="event in paginatedTimeline"
+                    :key="event._key"
                   >
-                    {{ formatRiskImpact(event.scoreContribution) }}
-                  </span>
-                </div>
-                <time class="smd-event__time">{{ formatTime(event.at || event.timestamp || event.occurredAt) }}</time>
-              </article>
+                    <td>
+                      <div class="smd-timeline-table__event">
+                        <span class="smd-event__dot" :style="{ background: getEventColor(event.eventType) }" />
+                        <div>
+                          <strong class="smd-timeline-table__title">{{ getEventLabel(event.eventType) }}</strong>
+                          <p v-if="event.displayMessage || event.details" class="smd-timeline-table__message">{{ event.displayMessage || event.details }}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ getTimelineCategoryLabel(event.eventType, event.category) }}</td>
+                    <td>
+                      <span class="smd-state-chip" :class="`smd-state-chip--${getTimelineStatusTone(event)}`">{{ getTimelineStatusLabel(event) }}</span>
+                    </td>
+                    <td class="smd-timeline-table__time">{{ formatTime(event.at || event.timestamp || event.occurredAt) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-
             <div v-if="timelinePageCount > 1" class="smd-pagination">
               <button
                 type="button"
@@ -618,6 +629,7 @@ import { normalizeSignalType as normalizeProctorSignalType } from '../../../../u
 import { projectCameraOverlay } from '../../../../utils/cameraOverlay.js'
 import {
   fetchAttemptDetail,
+  fetchIdentityCheck,
   fetchLatestCameraFrame,
   fetchProctorRisk,
   fetchProctorTimeline,
@@ -661,8 +673,11 @@ const SIGNAL_LABELS = {
   OVEREXPOSED_FRAME: 'Ảnh quá sáng',
   VERY_BLURRY_FRAME: 'Ảnh rất mờ',
   BLURRY_FRAME: 'Ảnh mờ',
-  AI_SPEAKING_DETECTED: 'Tiếng ồn',
-  PRINTED_PHOTO: 'Ảnh in',
+  AI_SPEAKING_DETECTED: 'Tiếng ồn',  IDENTITY_FACE_MISMATCH: 'Mat khong khop selfie ban dau',
+  IDENTITY_DOCUMENT_MISMATCH: 'Giay to khong khop',
+  IDENTITY_REVIEW_REQUIRED: 'Can duyet danh tinh',
+  LIVENESS_CHALLENGE_FAILED: 'Kiem tra nguoi that that bai',
+  PRINTED_PHOTO: 'anh in',
   SCREEN_REPLAY: 'Phát lại màn hình',
   DEEPFAKE: 'Nghi vấn deepfake',
   FLAT_IMAGE: 'Ảnh phẳng',
@@ -699,6 +714,10 @@ const EVENT_COLORS = {
   NO_MIC: 'var(--ds-danger)',
   FACE_NOT_DETECTED: 'var(--ds-danger)',
   MULTIPLE_FACES: 'var(--ds-danger)',
+  IDENTITY_FACE_MISMATCH: 'var(--ds-danger)',
+  IDENTITY_DOCUMENT_MISMATCH: 'var(--ds-danger)',
+  IDENTITY_REVIEW_REQUIRED: 'var(--ds-warning)',
+  LIVENESS_CHALLENGE_FAILED: 'var(--ds-danger)',
   FACE_SPOOFING_SUSPECTED: 'var(--ds-danger)',
   FACE_OBSTRUCTED_MASK: 'var(--ds-danger)',
   EYES_OBSTRUCTED: 'var(--ds-warning)',
@@ -717,8 +736,11 @@ const EVENT_COLORS = {
   LOW_LIGHTING: 'var(--ds-info)',
   OVEREXPOSED_FRAME: 'var(--ds-info)',
   VERY_BLURRY_FRAME: 'var(--ds-warning)',
-  BLURRY_FRAME: 'var(--ds-info)',
-  PRINTED_PHOTO: 'var(--ds-danger)',
+  BLURRY_FRAME: 'var(--ds-info)',  IDENTITY_FACE_MISMATCH: 'Mat khong khop selfie ban dau',
+  IDENTITY_DOCUMENT_MISMATCH: 'Giay to khong khop',
+  IDENTITY_REVIEW_REQUIRED: 'Can duyet danh tinh',
+  LIVENESS_CHALLENGE_FAILED: 'Kiem tra nguoi that that bai',
+  PRINTED_PHOTO: 'anh in',
   SCREEN_REPLAY: 'var(--ds-danger)',
   DEEPFAKE: 'var(--ds-danger)',
   FLAT_IMAGE: 'var(--ds-warning)',
@@ -769,6 +791,7 @@ const isLoadingData = ref(false)
 const error = ref('')
 const attemptData = ref({})
 const riskData = ref({})
+const identityData = ref({})
 const timeline = ref([])
 const notesTimeline = ref([])
 const timelineFilter = ref('')
@@ -831,6 +854,35 @@ const studentName = computed(() => {
     || attemptData.value.username
   return s || 'Chưa có tên'
 })
+const normalizeIdentityStatus = (status) => {
+  const normalized = String(status || 'NOT_CHECKED').toUpperCase()
+  if (['VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'NOT_CHECKED'].includes(normalized)) return normalized
+  return 'NOT_CHECKED'
+}
+const identityStatus = computed(() => normalizeIdentityStatus(identityData.value.verificationStatus || attemptData.value.identityStatus))
+const identityStatusLabel = computed(() => ({
+  VERIFIED: 'Verified',
+  NEEDS_REVIEW: 'Needs review',
+  REJECTED: 'Rejected',
+  NOT_CHECKED: 'Not checked'
+}[identityStatus.value]))
+const identityConfidenceLabel = computed(() => {
+  const value = Number(identityData.value.confidence)
+  if (!Number.isFinite(value)) return 'N/A'
+  return `${Math.round(value * 100)}%`
+})
+const identityPrimaryNote = computed(() =>
+  identityData.value.reviewReason
+  || identityData.value.message
+  || identityData.value.resultMessage
+  || ''
+)
+const identityEvidenceRefs = computed(() => identityData.value.evidenceRefs || {})
+const identityEvidenceItems = computed(() => ([
+  identityEvidenceRefs.value.document?.imageUrl ? { label: 'Gi???y t???', href: identityEvidenceRefs.value.document.imageUrl } : null,
+  identityEvidenceRefs.value.selfie?.imageUrl ? { label: 'Selfie', href: identityEvidenceRefs.value.selfie.imageUrl } : null,
+  identityEvidenceRefs.value.frame?.imageUrl ? { label: 'Frame ki???m tra', href: identityEvidenceRefs.value.frame.imageUrl } : null
+]).filter(Boolean))
 const riskScore = computed(() => {
   const score = resolveRiskScoreValue(riskData.value)
     ?? resolveRiskScoreValue({ score: attemptData.value.riskScore })
@@ -873,6 +925,12 @@ const statusLabel = computed(() => ({
   OFFLINE: 'Offline'
 }[statusToken.value]))
 
+const examSummaryRows = computed(() => [
+  { label: 'Exam', value: attemptData.value.examTitle || attemptData.value.title || `#${examId.value}` },
+  { label: 'Class', value: attemptData.value.className || riskData.value.className || 'N/A' },
+  { label: 'Status', value: statusLabel.value },
+  { label: 'Progress', value: `${attemptData.value.answeredCount || 0}/${attemptData.value.totalQuestions || 0} questions` }
+])
 const isStudentPaused = computed(() => statusToken.value === 'PAUSED')
 const isStudentTerminal = computed(() =>
   statusToken.value === 'SUBMITTED' || statusToken.value === 'STOPPED'
@@ -903,6 +961,7 @@ const lastUpdatedLabel = computed(() => {
 
 const AI_CAMERA_SIGNALS = [
   'NO_CAMERA', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'FACE_SPOOFING_SUSPECTED',
+  'IDENTITY_FACE_MISMATCH', 'IDENTITY_DOCUMENT_MISMATCH', 'IDENTITY_REVIEW_REQUIRED', 'LIVENESS_CHALLENGE_FAILED',
   'FACE_OBSTRUCTED_MASK', 'EYES_OBSTRUCTED', 'PARTIAL_FACE_VISIBLE',
   'FACE_TOO_FAR', 'FACE_TOO_CLOSE', 'FACE_TURNED_AWAY', 'FACE_NOT_CENTERED',
   'EYES_NOT_DETECTED', 'AI_SPEAKING_DETECTED', 'NO_MIC', 'VERY_LOW_LIGHTING', 'LOW_LIGHTING', 'OVEREXPOSED_FRAME',
@@ -923,7 +982,11 @@ const IDENTITY_TIMELINE_TYPES = new Set([
   'IP_CHANGED',
   'IP_FINGERPRINT_GRAPH',
   'DEVICE_FINGERPRINT_CHANGED',
-  'MULTIPLE_DEVICE_SESSION'
+  'MULTIPLE_DEVICE_SESSION',
+  'IDENTITY_FACE_MISMATCH',
+  'IDENTITY_DOCUMENT_MISMATCH',
+  'IDENTITY_REVIEW_REQUIRED',
+  'LIVENESS_CHALLENGE_FAILED'
 ])
 const CAMERA_SIGNAL_METADATA_KEYS = new Set([
   'faceCount', 'face_count', 'faceDetected', 'face_detected',
@@ -942,6 +1005,32 @@ const latestSignals = computed(() => {
     Array.isArray(riskData.value.latestSignals) ? riskData.value.latestSignals : [],
     riskData.value.latestSignal ? [riskData.value.latestSignal] : []
   ).slice(0, 5)
+})
+const latestWarningCount = computed(() => latestSignals.value.length + (riskData.value.activeFlagId ? 1 : 0))
+const activeAlertItems = computed(() => {
+  const items = []
+  if (riskData.value.activeFlagId) {
+    items.push({
+      key: `flag-${riskData.value.activeFlagId}`,
+      label: 'Flag',
+      message: riskData.value.recommendedAction || activeFlagStatusLabel.value,
+      tone: 'danger',
+      time: riskData.value.updatedAt || attemptData.value.updatedAt,
+      impact: ''
+    })
+  }
+  latestSignals.value.forEach((signal, index) => {
+    const score = toNumberOrNull(signal.scoreContribution) ?? 0
+    items.push({
+      key: signal.id || `${signal.signalType || signal.warningType || 'signal'}-${index}`,
+      label: getSignalLabel(signal.signalType || signal.warningType),
+      message: signal.displayMessage || signal.evidence || signal.details || '',
+      tone: score >= 15 ? 'danger' : score > 0 ? 'warning' : 'neutral',
+      time: signal.timestamp || signal.occurredAt || signal.createdAt || signal.at || null,
+      impact: score > 0 ? formatRiskImpact(score) : ''
+    })
+  })
+  return items.slice(0, 6)
 })
 const latestRealtimeSignal = computed(() => latestSignals.value[0] || null)
 const latestCameraFrameSrc = computed(() => renderedCameraFrame.value?.imageBase64 || '')
@@ -1288,6 +1377,36 @@ const notes = computed(() => {
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────
+function getTimelineCategoryLabel(eventType = '', category = '') {
+  const type = normalizeSignalType(eventType)
+  const normalizedCategory = normalizeSignalType(category)
+  if (IDENTITY_TIMELINE_TYPES.has(type)) return '?????nh danh'
+  if (SCREEN_LEAVE_TIMELINE_TYPES.has(type)) return 'M??n h??nh'
+  if (CLIPBOARD_TIMELINE_TYPES.has(type)) return 'Clipboard'
+  if (TECHNICAL_TIMELINE_TYPES.has(type)) return 'Thi???t b???'
+  if (TIMELINE_WARNING_TYPES.has(type)) return 'C???nh b??o'
+  if (type === 'NOTE') return 'Ghi ch??'
+  if (AI_CAMERA_SIGNALS.includes(type) || normalizedCategory === 'CAMERA_PROCTORING') return 'Camera AI'
+  if (normalizedCategory === 'VISUAL_IDENTITY') return '?????nh danh'
+  return 'S??? ki???n'
+}
+function getTimelineStatusTone(event = {}) {
+  const eventType = normalizeSignalType(event.eventType)
+  const severity = normalizeSignalType(event.severity)
+  if (eventType === 'NOTE') return 'neutral'
+  if (['HIGH', 'CRITICAL'].includes(severity)) return 'danger'
+  if (['WARNING_SENT', 'FRAUD_WARNING', 'IDENTITY_FACE_MISMATCH', 'IDENTITY_DOCUMENT_MISMATCH', 'LIVENESS_CHALLENGE_FAILED'].includes(eventType)) return 'danger'
+  if (AI_CAMERA_SIGNALS.includes(eventType) || SCREEN_LEAVE_TIMELINE_TYPES.has(eventType) || CLIPBOARD_TIMELINE_TYPES.has(eventType) || TECHNICAL_TIMELINE_TYPES.has(eventType) || Number(event.scoreContribution) > 0) return 'warning'
+  if (['ATTEMPT_SUBMITTED', 'SUBMITTED', 'AUTO_SUBMITTED'].includes(eventType)) return 'success'
+  return 'neutral'
+}
+function getTimelineStatusLabel(event = {}) {
+  const tone = getTimelineStatusTone(event)
+  if (tone === 'danger') return 'C???n x??? l??'
+  if (tone === 'warning') return 'Theo d??i'
+  if (tone === 'success') return '???? x??? l??'
+  return event.eventType === 'NOTE' ? 'Ghi nh???n' : 'Th??ng tin'
+}
 function getSignalLabel(type) {
   const signalType = normalizeSignalType(type)
   if (!signalType) return 'Tín hiệu'
@@ -1885,9 +2004,10 @@ async function loadData() {
   error.value = ''
   stopCameraPreviewObserver()
   try {
-    const [attemptResult, riskResult] = await Promise.allSettled([
+    const [attemptResult, riskResult, identityResult] = await Promise.allSettled([
       fetchAttemptDetail(attemptId.value),
-      fetchProctorRisk(attemptId.value)
+      fetchProctorRisk(attemptId.value),
+      fetchIdentityCheck(attemptId.value)
     ])
 
     if (attemptResult.status === 'fulfilled' && attemptResult.value) {
@@ -1899,6 +2019,12 @@ async function loadData() {
 
     if (riskResult.status === 'fulfilled' && riskResult.value) {
       riskData.value = normalizeRiskSnapshot(riskResult.value)
+    }
+
+    if (identityResult.status === 'fulfilled' && identityResult.value) {
+      identityData.value = identityResult.value
+    } else {
+      identityData.value = {}
     }
 
     await Promise.all([loadTimeline(), loadNotes()])
@@ -3155,6 +3281,132 @@ onActivated(() => {
 }
 
 /* ── Responsive ─────────────────────────────────────────────── */
+.smd-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-3);
+}
+
+.smd-alert-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-gray-50);
+}
+
+.smd-alert-item--danger {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: var(--ds-danger-soft);
+}
+
+.smd-alert-item--warning {
+  border-color: rgba(217, 119, 6, 0.24);
+  background: var(--ds-warning-soft);
+}
+
+.smd-alert-item__label {
+  display: block;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text);
+}
+
+.smd-alert-item__message,
+.smd-timeline-table__message {
+  margin: 4px 0 0;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+  line-height: 1.4;
+}
+
+.smd-alert-item__meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+}
+
+.smd-alert-item__impact {
+  font-weight: 800;
+  color: var(--ds-danger);
+}
+
+.smd-timeline-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+}
+
+.smd-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.smd-timeline-table th,
+.smd-timeline-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  vertical-align: top;
+  font-size: var(--ds-text-sm);
+}
+
+.smd-timeline-table th {
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-secondary);
+  background: var(--ds-gray-50);
+}
+
+.smd-timeline-table__event {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.smd-timeline-table__title {
+  display: block;
+  color: var(--ds-text);
+}
+
+.smd-timeline-table__time {
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+}
+
+.smd-state-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: var(--ds-text-xs);
+  font-weight: 800;
+}
+
+.smd-state-chip--danger {
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
+}
+
+.smd-state-chip--warning {
+  color: var(--ds-warning);
+  background: var(--ds-warning-soft);
+}
+
+.smd-state-chip--success {
+  color: var(--ds-success);
+  background: var(--ds-success-soft);
+}
+
+.smd-state-chip--neutral {
+  color: var(--ds-text-secondary);
+  background: var(--ds-gray-100);
+}
 @media (max-width: 1024px) {
   .smd-body {
     grid-template-columns: 1fr;

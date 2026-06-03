@@ -26,16 +26,90 @@ const SIGNAL_TYPE_ALIASES = Object.freeze({
   AI_FACE_MISSING: 'FACE_NOT_DETECTED',
   AI_LOOKING_AWAY: 'GAZE_OFF_SCREEN',
   AI_NO_MIC: 'NO_MIC',
+  AI_DEEPFAKE: 'DEEPFAKE',
+  AI_PRINTED_PHOTO: 'PRINTED_PHOTO',
+  PHOTO_ATTACK: 'PRINTED_PHOTO',
+  PRINT_ATTACK: 'PRINTED_PHOTO',
+  PAPER_PHOTO: 'PRINTED_PHOTO',
+  AI_SCREEN_REPLAY: 'SCREEN_REPLAY',
+  REPLAY_ATTACK: 'SCREEN_REPLAY',
+  VIDEO_REPLAY: 'SCREEN_REPLAY',
+  VIDEO_ATTACK: 'SCREEN_REPLAY',
+  AI_SCREEN_DISPLAY: 'SCREEN_DISPLAY',
+  DISPLAY_ATTACK: 'SCREEN_DISPLAY',
+  SCREEN_ATTACK: 'SCREEN_DISPLAY',
+  AI_FLAT_IMAGE: 'FLAT_IMAGE',
+  FLAT_FACE: 'FLAT_IMAGE',
+  FLAT_TEXTURE: 'FLAT_IMAGE',
+  AI_LOW_LIVENESS: 'LOW_LIVENESS',
+  LOW_LIVE_SCORE: 'LOW_LIVENESS',
+  MODEL_SPOOF: 'DEEPFAKE',
   NO_MICROPHONE: 'NO_MIC',
   MIC_OFF: 'NO_MIC',
   MIC_DISABLED: 'NO_MIC',
   MICROPHONE_OFF: 'NO_MIC'
 })
 
+const SIGNAL_CATEGORY_ALIASES = Object.freeze({
+  AI_CAMERA: 'CAMERA_PROCTORING',
+  CAMERA: 'CAMERA_PROCTORING',
+  CAMERA_AI: 'CAMERA_PROCTORING',
+  VISUAL: 'VISUAL_IDENTITY'
+})
+
+const CAMERA_RELATED_SIGNAL_TYPES = Object.freeze([
+  'NO_CAMERA',
+  'NO_MIC',
+  'FACE_NOT_DETECTED',
+  'MULTIPLE_FACES',
+  'FACE_SPOOFING_SUSPECTED',
+  'FACE_OBSTRUCTED_MASK',
+  'EYES_OBSTRUCTED',
+  'PARTIAL_FACE_VISIBLE',
+  'FACE_TOO_FAR',
+  'FACE_TOO_CLOSE',
+  'FACE_TURNED_AWAY',
+  'FACE_NOT_CENTERED',
+  'EYES_NOT_DETECTED',
+  'VERY_LOW_LIGHTING',
+  'LOW_LIGHTING',
+  'OVEREXPOSED_FRAME',
+  'VERY_BLURRY_FRAME',
+  'BLURRY_FRAME',
+  'EYE_BLINK_ANOMALY',
+  'EYES_CLOSED_PROLONGED',
+  'GAZE_OFF_SCREEN',
+  'RAPID_EYE_MOVEMENT',
+  'PRINTED_PHOTO',
+  'SCREEN_REPLAY',
+  'DEEPFAKE',
+  'LOW_LIVENESS',
+  'FLAT_IMAGE',
+  'SCREEN_DISPLAY',
+  'AI_SPEAKING_DETECTED',
+  'IDENTITY_FACE_MISMATCH',
+  'LIVENESS_CHALLENGE_FAILED'
+])
+
+const CAMERA_RELATED_CATEGORIES = Object.freeze([
+  'CAMERA_PROCTORING',
+  'VISUAL_IDENTITY',
+  'AI_CAMERA',
+  'EYE_TRACKING',
+  'GAZE_TRACKING',
+  'AI_SPOOFING'
+])
+
 export function normalizeSignalType(value) {
   const text = String(value || '').trim().toUpperCase()
   if (!text) return ''
   return SIGNAL_TYPE_ALIASES[text] || text
+}
+
+export function normalizeSignalCategory(value) {
+  const text = String(value || '').trim().toUpperCase()
+  if (!text) return ''
+  return SIGNAL_CATEGORY_ALIASES[text] || text
 }
 
 export function uniqueSignalTypes(values = []) {
@@ -48,4 +122,12 @@ export function uniqueSignalTypes(values = []) {
     unique.push(type)
   }
   return unique
+}
+
+export function isCameraRelatedSignal(value) {
+  return CAMERA_RELATED_SIGNAL_TYPES.includes(normalizeSignalType(value))
+}
+
+export function isCameraRelatedCategory(value) {
+  return CAMERA_RELATED_CATEGORIES.includes(normalizeSignalCategory(value))
 }

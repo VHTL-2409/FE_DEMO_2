@@ -526,6 +526,80 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
+    public void publishIdentityReviewRequired(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            Long identityCheckId,
+            String verificationStatus,
+            String reviewStatus,
+            String reviewReason,
+            Double confidence,
+            String severity,
+            Map<String, Object> evidenceRefs
+    ) {
+        if (examId == null || attemptId == null) {
+            return;
+        }
+        AlertPayload payload = AlertPayload.builder()
+                .type("IDENTITY_REVIEW_REQUIRED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName)
+                .identityCheckId(identityCheckId)
+                .verificationStatus(verificationStatus)
+                .reviewStatus(reviewStatus)
+                .reviewRequired(true)
+                .recommendedAction("REVIEW_IDENTITY")
+                .severity(severity)
+                .confidence(confidence)
+                .message(reviewReason == null || reviewReason.isBlank()
+                        ? "Danh tính cần giám thị kiểm tra"
+                        : reviewReason)
+                .evidenceRefs(evidenceRefs)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
+    public void publishIdentityReviewUpdated(
+            Long examId,
+            Long attemptId,
+            String student,
+            String studentName,
+            Long identityCheckId,
+            String verificationStatus,
+            String reviewStatus,
+            String reviewReason,
+            Double confidence
+    ) {
+        if (examId == null || attemptId == null) {
+            return;
+        }
+        AlertPayload payload = AlertPayload.builder()
+                .type("IDENTITY_REVIEW_UPDATED")
+                .examId(examId)
+                .attemptId(attemptId)
+                .student(student)
+                .studentName(studentName)
+                .identityCheckId(identityCheckId)
+                .verificationStatus(verificationStatus)
+                .reviewStatus(reviewStatus)
+                .reviewRequired("NEEDS_REVIEW".equals(verificationStatus))
+                .recommendedAction("VERIFIED".equals(verificationStatus) ? "ALLOW_START" : "REVIEW_IDENTITY")
+                .confidence(confidence)
+                .message(reviewReason == null || reviewReason.isBlank()
+                        ? "Trang thai xac minh danh tinh da duoc cap nhat"
+                        : reviewReason)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        messagingTemplate.convertAndSend("/topic/exams/" + examId + "/alerts", payload);
+        messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
+    }
+
     @Getter
     @Builder
     @AllArgsConstructor
@@ -554,8 +628,11 @@ public class TeacherAlertGateway {
         private String warningCategory;
         private String warningType;
         private String reviewStatus;
+        private Long identityCheckId;
+        private String verificationStatus;
         private String source;
         private String evidence;
+        private Map<String, Object> evidenceRefs;
         private Double confidence;
         private Integer riskImpact;
         private List<Long> relatedAttemptIds;

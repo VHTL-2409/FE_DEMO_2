@@ -17,6 +17,10 @@ public class ClassStudentResponse {
     private Long studentId;
     private String studentUsername;
     private String studentEmail;
+    private String fullName;
+    private String studentCode;
+    private String citizenId;
+    private java.time.LocalDate dateOfBirth;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "Asia/Ho_Chi_Minh")
     private OffsetDateTime joinedAt;
 }

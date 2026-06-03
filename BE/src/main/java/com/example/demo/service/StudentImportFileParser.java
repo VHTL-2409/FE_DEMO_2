@@ -26,10 +26,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-/**
- * Parses student roster files (CSV, XLSX, XLS) for class import.
- * Header aliases: English names and common Vietnamese / unaccented labels.
- */
 @Component
 public class StudentImportFileParser {
 
@@ -50,19 +46,17 @@ public class StudentImportFileParser {
         return raw.trim().toLowerCase(Locale.ROOT).replace("\ufeff", "");
     }
 
-    /**
-     * Map normalized header text to canonical field key.
-     */
     private static String canonHeader(String normalized) {
         return switch (normalized) {
-            case "username", "user", "login", "tên đăng nhập", "ten dang nhap" -> "username";
+            case "username", "user", "login", "ten dang nhap" -> "username";
             case "email", "e-mail" -> "email";
-            case "fullname", "full_name", "name", "họ tên", "ho ten", "hoten" -> "fullName";
-            case "studentcode", "student_code", "mã sv", "ma sv", "masv", "mã sinh viên", "ma sinh vien" -> "studentCode";
-            case "birthdate", "birth_date", "ngày sinh", "ngay sinh" -> "birthDate";
-            case "phone", "sdt", "mobile", "điện thoại", "dien thoai" -> "phone";
+            case "fullname", "full_name", "name", "ho ten", "hoten" -> "fullName";
+            case "studentcode", "student_code", "ma sv", "masv", "ma sinh vien" -> "studentCode";
+            case "citizenid", "citizen_id", "cccd", "ma cccd", "so cccd", "documentnumber", "document_number" -> "citizenId";
+            case "birthdate", "birth_date", "ngay sinh", "dateofbirth", "date_of_birth", "dob" -> "birthDate";
+            case "phone", "sdt", "mobile", "dien thoai" -> "phone";
             case "address", "dia chi" -> "address";
-            case "grade", "khối", "khoi", "lớp", "lop" -> "grade";
+            case "grade", "khoi", "lop" -> "grade";
             case "faculty", "khoa" -> "faculty";
             default -> null;
         };
@@ -132,6 +126,7 @@ public class StudentImportFileParser {
             String email,
             String fullName,
             String studentCode,
+            String citizenId,
             String birthDate,
             String phone,
             String address,
@@ -148,19 +143,20 @@ public class StudentImportFileParser {
         StudentImportItem item = new StudentImportItem();
         item.setUsername(u);
         item.setEmail(sanitizeEmail(email));
-        item.setFullName(fullName.isBlank() ? null : fullName.trim());
-        item.setStudentCode(studentCode.isBlank() ? null : studentCode.trim());
-        item.setBirthDate(birthDate.isBlank() ? null : birthDate.trim());
-        item.setPhone(phone.isBlank() ? null : phone.trim());
-        item.setAddress(address.isBlank() ? null : address.trim());
-        item.setGrade(grade.isBlank() ? null : grade.trim());
-        item.setFaculty(faculty.isBlank() ? null : faculty.trim());
+        item.setFullName(fullName == null || fullName.isBlank() ? null : fullName.trim());
+        item.setStudentCode(studentCode == null || studentCode.isBlank() ? null : studentCode.trim());
+        item.setCitizenId(citizenId == null || citizenId.isBlank() ? null : citizenId.trim());
+        item.setBirthDate(birthDate == null || birthDate.isBlank() ? null : birthDate.trim());
+        item.setPhone(phone == null || phone.isBlank() ? null : phone.trim());
+        item.setAddress(address == null || address.isBlank() ? null : address.trim());
+        item.setGrade(grade == null || grade.isBlank() ? null : grade.trim());
+        item.setFaculty(faculty == null || faculty.isBlank() ? null : faculty.trim());
         return item;
     }
 
     public List<StudentImportItem> parse(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "File import trống");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File import is empty");
         }
         String extension = ext(file);
         return switch (extension) {
@@ -191,8 +187,7 @@ public class StudentImportFileParser {
             }
             Map<String, Integer> cols = headerToColumns(headerValues);
             if (!cols.containsKey("username")) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "File CSV thiếu cột username (hoặc tên đăng nhập).");
+                throw new ApiException(HttpStatus.BAD_REQUEST, "CSV file is missing username column.");
             }
 
             List<StudentImportItem> out = new ArrayList<>();
@@ -203,6 +198,7 @@ public class StudentImportFileParser {
                         cellText(rec, cols, "email"),
                         cellText(rec, cols, "fullName"),
                         cellText(rec, cols, "studentCode"),
+                        cellText(rec, cols, "citizenId"),
                         cellText(rec, cols, "birthDate"),
                         cellText(rec, cols, "phone"),
                         cellText(rec, cols, "address"),
@@ -217,7 +213,7 @@ public class StudentImportFileParser {
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Không đọc được file CSV: " + e.getMessage());
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Could not read CSV file: " + e.getMessage());
         }
     }
 
@@ -241,8 +237,7 @@ public class StudentImportFileParser {
                 }
             }
             if (headerRowIndex < 0) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "File Excel thiếu cột username (hoặc tên đăng nhập) trong các dòng đầu.");
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Excel file is missing username column in the first rows.");
             }
             DataFormatter fmt = new DataFormatter();
             List<StudentImportItem> out = new ArrayList<>();
@@ -256,6 +251,7 @@ public class StudentImportFileParser {
                         cellText(row, cols, "email", fmt),
                         cellText(row, cols, "fullName", fmt),
                         cellText(row, cols, "studentCode", fmt),
+                        cellText(row, cols, "citizenId", fmt),
                         cellText(row, cols, "birthDate", fmt),
                         cellText(row, cols, "phone", fmt),
                         cellText(row, cols, "address", fmt),
@@ -270,7 +266,7 @@ public class StudentImportFileParser {
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Không đọc được file Excel: " + e.getMessage());
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Could not read Excel file: " + e.getMessage());
         }
     }
 }

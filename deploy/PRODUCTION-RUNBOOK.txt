@@ -1,0 +1,75 @@
+Production Runbook - Docker VPS
+
+1. Prepare env
+
+- Copy deploy/production.env.example to .env at the repository root.
+- Replace every REQUIRED_... value with a strong secret.
+- Keep APP_CORS_ALLOWED_ORIGINS to production domains only. Do not include localhost in production.
+- Keep APP_ML_RISK_SCORING_ENABLED=false until /ml/risk/status is healthy and reviewed.
+
+2. Validate config
+
+docker compose -f docker-compose.prod.yml --env-file .env config
+
+The command must not print missing variable errors.
+
+3. Deploy
+
+docker compose -f docker-compose.prod.yml --env-file .env build
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+docker compose -f docker-compose.prod.yml ps
+
+Expected health:
+
+- db: healthy
+- ai-service: healthy via /ready
+- python-parser: healthy via /health
+- be: healthy via /api/health
+- fe: healthy via /health
+
+4. Smoke checks
+
+curl -f http://127.0.0.1:8082/api/health
+curl -f http://127.0.0.1:8090/health
+curl -f http://127.0.0.1:8090/ready
+curl -f -H "X-API-Key: <AI_SERVICE_API_KEY>" http://127.0.0.1:8090/health/detailed
+curl -f -H "X-API-Key: <AI_SERVICE_API_KEY>" http://127.0.0.1:8090/ml/risk/status
+curl -f http://127.0.0.1:81/health
+
+Manual checks:
+
+- Login as admin/teacher.
+- Open teacher monitoring and verify WebSocket connects.
+- Start a student attempt with AI proctoring enabled and verify camera frames are acknowledged.
+- Restart ai-service during a student attempt and verify the exam keeps running while the UI shows AI temporary/unavailable status.
+- Run fraud analysis panel and verify ML risk source shows rule-based, external ML, or statistical fallback.
+- Review one fraud warning and confirm status persists.
+
+5. Backup
+
+Postgres backup:
+
+docker compose -f docker-compose.prod.yml --env-file .env exec -T db pg_dump -U postgres -d datn > backup-datn.sql
+
+Postgres restore:
+
+Get-Content backup-datn.sql | docker compose -f docker-compose.prod.yml --env-file .env exec -T db psql -U postgres -d datn
+
+Evidence image backup:
+
+Compress-Archive -Path BE/data/proctor-evidence -DestinationPath proctor-evidence-backup.zip
+
+Keep database backups and evidence backups together for the same time window.
+
+6. Operational notes
+
+- Production backend uses SPRING_PROFILES_ACTIVE=prod and SPRING_JPA_DDL_AUTO=update by default because the project does not yet have an active Flyway baseline.
+- Switch SPRING_JPA_DDL_AUTO to validate only after the database has been migrated manually or a real migration baseline has been added.
+- AI service production requires AI_SERVICE_API_KEY; auth bypass is disabled.
+- AI risk is currently HEURISTIC_READY, not a trained ML model.
+- AI service and python parser are bound to 127.0.0.1 by default and should not be exposed publicly.
+- Production must not auto-download face detector models. Keep AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD=false and package app/models/deploy.prototxt.txt plus app/models/res10_300x300_ssd_iter_140000.caffemodel when DNN accuracy is required.
+- On small VPS instances, keep AI_SERVICE_MAX_FRAME_WIDTH=640, AI_SERVICE_PROCTOR_MAX_IN_FLIGHT=2, AI_SERVICE_PROCTOR_FRAME_TIMEOUT_MS=3500, PROCTOR_FRAME_RATE_LIMIT=180/minute, and AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD=false.
+- If AI camera returns AI_BUSY often, first lower PROCTOR_FRAME_RATE_LIMIT or increase AI frame interval on the frontend deployment; only raise AI_SERVICE_PROCTOR_MAX_IN_FLIGHT after CPU usage is stable.
+- To temporarily disable AI camera/AI bridge without stopping exams, set APP_AI_SERVICE_ENABLED=false and recreate the backend container.
+- Increase BE_MEM_LIMIT and Hikari pool only after observing CPU/RAM/database pressure.

@@ -26,7 +26,7 @@
             <button
               v-if="!persistent"
               type="button"
-              class="ds-modal-close flex size-8 items-center justify-center rounded-[var(--ds-radius-md)] text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-gray-100)] hover:text-[var(--ds-text)]"
+              class="ds-modal-close ds-icon-btn size-8 min-h-8 min-w-8 border-0 shadow-none"
               aria-label="Đóng"
               @click="close"
             >
@@ -141,5 +141,14 @@ onUnmounted(() => {
 }
 .ds-modal-leave-to .ds-modal-content {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal-enter-active,
+  .ds-modal-leave-active,
+  .ds-modal-enter-active .ds-modal-content,
+  .ds-modal-leave-active .ds-modal-content {
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>

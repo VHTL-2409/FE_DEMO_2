@@ -44,6 +44,8 @@ class FrameAnalysisRequest(BaseModel):
 
 
 class FrameAnalysisResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     status: str
     face_count: int
     eye_count: int
@@ -72,8 +74,24 @@ class FrameAnalysisResponse(BaseModel):
     deepfake_valid: bool = Field(default=False)
     deepfake_score: float | None = Field(default=None, ge=0.0, le=1.0)
     liveness_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    liveness_status: str | None = None
     spoofing_label: str | None = None
+    spoof_type: str | None = None
+    model_ready: bool | None = None
+    liveness_evidence: dict[str, Any] = Field(default_factory=dict)
+    temporal_window_ms: int | None = Field(default=None, ge=0)
     identity_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    retry_after_ms: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("retry_after_ms", "retryAfterMs"),
+        serialization_alias="retryAfterMs",
+    )
+    processing_time_ms: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("processing_time_ms", "processingTimeMs"),
+        serialization_alias="processingTimeMs",
+    )
+    message: str | None = None
 
 
 class IdentityVerifyRequest(BaseModel):
@@ -95,19 +113,64 @@ class IdentityVerifyRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class IdentityRecheckRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    attempt_id: int | None = Field(default=None, validation_alias=AliasChoices("attempt_id", "attemptId"))
+    student_id: int | None = Field(default=None, validation_alias=AliasChoices("student_id", "studentId"))
+    image_base64: str = Field(
+        max_length=10_000_000,
+        validation_alias=AliasChoices("image_base64", "imageBase64"),
+    )
+    reference_face_base64: str = Field(
+        max_length=10_000_000,
+        validation_alias=AliasChoices("reference_face_base64", "referenceFaceBase64"),
+    )
+    captured_at: str | None = Field(default=None, validation_alias=AliasChoices("captured_at", "capturedAt"))
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class IdentityVerifyResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str = "DONE"
-    verification_status: str = Field(validation_alias=AliasChoices("verification_status", "verificationStatus"))
+    verification_status: str = Field(
+        validation_alias=AliasChoices("verification_status", "verificationStatus"),
+        serialization_alias="verificationStatus",
+    )
     confidence: float = Field(ge=0.0, le=1.0)
-    matched_fields: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("matched_fields", "matchedFields"))
-    mismatched_fields: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("mismatched_fields", "mismatchedFields"))
-    document_ocr: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("document_ocr", "documentOcr"))
-    face_match: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("face_match", "faceMatch"))
+    matched_fields: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("matched_fields", "matchedFields"),
+        serialization_alias="matchedFields",
+    )
+    mismatched_fields: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("mismatched_fields", "mismatchedFields"),
+        serialization_alias="mismatchedFields",
+    )
+    document_ocr: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("document_ocr", "documentOcr"),
+        serialization_alias="documentOcr",
+    )
+    face_match: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("face_match", "faceMatch"),
+        serialization_alias="faceMatch",
+    )
+    document_face_crop: dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("document_face_crop", "documentFaceCrop"),
+        serialization_alias="documentFaceCrop",
+    )
     liveness: dict[str, Any] = Field(default_factory=dict)
     signals: list[FraudSignal] = Field(default_factory=list)
-    review_reason: str | None = Field(default=None, validation_alias=AliasChoices("review_reason", "reviewReason"))
+    review_reason: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("review_reason", "reviewReason"),
+        serialization_alias="reviewReason",
+    )
     diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -129,6 +192,83 @@ class BehaviorAnalysisRequest(BaseModel):
 class BehaviorAnalysisResponse(BaseModel):
     status: str
     signals: list[FraudSignal] = Field(default_factory=list)
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
+class MLRiskSignalFeatures(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    tab_switch_count: int = Field(default=0, validation_alias=AliasChoices("tab_switch_count", "tabSwitchCount"))
+    window_blur_count: int = Field(default=0, validation_alias=AliasChoices("window_blur_count", "windowBlurCount"))
+    fullscreen_exit_count: int = Field(default=0, validation_alias=AliasChoices("fullscreen_exit_count", "fullscreenExitCount"))
+    clipboard_attempts: int = Field(default=0, validation_alias=AliasChoices("clipboard_attempts", "clipboardAttempts"))
+    devtools_opened: int = Field(default=0, validation_alias=AliasChoices("devtools_opened", "devtoolsOpened"))
+    right_click_count: int = Field(default=0, validation_alias=AliasChoices("right_click_count", "rightClickCount"))
+    print_screen_count: int = Field(default=0, validation_alias=AliasChoices("print_screen_count", "printScreenCount"))
+    ip_changes: int = Field(default=0, validation_alias=AliasChoices("ip_changes", "ipChanges"))
+    device_changes: int = Field(default=0, validation_alias=AliasChoices("device_changes", "deviceChanges"))
+    duplicate_ip_events: int = Field(default=0, validation_alias=AliasChoices("duplicate_ip_events", "duplicateIpEvents"))
+    suspicious_signals: int = Field(default=0, validation_alias=AliasChoices("suspicious_signals", "suspiciousSignals"))
+    total_signal_count: int = Field(default=0, validation_alias=AliasChoices("total_signal_count", "totalSignalCount"))
+    critical_signal_count: int = Field(default=0, validation_alias=AliasChoices("critical_signal_count", "criticalSignalCount"))
+    high_signal_count: int = Field(default=0, validation_alias=AliasChoices("high_signal_count", "highSignalCount"))
+    medium_signal_count: int = Field(default=0, validation_alias=AliasChoices("medium_signal_count", "mediumSignalCount"))
+    low_signal_count: int = Field(default=0, validation_alias=AliasChoices("low_signal_count", "lowSignalCount"))
+    signals_per_minute: float = Field(default=0.0, validation_alias=AliasChoices("signals_per_minute", "signalsPerMinute"))
+
+
+class MLRiskPredictionRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    attempt_id: int | None = Field(default=None, validation_alias=AliasChoices("attempt_id", "attemptId"))
+    student_id: int | None = Field(default=None, validation_alias=AliasChoices("student_id", "studentId"))
+    exam_id: int | None = Field(default=None, validation_alias=AliasChoices("exam_id", "examId"))
+    signals: MLRiskSignalFeatures = Field(default_factory=MLRiskSignalFeatures)
+    behavior: dict[str, Any] = Field(default_factory=dict)
+    temporal: dict[str, Any] = Field(default_factory=dict)
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class MLRiskPredictionResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    ml_score: float = Field(
+        ge=0.0,
+        le=100.0,
+        validation_alias=AliasChoices("ml_score", "mlScore"),
+        serialization_alias="mlScore",
+    )
+    confidence: float = Field(ge=0.0, le=1.0)
+    risk_level: str = Field(
+        validation_alias=AliasChoices("risk_level", "riskLevel"),
+        serialization_alias="riskLevel",
+    )
+    fraud_probability: float = Field(
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("fraud_probability", "fraudProbability"),
+        serialization_alias="fraudProbability",
+    )
+    model_version: str = Field(
+        default="ai-service-rule-risk-v1",
+        validation_alias=AliasChoices("model_version", "modelVersion"),
+        serialization_alias="modelVersion",
+    )
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
+class MLRiskStatusResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    available: bool
+    algorithm: str
+    version: str
+    trained_model_loaded: bool = Field(
+        validation_alias=AliasChoices("trained_model_loaded", "trainedModelLoaded"),
+        serialization_alias="trainedModelLoaded",
+    )
+    status: str
+    message: str
     diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 

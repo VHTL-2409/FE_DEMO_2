@@ -81,5 +81,8 @@ ai-service/app/schemas.py
 *.bat
 BE/run-demo-local.bat
 ai-service/tests/*
+!ai-service/tests/test_identity.py
 baocao/*
 *.docx
+/ai-service/.env.example
+*.env.example

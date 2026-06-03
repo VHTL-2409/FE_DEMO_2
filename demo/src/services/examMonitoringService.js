@@ -20,6 +20,9 @@ export {
   fetchProctorRisk,
   fetchProctorTimeline,
   fetchLatestCameraFrame,
+  fetchIdentityCheck,
+  fetchIdentityChecks,
+  reviewIdentityCheck,
   reviewProctorFlag
 } from './proctorService'
 

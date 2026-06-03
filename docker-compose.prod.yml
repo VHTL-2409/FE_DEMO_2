@@ -1,8 +1,10 @@
 # Production - chạy với: docker compose -f docker-compose.prod.yml up -d
-# Cần file .env với các biến: SPRING_DATASOURCE_PASSWORD, SECURITY_JWT_SECRET, ...
+# Cần file .env với các biến bắt buộc:
+# SPRING_DATASOURCE_PASSWORD, SECURITY_JWT_SECRET, DEMO_ADMIN_PASSWORD,
+# AI_SERVICE_API_KEY, APP_CORS_ALLOWED_ORIGINS, APP_FRONTEND_BASE_URL, APP_URL, VITE_API_BASE_URL
 #
-# Publish: mặc định FE :8080, BE :8082 trên mọi interface (truy cập được từ ngoài).
-# Có Nginx host reverse-proxy: trong .env đặt DOCKER_FE_PUBLISH=127.0.0.1:8080 và DOCKER_BE_PUBLISH=127.0.0.1:8082
+# Publish mặc định bind localhost để đi qua Nginx host reverse-proxy.
+# Nếu muốn expose trực tiếp, đặt DOCKER_FE_PUBLISH=81 và DOCKER_BE_PUBLISH=8082 có chủ đích.
 # Xem deploy/nginx-host-81-444.conf.example
 
 services:
@@ -38,26 +40,36 @@ services:
       dockerfile: Dockerfile
     environment:
       TZ: Asia/Ho_Chi_Minh
-      BE_DOTENV_FILE: /run/secrets/be.env
       # JVM: heap ~70% của mem_limit container (đổi trong .env: JAVA_TOOL_OPTIONS=...)
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseStringDeduplication"
+      SPRING_PROFILES_ACTIVE: prod
       HIKARI_MAX_POOL: ${HIKARI_MAX_POOL:-12}
       HIKARI_MIN_IDLE: ${HIKARI_MIN_IDLE:-1}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/datn
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Set SPRING_DATASOURCE_PASSWORD in production .env}
+      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:?Set SECURITY_JWT_SECRET in production .env}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:?Set DEMO_ADMIN_PASSWORD in production .env}
+      # Project currently has compatibility SQL but no active Flyway baseline.
+      # Keep update as the deploy default so a fresh VPS DB and older local DB can converge.
+      # Override to validate only after the schema has been fully migrated.
+      SPRING_JPA_DDL_AUTO: ${SPRING_JPA_DDL_AUTO:-update}
+      SPRING_SQL_INIT_MODE: never
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-}
-      APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL:-https://test1.nexquoteapp.com:444}
-      APP_URL: ${APP_URL:-https://test1.nexquoteapp.com:444}
+      APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL:?Set APP_FRONTEND_BASE_URL in production .env}
+      APP_URL: ${APP_URL:?Set APP_URL in production .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_OAUTH_REDIRECT_BASE: ${APP_URL:-https://test1.nexquoteapp.com:444}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8082,http://localhost:8082,https://localhost:443,https://test1.nexquoteapp.com,https://test1.nexquoteapp.com:444}
+      GOOGLE_OAUTH_REDIRECT_BASE: ${APP_URL:?Set APP_URL in production .env}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?Set APP_CORS_ALLOWED_ORIGINS to production origins only}
       APP_AI_SERVICE_ENABLED: ${APP_AI_SERVICE_ENABLED:-true}
       APP_AI_SERVICE_BASE_URL: ${APP_AI_SERVICE_BASE_URL:-http://ai-service:8090}
+      APP_AI_SERVICE_CAMERA_TIMEOUT_MS: ${APP_AI_SERVICE_CAMERA_TIMEOUT_MS:-4000}
+      APP_AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?Set AI_SERVICE_API_KEY in production .env}
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?Set AI_SERVICE_API_KEY in production .env}
+      APP_ML_RISK_SCORING_ENABLED: ${APP_ML_RISK_SCORING_ENABLED:-false}
       EXAM_IMPORT_PYTHON_LEGACY_URL: ${EXAM_IMPORT_PYTHON_LEGACY_URL:-http://python-parser:8000}
       SPRING_JPA_SHOW_SQL: "false"
     healthcheck:
@@ -74,14 +86,13 @@ services:
       python-parser:
         condition: service_healthy
     ports:
-      - "${DOCKER_BE_PUBLISH:-8082}:8082"
+      - "${DOCKER_BE_PUBLISH:-127.0.0.1:8082}:8082"
     # Trần RAM cho container BE — JVM + native; chỉnh 512m–768m nếu VPS rất nhỏ
     mem_limit: ${BE_MEM_LIMIT:-768m}
     restart: unless-stopped
     networks:
       - app-network
     volumes:
-      - ./BE/.env:/run/secrets/be.env:ro
       - ./BE/data/proctor-evidence:/app/data/proctor-evidence
 
   ai-service:
@@ -95,12 +106,36 @@ services:
       OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-}
       APP_AI_MODEL_KEYS_FILE: ${APP_AI_MODEL_KEYS_FILE:-}
       APP_AI_MODEL_KEYS_JSON: ${APP_AI_MODEL_KEYS_JSON:-}
+      APP_ENV: production
+      AI_SERVICE_ALLOW_AUTH_BYPASS: "false"
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?Set AI_SERVICE_API_KEY in production .env}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?Set APP_CORS_ALLOWED_ORIGINS to production origins only}
+      AI_SERVICE_MAX_FRAME_WIDTH: ${AI_SERVICE_MAX_FRAME_WIDTH:-640}
+      AI_SERVICE_MAX_FRAME_BASE64_CHARS: ${AI_SERVICE_MAX_FRAME_BASE64_CHARS:-2500000}
+      AI_SERVICE_MAX_FRAME_DECODED_BYTES: ${AI_SERVICE_MAX_FRAME_DECODED_BYTES:-2000000}
+      AI_SERVICE_MAX_FRAME_PIXELS: ${AI_SERVICE_MAX_FRAME_PIXELS:-1200000}
+      AI_SERVICE_PROCTOR_MAX_IN_FLIGHT: ${AI_SERVICE_PROCTOR_MAX_IN_FLIGHT:-2}
+      AI_SERVICE_PROCTOR_FRAME_TIMEOUT_MS: ${AI_SERVICE_PROCTOR_FRAME_TIMEOUT_MS:-3500}
+      AI_SERVICE_PROCTOR_RETRY_AFTER_MS: ${AI_SERVICE_PROCTOR_RETRY_AFTER_MS:-2000}
+      AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD: ${AI_SERVICE_FACE_MODEL_AUTO_DOWNLOAD:-false}
+      AI_SERVICE_WARMUP_ON_STARTUP: ${AI_SERVICE_WARMUP_ON_STARTUP:-false}
+      AI_SERVICE_FACE_ISSUE_REQUIRED_FRAMES: ${AI_SERVICE_FACE_ISSUE_REQUIRED_FRAMES:-2}
+      AI_SERVICE_FACE_ISSUE_REQUIRED_MS: ${AI_SERVICE_FACE_ISSUE_REQUIRED_MS:-1500}
+      AI_SERVICE_EYE_MISSING_REQUIRED_FRAMES: ${AI_SERVICE_EYE_MISSING_REQUIRED_FRAMES:-2}
+      AI_SERVICE_EYE_MISSING_REQUIRED_MS: ${AI_SERVICE_EYE_MISSING_REQUIRED_MS:-1500}
+      AI_SERVICE_FACE_POSITION_REQUIRED_FRAMES: ${AI_SERVICE_FACE_POSITION_REQUIRED_FRAMES:-2}
+      AI_SERVICE_FACE_POSITION_REQUIRED_MS: ${AI_SERVICE_FACE_POSITION_REQUIRED_MS:-1500}
+      AI_SERVICE_GAZE_REQUIRED_FRAMES: ${AI_SERVICE_GAZE_REQUIRED_FRAMES:-3}
+      AI_SERVICE_GAZE_REQUIRED_MS: ${AI_SERVICE_GAZE_REQUIRED_MS:-2500}
+      AI_SERVICE_EYE_CLOSURE_REQUIRED_FRAMES: ${AI_SERVICE_EYE_CLOSURE_REQUIRED_FRAMES:-2}
+      AI_SERVICE_EYE_CLOSURE_REQUIRED_MS: ${AI_SERVICE_EYE_CLOSURE_REQUIRED_MS:-2000}
+      PROCTOR_FRAME_RATE_LIMIT: ${PROCTOR_FRAME_RATE_LIMIT:-180/minute}
     volumes:
       - ./secrets:/run/secrets:ro
     ports:
       - "${DOCKER_AI_SERVICE_PUBLISH:-127.0.0.1:8090}:8090"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8090/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -133,10 +168,10 @@ services:
       context: ./demo
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?Set VITE_API_BASE_URL in production .env}
     ports:
-      - "${DOCKER_FE_PUBLISH:-81}:81"
-      - "444:444"
+      - "${DOCKER_FE_PUBLISH:-127.0.0.1:81}:81"
+      - "${DOCKER_FE_SSL_PUBLISH:-127.0.0.1:444}:444"
     depends_on:
       be:
         condition: service_healthy

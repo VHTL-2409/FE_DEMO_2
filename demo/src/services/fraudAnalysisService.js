@@ -38,6 +38,38 @@ export async function runExamTimingAnalysis(examId) {
   return unwrapApiData(payload)
 }
 
+export async function runBehaviorAnalysis(attemptId) {
+  const payload = await apiRequest(`${BASE}/behavior/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
+export async function runExamBehaviorAnalysis(examId) {
+  const payload = await apiRequest(`${BASE}/behavior/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
+export async function runStatisticalAnalysis(attemptId) {
+  const payload = await apiRequest(`${BASE}/statistical/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
+export async function runExamStatisticalAnalysis(examId) {
+  const payload = await apiRequest(`${BASE}/statistical/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+  return unwrapApiData(payload)
+}
+
 export async function runIpReputationAnalysis(examId) {
   const payload = await apiRequest(`${BASE}/ip-reputation/exam/${examId}`, {
     method: 'POST',
@@ -59,6 +91,29 @@ export async function runComprehensiveExamAnalysis(examId) {
     method: 'POST',
     body: JSON.stringify({})
   })
+  return unwrapApiData(payload)
+}
+
+export async function runMlRiskByExam(examId) {
+  const payload = await apiRequest(`${BASE}/ml-risk/exam/${examId}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+    suppressToast: true
+  })
+  return unwrapApiData(payload) || []
+}
+
+export async function runMlRiskByAttempt(attemptId) {
+  const payload = await apiRequest(`${BASE}/ml-risk/attempts/${attemptId}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+    suppressToast: true
+  })
+  return unwrapApiData(payload)
+}
+
+export async function fetchMlRiskStatus() {
+  const payload = await apiRequest(`${BASE}/ml-risk/status`, { suppressToast: true })
   return unwrapApiData(payload)
 }
 

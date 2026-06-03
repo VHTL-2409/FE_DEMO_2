@@ -187,7 +187,7 @@
                 </div>
                 <div class="smd-device-row">
                   <LucideIcon name="fingerprint" :size="13" />
-                  <span class="smd-device-row__label">Fingerprint</span>
+                  <span class="smd-device-row__label">Dấu vân tay thiết bị</span>
                   <span class="smd-device-row__val">{{ attemptData.deviceFingerprint || '—' }}</span>
                 </div>
               </div>
@@ -253,7 +253,7 @@
                 <option value="TAB_SWITCH">Chuyển tab</option>
                 <option value="COPY_PASTE">Sao chép</option>
                 <option value="EXIT_FULLSCREEN">Thoát toàn màn hình</option>
-                <option value="DEVTOOLS">DevTools</option>
+                <option value="DEVTOOLS">Công cụ phát triển</option>
                 <option value="DUPLICATE_IP">IP trùng</option>
                 <option value="WARNING_SENT">Cảnh báo</option>
                 <option value="NOTE">Ghi chú</option>
@@ -301,14 +301,14 @@
           <div class="smd-panel">
             <div class="smd-panel__header">
               <LucideIcon name="zap" :size="14" />
-              <span>Sự kiện realtime</span>
+              <span>Sự kiện thời gian thực</span>
               <div class="smd-live-dot" :class="isConnected ? 'smd-live-dot--on' : 'smd-live-dot--off'" />
               <span v-if="realtimeFeed.length" class="smd-panel__badge">{{ realtimeFeed.length }}</span>
             </div>
             <div class="smd-panel__body">
               <div v-if="realtimeFeed.length === 0" class="smd-empty">
                 <LucideIcon name="inbox" :size="22" />
-                <p>Chưa có sự kiện realtime</p>
+                <p>Chưa có sự kiện thời gian thực</p>
               </div>
               <div v-else class="smd-realtime-list">
                 <div v-for="evt in realtimeFeed" :key="evt.id" class="smd-realtime-item" :class="`smd-realtime-item--${evt.tone}`">
@@ -507,7 +507,7 @@ const RISK_LEVEL_LABELS = { CRITICAL: 'Nguy cơ cao', HIGH_RISK: 'Rủi ro cao',
 const RECOMMENDED_ACTION_LABELS = {
   PAUSE_AND_REVIEW: 'Tạm dừng và kiểm tra ngay',
   WARN_AND_ESCALATE: 'Cảnh báo và tăng cường giám sát',
-  REVIEW_ATTEMPT: 'Mở hồ sơ để review thủ công',
+  REVIEW_ATTEMPT: 'Mở hồ sơ để rà soát thủ công',
   CONTINUE_MONITORING: 'Tiếp tục giám sát'
 }
 const SEVERITY_LABELS = { HIGH: 'Nghiêm trọng', MEDIUM: 'Trung bình', LOW: 'Thấp', CRITICAL: 'Nghiêm trọng' }
@@ -567,7 +567,7 @@ const V_ICONS = {
 const V_LABELS = {
   TAB_SWITCH: 'Chuyển tab', WINDOW_BLUR: 'Mất tiêu điểm', IDLE_TIME: 'Không hoạt động',
   RIGHT_CLICK: 'Click chuột phải', EXIT_FULLSCREEN: 'Thoát toàn màn hình', COPY_PASTE: 'Sao chép nội dung',
-  DEVTOOLS_OPEN: 'Mở DevTools', PRINT_SCREEN: 'Chụp màn hình', MULTI_MONITOR: 'Nhiều màn hình',
+  DEVTOOLS_OPEN: 'Mở công cụ phát triển', PRINT_SCREEN: 'Chụp màn hình', MULTI_MONITOR: 'Nhiều màn hình',
   DUPLICATE_IP: 'IP trùng lặp', IP_CHANGED: 'IP thay đổi', RAPID_QUESTION_SWITCH: 'Chuyển câu nhanh', HEARTBEAT_STALE: 'Mất kết nối',
   DEVICE_FINGERPRINT_CHANGED: 'Thay đổi thiết bị', SYNC_BEHAVIOR: 'Hành vi đồng bộ',
   IP_FINGERPRINT_GRAPH: 'Liên kết IP', ANSWER_SIMILARITY: 'Tương đồng đáp án',
@@ -589,7 +589,7 @@ const V_LABELS = {
 const PATTERN_RULES = [
   { id: 'tab', key: 'TAB_SWITCH', threshold: 3, build: (n) => ({ title: 'Chuyển tab nhiều lần', description: `${n} lần chuyển tab (ngưỡng: 3)`, level: n > 5 ? 'high' : 'medium' }) },
   { id: 'copy', key: 'COPY_PASTE', threshold: 1, build: (n) => ({ title: 'Cố gắng copy nội dung', description: `${n} lần sao chép dữ liệu`, level: 'medium' }) },
-  { id: 'dev', key: 'DEVTOOLS_OPEN', threshold: 1, build: (n) => ({ title: 'Mở công cụ phát triển', description: `${n} lần mở DevTools`, level: 'high' }) },
+  { id: 'dev', key: 'DEVTOOLS_OPEN', threshold: 1, build: (n) => ({ title: 'Mở công cụ phát triển', description: `${n} lần mở công cụ phát triển`, level: 'high' }) },
   { id: 'dup', key: 'DUPLICATE_IP', threshold: 1, build: (n) => ({ title: 'Phát hiện IP trùng lặp', description: `${n} thiết bị khác cùng IP`, level: 'high' }) }
 ]
 const REALTIME_META = {

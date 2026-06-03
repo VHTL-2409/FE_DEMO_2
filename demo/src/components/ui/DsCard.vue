@@ -38,14 +38,14 @@ const paddingClass = computed(() => {
 })
 
 const borderClass = computed(() => {
-  if (props.variant === 'bordered') return `border border-[var(--ds-border-strong)] rounded-[var(--ds-radius-xl)]`
-  if (props.variant === 'shadow') return `border border-[var(--ds-border)] shadow-[var(--ds-shadow-md)] rounded-[var(--ds-radius-xl)]`
-  if (props.variant === 'accent') return `border-l-2 rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)]`
-  if (props.variant === 'alert') return `border-l-2 border-[var(--ds-danger)] rounded-[var(--ds-radius-xl)] border border-[var(--ds-border)]`
+  if (props.variant === 'bordered') return `border border-[var(--ds-border-strong)] rounded-[var(--ds-radius-lg)]`
+  if (props.variant === 'shadow') return `border border-[var(--ds-border)] shadow-[var(--ds-shadow-md)] rounded-[var(--ds-radius-lg)]`
+  if (props.variant === 'accent') return `border-l-2 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)]`
+  if (props.variant === 'alert') return `border-l-2 border-[var(--ds-danger)] rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)]`
   if (props.hoverable && hovered.value) {
-    return `border border-[var(--ds-border)] rounded-[var(--ds-radius-xl)] -translate-y-0.5 shadow-[var(--ds-shadow-lg)]`
+    return `border border-[var(--ds-border-strong)] rounded-[var(--ds-radius-lg)] -translate-y-0.5 shadow-[var(--ds-shadow-lg)]`
   }
-  return `border border-[var(--ds-border)] rounded-[var(--ds-radius-xl)]`
+  return `border border-[var(--ds-border)] rounded-[var(--ds-radius-lg)]`
 })
 
 const footerBorderClass = computed(() =>
@@ -75,5 +75,12 @@ const cardStyle = computed(() => {
 }
 .ds-card:hover {
   box-shadow: var(--ds-shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-card {
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
 }
 </style>

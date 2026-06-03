@@ -5,7 +5,7 @@
       <div class="lef__header-left">
         <div class="lef__live-badge" :class="connected ? 'lef__live-badge--live' : 'lef__live-badge--off'">
           <span class="lef__live-dot" />
-          LIVE
+          TRỰC TIẾP
         </div>
         <h4 class="lef__title">Sự kiện gần đây</h4>
         <span class="lef__count-badge">{{ displayEvents.length }}</span>
@@ -188,7 +188,7 @@ const eventText = (event) => {
   if (type.includes('EXIT') || type.includes('LEAVE')) return ' rời phòng thi'
   if (type.includes('START') || type.includes('BEGIN')) return ' bắt đầu làm bài'
   if (type.includes('TAB') || type.includes('SWITCH')) return ' chuyển tab'
-  if (type.includes('DEVTOOLS')) return ' mở DevTools'
+  if (type.includes('DEVTOOLS')) return ' mở công cụ phát triển'
   if (type.includes('COPY')) return ' copy nội dung'
   if (type.includes('PASTE')) return ' paste nội dung'
   if (type.includes('DISCONNECT') || type.includes('NETWORK')) return ' mất kết nối'

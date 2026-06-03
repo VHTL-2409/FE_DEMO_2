@@ -4,7 +4,7 @@
       v-if="showSidebar"
       type="button"
       class="db-app-shell__mobile-menu"
-      :aria-label="mobileOpen ? 'Dong menu' : 'Mo menu'"
+      :aria-label="mobileOpen ? 'Đóng menu' : 'Mở menu'"
       :aria-expanded="mobileOpen"
       @click="mobileOpen = true"
     >
@@ -103,14 +103,16 @@ watch(
 .db-app-shell {
   height: 100dvh;
   overflow: hidden;
-  background: var(--portal-shell-bg);
-  font-family: var(--portal-shell-font);
+  background: var(--ds-bg);
+  font-family: var(--ds-font);
 }
 
 .db-app-shell__main {
   height: 100dvh;
   overflow-y: auto;
-  background: var(--portal-shell-bg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74) 0%, rgba(248, 250, 252, 0) 220px),
+    var(--ds-bg);
   /* Keep the sidebar transition without forcing GPU text compositing. */
   transition: padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout;
@@ -151,17 +153,17 @@ watch(
   width: 40px;
   height: 40px;
   border-radius: var(--ds-radius-lg, 14px);
-  border: 1px solid var(--portal-shell-border);
-  background: var(--portal-shell-surface);
-  color: var(--portal-shell-text);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-md);
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
 
 .db-app-shell__mobile-menu:hover {
-  background: var(--portal-shell-muted);
+  background: var(--ds-surface-muted);
 }
 
 @media (max-width: 768px) {

@@ -26,9 +26,12 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -59,6 +62,7 @@ public class AiAssistService {
     private final ProctorEvidenceImageService proctorEvidenceImageService;
     private final StudentProfileRepository studentProfileRepository;
     private final StudentIdentityCheckRepository studentIdentityCheckRepository;
+    private final SubmissionService submissionService;
     private final ObjectMapper objectMapper;
     private final Map<Long, Map<String, Object>> latestCameraFrames = new ConcurrentHashMap<>();
     private final Map<Long, CameraSignalClusterState> cameraSignalClusterStates = new ConcurrentHashMap<>();
@@ -73,6 +77,7 @@ public class AiAssistService {
             ProctorEvidenceImageService proctorEvidenceImageService,
             StudentProfileRepository studentProfileRepository,
             StudentIdentityCheckRepository studentIdentityCheckRepository,
+            SubmissionService submissionService,
             ObjectMapper objectMapper
     ) {
         this.examAttemptRepository = examAttemptRepository;
@@ -84,6 +89,7 @@ public class AiAssistService {
         this.proctorEvidenceImageService = proctorEvidenceImageService;
         this.studentProfileRepository = studentProfileRepository;
         this.studentIdentityCheckRepository = studentIdentityCheckRepository;
+        this.submissionService = submissionService;
         this.objectMapper = objectMapper;
     }
 
@@ -96,8 +102,16 @@ public class AiAssistService {
     @Value("${app.ai-service.timeout-ms:20000}")
     private int timeoutMs;
 
+    @Value("${app.ai-service.camera-timeout-ms:${APP_AI_SERVICE_CAMERA_TIMEOUT_MS:4000}}")
+    private int cameraTimeoutMs;
+
     @Value("${app.ai-service.api-key:${APP_AI_SERVICE_API_KEY:${AI_SERVICE_API_KEY:}}}")
     private String aiServiceApiKey;
+
+    private volatile RestTemplate defaultRestTemplate;
+    private volatile int defaultRestTemplateTimeoutMs;
+    private volatile RestTemplate cameraRestTemplate;
+    private volatile int cameraRestTemplateTimeoutMs;
 
     @Value("${demo.ai-camera.max-frame-base64-chars:2500000}")
     private int cameraFrameMaxBase64Chars;
@@ -165,7 +179,7 @@ public class AiAssistService {
         }
 
         try {
-            Map<String, Object> response = postJson("/proctor/analyze/frame", buildFramePayload(request));
+            Map<String, Object> response = postCameraJson("/proctor/analyze/frame", buildFramePayload(request));
             response.put("backendAnalysisReceived", true);
             List<Map<String, Object>> aiSignals = collectAiCameraWarningSignals(response);
             response.put("signals", aiSignals);
@@ -183,14 +197,24 @@ public class AiAssistService {
             mergeFrameAck(response, aiAck != null ? aiAck : initialAck);
             safeRecordAiCameraWarnings(request, recordableAiSignals, response, "frame");
             return response;
-        } catch (Exception ex) {
-            fallbackResponse.put("status", "AI_UNAVAILABLE");
-            fallbackResponse.put("message", ex.getMessage() == null || ex.getMessage().isBlank()
-                    ? "Cannot connect to AI service."
-                    : ex.getMessage());
-            fallbackResponse.put("backendAnalysisReceived", false);
+        } catch (HttpStatusCodeException ex) {
+            applyAiServiceHttpFailure(fallbackResponse, ex);
+            log.warn("[AI-Bridge] AI frame analysis degraded for attemptId={}, statusCode={}, aiStatus={}",
+                    request.getAttemptId(), ex.getStatusCode().value(), fallbackResponse.get("status"));
+            Map<String, Object> unavailableAck = safePublishCameraFrame(request, fallbackResponse, "ai_degraded");
+            mergeFrameAck(fallbackResponse, unavailableAck != null ? unavailableAck : initialAck);
+            return fallbackResponse;
+        } catch (ResourceAccessException ex) {
+            applyAiServiceUnavailable(fallbackResponse, "AI service timeout or connection error.");
             log.warn("[AI-Bridge] AI frame analysis unavailable for attemptId={}: {}",
                     request.getAttemptId(), fallbackResponse.get("message"));
+            Map<String, Object> unavailableAck = safePublishCameraFrame(request, fallbackResponse, "ai_unavailable");
+            mergeFrameAck(fallbackResponse, unavailableAck != null ? unavailableAck : initialAck);
+            return fallbackResponse;
+        } catch (Exception ex) {
+            applyAiServiceUnavailable(fallbackResponse, "AI service frame analysis failed.");
+            log.warn("[AI-Bridge] AI frame analysis failed for attemptId={}: {}",
+                    request.getAttemptId(), ex.getMessage());
             Map<String, Object> unavailableAck = safePublishCameraFrame(request, fallbackResponse, "ai_unavailable");
             mergeFrameAck(fallbackResponse, unavailableAck != null ? unavailableAck : initialAck);
             return fallbackResponse;
@@ -257,6 +281,10 @@ public class AiAssistService {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(request.getAttemptId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         ensureIdentityAccess(attempt, actor);
+        ensureIdentityEnabledForAttempt(attempt);
+        if (attempt.getStatus() != AttemptStatus.WAITING) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Initial identity verification is only available before the exam starts");
+        }
         if (request.getStudentId() != null && attempt.getStudent() != null
                 && !request.getStudentId().equals(attempt.getStudent().getId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Student does not match attempt");
@@ -276,13 +304,15 @@ public class AiAssistService {
         }
         response = normalizeIdentityVerificationResponse(response);
 
-        Map<String, Object> evidenceRefs = storeIdentityEvidence(request);
+        Map<String, Object> evidenceRefs = storeIdentityEvidence(request, response);
         StudentIdentityCheck check = persistIdentityCheck(attempt, request, response, evidenceRefs);
         response.put("identityCheckId", check.getId());
         response.put("attemptId", attempt.getId());
         response.put("studentId", attempt.getStudent() != null ? attempt.getStudent().getId() : null);
         response.put("evidenceRefs", evidenceRefs);
+        attachEntryStatus(response, attempt, actor);
 
+        maybePublishIdentityReviewAlert(attempt, check, evidenceRefs);
         safeBridgeAiSignals(attempt.getId(), response, "identity");
         return response;
     }
@@ -292,18 +322,30 @@ public class AiAssistService {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(request.getAttemptId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         ensureIdentityAccess(attempt, actor);
+        ensurePeriodicIdentityEnabledForAttempt(attempt);
         if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Identity recheck is only available for in-progress attempts");
         }
 
-        Map<String, Object> frameResponse = analyzeFrame(request);
+        Map<String, Object> frameResponse;
+        String referenceFaceBase64 = loadLatestSelfieReference(attempt);
+        if (!enabled) {
+            frameResponse = buildIdentityFallbackResponse("NEEDS_REVIEW", "AI service unavailable");
+        } else if (referenceFaceBase64 == null || referenceFaceBase64.isBlank()) {
+            frameResponse = buildIdentityFallbackResponse("NEEDS_REVIEW", "Missing selfie reference");
+        } else {
+            try {
+                frameResponse = postCameraJson("/identity/recheck", buildIdentityRecheckPayload(request, attempt, referenceFaceBase64));
+            } catch (Exception ex) {
+                log.warn("[AI-Bridge] identity recheck unavailable for attemptId={}: {}",
+                        request.getAttemptId(), ex.getMessage());
+                frameResponse = buildIdentityFallbackResponse("NEEDS_REVIEW", "AI service unavailable");
+            }
+        }
+        frameResponse = normalizeIdentityVerificationResponse(frameResponse);
         String status = derivePeriodicIdentityStatus(frameResponse);
         String reason = derivePeriodicIdentityReason(frameResponse);
-        Map<String, Object> evidenceRefs = Map.of(
-                "frameId", request.getFrameId() == null ? "" : request.getFrameId(),
-                "capturedAt", request.getCapturedAt() == null ? "" : request.getCapturedAt(),
-                "source", "IN_EXAM_RECHECK"
-        );
+        Map<String, Object> evidenceRefs = storeIdentityRecheckEvidence(request);
         StudentIdentityCheck check = persistPeriodicIdentityCheck(attempt, status, frameResponse, evidenceRefs, reason);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("available", true);
@@ -314,9 +356,16 @@ public class AiAssistService {
         response.put("confidence", check.getConfidence());
         response.put("checkType", check.getCheckType());
         response.put("source", check.getSource());
+        response.put("reviewStatus", check.getReviewStatus());
         response.put("reviewReason", reason);
+        response.put("evidenceRefs", evidenceRefs);
         response.put("frameAnalysis", frameResponse);
+        response.put("faceMatch", asMap(firstPresent(frameResponse, "face_match", "faceMatch")));
+        response.put("signals", frameResponse.getOrDefault("signals", List.of()));
         response.put("createdAt", check.getCreatedAt());
+        attachEntryStatus(response, attempt, actor);
+        recordIdentityRecheckWarning(attempt, request, frameResponse);
+        maybePublishIdentityReviewAlert(attempt, check, evidenceRefs);
         safeBridgeAiSignals(attempt.getId(), response, "identity_recheck");
         return response;
     }
@@ -367,6 +416,9 @@ public class AiAssistService {
         response.putIfAbsent("document_ocr", documentOcr);
         response.putIfAbsent("faceMatch", faceMatch);
         response.putIfAbsent("face_match", faceMatch);
+        Map<String, Object> documentFaceCrop = asMap(firstPresent(response, "documentFaceCrop", "document_face_crop"));
+        response.putIfAbsent("documentFaceCrop", documentFaceCrop);
+        response.putIfAbsent("document_face_crop", documentFaceCrop);
         response.putIfAbsent("liveness", asMap(firstPresent(response, "liveness")));
         return response;
     }
@@ -379,14 +431,113 @@ public class AiAssistService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         ensureIdentityAccess(attempt, actor);
         return studentIdentityCheckRepository.findTopByAttemptIdOrderByCreatedAtDesc(attemptId)
-                .map(this::toIdentityCheckResponse)
+                .map(check -> {
+                    Map<String, Object> response = toIdentityCheckResponse(check);
+                    attachEntryStatus(response, attempt, actor);
+                    return response;
+                })
                 .orElseGet(() -> {
                     Map<String, Object> empty = new LinkedHashMap<>();
                     empty.put("attemptId", attemptId);
                     empty.put("verificationStatus", "NOT_CHECKED");
                     empty.put("available", false);
+                    attachEntryStatus(empty, attempt, actor);
                     return empty;
                 });
+    }
+
+    public List<Map<String, Object>> getIdentityCheckHistory(Long attemptId, User actor) {
+        if (attemptId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing attempt id");
+        }
+        ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        ensureIdentityAccess(attempt, actor);
+        return studentIdentityCheckRepository.findByAttemptIdOrderByCreatedAtDesc(attemptId)
+                .stream()
+                .map(this::toIdentityCheckResponse)
+                .toList();
+    }
+
+    @Transactional
+    public Map<String, Object> reviewIdentityCheck(Long checkId, String status, String reason, User actor) {
+        if (checkId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing identity check id");
+        }
+        StudentIdentityCheck check = studentIdentityCheckRepository.findById(checkId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Identity check not found"));
+        ensureIdentityAccess(check.getAttempt(), actor);
+        boolean canReview = actor.getRoles().stream().anyMatch(role ->
+                role.getName() == RoleName.ADMIN || role.getName() == RoleName.TEACHER);
+        if (!canReview) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Only proctors can review identity checks");
+        }
+        String normalized = status == null || status.isBlank() ? "NEEDS_REVIEW" : status.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("VERIFIED", "NEEDS_REVIEW", "REJECTED").contains(normalized)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported identity review status");
+        }
+        check.setStatus(normalized);
+        check.setReviewStatus(manualReviewStatusForIdentityStatus(normalized));
+        check.setReviewedBy(actor);
+        check.setReviewedAt(VietNamTime.now());
+        check.setReviewReason(reason == null || reason.isBlank() ? "Manual proctor review" : reason.trim());
+        StudentIdentityCheck saved = studentIdentityCheckRepository.save(check);
+        publishIdentityReviewUpdated(saved);
+        Map<String, Object> response = toIdentityCheckResponse(saved);
+        attachEntryStatus(response, saved.getAttempt(), actor);
+        return response;
+    }
+
+    private void publishIdentityReviewUpdated(StudentIdentityCheck check) {
+        if (check == null || check.getAttempt() == null || check.getAttempt().getExam() == null) {
+            return;
+        }
+        ExamAttempt attempt = check.getAttempt();
+        User student = attempt.getStudent();
+        teacherAlertGateway.publishIdentityReviewUpdated(
+                attempt.getExam().getId(),
+                attempt.getId(),
+                student != null ? student.getUsername() : null,
+                student != null && student.getFullName() != null ? student.getFullName() : (student != null ? student.getUsername() : null),
+                check.getId(),
+                check.getStatus(),
+                check.getReviewStatus(),
+                check.getReviewReason(),
+                check.getConfidence()
+        );
+    }
+
+    private void attachEntryStatus(Map<String, Object> response, ExamAttempt attempt, User actor) {
+        if (response == null || attempt == null || attempt.getId() == null || actor == null) {
+            return;
+        }
+        try {
+            response.put("entryStatus", submissionService.getEntryStatus(attempt.getId(), actor));
+        } catch (Exception ex) {
+            log.debug("[AI-Bridge] Could not attach entry status for attemptId={}: {}", attempt.getId(), ex.getMessage());
+        }
+    }
+
+    private String reviewStatusForIdentityStatus(String identityStatus) {
+        String normalized = identityStatus == null ? "" : identityStatus.trim().toUpperCase(Locale.ROOT);
+        if ("VERIFIED".equals(normalized)) {
+            return "AUTO_VERIFIED";
+        }
+        if ("REJECTED".equals(normalized)) {
+            return "REJECTED";
+        }
+        return "NEEDS_REVIEW";
+    }
+
+    private String manualReviewStatusForIdentityStatus(String identityStatus) {
+        String normalized = identityStatus == null ? "" : identityStatus.trim().toUpperCase(Locale.ROOT);
+        if ("VERIFIED".equals(normalized)) {
+            return "CONFIRMED";
+        }
+        if ("REJECTED".equals(normalized)) {
+            return "REJECTED";
+        }
+        return "NEEDS_REVIEW";
     }
 
     private Map<String, Object> buildFramePayload(FrameAnalysisRequest request) {
@@ -402,6 +553,43 @@ public class AiAssistService {
         return payload;
     }
 
+    private void ensureIdentityEnabledForAttempt(ExamAttempt attempt) {
+        if (attempt != null && attempt.getExam() != null && Boolean.TRUE.equals(attempt.getExam().getPractice())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Identity verification is disabled for practice exams");
+        }
+        if (attempt == null || attempt.getExam() == null || !identityVerificationRequired(attempt)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Identity verification is disabled for this exam");
+        }
+    }
+
+    private void ensurePeriodicIdentityEnabledForAttempt(ExamAttempt attempt) {
+        ensureIdentityEnabledForAttempt(attempt);
+        if (!inExamIdentityCheckEnabled(attempt)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Periodic identity recheck is disabled for this exam");
+        }
+    }
+
+    private boolean identityVerificationRequired(ExamAttempt attempt) {
+        if (attempt == null || attempt.getExam() == null || Boolean.TRUE.equals(attempt.getExam().getPractice())) {
+            return false;
+        }
+        if (attempt.getExam().getRequireIdentityVerification() != null) {
+            return Boolean.TRUE.equals(attempt.getExam().getRequireIdentityVerification());
+        }
+        return Boolean.TRUE.equals(attempt.getExam().getRequireCameraMic())
+                || Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring());
+    }
+
+    private boolean inExamIdentityCheckEnabled(ExamAttempt attempt) {
+        if (!identityVerificationRequired(attempt)) {
+            return false;
+        }
+        if (attempt.getExam().getInExamIdentityCheckEnabled() != null) {
+            return Boolean.TRUE.equals(attempt.getExam().getInExamIdentityCheckEnabled());
+        }
+        return true;
+    }
+
     private Map<String, Object> buildIdentityPayload(IdentityVerifyRequest request, ExamAttempt attempt) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("attempt_id", request.getAttemptId());
@@ -413,6 +601,66 @@ public class AiAssistService {
         payload.put("metadata", request.getMetadata() == null ? Map.of() : request.getMetadata());
         payload.put("expected", buildExpectedIdentity(attempt));
         return payload;
+    }
+
+    private Map<String, Object> buildIdentityRecheckPayload(
+            FrameAnalysisRequest request,
+            ExamAttempt attempt,
+            String referenceFaceBase64
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("attempt_id", request.getAttemptId());
+        payload.put("student_id", attempt.getStudent() != null ? attempt.getStudent().getId() : request.getStudentId());
+        payload.put("image_base64", request.getImageBase64());
+        payload.put("reference_face_base64", referenceFaceBase64);
+        payload.put("captured_at", request.getCapturedAt());
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        if (request.getMetadata() != null) {
+            metadata.putAll(request.getMetadata());
+        }
+        metadata.put("checkType", "PERIODIC");
+        metadata.put("referenceSource", "IDENTITY_SELFIE");
+        payload.put("metadata", metadata);
+        return payload;
+    }
+
+    private String loadLatestSelfieReference(ExamAttempt attempt) {
+        if (attempt == null || attempt.getId() == null) {
+            return null;
+        }
+        List<StudentIdentityCheck> checks = studentIdentityCheckRepository.findByAttemptIdOrderByCreatedAtDesc(attempt.getId());
+        StudentIdentityCheck latestInitial = (checks == null ? List.<StudentIdentityCheck>of() : checks)
+                .stream()
+                .filter(check -> "INITIAL".equalsIgnoreCase(check.getCheckType()))
+                .findFirst()
+                .orElse(null);
+        if (latestInitial == null) {
+            return null;
+        }
+        Map<String, Object> evidenceRefs = readJsonObject(latestInitial.getEvidenceRefsJson());
+        Map<String, Object> selfieRef = asMap(firstPresent(evidenceRefs, "selfie"));
+        String selfieFileName = firstString(selfieRef, "fileName", "file_name");
+        if (selfieFileName != null && !selfieFileName.isBlank()) {
+            try {
+                return proctorEvidenceImageService.loadEvidenceImageDataUrl(attempt.getId(), selfieFileName);
+            } catch (Exception ex) {
+                log.warn("[AI-Bridge] Failed to load selfie reference for attemptId={}: {}",
+                        attempt.getId(), ex.getMessage());
+            }
+        }
+
+        Map<String, Object> cropRef = asMap(firstPresent(evidenceRefs, "documentFaceCrop", "document_face_crop"));
+        String fileName = firstString(cropRef, "fileName", "file_name");
+        if (fileName == null || fileName.isBlank()) {
+            return null;
+        }
+        try {
+            return proctorEvidenceImageService.loadEvidenceImageDataUrl(attempt.getId(), fileName);
+        } catch (Exception ex) {
+            log.warn("[AI-Bridge] Failed to load fallback document face reference for attemptId={}: {}",
+                    attempt.getId(), ex.getMessage());
+            return null;
+        }
     }
 
     private Map<String, Object> buildExpectedIdentity(ExamAttempt attempt) {
@@ -433,6 +681,7 @@ public class AiAssistService {
             if (profile.getFullName() != null) expected.put("fullName", profile.getFullName());
             if (profile.getDisplayName() != null) expected.put("displayName", profile.getDisplayName());
             if (profile.getDateOfBirth() != null) expected.put("dateOfBirth", profile.getDateOfBirth().toString());
+            if (profile.getCitizenId() != null) expected.put("citizenId", profile.getCitizenId());
             if (profile.getEmail() != null) expected.put("profileEmail", profile.getEmail());
             if (profile.getAvatarUrl() != null) expected.put("avatarUrl", profile.getAvatarUrl());
         }
@@ -456,22 +705,33 @@ public class AiAssistService {
         response.put("mismatchedFields", Map.of());
         response.put("document_ocr", Map.of("text", "", "fields", Map.of(), "confidence", 0.0d));
         response.put("documentOcr", response.get("document_ocr"));
-        response.put("face_match", Map.of("available", false, "matched", false, "confidence", 0.0d, "reason", reason));
+        Map<String, Object> faceMatch = new LinkedHashMap<>();
+        faceMatch.put("available", false);
+        faceMatch.put("matched", false);
+        faceMatch.put("confidence", 0.0d);
+        faceMatch.put("reason", reason);
+        response.put("face_match", faceMatch);
         response.put("faceMatch", response.get("face_match"));
         response.put("liveness", Map.of("passed", false, "score", 0.0d));
         response.put("review_reason", reason);
         response.put("reviewReason", reason);
+        Map<String, Object> fallbackEvidence = new LinkedHashMap<>();
+        fallbackEvidence.put("reason", reason);
+        fallbackEvidence.put("source", "identity_verification_fallback");
         response.put("signals", List.of(buildSignalMap(
                 "IDENTITY_REVIEW_REQUIRED",
                 SignalSeverity.MEDIUM,
                 0.68d,
-                Map.of("reason", reason, "source", "identity_verification_fallback")
+                fallbackEvidence
         )));
-        response.put("diagnostics", Map.of("aiServiceEnabled", enabled, "baseUrl", baseUrl));
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("aiServiceEnabled", enabled);
+        diagnostics.put("baseUrl", baseUrl);
+        response.put("diagnostics", diagnostics);
         return response;
     }
 
-    private Map<String, Object> storeIdentityEvidence(IdentityVerifyRequest request) {
+    private Map<String, Object> storeIdentityEvidence(IdentityVerifyRequest request, Map<String, Object> response) {
         Map<String, Object> evidenceRefs = new LinkedHashMap<>();
         try {
             StoredEvidenceImage document = proctorEvidenceImageService.storeFrameImage(
@@ -497,6 +757,47 @@ public class AiAssistService {
             log.warn("[AI-Bridge] Failed to store identity selfie evidence for attemptId={}: {}",
                     request.getAttemptId(), ex.getMessage());
         }
+        Map<String, Object> documentFaceCrop = asMap(firstPresent(response, "documentFaceCrop", "document_face_crop"));
+        String cropBase64 = firstString(documentFaceCrop, "imageBase64", "image_base64");
+        if (cropBase64 != null && !cropBase64.isBlank()) {
+            try {
+                StoredEvidenceImage crop = proctorEvidenceImageService.storeFrameImage(
+                        request.getAttemptId(),
+                        "identity-document-face",
+                        "IDENTITY_DOCUMENT_FACE",
+                        cropBase64
+                );
+                Map<String, Object> cropRef = evidenceImageRef(crop);
+                cropRef.put("box", firstPresent(documentFaceCrop, "box"));
+                cropRef.put("confidence", firstPresent(documentFaceCrop, "confidence"));
+                cropRef.put("quality", firstPresent(documentFaceCrop, "quality"));
+                cropRef.put("method", firstPresent(documentFaceCrop, "method"));
+                evidenceRefs.put("documentFaceCrop", cropRef);
+            } catch (Exception ex) {
+                log.warn("[AI-Bridge] Failed to store document face crop evidence for attemptId={}: {}",
+                        request.getAttemptId(), ex.getMessage());
+            }
+        }
+        return evidenceRefs;
+    }
+
+    private Map<String, Object> storeIdentityRecheckEvidence(FrameAnalysisRequest request) {
+        Map<String, Object> evidenceRefs = new LinkedHashMap<>();
+        evidenceRefs.put("frameId", request.getFrameId() == null ? "" : request.getFrameId());
+        evidenceRefs.put("capturedAt", request.getCapturedAt() == null ? "" : request.getCapturedAt());
+        evidenceRefs.put("source", "IN_EXAM_RECHECK");
+        try {
+            StoredEvidenceImage frame = proctorEvidenceImageService.storeFrameImage(
+                    request.getAttemptId(),
+                    request.getFrameId() == null || request.getFrameId().isBlank() ? "identity-recheck" : request.getFrameId(),
+                    "IDENTITY_RECHECK",
+                    request.getImageBase64()
+            );
+            evidenceRefs.put("frame", evidenceImageRef(frame));
+        } catch (Exception ex) {
+            log.warn("[AI-Bridge] Failed to store identity recheck evidence for attemptId={}: {}",
+                    request.getAttemptId(), ex.getMessage());
+        }
         return evidenceRefs;
     }
 
@@ -509,7 +810,7 @@ public class AiAssistService {
         ref.put("fileName", image.fileName());
         ref.put("contentType", image.contentType());
         ref.put("sizeBytes", image.sizeBytes());
-        ref.put("storedAt", image.storedAt());
+        ref.put("storedAt", image.storedAt() != null ? image.storedAt().toString() : null);
         return ref;
     }
 
@@ -544,7 +845,7 @@ public class AiAssistService {
                 .faceMatchJson(writeJson(asMap(firstPresent(response, "face_match", "faceMatch"))))
                 .livenessJson(writeJson(asMap(firstPresent(response, "liveness"))))
                 .evidenceRefsJson(writeJson(evidenceRefs))
-                .reviewStatus("VERIFIED".equalsIgnoreCase(status) ? "NONE" : "OPEN")
+                .reviewStatus(reviewStatusForIdentityStatus(status))
                 .reviewReason(firstString(response, "review_reason", "reviewReason"))
                 .createdAt(VietNamTime.now())
                 .build();
@@ -573,7 +874,7 @@ public class AiAssistService {
                 .faceMatchJson(writeJson(asMap(firstPresent(frameResponse, "face", "faceMatch", "face_match"))))
                 .livenessJson(writeJson(asMap(firstPresent(frameResponse, "liveness"))))
                 .evidenceRefsJson(writeJson(evidenceRefs))
-                .reviewStatus("VERIFIED".equalsIgnoreCase(status) ? "NONE" : "OPEN")
+                .reviewStatus(reviewStatusForIdentityStatus(status))
                 .reviewReason(reason)
                 .createdAt(VietNamTime.now())
                 .build();
@@ -599,9 +900,53 @@ public class AiAssistService {
         response.put("evidenceRefs", readJsonObject(check.getEvidenceRefsJson()));
         response.put("reviewStatus", check.getReviewStatus());
         response.put("reviewReason", check.getReviewReason());
+        response.put("reviewedById", check.getReviewedBy() != null ? check.getReviewedBy().getId() : null);
+        response.put("reviewedByName", check.getReviewedBy() != null
+                ? (check.getReviewedBy().getFullName() != null
+                        ? check.getReviewedBy().getFullName()
+                        : check.getReviewedBy().getUsername())
+                : null);
         response.put("reviewedAt", check.getReviewedAt());
         response.put("createdAt", check.getCreatedAt());
         return response;
+    }
+
+    private void maybePublishIdentityReviewAlert(
+            ExamAttempt attempt,
+            StudentIdentityCheck check,
+            Map<String, Object> evidenceRefs
+    ) {
+        if (attempt == null || attempt.getExam() == null || check == null) {
+            return;
+        }
+        String status = check.getStatus() == null ? "" : check.getStatus().trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("NEEDS_REVIEW", "REJECTED").contains(status)) {
+            return;
+        }
+        User student = attempt.getStudent();
+        String username = student != null ? student.getUsername() : null;
+        String displayName = student != null && student.getFullName() != null && !student.getFullName().isBlank()
+                ? student.getFullName()
+                : username;
+        String reason = check.getReviewReason();
+        if (reason == null || reason.isBlank()) {
+            reason = "REJECTED".equals(status)
+                    ? "Danh tính không đạt, cần giám thị xử lý"
+                    : "Danh tính cần giám thị kiểm tra";
+        }
+        teacherAlertGateway.publishIdentityReviewRequired(
+                attempt.getExam().getId(),
+                attempt.getId(),
+                username,
+                displayName,
+                check.getId(),
+                status,
+                check.getReviewStatus(),
+                reason,
+                check.getConfidence(),
+                "REJECTED".equals(status) ? "HIGH" : "MEDIUM",
+                evidenceRefs == null ? Map.of() : evidenceRefs
+        );
     }
 
     private Map<String, Object> buildBehaviorPayload(BehaviorAnalysisRequest request) {
@@ -671,20 +1016,67 @@ public class AiAssistService {
         response.put("backendAnalysisReceived", false);
         response.put("signals", List.of());
         response.put("warnings", List.of());
-        response.put("diagnostics", Map.of(
-                "aiServiceEnabled", enabled,
-                "baseUrl", baseUrl,
-                "cameraFrameMaxBase64Chars", cameraFrameMaxBase64Chars,
-                "cameraWarningDedupSeconds", cameraWarningDedupSeconds,
-                "cameraSignalDedupSeconds", cameraSignalDedupSeconds,
-                "deriveCameraWarningsFromMetrics", deriveCameraWarningsFromMetrics,
-                "brightnessThresholds", Map.of(
-                        "veryLowLight", cameraVeryLowLightBrightnessThreshold,
-                        "lowLight", cameraLowLightBrightnessThreshold,
-                        "overexposed", cameraOverexposedBrightnessThreshold
-                )
-        ));
+        Map<String, Object> brightnessThresholds = new LinkedHashMap<>();
+        brightnessThresholds.put("veryLowLight", cameraVeryLowLightBrightnessThreshold);
+        brightnessThresholds.put("lowLight", cameraLowLightBrightnessThreshold);
+        brightnessThresholds.put("overexposed", cameraOverexposedBrightnessThreshold);
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("aiServiceEnabled", enabled);
+        diagnostics.put("baseUrl", baseUrl);
+        diagnostics.put("cameraFrameMaxBase64Chars", cameraFrameMaxBase64Chars);
+        diagnostics.put("cameraWarningDedupSeconds", cameraWarningDedupSeconds);
+        diagnostics.put("cameraSignalDedupSeconds", cameraSignalDedupSeconds);
+        diagnostics.put("deriveCameraWarningsFromMetrics", deriveCameraWarningsFromMetrics);
+        diagnostics.put("brightnessThresholds", brightnessThresholds);
+        response.put("diagnostics", diagnostics);
         return response;
+    }
+
+    private void applyAiServiceHttpFailure(Map<String, Object> response, HttpStatusCodeException ex) {
+        int statusCode = ex.getStatusCode().value();
+        if (statusCode == 429 || statusCode == 503) {
+            response.put("status", "AI_BUSY");
+            response.put("message", "AI service is busy. Frame was accepted by backend.");
+        } else {
+            response.put("status", "AI_UNAVAILABLE");
+            response.put("message", "AI service returned an error. Frame was accepted by backend.");
+        }
+        response.put("backendAnalysisReceived", false);
+        response.put("signals", List.of());
+        response.put("warnings", List.of());
+        Map<String, Object> errorPayload = parseAiServiceErrorPayload(ex.getResponseBodyAsString());
+        Object retryAfterMs = firstPresent(errorPayload, "retryAfterMs", "retry_after_ms");
+        if (retryAfterMs != null) {
+            response.put("retryAfterMs", retryAfterMs);
+        }
+        Map<String, Object> diagnostics = asMap(response.get("diagnostics"));
+        diagnostics.put("aiServiceHttpStatus", statusCode);
+        diagnostics.put("degradedReason", response.get("status"));
+        diagnostics.put("aiServiceError", firstPresent(errorPayload, "error", "status"));
+        response.put("diagnostics", diagnostics);
+    }
+
+    private void applyAiServiceUnavailable(Map<String, Object> response, String message) {
+        response.put("status", "AI_UNAVAILABLE");
+        response.put("message", message);
+        response.put("backendAnalysisReceived", false);
+        response.put("signals", List.of());
+        response.put("warnings", List.of());
+        Map<String, Object> diagnostics = asMap(response.get("diagnostics"));
+        diagnostics.put("degradedReason", "AI_UNAVAILABLE");
+        response.put("diagnostics", diagnostics);
+    }
+
+    private Map<String, Object> parseAiServiceErrorPayload(String rawBody) {
+        if (rawBody == null || rawBody.isBlank()) {
+            return Map.of();
+        }
+        try {
+            Map<?, ?> parsed = objectMapper.readValue(rawBody, Map.class);
+            return new LinkedHashMap<>((Map<String, Object>) parsed);
+        } catch (Exception ignored) {
+            return Map.of();
+        }
     }
 
     private Map<String, Object> safePublishCameraFrame(FrameAnalysisRequest request, Map<String, Object> response, String source) {
@@ -704,31 +1096,44 @@ public class AiAssistService {
 
         if (!enabled) {
             summary.put("status", "DISABLED");
+            summary.put("ready", false);
             summary.put("message", "AI service đang tắt trong cấu hình backend.");
             return summary;
         }
 
         try {
-            RestTemplate restTemplate = buildRestTemplate();
-            ResponseEntity<Map> response = restTemplate.exchange(baseUrl + "/health", HttpMethod.GET, HttpEntity.EMPTY, Map.class);
-            String status = response.getBody() != null && response.getBody().get("status") != null
-                    ? String.valueOf(response.getBody().get("status"))
+            RestTemplate restTemplate = getDefaultRestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            addAiServiceApiKey(headers);
+            ResponseEntity<Map> response = restTemplate.exchange(baseUrl + "/ready", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            Map<?, ?> body = response.getBody() == null ? Map.of() : response.getBody();
+            String status = body.get("status") != null
+                    ? String.valueOf(body.get("status"))
                     : (response.getStatusCode().is2xxSuccessful() ? "UP" : "DOWN");
             summary.put("status", status);
+            summary.put("ready", Boolean.TRUE.equals(body.get("ready")));
+            summary.put("services", body.containsKey("services") ? body.get("services") : Map.of());
+            summary.put("version", body.get("version"));
             summary.put("message", "UP".equalsIgnoreCase(status)
                     ? "AI service sẵn sàng cho OCR và proctoring."
                     : "AI service trả về trạng thái bất thường.");
         } catch (Exception ex) {
             summary.put("status", "DOWN");
-            summary.put("message", ex.getMessage() == null || ex.getMessage().isBlank()
-                    ? "Không thể kết nối AI service."
-                    : ex.getMessage());
+            summary.put("ready", false);
+            summary.put("message", "AI service health check failed.");
         }
         return summary;
     }
 
     private Map<String, Object> postJson(String path, Object payload) {
-        RestTemplate restTemplate = buildRestTemplate();
+        return postJson(path, payload, getDefaultRestTemplate());
+    }
+
+    private Map<String, Object> postCameraJson(String path, Object payload) {
+        return postJson(path, payload, getCameraRestTemplate());
+    }
+
+    private Map<String, Object> postJson(String path, Object payload, RestTemplate restTemplate) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         addAiServiceApiKey(headers);
@@ -738,7 +1143,7 @@ public class AiAssistService {
     }
 
     private Map<String, Object> postMultipart(String path, MultiValueMap<String, Object> body) {
-        RestTemplate restTemplate = buildRestTemplate();
+        RestTemplate restTemplate = getDefaultRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         addAiServiceApiKey(headers);
@@ -753,10 +1158,44 @@ public class AiAssistService {
         }
     }
 
-    private RestTemplate buildRestTemplate() {
+    private RestTemplate getDefaultRestTemplate() {
+        RestTemplate cached = defaultRestTemplate;
+        int safeTimeout = sanitizeTimeout(timeoutMs, 20_000);
+        if (cached == null || defaultRestTemplateTimeoutMs != safeTimeout) {
+            synchronized (this) {
+                if (defaultRestTemplate == null || defaultRestTemplateTimeoutMs != safeTimeout) {
+                    defaultRestTemplate = buildRestTemplate(safeTimeout);
+                    defaultRestTemplateTimeoutMs = safeTimeout;
+                }
+                cached = defaultRestTemplate;
+            }
+        }
+        return cached;
+    }
+
+    private RestTemplate getCameraRestTemplate() {
+        RestTemplate cached = cameraRestTemplate;
+        int safeTimeout = sanitizeTimeout(cameraTimeoutMs, 4_000);
+        if (cached == null || cameraRestTemplateTimeoutMs != safeTimeout) {
+            synchronized (this) {
+                if (cameraRestTemplate == null || cameraRestTemplateTimeoutMs != safeTimeout) {
+                    cameraRestTemplate = buildRestTemplate(safeTimeout);
+                    cameraRestTemplateTimeoutMs = safeTimeout;
+                }
+                cached = cameraRestTemplate;
+            }
+        }
+        return cached;
+    }
+
+    private int sanitizeTimeout(int configuredTimeoutMs, int fallbackTimeoutMs) {
+        return configuredTimeoutMs > 0 ? configuredTimeoutMs : fallbackTimeoutMs;
+    }
+
+    private RestTemplate buildRestTemplate(int requestTimeoutMs) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(timeoutMs);
-        requestFactory.setReadTimeout(timeoutMs);
+        requestFactory.setConnectTimeout(requestTimeoutMs);
+        requestFactory.setReadTimeout(requestTimeoutMs);
         return new RestTemplate(requestFactory);
     }
 
@@ -843,6 +1282,65 @@ public class AiAssistService {
         if (warningCount > 0) {
             response.put("bridgedWarningCount", warningCount);
         }
+    }
+
+    private void recordIdentityRecheckWarning(ExamAttempt attempt, FrameAnalysisRequest request, Map<String, Object> response) {
+        if (attempt == null || request == null || response == null) {
+            return;
+        }
+        List<?> signals = asList(response.get("signals"));
+        for (Object rawSignal : signals) {
+            if (!(rawSignal instanceof Map<?, ?> signalMap)) {
+                continue;
+            }
+            String signalType = normalizeSignalType(signalMap.get("signal_type"));
+            if (signalType == null) {
+                signalType = normalizeSignalType(signalMap.get("signalType"));
+            }
+            if ("IDENTITY_FACE_MISMATCH".equals(signalType)) {
+                recordIdentityFaceMismatchWarning(attempt, request, response, signalMap);
+                return;
+            }
+        }
+
+        Map<String, Object> faceMatch = asMap(firstPresent(response, "faceMatch", "face_match"));
+        Boolean matched = asBoolean(firstPresent(faceMatch, "matched"));
+        Boolean available = asBoolean(firstPresent(faceMatch, "available"));
+        if (Boolean.FALSE.equals(matched) && !Boolean.FALSE.equals(available)) {
+            recordIdentityFaceMismatchWarning(attempt, request, response, faceMatch);
+        }
+    }
+
+    private void recordIdentityFaceMismatchWarning(
+            ExamAttempt attempt,
+            FrameAnalysisRequest request,
+            Map<String, Object> response,
+            Map<?, ?> rawEvidence
+    ) {
+        String signalType = "IDENTITY_FACE_MISMATCH";
+        double confidence = normalizeConfidence(rawEvidence == null ? null : rawEvidence.get("confidence"), 0.86d);
+        SignalSeverity severity = parseSeverity(rawEvidence == null ? null : rawEvidence.get("severity"), SignalSeverity.HIGH);
+        Map<String, Object> evidence = buildAiEvidence("identity_recheck", signalType, rawEvidence, response);
+        evidence.put("reviewRequired", true);
+        evidence.put("frameId", request.getFrameId());
+        evidence.put("capturedAt", request.getCapturedAt());
+        evidence.put("referenceSource", "IDENTITY_SELFIE");
+        var descriptor = fraudSignalService.descriptorFor(signalType);
+        evidence.put("riskImpact", descriptor.riskImpact());
+        evidence.put("riskImpactSource", "identity_recheck");
+        fraudWarningService.recordWarningWithDedupWindow(
+                attempt.getExam(),
+                attempt,
+                FraudWarningCategory.VISUAL_IDENTITY,
+                signalType,
+                severity,
+                confidence,
+                descriptor.displayMessage(),
+                evidence,
+                "identity_recheck",
+                List.of(attempt.getId()),
+                Duration.ofSeconds(Math.max(cameraWarningDedupSeconds, 1L))
+        );
     }
 
     private List<Map<String, Object>> collectAiCameraWarningSignals(Map<String, Object> response) {
@@ -1148,6 +1646,10 @@ public class AiAssistService {
         Boolean eyeValid = asBoolean(firstPresent(response, "eye_valid", "eyeValid"));
         Boolean gazeValid = asBoolean(firstPresent(response, "gaze_valid", "gazeValid"));
         Boolean gazeOffScreen = asBoolean(firstPresent(response, "gaze_off_screen", "gazeOffScreen"));
+        String livenessStatus = asUpperCaseString(firstPresent(response, "liveness_status", "livenessStatus"));
+        Double livenessScore = asDouble(firstPresent(response, "liveness_score", "livenessScore"));
+        Object livenessEvidence = firstPresent(response, "liveness_evidence", "livenessEvidence");
+        Object temporalWindowMs = firstPresent(response, "temporal_window_ms", "temporalWindowMs");
 
         if (!deriveCameraWarningsFromMetrics) {
             return;
@@ -1192,6 +1694,26 @@ public class AiAssistService {
                     SignalSeverity.HIGH,
                     0.78d,
                     Map.of("derivedFromMetrics", true, "reason", "Looking away from screen")
+            ));
+        }
+
+        if ("SPOOF".equals(livenessStatus) && livenessScore != null && livenessScore < 0.45d) {
+            Map<String, Object> evidence = new LinkedHashMap<>();
+            evidence.put("derivedFromMetrics", true);
+            evidence.put("reason", "Low temporal liveness across camera frames");
+            evidence.put("livenessStatus", livenessStatus);
+            evidence.put("livenessScore", livenessScore);
+            if (livenessEvidence != null) {
+                evidence.put("livenessEvidence", livenessEvidence);
+            }
+            if (temporalWindowMs != null) {
+                evidence.put("temporalWindowMs", temporalWindowMs);
+            }
+            registerAiCameraSignal(signalsByType, buildSignalMap(
+                    "LOW_LIVENESS",
+                    SignalSeverity.HIGH,
+                    Math.max(0.72d, 1.0d - livenessScore),
+                    evidence
             ));
         }
 
@@ -1414,7 +1936,9 @@ public class AiAssistService {
         if (attempt == null) {
             return;
         }
-        if (!"identity".equalsIgnoreCase(source) && !Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring())) {
+        if (!"identity".equalsIgnoreCase(source)
+                && !"identity_recheck".equalsIgnoreCase(source)
+                && !Boolean.TRUE.equals(attempt.getExam().getEnableAiProctoring())) {
             return;
         }
 
@@ -1853,7 +2377,8 @@ public class AiAssistService {
             case "MULTIPLE_FACES", "FACE_SPOOFING_SUSPECTED", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE" ->
                     SignalSeverity.CRITICAL;
             case "NO_CAMERA", "NO_MIC", "FACE_NOT_DETECTED", "FACE_OBSTRUCTED_MASK", "VERY_LOW_LIGHTING", "VERY_BLURRY_FRAME",
-                    "FLAT_IMAGE", "SCREEN_DISPLAY", "GAZE_OFF_SCREEN" -> SignalSeverity.HIGH;
+                    "IDENTITY_FACE_MISMATCH",
+                    "FLAT_IMAGE", "SCREEN_DISPLAY", "LOW_LIVENESS", "GAZE_OFF_SCREEN" -> SignalSeverity.HIGH;
             case "EYES_OBSTRUCTED", "PARTIAL_FACE_VISIBLE", "FACE_TOO_FAR", "FACE_TURNED_AWAY",
                     "EYES_NOT_DETECTED", "LOW_LIGHTING", "EYE_BLINK_ANOMALY", "RAPID_EYE_MOVEMENT",
                     "AI_SPEAKING_DETECTED" ->
@@ -1873,7 +2398,7 @@ public class AiAssistService {
                     "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
                     "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                     "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
-                    "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                    "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS",
                     "AI_SPEAKING_DETECTED",
                     "FLAT_IMAGE", "SCREEN_DISPLAY" -> true;
             default -> false;

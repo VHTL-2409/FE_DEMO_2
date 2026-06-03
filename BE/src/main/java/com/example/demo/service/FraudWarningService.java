@@ -295,6 +295,10 @@ public class FraudWarningService {
         if (Set.of("DUPLICATE_IP", "IP_FINGERPRINT_GRAPH", "DEVICE_FINGERPRINT_CHANGED", "MULTIPLE_DEVICE_SESSION", "IP_CHANGED").contains(type)) {
             return FraudWarningCategory.IDENTITY_NETWORK;
         }
+        if ("VISUAL_IDENTITY".equalsIgnoreCase(signalCategory)
+                || Set.of("IDENTITY_FACE_MISMATCH", "LIVENESS_CHALLENGE_FAILED").contains(type)) {
+            return FraudWarningCategory.VISUAL_IDENTITY;
+        }
         if (Set.of(
                 "TAB_SWITCH", "WINDOW_BLUR", "EXIT_FULLSCREEN", "LONG_SCREEN_LEAVE",
                 "HEARTBEAT_STALE", "NETWORK_INSTABILITY", "SESSION_RECOVERY",
@@ -319,7 +323,7 @@ public class FraudWarningService {
                 "EYES_NOT_DETECTED", "VERY_LOW_LIGHTING", "LOW_LIGHTING",
                 "OVEREXPOSED_FRAME", "VERY_BLURRY_FRAME", "BLURRY_FRAME",
                 "EYE_BLINK_ANOMALY", "EYES_CLOSED_PROLONGED", "GAZE_OFF_SCREEN",
-                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE",
+                "RAPID_EYE_MOVEMENT", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS",
                 "FLAT_IMAGE", "SCREEN_DISPLAY", "AI_PHONE_DETECTED", "AI_SPEAKING_DETECTED"
         ).contains(canonical);
     }

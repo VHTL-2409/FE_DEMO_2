@@ -36,7 +36,7 @@ const props = defineProps({
 
 const titleClass = computed(() => {
   const map = {
-    sm: 'text-xl font-bold text-[var(--ds-text)] tracking-tight',
+    sm: 'text-xl font-bold text-[var(--ds-text)] tracking-normal',
     default: 'text-2xl font-bold text-[var(--ds-text)] tracking-normal sm:text-3xl',
     lg: 'text-3xl font-bold text-[var(--ds-text)] tracking-normal sm:text-4xl'
   }

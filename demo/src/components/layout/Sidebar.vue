@@ -146,7 +146,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const roleLabel = computed(() => {
-  const labels = { teacher: 'Giao vien', student: 'Hoc sinh', admin: 'Quan tri' }
+  const labels = { teacher: 'Giáo viên', student: 'Học sinh', admin: 'Quản trị' }
   return labels[props.role] || props.role
 })
 

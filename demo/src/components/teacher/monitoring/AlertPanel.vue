@@ -348,7 +348,7 @@ const alertTitle = (alert) => {
   if (type.includes('TAB') || type.includes('SWITCH')) return 'Chuyển tab'
   if (type.includes('CAMERA')) return 'Camera tắt'
   if (type.includes('MIC')) return 'Micro tắt'
-  if (type.includes('DEVTOOLS')) return 'Mở DevTools'
+  if (type.includes('DEVTOOLS')) return 'Mở công cụ phát triển'
   if (type.includes('COPY') || type.includes('PASTE')) return 'Copy/Paste'
   if (type.includes('FULLSCREEN') || type.includes('EXIT')) return 'Thoát toàn màn hình'
   if (type.includes('NETWORK') || type.includes('DISCONNECT')) return 'Mất kết nối'

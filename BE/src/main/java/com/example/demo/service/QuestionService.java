@@ -5,6 +5,7 @@ import com.example.demo.api.dto.question.QuestionResponse;
 import com.example.demo.api.dto.question.QuestionDifficultyItemDto;
 import com.example.demo.api.dto.question.QuestionDifficultySummaryResponse;
 import com.example.demo.common.ApiException;
+import com.example.demo.domain.entity.AttemptStatus;
 import com.example.demo.domain.entity.Exam;
 import com.example.demo.domain.entity.ExamAttempt;
 import com.example.demo.domain.entity.Question;
@@ -77,21 +78,27 @@ public class QuestionService {
     public List<QuestionResponse> listByExam(Exam exam, boolean includeCorrectAnswer, User actor, Long attemptId) {
         List<Question> questions = questionRepository.findByExam(exam);
 
-        if (!shouldShuffleForAttempt(exam, includeCorrectAnswer, attemptId)) {
+        if (includeCorrectAnswer) {
             return questions.stream()
-                    .map(question -> toResponse(question, includeCorrectAnswer))
+                    .map(question -> toResponse(question, true))
                     .toList();
         }
 
+        if (attemptId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "attemptId is required for student exam questions");
+        }
         ExamAttempt attempt = examAttemptRepository.findByIdAndStudent(attemptId, actor)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
         if (!attempt.getExam().getId().equals(exam.getId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt does not belong to this exam");
         }
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt is not in progress");
+        }
 
         List<Question> orderedQuestions = maybeShuffleQuestions(questions, exam, attempt.getId());
         return orderedQuestions.stream()
-                .map(question -> toAttemptResponse(question, exam, includeCorrectAnswer, attempt.getId()))
+                .map(question -> toAttemptResponse(question, exam, false, attempt.getId()))
                 .toList();
     }
 

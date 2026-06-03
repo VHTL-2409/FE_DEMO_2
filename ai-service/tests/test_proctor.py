@@ -141,6 +141,25 @@ class FixedEyeAnalyzer(ProctorAnalyzer):
         }
 
 
+class SpoofingAnalyzer(FixedEyeAnalyzer):
+    def __init__(self, spoof_type, confidence=0.86, method="test", details=None):
+        super().__init__()
+        self.spoof_type = spoof_type
+        self.spoof_confidence = confidence
+        self.spoof_method = method
+        self.spoof_details = details or {}
+
+    def _detect_spoofing_deep(self, rgb_array, gray, face_count, face_locations):
+        return {
+            "detected": True,
+            "type": self.spoof_type,
+            "confidence": self.spoof_confidence,
+            "dl_enhanced": False,
+            "method": self.spoof_method,
+            "details": self.spoof_details,
+        }
+
+
 class ProctorAnalyzerTests(unittest.TestCase):
     def test_black_frame_returns_no_face_signal(self):
         result = NoFaceAnalyzer().analyze_frame(image_to_base64((0, 0, 0)))
@@ -211,6 +230,71 @@ class ProctorAnalyzerTests(unittest.TestCase):
         self.assertTrue(any(signal["signal_type"] == "EYES_CLOSED_PROLONGED" for signal in result["signals"]))
         self.assertEqual(result["visual_overlay"]["status"], "EYES_CLOSED")
         self.assertEqual(result["visual_overlay"]["label"], "Mắt nhắm")
+
+    def test_static_face_sequence_flags_low_liveness(self):
+        analyzer = FixedEyeAnalyzer()
+        frame = image_to_base64((128, 128, 128), pattern=True)
+
+        result = None
+        for second in range(5):
+            result = analyzer.analyze_frame(frame, {"attempt_id": 901, "captured_at": f"2026-05-07T00:00:0{second}Z"})
+
+        self.assertEqual(result["liveness_status"], "SPOOF")
+        self.assertEqual(result["spoofing_label"], "LOW_LIVENESS")
+        self.assertTrue(any(signal["signal_type"] == "LOW_LIVENESS" for signal in result["signals"]))
+        self.assertGreaterEqual(result["temporal_window_ms"], 3500)
+
+    def test_blink_sequence_does_not_flag_low_liveness(self):
+        analyzer = FixedEyeAnalyzer()
+        frame = image_to_base64((128, 128, 128), pattern=True)
+        states = ["OPEN", "CLOSED", "OPEN", "OPEN", "OPEN"]
+
+        result = None
+        for second, state in enumerate(states):
+            analyzer.eye_state = state
+            result = analyzer.analyze_frame(frame, {"attempt_id": 902, "captured_at": f"2026-05-07T00:00:0{second}Z"})
+
+        self.assertNotEqual(result["spoofing_label"], "LOW_LIVENESS")
+        self.assertFalse(any(signal["signal_type"] == "LOW_LIVENESS" for signal in result["signals"]))
+
+    def test_spoofing_printed_photo_emits_specific_signal(self):
+        result = SpoofingAnalyzer("PRINTED_PHOTO").analyze_frame(image_to_base64((128, 128, 128), pattern=True))
+
+        signal_types = {signal["signal_type"] for signal in result["signals"]}
+        self.assertIn("PRINTED_PHOTO", signal_types)
+        self.assertEqual(result["spoofing_label"], "PRINTED_PHOTO")
+        self.assertEqual(result["liveness_status"], "SPOOF")
+
+    def test_spoofing_screen_replay_emits_specific_signal(self):
+        result = SpoofingAnalyzer("SCREEN_REPLAY").analyze_frame(image_to_base64((128, 128, 128), pattern=True))
+
+        signal_types = {signal["signal_type"] for signal in result["signals"]}
+        self.assertIn("SCREEN_REPLAY", signal_types)
+        self.assertEqual(result["spoofing_label"], "SCREEN_REPLAY")
+
+    def test_spoofing_flat_image_and_screen_display_are_not_collapsed_to_generic_signal(self):
+        for spoof_type in ("FLAT_IMAGE", "SCREEN_DISPLAY"):
+            with self.subTest(spoof_type=spoof_type):
+                result = SpoofingAnalyzer(spoof_type).analyze_frame(image_to_base64((128, 128, 128), pattern=True))
+                signal_types = {signal["signal_type"] for signal in result["signals"]}
+                self.assertIn(spoof_type, signal_types)
+                self.assertNotIn("FACE_SPOOFING_SUSPECTED", signal_types)
+
+    def test_spoofing_aliases_are_normalized_to_canonical_signals(self):
+        cases = {
+            "PHOTO_ATTACK": "PRINTED_PHOTO",
+            "VIDEO_REPLAY": "SCREEN_REPLAY",
+            "DISPLAY_ATTACK": "SCREEN_DISPLAY",
+            "FLAT_FACE": "FLAT_IMAGE",
+            "MODEL_SPOOF": "DEEPFAKE",
+        }
+
+        for raw_type, expected_type in cases.items():
+            with self.subTest(raw_type=raw_type):
+                result = SpoofingAnalyzer(raw_type).analyze_frame(image_to_base64((128, 128, 128), pattern=True))
+                signal_types = {signal["signal_type"] for signal in result["signals"]}
+                self.assertIn(expected_type, signal_types)
+                self.assertEqual(result["spoofing_label"], expected_type)
 
     def test_request_models_accept_camel_case_payloads(self):
         frame = FrameAnalysisRequest.model_validate({

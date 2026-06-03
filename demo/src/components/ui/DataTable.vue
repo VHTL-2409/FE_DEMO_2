@@ -57,7 +57,7 @@
               <slot name="empty">
                 <div class="flex flex-col items-center gap-2 text-center">
                   <LucideIcon name="inbox" size="36" />
-                  <p class="text-sm font-medium text-[var(--ds-text-muted)]">{{ emptyText }}</p>
+                  <p class="max-w-[32rem] text-sm font-medium text-[var(--ds-text-muted)]">{{ emptyText }}</p>
                 </div>
               </slot>
             </td>
@@ -69,7 +69,11 @@
             :key="rowKey ? (typeof rowKey === 'function' ? rowKey(row) : row[rowKey]) : index"
             class="transition-colors duration-150 hover:bg-[var(--ds-gray-50)]"
             :class="[onRowClick ? 'cursor-pointer' : '', selectedRows.includes(rowKey ? (typeof rowKey === 'function' ? rowKey(row) : row[rowKey]) : index) ? 'bg-[var(--ds-primary-soft)]' : '']"
-            @click="onRowClick && onRowClick(row)"
+            :tabindex="onRowClick ? 0 : undefined"
+            :role="onRowClick ? 'button' : undefined"
+            @click="activateRow(row)"
+            @keydown.enter.prevent="activateRow(row)"
+            @keydown.space.prevent="activateRow(row)"
           >
             <td v-if="selectable" class="px-4 py-3">
               <input
@@ -132,6 +136,12 @@ const allSelected = computed(() =>
 
 const getRowId = (row) =>
   typeof props.rowKey === 'function' ? props.rowKey(row) : row[props.rowKey]
+
+const activateRow = (row) => {
+  if (!props.onRowClick) return
+  props.onRowClick(row)
+  emit('row-click', row)
+}
 
 const toggleSelect = (row) => {
   const id = getRowId(row)

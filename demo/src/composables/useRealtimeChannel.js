@@ -1,4 +1,4 @@
-import { onUnmounted, ref } from 'vue'
+import { getCurrentInstance, onUnmounted, ref } from 'vue'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { API_BASE_URL } from '../services/apiClient'
@@ -158,9 +158,11 @@ export function useRealtimeChannel() {
     lastError.value = ''
   }
 
-  onUnmounted(() => {
-    disconnect()
-  })
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      disconnect()
+    })
+  }
 
   return {
     isConnected,

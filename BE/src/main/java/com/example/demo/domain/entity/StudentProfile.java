@@ -29,6 +29,9 @@ public class StudentProfile {
     @Column
     private java.time.LocalDate dateOfBirth;
 
+    @Column(name = "citizen_id", length = 20)
+    private String citizenId;
+
     @Column(length = 150)
     private String email;
 

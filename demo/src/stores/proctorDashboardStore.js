@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { normalizeSignalType } from '../utils/proctorSignalTypes'
+import { isCameraRelatedCategory, isCameraRelatedSignal, normalizeSignalCategory, normalizeSignalType } from '../utils/proctorSignalTypes'
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
 const resolveAttemptId = (card) => {
@@ -40,19 +40,18 @@ const EVENT_DEDUPE_WINDOW_MS = 5_000
 const makeEventKey = (event) =>
   `${event.attemptId || ''}:${event.type || event.eventType || ''}:${event.occurredAt || event.issuedAt || event.at || ''}`
 
-const CAMERA_ALERT_CATEGORIES = new Set(['CAMERA_PROCTORING', 'AI_CAMERA'])
-const CAMERA_ALERT_SIGNAL_TYPES = new Set(['AI_CAMERA_SIGNAL', 'AI_SPEAKING_DETECTED', 'NO_MIC'])
-
 const isCameraAlert = (alert = {}) => {
-  const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
+  const category = normalizeSignalCategory(alert.category || alert.warningCategory || alert.latestSignalCategory)
   const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
-  return CAMERA_ALERT_CATEGORIES.has(category) || CAMERA_ALERT_SIGNAL_TYPES.has(signalType)
+  return signalType === 'AI_CAMERA_SIGNAL'
+    || isCameraRelatedCategory(category)
+    || isCameraRelatedSignal(signalType)
 }
 
 const buildAlertKey = (alert = {}) => {
   const attemptId = alert.attemptId || ''
   const signalType = normalizeSignalType(alert.signalType || alert.warningType || alert.type)
-  const category = normalizeSignalType(alert.category || alert.warningCategory || alert.latestSignalCategory)
+  const category = normalizeSignalCategory(alert.category || alert.warningCategory || alert.latestSignalCategory)
   const relatedKey = Array.isArray(alert.relatedAttemptIds) ? alert.relatedAttemptIds.join(',') : ''
 
   if (isCameraAlert(alert)) {
@@ -432,7 +431,7 @@ export const useProctorDashboardStore = defineStore('proctorDashboard', () => {
 
   // ── Dev logging helper ─────────────────────────────────────────────────────
   const debugLog = (context, event) => {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
       const occurredAt = event.occurredAt || event.issuedAt || event.updatedAt
       const latencyMs = occurredAt ? Date.now() - new Date(occurredAt).getTime() : null
       console.debug(`[Realtime][${context}]`, {

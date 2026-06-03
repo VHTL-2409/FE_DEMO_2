@@ -33,6 +33,19 @@ export const createClass = async ({ name, description = '', subject = '' }) => {
   return unwrapApiData(payload)
 }
 
+export const createClassWithRoster = async ({ name, description = '', subject = '', file }) => {
+  const form = new FormData()
+  form.append('name', name)
+  if (description) form.append('description', description)
+  if (subject) form.append('subject', subject)
+  form.append('file', file)
+  const payload = await apiRequest('/api/teacher/classes/create-with-roster', {
+    method: 'POST',
+    body: form
+  })
+  return unwrapApiData(payload)
+}
+
 export const updateClass = async (classId, { name, description, subject }) => {
   const payload = await apiRequest(`/api/teacher/classes/${classId}`, {
     method: 'PUT',
