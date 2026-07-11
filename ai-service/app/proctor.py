@@ -100,8 +100,8 @@ class ProctorAnalyzer:
         self._gaze_required_ms = env_int("AI_SERVICE_GAZE_REQUIRED_MS", 2500)
         self._eye_closure_required_frames = env_int("AI_SERVICE_EYE_CLOSURE_REQUIRED_FRAMES", 2)
         self._eye_closure_required_ms = env_int("AI_SERVICE_EYE_CLOSURE_REQUIRED_MS", 2000)
-        self._liveness_required_frames = env_int("AI_SERVICE_LIVENESS_REQUIRED_FRAMES", 3)
-        self._liveness_required_ms = env_int("AI_SERVICE_LIVENESS_REQUIRED_MS", 2500)
+        self._liveness_required_frames = env_int("AI_SERVICE_LIVENESS_REQUIRED_FRAMES", 2)
+        self._liveness_required_ms = env_int("AI_SERVICE_LIVENESS_REQUIRED_MS", 1500)
 
         if cv2 is not None:
             self._init_haar_cascades()
@@ -261,15 +261,25 @@ class ProctorAnalyzer:
             self._landmark_error = "No landmark backend available"
 
     def _init_spoofing_detector(self) -> None:
-        """Initialize deep learning-based spoofing detector."""
-        # Try to load pre-trained spoofing model if available
+        """Initialize deep learning-based spoofing detector.
+
+        The primary DL model is MiniFASNetV2 ONNX, loaded via DeepfakeAnalyzer
+        (in _get_deepfake_analyzer). This method now checks for legacy TensorFlow
+        files only for backwards compatibility.
+        """
+        from .deepfake import _resolve_default_model_path
         base_dir = os.path.dirname(__file__)
+
+        onnx_path = _resolve_default_model_path()
+        if Path(onnx_path).is_file():
+            self._spoofing_dl = True
+            return
+
         spoofing_model_path = os.path.join(base_dir, "models", "antispoofing_model.json")
         spoofing_weights_path = os.path.join(base_dir, "models", "antispoofing_weights.h5")
 
         if os.path.exists(spoofing_model_path) and os.path.exists(spoofing_weights_path):
             try:
-                # Load deep learning model for anti-spoofing
                 self._spoofing_model = cv2.dnn.readNetFromTensorflow(spoofing_weights_path, spoofing_model_path)
                 self._spoofing_dl = True
             except Exception:
@@ -384,6 +394,7 @@ class ProctorAnalyzer:
         gaze_analysis.update(temporal_tracking.get("gaze_analysis", {}))
         stability = temporal_tracking.get("stability", {})
         deepfake_analyzer = self._get_deepfake_analyzer()
+        face_bbox = tuple(face_locations[0]) if face_count == 1 and face_locations else None
         deepfake_result = deepfake_analyzer.analyze(
             spoofing_result,
             face_count,
@@ -392,6 +403,7 @@ class ProctorAnalyzer:
             quality_gate,
             temporal_tracking.get("liveness", {}),
             self._extract_face_crop(rgb_array, face_locations),
+            face_bbox,
         )
 
         signals = []
@@ -1416,7 +1428,7 @@ class ProctorAnalyzer:
     # === Deep Learning-based Spoofing Detection ===
     def _detect_spoofing_deep(self, rgb_array: np.ndarray, gray: np.ndarray,
                               face_count: int, face_locations: list) -> dict:
-        """Deep learning-based anti-spoofing detection."""
+        """Deep learning-based anti-spoofing detection using MiniFASNetV2 ONNX model."""
         result = {
             "detected": False,
             "type": None,
@@ -1429,23 +1441,44 @@ class ProctorAnalyzer:
             return result
 
         try:
-            # Ưu tiên model DL nếu có, vì nó thường bắt được fake phức tạp hơn rule tay.
-            if self.spoofing_dl_ready() and face_locations:
-                dl_result = self._dl_spoofing_detection(rgb_array, face_locations[0])
-                if dl_result["detected"]:
-                    return dl_result
+            # Ưu tiên model DL MiniFASNetV2 nếu có.
+            deepfake_analyzer = self._get_deepfake_analyzer()
+            if deepfake_analyzer.model_ready and face_locations:
+                face_bbox = tuple(int(v) for v in face_locations[0])
+                model_result = deepfake_analyzer._run_model(rgb_array, face_bbox)
+                if model_result.get("used"):
+                    spoof_score = model_result.get("spoofScore", 0.0)
+                    predicted_class = model_result.get("predictedClass")
+                    threshold = deepfake_analyzer.spoof_threshold
+                    if spoof_score >= threshold:
+                        result["detected"] = True
+                        result["dl_enhanced"] = True
+                        result["method"] = "minifasnet_onnx"
+                        result["confidence"] = spoof_score
+                        if predicted_class == 1:
+                            result["type"] = "PRINTED_PHOTO"
+                        elif predicted_class == 2:
+                            result["type"] = "SCREEN_REPLAY"
+                        else:
+                            result["type"] = "MODEL_SPOOF"
+                        return result
+                    elif spoof_score >= 0.5:
+                        result["detected"] = True
+                        result["dl_enhanced"] = True
+                        result["method"] = "minifasnet_onnx"
+                        result["confidence"] = spoof_score
+                        result["type"] = "SPOOFING_SUSPECTED"
+                        return result
 
-            # Nếu không có DL hoặc DL không bắt được, dùng heuristic theo thống kê ảnh.
+            # Fallback: dùng heuristic thống kê ảnh.
             statistical_result = self._enhanced_statistical_spoofing(rgb_array, gray, face_locations)
             if statistical_result["detected"]:
                 return statistical_result
 
-            # Kiểm tra texture phẳng bất thường, hay gặp ở ảnh in / ảnh màn hình.
             texture_result = self._texture_based_spoofing(gray, face_locations)
             if texture_result["detected"]:
                 return texture_result
 
-            # Cuối cùng kiểm tra phân bố màu để bắt ảnh replay hoặc display.
             color_result = self._color_based_spoofing(rgb_array, face_locations)
             if color_result["detected"]:
                 return color_result
@@ -1456,42 +1489,31 @@ class ProctorAnalyzer:
         return result
 
     def _dl_spoofing_detection(self, rgb_array: np.ndarray, face_loc: tuple) -> dict:
-        """Use deep learning model for spoofing detection."""
-        x, y, w, h = face_loc
-        face_roi = rgb_array[y:y+h, x:x+w]
-
-        if face_roi.size == 0:
+        """Use MiniFASNetV2 ONNX model for spoofing detection."""
+        if face_loc is None or face_loc[2] == 0 or face_loc[3] == 0:
             return {"detected": False, "type": None, "confidence": 0.0, "dl_enhanced": True}
-
         try:
-            blob = cv2.dnn.blobFromImage(cv2.resize(face_roi, (64, 64)), 1.0, (64, 64), [104, 117, 123])
-            self._spoofing_model.setInput(blob)
-            predictions = self._spoofing_model.forward()
-
-            # Assuming binary classification: [real, fake]
-            fake_prob = float(predictions[0][1]) if predictions.shape[1] > 1 else 0.0
-
-            if fake_prob > 0.7:
-                return {
-                    "detected": True,
-                    "type": "DEEPFAKE",
-                    "confidence": round(fake_prob, 3),
-                    "dl_enhanced": True,
-                    "method": "cnn"
-                }
-            elif fake_prob > 0.5:
-                return {
-                    "detected": True,
-                    "type": "LIKELY_FAKE",
-                    "confidence": round(fake_prob, 3),
-                    "dl_enhanced": True,
-                    "method": "cnn"
-                }
-
+            analyzer = self._get_deepfake_analyzer()
+            if analyzer.model_ready:
+                face_bbox = tuple(int(v) for v in face_loc)
+                model_result = analyzer._run_model(rgb_array, face_bbox)
+                if model_result.get("used"):
+                    spoof_score = model_result.get("spoofScore", 0.0)
+                    predicted_class = model_result.get("predictedClass")
+                    if spoof_score >= 0.78:
+                        result = {"detected": True, "dl_enhanced": True, "method": "minifasnet_onnx", "confidence": spoof_score}
+                        if predicted_class == 1:
+                            result["type"] = "PRINTED_PHOTO"
+                        elif predicted_class == 2:
+                            result["type"] = "SCREEN_REPLAY"
+                        else:
+                            result["type"] = "MODEL_SPOOF"
+                        return result
+                    elif spoof_score >= 0.5:
+                        return {"detected": True, "type": "SPOOFING_SUSPECTED", "confidence": spoof_score, "dl_enhanced": True, "method": "minifasnet_onnx"}
+            return {"detected": False, "type": None, "confidence": 0.0, "dl_enhanced": True}
         except Exception:
-            pass
-
-        return {"detected": False, "type": None, "confidence": 0.0, "dl_enhanced": True}
+            return {"detected": False, "type": None, "confidence": 0.0, "dl_enhanced": True}
 
     def _enhanced_statistical_spoofing(self, rgb_array: np.ndarray, gray: np.ndarray,
                                        face_locations: list) -> dict:

@@ -13,10 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-/**
- * AI-powered question generation service.
- * Uses OpenAI API to generate multiple choice questions from topic or text.
- */
+
 @Service
 @RequiredArgsConstructor
 public class AiQuestionGeneratorService {
@@ -35,9 +32,8 @@ public class AiQuestionGeneratorService {
     @Value("${app.ai-service.timeout-ms:20000}")
     private int timeoutMs;
 
-    /**
-     * Generate questions from a topic using AI service.
-     */
+    
+
     public GenerateQuestionsResponse generateFromTopic(String topic, int count, String difficulty, String language) {
         if (!aiServiceEnabled) {
             return buildFallbackResponse("AI service is disabled in configuration");
@@ -58,9 +54,8 @@ public class AiQuestionGeneratorService {
         }
     }
 
-    /**
-     * Generate questions from existing text content using AI service.
-     */
+    
+
     public GenerateQuestionsResponse generateFromText(String text, int count, String difficulty, String language) {
         if (!aiServiceEnabled) {
             return buildFallbackResponse("AI service is disabled in configuration");

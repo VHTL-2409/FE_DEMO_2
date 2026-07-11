@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Response DTO for AI Camera Alerts.
- */
+
 @Data
 @Builder
 @NoArgsConstructor

@@ -26,29 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * CSV Question Parser.
- *
- * <p>Accepts {@link MultipartFile} CSV, parses into {@link Question} list.
- *
- * <p>Supported column headers (case-insensitive, fuzzy match, Vietnamese-normalized):
- * <ul>
- *   <li>content / question / cauhoi / noidung</li>
- *   <li>optionA / option / dapan / dapanA</li>
- *   <li>optionB / dapanb / dapanB</li>
- *   <li>optionC / dapanc / dapanC</li>
- *   <li>optionD / dapand / dapanD</li>
- *   <li>correctAnswer / correctanswer03 / dapandung (supports A/B/C/D or 0/1/2/3)</li>
- *   <li>scoreWeight / points / diem / diemso</li>
- *   <li>difficulty / domkho</li>
- * </ul>
- *
- * <p>Sample formats supported:
- * <ul>
- *   <li>csv_mau_1.csv: Question,Option A,Option B,Option C,Option D,Correct Answer (0-3),Points</li>
- *   <li>questions-template.csv: content,optionA,optionB,optionC,optionD,correctAnswer,scoreWeight,difficulty</li>
- * </ul>
- */
+
 @Component
 @RequiredArgsConstructor
 public class CsvQuestionParser {
@@ -56,17 +34,14 @@ public class CsvQuestionParser {
     private final CsvExtractor csvExtractor;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Parse a CSV file into a list of {@link Question} entities.
-     * Uses UTF-8 by default.
-     */
+    
+
     public List<Question> parse(Exam exam, MultipartFile file) {
         return parse(exam, file, StandardCharsets.UTF_8, ',');
     }
 
-    /**
-     * Parse a CSV file with specified charset and delimiter.
-     */
+    
+
     public List<Question> parse(Exam exam, MultipartFile file, Charset charset, char delimiter) {
         try (Reader reader = new InputStreamReader(file.getInputStream(), charset);
              CSVParser parser = CSVFormat.DEFAULT.builder()
@@ -115,9 +90,8 @@ public class CsvQuestionParser {
         }
     }
 
-    /**
-     * Returns the number of data rows (excluding header) in a CSV file.
-     */
+    
+
     public int countDataRows(MultipartFile file, Charset charset, char delimiter) {
         try (Reader reader = new InputStreamReader(file.getInputStream(), charset);
              CSVParser parser = CSVFormat.DEFAULT.builder()
@@ -132,7 +106,7 @@ public class CsvQuestionParser {
         }
     }
 
-    // ---------- Internal helpers ----------
+    
 
     private void addQuestion(List<Question> questions, Exam exam,
                             String content, String optionA, String optionB,

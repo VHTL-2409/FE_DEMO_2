@@ -6,9 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Response DTO cho ML model training status và results.
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,10 +15,10 @@ public class MLModelStatusResponse {
 
     private String modelType;
     private String modelVersion;
-    private String status; // READY, TRAINING, UPDATING, ERROR, DISABLED
+    private String status; 
     private String stage;
 
-    // Training info
+    
     private LocalDateTime lastTrainedAt;
     private Integer trainingDataSize;
     private Double trainingAccuracy;
@@ -29,21 +27,21 @@ public class MLModelStatusResponse {
     private Double precision;
     private Double recall;
 
-    // Performance metrics
+    
     private Double avgInferenceTimeMs;
     private Integer totalPredictions;
 
-    // Model details
+    
     private String algorithm;
     private Map<String, Double> featureImportances;
     private List<String> topFeatures;
 
-    // Data info
+    
     private LocalDateTime dataCutoffDate;
     private Integer labeledSamples;
     private Integer unlabeledSamples;
 
-    // Status message
+    
     private String message;
     private List<String> warnings;
     private List<String> recommendations;
@@ -57,7 +55,7 @@ public class MLModelStatusResponse {
         private Integer totalEpochs;
         private Double loss;
         private Double accuracy;
-        private String stage; // INITIALIZING, FEATURE_EXTRACTION, TRAINING, VALIDATING, SAVING
+        private String stage; 
         private String estimatedTimeRemaining;
     }
 

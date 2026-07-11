@@ -12,9 +12,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-/**
- * AI-powered analytics service for student performance and question quality.
- */
+
 @Service
 @RequiredArgsConstructor
 public class AiAnalyticsService {
@@ -32,9 +30,8 @@ public class AiAnalyticsService {
     @Value("${app.ai-service.timeout-ms:20000}")
     private int timeoutMs;
 
-    /**
-     * Predict student performance based on history.
-     */
+    
+
     public PerformancePredictionResponse predictPerformance(int studentId, int examId, List<Map<String, Object>> history) {
         if (!aiServiceEnabled) {
             return buildFallbackPrediction();
@@ -54,9 +51,8 @@ public class AiAnalyticsService {
         }
     }
 
-    /**
-     * Get study recommendations for a student.
-     */
+    
+
     public List<String> getStudyRecommendations(int studentId, List<Map<String, Object>> history) {
         if (!aiServiceEnabled) {
             return buildFallbackRecommendations();
@@ -84,9 +80,8 @@ public class AiAnalyticsService {
         }
     }
 
-    /**
-     * Analyze question quality.
-     */
+    
+
     public QuestionQualityResponse analyzeQuestionQuality(
             String questionContent,
             List<Map<String, String>> options,
@@ -112,9 +107,8 @@ public class AiAnalyticsService {
         }
     }
 
-    /**
-     * Analyze difficulty distribution of questions.
-     */
+    
+
     public Map<String, Object> analyzeDifficultyDistribution(List<Map<String, Object>> questions) {
         if (!aiServiceEnabled || questions == null || questions.isEmpty()) {
             return buildFallbackDistribution();

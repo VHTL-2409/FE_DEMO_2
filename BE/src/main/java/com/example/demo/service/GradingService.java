@@ -11,11 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Grading Service
- * Generates grading results for exam attempts.
- * Computes raw scores, IRT estimates, and peer statistics.
- */
+
 @Service
 @RequiredArgsConstructor
 public class GradingService {
@@ -26,10 +22,8 @@ public class GradingService {
     private final QuestionRepository questionRepository;
     private final FraudSignalRepository fraudSignalRepository;
 
-    /**
-     * Class-level grading statistics.
-     * Computes real IRT theta distribution from submitted scores.
-     */
+    
+
     public GradingResponse gradeByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam not found: " + examId));
@@ -67,7 +61,7 @@ public class GradingService {
         double classStdDev = computeStdDev(scores, classMean);
         double reliability = computeReliability(scores, classMean);
 
-        // IRT class-level: theta = 0 by definition (class mean), reliability reflects spread
+        
         return GradingResponse.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
@@ -90,10 +84,8 @@ public class GradingService {
                 .build();
     }
 
-    /**
-     * Per-student grading with real IRT theta estimation and peer statistics.
-     * Uses actual question difficulty (scoreWeight) for scoring.
-     */
+    
+
     public GradingResponse gradeByAttempt(Long attemptId) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found: " + attemptId));
@@ -101,10 +93,10 @@ public class GradingService {
         Exam exam = attempt.getExam();
         double rawScore = attempt.getScore() != null ? attempt.getScore() : 0.0;
 
-        // Load answers with their questions for per-question analysis
+        
         List<Answer> answers = answerRepository.findByAttempt(attempt);
 
-        // Load all submitted attempts for peer comparison
+        
         List<ExamAttempt> allSubmitted = filterSubmittedAttempts(exam);
         List<Double> allScores = allSubmitted.stream()
                 .filter(a -> a.getScore() != null)
@@ -115,7 +107,7 @@ public class GradingService {
                 allScores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
         double classStdDev = computeStdDev(allScores, classMean);
 
-        // Compute peer rank
+        
         int rank = 1;
         for (int i = 0; i < allScores.size(); i++) {
             if (allScores.get(i) < rawScore) rank = i + 2;
@@ -123,16 +115,16 @@ public class GradingService {
         double percentile = allScores.isEmpty() ? 50 :
                 Math.round((double) rank * 1000.0 / allScores.size()) / 10.0;
 
-        // IRT theta: logit transform relative to class mean
+        
         double theta = estimateTheta(rawScore, 100.0, classMean);
 
-        // Reliability based on class spread
+        
         double reliability = computeReliability(allScores, classMean);
 
-        // Per-question analysis using actual score weights
+        
         List<GradingResponse.QuestionAnalysis> questionAnalyses = buildQuestionAnalyses(answers, rawScore);
 
-        // Total possible score = sum of all question weights for this exam
+        
         double totalWeight = questionRepository.findByExam(exam).stream()
                 .mapToDouble(q -> q.getScoreWeight() != null ? q.getScoreWeight() : 1.0)
                 .sum();
@@ -159,11 +151,8 @@ public class GradingService {
                 .build();
     }
 
-    /**
-     * IRT 1PL (Rasch) theta estimation.
-     * theta = log(p / (1-p)) - log(p_class / (1-p_class))
-     * where p = score / maxScore and p_class = classMean / maxScore
-     */
+    
+
     private double estimateTheta(double score, double maxScore, double classMean) {
         if (maxScore == 0) return 0;
         double p = Math.max(0.001, Math.min(0.999, score / maxScore));
@@ -181,27 +170,22 @@ public class GradingService {
         return Math.max(0.01, Math.sqrt(variance));
     }
 
-    /**
-     * Reliability = 1 - (average error variance / total variance).
-     * Using the Spearman-Brown prophecy formula approximation:
-     * reliability = (classStdDev^2) / (classStdDev^2 + (averageErrorVariance))
-     * where averageErrorVariance is estimated from the score distribution.
-     */
+    
+
     private double computeReliability(List<Double> scores, double classMean) {
         if (scores.size() < 3) return 0.70;
         double variance = scores.stream()
                 .mapToDouble(s -> (s - classMean) * (s - classMean))
                 .sum() / scores.size();
-        if (variance < 0.01) return 0.75; // No spread, use default
-        // Approximate error variance (measurement noise)
+        if (variance < 0.01) return 0.75; 
+        
         double errorVariance = 100.0 / scores.size();
         double reliability = variance / (variance + errorVariance);
         return Math.max(0.50, Math.min(0.95, reliability));
     }
 
-    /**
-     * Per-question scoring using actual scoreWeight values from Question entity.
-     */
+    
+
     private List<GradingResponse.QuestionAnalysis> buildQuestionAnalyses(List<Answer> answers, double rawScore) {
         List<GradingResponse.QuestionAnalysis> analyses = new ArrayList<>();
         for (Answer answer : answers) {
@@ -230,7 +214,7 @@ public class GradingService {
         try {
             return Double.parseDouble(difficulty);
         } catch (NumberFormatException e) {
-            // Map qualitative labels
+            
             return switch (difficulty.toUpperCase().trim()) {
                 case "EASY", "DE", "DỄ" -> 0.2;
                 case "MEDIUM", "TB", "TRUNG_BINH" -> 0.5;

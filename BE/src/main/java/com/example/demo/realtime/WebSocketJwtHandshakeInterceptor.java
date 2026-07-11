@@ -13,10 +13,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Map;
 
-/**
- * Requires {@code access_token} query parameter (SockJS cannot send Authorization header reliably).
- * Rejects the handshake when the JWT is missing or invalid.
- */
+
 @Component
 public class WebSocketJwtHandshakeInterceptor implements HandshakeInterceptor {
 
@@ -55,6 +52,6 @@ public class WebSocketJwtHandshakeInterceptor implements HandshakeInterceptor {
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
             WebSocketHandler wsHandler, Exception exception) {
-        // no-op
+        
     }
 }

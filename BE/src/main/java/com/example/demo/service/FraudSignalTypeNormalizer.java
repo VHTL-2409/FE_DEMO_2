@@ -25,6 +25,7 @@ final class FraudSignalTypeNormalizer {
             case "AI_SCREEN_DISPLAY", "DISPLAY_ATTACK", "SCREEN_ATTACK" -> "SCREEN_DISPLAY";
             case "AI_FLAT_IMAGE", "FLAT_FACE", "FLAT_TEXTURE" -> "FLAT_IMAGE";
             case "AI_LOW_LIVENESS", "LOW_LIVE_SCORE" -> "LOW_LIVENESS";
+            case "AI_SPOOFING", "SPOOFING_DETECTED", "SPOOF_ATTACK", "FACE_SPOOFING_SUSPECTED", "LIVENESS_CHALLENGE_FAILED" -> "SPOOFING_ATTACK";
             case "AI_NO_MIC", "NO_MICROPHONE", "MIC_OFF", "MIC_DISABLED", "MICROPHONE_OFF" -> "NO_MIC";
             default -> normalized;
         };

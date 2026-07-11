@@ -6,7 +6,7 @@
     <property name="LOG_FILE" value="${LOG_FILE:-application}"/>
     <property name="APP_LOG_LEVEL" value="${APP_LOG_LEVEL:-INFO}"/>
 
-    <!-- Console -->
+    
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -14,7 +14,7 @@
         </encoder>
     </appender>
 
-    <!-- File: tất cả log (INFO+) -->
+    
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/${LOG_FILE}.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -28,7 +28,7 @@
         </encoder>
     </appender>
 
-    <!-- File: chỉ lỗi (ERROR) - dễ debug -->
+    
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">

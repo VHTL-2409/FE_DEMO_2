@@ -111,7 +111,7 @@ public class ClassController {
         return ApiResponse.success(classService.importStudentsToClass(classId, request, teacher), "Import học sinh thành công");
     }
 
-    /** Multipart upload; {@code consumes} omitted so clients with varying Content-Type still match. */
+    
     @PostMapping("/{classId}/students/import-file")
     public ApiResponse<ImportStudentsResponse> importStudentsFile(
             @PathVariable Long classId,

@@ -17,10 +17,10 @@ public class JacksonConfig {
         ObjectMapper mapper = JsonMapper.builder()
                 .findAndAddModules()
                 .build();
-        // Jackson 2: đăng ký JavaTimeModule để hỗ trợ OffsetDateTime, LocalDateTime...
+        
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        // Luôn serialize theo timezone Việt Nam
+        
         mapper.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         return mapper;
     }

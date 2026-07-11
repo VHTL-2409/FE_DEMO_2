@@ -47,10 +47,8 @@ public class DuplicateIpDetectionService {
     @Value("${demo.monitoring.duplicate-ip-cooldown-seconds:120}")
     private long duplicateIpCooldownSeconds;
 
-    /**
-     * Phát hiện các attempt khác cùng bài thi đang dùng chung IP.
-     * Tạo signal DUPLICATE_IP và ghi nhận IP graph.
-     */
+    
+
     @Transactional
     public void detect(ExamAttempt attempt) {
         if (!Boolean.TRUE.equals(attempt.getExam().getMonitorDuplicateIp())) {
@@ -76,16 +74,16 @@ public class DuplicateIpDetectionService {
                 continue;
             }
 
-            // Insert idempotent: nếu có constraint violation, thread khác đã insert cùng event
+            
             try {
                 monitoringService().addSystemEvent(attempt, MonitoringEventType.DUPLICATE_IP, pairSignature);
             } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
-                // Đã được insert bởi thread đồng thời — bỏ qua
+                
             }
             try {
                 monitoringService().addSystemEvent(counterpart, MonitoringEventType.DUPLICATE_IP, pairSignature);
             } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
-                // Đã được insert bởi thread đồng thời — bỏ qua
+                
             }
             auditLogService.logSystemDuplicateIp(attempt, pairSignature);
             auditLogService.logSystemDuplicateIp(counterpart, pairSignature);
@@ -99,9 +97,8 @@ public class DuplicateIpDetectionService {
         return monitoringServiceProvider.getObject();
     }
 
-    /**
-     * Kiểm tra xem event đã được ghi nhận trong khoảng cooldown chưa.
-     */
+    
+
     private boolean isInCooldown(ExamAttempt attempt, String pairSignature) {
         LocalDateTime cutoff = VietNamTime.now().minusSeconds(Math.max(duplicateIpCooldownSeconds, 0));
         return monitoringEventRepository.existsByAttemptAndEventTypeAndDetailsAndCreatedAtAfter(
@@ -111,9 +108,8 @@ public class DuplicateIpDetectionService {
                 cutoff);
     }
 
-    /**
-     * Chuẩn hóa IP: loại bỏ khoảng trắng thừa.
-     */
+    
+
     private String normalizeIp(String clientIp) {
         if (clientIp == null) {
             return null;
@@ -125,10 +121,8 @@ public class DuplicateIpDetectionService {
         return normalized;
     }
 
-    /**
-     * Tạo signature cho cặp attempt để deduplicate.
-     * Format: ip=<ip>;pair=<min_id>-<max_id>
-     */
+    
+
     private String buildPairSignature(ExamAttempt first, ExamAttempt second, String ip) {
         Long left = first.getId();
         Long right = second.getId();
@@ -136,9 +130,8 @@ public class DuplicateIpDetectionService {
         return "ip=" + ip + ";pair=" + ordered.get(0) + "-" + ordered.get(1);
     }
 
-    /**
-     * Phát hiện fingerprint graph: cùng fingerprint nhưng khác student (chia sẻ thiết bị).
-     */
+    
+
     private void detectFingerprintGraph(ExamAttempt attempt) {
         if (!Boolean.TRUE.equals(attempt.getExam().getMonitorIpFingerprintGraph())) {
             return;
@@ -160,9 +153,8 @@ public class DuplicateIpDetectionService {
         }
     }
 
-    /**
-     * Ghi nhận IP-Fingerprint graph: cùng IP hoặc cùng fingerprint với student khác.
-     */
+    
+
     private void recordIpFingerprintGraph(ExamAttempt attempt, ExamAttempt counterpart, String ip, String relation) {
         if (!Boolean.TRUE.equals(attempt.getExam().getMonitorIpFingerprintGraph())) {
             return;

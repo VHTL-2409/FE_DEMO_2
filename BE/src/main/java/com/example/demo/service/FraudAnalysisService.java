@@ -13,11 +13,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Service Phân tích Gian lận cho thi trắc nghiệm.
- * Cung cấp các phương pháp phân tích gian lận: đạo văn đáp án, thời gian, thống kê, danh tiếng IP,
- * và phân tích kết hợp toàn diện.
- */
+
 @Service
 @RequiredArgsConstructor
 public class FraudAnalysisService {
@@ -82,7 +78,7 @@ public class FraudAnalysisService {
     @Value("${demo.fraud.analysis.ip-reputation.high-attempts:3}")
     private int duplicateIpHighAttempts;
 
-    // --- Phân tích đạo văn (so sánh đáp án) ---
+    
 
     public PlagiarismAnalysisResponse analyzePlagiarismByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -185,7 +181,7 @@ public class FraudAnalysisService {
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
-    // --- Phân tích thời gian (hành vi trong giờ thi) ---
+    
 
     public TimingAnalysisResponse analyzeTimingByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -303,7 +299,7 @@ public class FraudAnalysisService {
         return total;
     }
 
-    // --- Phân tích thống kê (phân tích điểm thi) ---
+    
 
     public StatisticalAnalysisResponse analyzeStatisticalByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -401,7 +397,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Phân tích hành vi click (cho thi trắc nghiệm) ---
+    
 
     public BehaviorAnalysisResponse analyzeBehaviorByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -477,7 +473,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Phân tích danh tiếng IP ---
+    
 
     public IpReputationAnalysisResponse analyzeIpReputation(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -536,7 +532,7 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    // --- Phân tích toàn diện ---
+    
 
     public ComprehensiveAnalysisResponse analyzeComprehensiveByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -605,9 +601,8 @@ public class FraudAnalysisService {
                 .build();
     }
 
-    /**
-     * Tính toán các mẫu hành vi đáng ngờ cho thi trắc nghiệm.
-     */
+    
+
     private List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> buildSuspiciousPatterns(List<ExamAttempt> attempts) {
         List<ComprehensiveAnalysisResponse.SuspiciousPatternItem> patterns = new ArrayList<>();
         for (ExamAttempt attempt : attempts) {
@@ -655,7 +650,7 @@ public class FraudAnalysisService {
                 .build());
     }
 
-    // --- Các hàm hỗ trợ ---
+    
 
     private void recordAnswerPatternWarning(
             Exam exam,

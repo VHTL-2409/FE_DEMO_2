@@ -38,12 +38,8 @@ public class ExamController {
         return ApiResponse.success(examService.listExams(currentUserService.requireCurrentUser()));
     }
 
-    /**
-     * Exams available for live monitoring: all exams created by the teacher,
-     * with their current in-session participant counts and status.
-     * Used by the monitoring selection page to show all exams the teacher
-     * can monitor (not filtered by time window like the main list).
-     */
+    
+
     @GetMapping("/for-monitoring")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<ExamResponse>> forMonitoring() {

@@ -5,10 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Request DTO cho ML risk prediction.
- * Chứa các features cần thiết để predict fraud probability.
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,19 +16,19 @@ public class MLRiskPredictionRequest {
     private Long studentId;
     private Long examId;
 
-    // Signal-based features
+    
     private SignalFeatures signals;
 
-    // Behavioral features
+    
     private BehavioralFeatures behavior;
 
-    // Temporal features
+    
     private TemporalFeatures temporal;
 
-    // Contextual features
+    
     private ContextualFeatures context;
 
-    // Metadata
+    
     private LocalDateTime requestTime;
 
     @Data
@@ -52,13 +49,13 @@ public class MLRiskPredictionRequest {
         private Integer suspiciousSignals;
         private Integer totalSignalCount;
 
-        // Signal severity breakdown
+        
         private Integer criticalSignalCount;
         private Integer highSignalCount;
         private Integer mediumSignalCount;
         private Integer lowSignalCount;
 
-        // Signal density
+        
         private Double signalsPerMinute;
     }
 
@@ -76,12 +73,12 @@ public class MLRiskPredictionRequest {
         private Boolean cameraOn;
         private Boolean micOn;
 
-        // Anomaly indicators
+        
         private Boolean typingPatternMismatch;
         private Boolean mouseSignatureAnomaly;
         private Boolean unusualPacing;
 
-        // Baseline comparison
+        
         private Double typingSpeedDeviation;
         private Double mouseSpeedDeviation;
     }
@@ -98,12 +95,12 @@ public class MLRiskPredictionRequest {
         private Double avgTimePerQuestion;
         private Long timeSinceStartMinutes;
 
-        // Timing anomalies
+        
         private Boolean impossiblyFastAnswers;
         private Boolean unusuallySlowAnswers;
         private Boolean suspiciousPacing;
 
-        // Session timing
+        
         private LocalDateTime sessionStartTime;
         private LocalDateTime lastActivityTime;
     }
@@ -123,15 +120,14 @@ public class MLRiskPredictionRequest {
         private String deviceCategory;
         private String browserType;
 
-        // Exam context
+        
         private Double classAverageScore;
         private Double classScoreStdDev;
         private Integer classSize;
     }
 
-    /**
-     * Convert SignalFeatures từ FraudSignal list.
-     */
+    
+
     public static SignalFeatures fromSignals(List<?> signals, int signalCount) {
         return SignalFeatures.builder()
                 .totalSignalCount(signalCount)

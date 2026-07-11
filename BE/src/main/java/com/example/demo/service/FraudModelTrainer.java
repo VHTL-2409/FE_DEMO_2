@@ -20,18 +20,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-/**
- * Fraud Model Trainer Service.
- *
- * Responsible for:
- * - Training ML models on historical fraud data
- * - Evaluating model performance
- * - Managing model versions
- * - Extracting training features from fraud signals
- *
- * This service uses statistical methods and can be extended to use
- * external ML services (scikit-learn, TensorFlow, etc.) when needed.
- */
+
 @Service
 @RequiredArgsConstructor
 public class FraudModelTrainer {
@@ -50,14 +39,13 @@ public class FraudModelTrainer {
     @Value("${app.ml.model-training.retrain-interval-hours:168}")
     private int retrainIntervalHours;
 
-    // Model training state
+    
     private final Map<String, ModelState> modelStates = new ConcurrentHashMap<>();
     private volatile boolean isTraining = false;
     private volatile LocalDateTime lastTrainingTime = null;
 
-    /**
-     * Train or retrain the fraud detection model.
-     */
+    
+
     @Async
     public void trainModel() {
         if (isTraining) {
@@ -74,13 +62,13 @@ public class FraudModelTrainer {
             isTraining = true;
             log.info("Starting fraud model training...");
 
-            // Update state
+            
             ModelState state = modelStates.computeIfAbsent("fraud_detection",
                     k -> new ModelState());
             state.setStatus("TRAINING");
             state.setStage("EXTRACTING_FEATURES");
 
-            // Extract training data
+            
             List<TrainingSample> samples = extractTrainingData();
             if (samples.size() < minSamples) {
                 log.warn("Not enough training samples: {} < {}", samples.size(), minSamples);
@@ -92,7 +80,7 @@ public class FraudModelTrainer {
             state.setStage("TRAINING");
             state.setTrainingDataSize(samples.size());
 
-            // Train model (using statistical methods for now)
+            
             TrainingResult result = performTraining(samples);
             state.setTrainingAccuracy(result.getAccuracy());
             state.setValidationAccuracy(result.getValidationAccuracy());
@@ -100,7 +88,7 @@ public class FraudModelTrainer {
             state.setPrecision(result.getPrecision());
             state.setRecall(result.getRecall());
 
-            // Update model metadata
+            
             state.setStatus("READY");
             state.setStage("COMPLETE");
             state.setLastTrainedAt(LocalDateTime.now());
@@ -123,9 +111,8 @@ public class FraudModelTrainer {
         }
     }
 
-    /**
-     * Scheduled retraining.
-     */
+    
+
     @Scheduled(fixedRateString = "${app.ml.model-training.retrain-interval-hours:168}000")
     public void scheduledRetrain() {
         if (trainingEnabled) {
@@ -134,9 +121,8 @@ public class FraudModelTrainer {
         }
     }
 
-    /**
-     * Get model training status.
-     */
+    
+
     public MLModelStatusResponse getTrainingStatus() {
         ModelState state = modelStates.get("fraud_detection");
 
@@ -171,9 +157,8 @@ public class FraudModelTrainer {
         return builder.build();
     }
 
-    /**
-     * Extract training features from historical attempts.
-     */
+    
+
     public List<TrainingSample> extractTrainingData() {
         List<ExamAttempt> attempts = examAttemptRepository.findByStatusIn(
                 List.of(AttemptStatus.SUBMITTED, AttemptStatus.AUTO_SUBMITTED));
@@ -197,7 +182,7 @@ public class FraudModelTrainer {
         return samples;
     }
 
-    // === Private Methods ===
+    
 
     private List<TrainingSample> extractTrainingData(int limit) {
         return extractTrainingData().stream()
@@ -208,7 +193,7 @@ public class FraudModelTrainer {
     private Map<String, Double> extractFeatures(List<FraudSignal> signals, ExamAttempt attempt) {
         Map<String, Double> features = new HashMap<>();
 
-        // Signal counts by type
+        
         Map<String, Long> signalCounts = signals.stream()
                 .collect(Collectors.groupingBy(
                         signal -> FraudSignalTypeNormalizer.canonical(signal.getSignalType()),
@@ -225,7 +210,7 @@ public class FraudModelTrainer {
                 signalCounts.getOrDefault("MULTIPLE_FACES", 0L));
         features.put("totalSignals", (double) signals.size());
 
-        // Severity counts
+        
         Map<String, Long> severityCounts = signals.stream()
                 .collect(Collectors.groupingBy(s -> s.getSeverity().name(), Collectors.counting()));
 
@@ -233,7 +218,7 @@ public class FraudModelTrainer {
         features.put("highCount", (double) severityCounts.getOrDefault("HIGH", 0L));
         features.put("mediumCount", (double) severityCounts.getOrDefault("MEDIUM", 0L));
 
-        // Derived features
+        
         features.put("identityRiskScore", features.get("duplicateIpCount") * 4 +
                 features.get("deviceChangeCount") * 4);
         features.put("technicalRiskScore", features.get("devtoolsCount") * 3 +
@@ -241,17 +226,17 @@ public class FraudModelTrainer {
         features.put("behaviorRiskScore", features.get("tabSwitchCount") * 1 +
                 features.get("fullscreenExitCount") * 1.5);
 
-        // Risk score from attempt
+        
         features.put("riskScore", attempt.getRiskScore() != null ? attempt.getRiskScore().doubleValue() : 0.0);
 
         return features;
     }
 
     private boolean isFraudulent(ExamAttempt attempt) {
-        // Consider fraudulent if:
-        // 1. Flagged as suspicious
-        // 2. High risk level
-        // 3. Has critical signals
+        
+        
+        
+        
         if (Boolean.TRUE.equals(attempt.getSuspicious())) {
             return true;
         }
@@ -266,16 +251,16 @@ public class FraudModelTrainer {
     }
 
     private TrainingResult performTraining(List<TrainingSample> samples) {
-        // Statistical training using feature distributions
+        
         int total = samples.size();
         int positive = (int) samples.stream().filter(s -> s.getLabel() == 1.0).count();
         int negative = total - positive;
 
-        // Calculate class-wise statistics
+        
         double positiveRatio = positive / (double) total;
         double negativeRatio = negative / (double) total;
 
-        // For simplicity, use risk score threshold-based evaluation
+        
         double avgRiskFraud = samples.stream()
                 .filter(s -> s.getLabel() == 1.0)
                 .mapToDouble(s -> s.getFeatures().getOrDefault("riskScore", 0.0))
@@ -288,7 +273,7 @@ public class FraudModelTrainer {
                 .average()
                 .orElse(20.0);
 
-        // Calculate metrics based on threshold (riskScore >= 61 = fraud)
+        
         int tp = (int) samples.stream()
                 .filter(s -> s.getLabel() == 1.0 && s.getFeatures().getOrDefault("riskScore", 0.0) >= 61)
                 .count();
@@ -340,7 +325,7 @@ public class FraudModelTrainer {
                 LocalDateTime.now().getDayOfYear());
     }
 
-    // === Inner Classes ===
+    
 
     @lombok.Data
     @lombok.Builder
@@ -351,7 +336,7 @@ public class FraudModelTrainer {
         private Long studentId;
         private Long examId;
         private Map<String, Double> features;
-        private Double label; // 1.0 = fraud, 0.0 = clean
+        private Double label; 
     }
 
     @lombok.Data

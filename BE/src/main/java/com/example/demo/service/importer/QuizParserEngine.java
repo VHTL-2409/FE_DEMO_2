@@ -18,12 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/**
- * Quiz Parser Engine — CSV / XLSX parsing và build preview chung.
- *
- * <p>PDF / DOCX (trích text + parse nội bộ) do {@link com.example.demo.service.ImportXlsxService}
- * điều phối; import đề PDF theo template dùng Python qua {@link com.example.demo.service.importer.examimport.ExamImportService}.
- */
+
 @Component
 @RequiredArgsConstructor
 public class QuizParserEngine {
@@ -69,9 +64,8 @@ public class QuizParserEngine {
         return buildPreviewFromQuestions(questions, format, sourceMetadata);
     }
 
-    /**
-     * Gom summary + map {@link Question} → preview DTO (dùng cho PDF/DOCX sau khi parse xong).
-     */
+    
+
     public ParsedImportPreview buildPreviewFromQuestions(
             List<Question> questions,
             FormatDetector.DetectedFormat format,
@@ -105,18 +99,18 @@ public class QuizParserEngine {
         dto.setScoreWeight(q.getScoreWeight());
         dto.setDifficulty(q.getDifficulty());
 
-        // Parse options JSON string -> List<OptionDto>
+        
         if (q.getOptions() != null && !q.getOptions().isBlank()) {
             try {
                 List<OptionDto> opts = objectMapper.readValue(q.getOptions(),
                         new TypeReference<List<OptionDto>>() {});
                 dto.setOptions(opts);
             } catch (Exception ex) {
-                // ignore parse error
+                
             }
         }
 
-        // Parse metadata JSON for explanation if present
+        
         if (q.getMetadata() != null && !q.getMetadata().isBlank()) {
             dto.setMetadata(q.getMetadata());
         }

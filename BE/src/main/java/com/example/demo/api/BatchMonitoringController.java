@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Batch monitoring operations for acting on multiple attempts at once.
- * All endpoints require TEACHER or ADMIN role.
- */
+
 @RestController
 @RequestMapping("/api/v1/proctor/batch")
 @RequiredArgsConstructor

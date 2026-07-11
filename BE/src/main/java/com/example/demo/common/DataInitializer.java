@@ -289,7 +289,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void cleanupProfilesByRole() {
-        // Xóa teacher_profiles cho user có role STUDENT (giữ student_profile)
+        
         jdbcTemplate.execute("""
             DELETE FROM teacher_profiles tp
             USING user_roles ur
@@ -298,7 +298,7 @@ public class DataInitializer implements CommandLineRunner {
               AND r.name = 'STUDENT';
             """);
 
-        // Xóa student_profiles cho user có role TEACHER (giữ teacher_profile)
+        
         jdbcTemplate.execute("""
             DELETE FROM student_profiles sp
             USING user_roles ur
@@ -307,8 +307,8 @@ public class DataInitializer implements CommandLineRunner {
               AND r.name = 'TEACHER';
             """);
 
-        // User có cả 2 profile: giữ profile phù hợp username, xóa profile còn lại
-        // username teacher% hoặc admin% -> giữ teacher_profile, xóa student_profile
+        
+        
         jdbcTemplate.execute("""
             DELETE FROM student_profiles sp
             WHERE sp.user_id IN (
@@ -320,7 +320,7 @@ public class DataInitializer implements CommandLineRunner {
             );
             """);
 
-        // username student% hoặc khác -> giữ student_profile, xóa teacher_profile
+        
         jdbcTemplate.execute("""
             DELETE FROM teacher_profiles tp
             WHERE tp.user_id IN (

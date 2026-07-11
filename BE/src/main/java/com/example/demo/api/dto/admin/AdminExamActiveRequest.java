@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminExamActiveRequest {
-    /** Bật / tắt đề thi trên toàn hệ thống */
+    
     private Boolean active;
 }

@@ -23,22 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * ML-Powered Risk Scoring Service.
- *
- * Cung cấp machine learning-based risk scoring kết hợp với rule-based scoring.
- * Features:
- * - Hybrid scoring: ML + Rule-based
- * - Feature extraction từ fraud signals
- * - Anomaly detection sử dụng statistical methods
- * - Confidence scoring
- * - Model status tracking
- *
- * Models supported:
- * - Random Forest (primary)
- * - Gradient Boosting
- * - Isolation Forest (anomaly detection)
- */
+
 @Service
 @RequiredArgsConstructor
 public class MLRiskScoringService {
@@ -49,7 +34,7 @@ public class MLRiskScoringService {
     private final ExamAttemptRepository examAttemptRepository;
     private final ExamRepository examRepository;
 
-    // ML Configuration
+    
     @Value("${app.ml.risk-scoring.enabled:false}")
     private boolean mlEnabled;
 
@@ -60,7 +45,7 @@ public class MLRiskScoringService {
     private int mlTimeoutMs;
 
     @Value("${app.ml.risk-scoring.hybrid-weight:0.6}")
-    private double mlWeight; // Weight for ML score in hybrid combination
+    private double mlWeight; 
 
     @Value("${app.ml.risk-scoring.min-confidence:0.5}")
     private double minConfidence;
@@ -71,39 +56,39 @@ public class MLRiskScoringService {
     @Value("${app.ai-service.api-key:${APP_AI_SERVICE_API_KEY:${AI_SERVICE_API_KEY:}}}")
     private String aiServiceApiKey;
 
-    // Feature weights for fallback when external ML is enabled but unavailable.
+    
     private static final Map<String, Double> ANOMALY_WEIGHTS = Map.ofEntries(
-            // Browser Events
+            
             Map.entry("TAB_SWITCH", 0.8),
             Map.entry("WINDOW_BLUR", 0.6),
             Map.entry("EXIT_FULLSCREEN", 0.9),
             Map.entry("COPY_PASTE", 0.8),
             Map.entry("DEVTOOLS_OPEN", 0.95),
             Map.entry("PRINT_SCREEN", 0.85),
-            // Identity & Device
+            
             Map.entry("DUPLICATE_IP", 0.92),
             Map.entry("IP_FINGERPRINT_GRAPH", 0.92),
             Map.entry("DEVICE_FINGERPRINT_CHANGED", 0.95),
             Map.entry("MULTIPLE_DEVICE_SESSION", 0.92),
             Map.entry("TIMING_ANOMALY", 0.85),
-            // AI Camera Detection - Critical
+            
             Map.entry("MULTIPLE_FACES", 0.98),
             Map.entry("FACE_SPOOFING_SUSPECTED", 0.95),
-            // AI Camera Detection - High
+            
             Map.entry("NO_CAMERA", 0.95),
             Map.entry("NO_MIC", 0.95),
             Map.entry("FACE_NOT_DETECTED", 0.90),
             Map.entry("FACE_OBSTRUCTED_MASK", 0.88),
-            // AI Camera Detection - Medium
+            
             Map.entry("EYES_OBSTRUCTED", 0.75),
             Map.entry("PARTIAL_FACE_VISIBLE", 0.70),
             Map.entry("FACE_TURNED_AWAY", 0.72),
             Map.entry("EYES_NOT_DETECTED", 0.68),
-            // AI Camera Detection - Low
+            
             Map.entry("FACE_TOO_FAR", 0.60),
             Map.entry("FACE_TOO_CLOSE", 0.40),
             Map.entry("FACE_NOT_CENTERED", 0.45),
-            // Quality & Lighting
+            
             Map.entry("VERY_LOW_LIGHTING", 0.80),
             Map.entry("LOW_LIGHTING", 0.55),
             Map.entry("OVEREXPOSED_FRAME", 0.40),
@@ -111,13 +96,13 @@ public class MLRiskScoringService {
             Map.entry("BLURRY_FRAME", 0.45),
             Map.entry("AI_PHONE_DETECTED", 0.94),
             Map.entry("AI_SPEAKING_DETECTED", 0.75),
-            // Eye Tracking
+            
             Map.entry("EYE_BLINK_ANOMALY", 0.70),
             Map.entry("EYES_CLOSED_PROLONGED", 0.50),
-            // Gaze Tracking
+            
             Map.entry("GAZE_OFF_SCREEN", 0.85),
             Map.entry("RAPID_EYE_MOVEMENT", 0.65),
-            // Deep Learning Spoofing
+            
             Map.entry("PRINTED_PHOTO", 0.95),
             Map.entry("SCREEN_REPLAY", 0.92),
             Map.entry("DEEPFAKE", 0.98),
@@ -126,10 +111,8 @@ public class MLRiskScoringService {
             Map.entry("SCREEN_DISPLAY", 0.75)
     );
 
-    /**
-     * Perform ML-powered risk analysis cho một attempt.
-     * Kết hợp rule-based scoring với ML inference (nếu enabled).
-     */
+    
+
     @Transactional(readOnly = true)
     public MLRiskScoreResponse analyzeRisk(Long attemptId) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -138,9 +121,8 @@ public class MLRiskScoringService {
         return analyzeRiskInternal(attempt);
     }
 
-    /**
-     * Analyze risk cho tất cả attempts của một exam.
-     */
+    
+
     @Transactional(readOnly = true)
     public List<MLRiskScoreResponse> analyzeRiskByExam(Long examId) {
         Exam exam = examRepository.findById(examId)
@@ -156,9 +138,8 @@ public class MLRiskScoringService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Batch analyze với async processing.
-     */
+    
+
     @Async
     public void analyzeRiskBatchAsync(List<Long> attemptIds) {
         for (Long attemptId : attemptIds) {
@@ -170,9 +151,8 @@ public class MLRiskScoringService {
         }
     }
 
-    /**
-     * Get ML model status.
-     */
+    
+
     public MLModelStatusResponse getModelStatus() {
         MLModelStatusResponse.MLModelStatusResponseBuilder builder = MLModelStatusResponse.builder()
                 .modelType("HybridRiskScoring")
@@ -220,9 +200,8 @@ public class MLRiskScoringService {
         return builder.build();
     }
 
-    /**
-     * Extract features từ fraud signals cho ML model.
-     */
+    
+
     public MLRiskPredictionRequest extractFeatures(Long attemptId) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Attempt not found: " + attemptId));
@@ -230,27 +209,27 @@ public class MLRiskScoringService {
         return extractFeaturesFromAttempt(attempt);
     }
 
-    // === Private Methods ===
+    
 
     private MLRiskScoreResponse analyzeRiskInternal(ExamAttempt attempt) {
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
 
-        // Extract features
+        
         MLRiskPredictionRequest features = extractFeaturesFromAttempt(attempt);
 
-        // Calculate rule-based score (legacy)
+        
         int ruleBasedScore = calculateRuleBasedScore(signals, attempt);
         String ruleBasedLevel = resolveLevel(ruleBasedScore);
 
-        // ML-based analysis runs only when external ML is enabled.
+        
         MLAnalysisResult mlResult = performMLAnalysis(signals, features, attempt);
 
-        // Combine scores
+        
         int combinedScore = combineScores(ruleBasedScore, mlResult.getMlScore(), mlResult.getConfidence());
         String combinedLevel = resolveLevel(combinedScore);
         boolean suspicious = combinedScore >= 40;
 
-        // Extract feature importance
+        
         List<MLRiskScoreResponse.FeatureImportance> topFeatures = extractTopFeatures(signals, features);
 
         return MLRiskScoreResponse.builder()
@@ -279,7 +258,7 @@ public class MLRiskScoringService {
     private MLRiskPredictionRequest extractFeaturesFromAttempt(ExamAttempt attempt) {
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
 
-        // Signal features
+        
         Map<String, Long> signalCounts = signals.stream()
                 .collect(Collectors.groupingBy(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()), Collectors.counting()));
 
@@ -308,13 +287,13 @@ public class MLRiskScoringService {
                 .signalsPerMinute(calculateSignalsPerMinute(signals, attempt))
                 .build();
 
-        // Behavioral features (from evidence)
+        
         MLRiskPredictionRequest.BehavioralFeatures behaviorFeatures = extractBehavioralFeatures(signals);
 
-        // Temporal features
+        
         MLRiskPredictionRequest.TemporalFeatures temporalFeatures = extractTemporalFeatures(signals, attempt);
 
-        // Contextual features
+        
         MLRiskPredictionRequest.ContextualFeatures contextFeatures = extractContextualFeatures(attempt);
 
         return MLRiskPredictionRequest.builder()
@@ -350,7 +329,7 @@ public class MLRiskScoringService {
         LocalDateTime endTime = attempt.getSubmittedAt() != null ? attempt.getSubmittedAt() : VietNamTime.now();
         long durationMinutes = Duration.between(startTime, endTime).toMinutes();
 
-        // Find impossibly fast answers from signals
+        
         boolean impossiblyFast = signals.stream()
                 .anyMatch(s -> {
                     String type = FraudSignalTypeNormalizer.canonical(s.getSignalType());
@@ -371,7 +350,7 @@ public class MLRiskScoringService {
     }
 
     private MLRiskPredictionRequest.ContextualFeatures extractContextualFeatures(ExamAttempt attempt) {
-        // Check for shared IP
+        
         boolean isSharedIp = fraudSignalRepository.findByAttempt(attempt).stream()
                 .anyMatch(s -> {
                     String type = FraudSignalTypeNormalizer.canonical(s.getSignalType());
@@ -380,12 +359,12 @@ public class MLRiskScoringService {
 
         return MLRiskPredictionRequest.ContextualFeatures.builder()
                 .isSharedIp(isSharedIp)
-                .isSharedDevice(false) // Would need additional logic
+                .isSharedDevice(false) 
                 .build();
     }
 
     private int calculateRuleBasedScore(List<FraudSignal> signals, ExamAttempt attempt) {
-        // Use clustering-based approach from RiskScoringService
+        
         Map<String, List<FraudSignal>> byCategory = new HashMap<>();
         for (FraudSignal signal : signals) {
             String category = signal.getCategory() != null ? signal.getCategory() : "OTHER";
@@ -394,19 +373,19 @@ public class MLRiskScoringService {
 
         int score = 0;
 
-        // SCREEN_LEAVE category
+        
         List<FraudSignal> screenSignals = byCategory.getOrDefault("SCREEN_LEAVE", List.of());
         score += Math.min(clusteredScore(screenSignals, 60), 35);
 
-        // CLIPBOARD category
+        
         List<FraudSignal> clipboardSignals = byCategory.getOrDefault("CLIPBOARD", List.of());
         score += Math.min(clusteredScore(clipboardSignals, 30), 25);
 
-        // TECHNICAL category
+        
         List<FraudSignal> techSignals = byCategory.getOrDefault("TECHNICAL", List.of());
         score += Math.min(clusteredScore(techSignals, 120), 25);
 
-        // IDENTITY category
+        
         List<FraudSignal> identitySignals = byCategory.getOrDefault("IDENTITY", List.of());
         int identityScore = identitySignals.stream()
                 .mapToInt(s -> (int) Math.round(ANOMALY_WEIGHTS.getOrDefault(FraudSignalTypeNormalizer.canonical(s.getSignalType()), 0.5) * 10.0))
@@ -414,7 +393,7 @@ public class MLRiskScoringService {
                 .orElse(0);
         score += Math.min(identityScore, 30);
 
-        // HEARTBEAT category
+        
         List<FraudSignal> heartbeatSignals = byCategory.getOrDefault("HEARTBEAT", List.of());
         score += Math.min(clusteredScore(heartbeatSignals, 0), 10);
 
@@ -469,7 +448,7 @@ public class MLRiskScoringService {
             );
         }
 
-        // Statistical anomaly scoring only remains as fallback for a failed external ML call.
+        
         double anomalyScore = calculateAnomalyScore(signals, features);
         double confidence = calculateConfidence(signals, features);
         String riskLevel = resolveLevel((int) anomalyScore);
@@ -573,7 +552,7 @@ public class MLRiskScoringService {
                 try {
                     return Optional.of(Double.parseDouble(String.valueOf(value)));
                 } catch (NumberFormatException ignored) {
-                    // Try next key.
+                    
                 }
             }
         }
@@ -609,7 +588,7 @@ public class MLRiskScoringService {
         MLRiskPredictionRequest.SignalFeatures sf = features.getSignals();
         double score = 0.0;
 
-        // Weighted signal scoring
+        
         score += sf.getTabSwitchCount() * 1.0;
         score += sf.getWindowBlurCount() * 0.8;
         score += sf.getFullscreenExitCount() * 1.5;
@@ -617,26 +596,26 @@ public class MLRiskScoringService {
         score += sf.getDevtoolsOpened() * 3.0;
         score += sf.getDuplicateIpEvents() * 4.0;
         score += sf.getDeviceChanges() * 4.0;
-        // AI camera signals contribute significantly to suspicious score
+        
         score += sf.getSuspiciousSignals() * 5.5;
 
-        // Severity weighting
+        
         score += sf.getCriticalSignalCount() * 5.0;
         score += sf.getHighSignalCount() * 3.0;
         score += sf.getMediumSignalCount() * 1.5;
 
-        // AI Camera-specific scoring
-        // Count AI camera signals directly from signal types
-        // These are already counted in suspiciousSignals but with explicit weighting
-        // for better discrimination
+        
+        
+        
+        
         Map<String, Long> signalCounts = signals.stream()
                 .collect(Collectors.groupingBy(s -> FraudSignalTypeNormalizer.canonical(s.getSignalType()), Collectors.counting()));
         
-        // Critical AI camera signals
+        
         score += signalCounts.getOrDefault("MULTIPLE_FACES", 0L) * 8.0;
         score += signalCounts.getOrDefault("FACE_SPOOFING_SUSPECTED", 0L) * 7.0;
         
-        // High severity AI camera signals
+        
         score += signalCounts.getOrDefault("NO_CAMERA", 0L) * 7.0;
         score += signalCounts.getOrDefault("NO_MIC", 0L) * 7.0;
         score += signalCounts.getOrDefault("FACE_NOT_DETECTED", 0L) * 6.0;
@@ -644,24 +623,24 @@ public class MLRiskScoringService {
         score += signalCounts.getOrDefault("VERY_LOW_LIGHTING", 0L) * 4.0;
         score += signalCounts.getOrDefault("VERY_BLURRY_FRAME", 0L) * 4.5;
         
-        // Medium severity AI camera signals
+        
         score += signalCounts.getOrDefault("EYES_OBSTRUCTED", 0L) * 3.0;
         score += signalCounts.getOrDefault("PARTIAL_FACE_VISIBLE", 0L) * 2.5;
         score += signalCounts.getOrDefault("FACE_TURNED_AWAY", 0L) * 2.5;
         score += signalCounts.getOrDefault("LOW_LIGHTING", 0L) * 2.0;
         score += signalCounts.getOrDefault("BLURRY_FRAME", 0L) * 2.0;
         
-        // Low severity AI camera signals
+        
         score += signalCounts.getOrDefault("FACE_TOO_FAR", 0L) * 1.5;
         score += signalCounts.getOrDefault("FACE_TOO_CLOSE", 0L) * 1.0;
         score += signalCounts.getOrDefault("FACE_NOT_CENTERED", 0L) * 1.0;
 
-        // Temporal anomalies
+        
         if (features.getTemporal() != null && Boolean.TRUE.equals(features.getTemporal().getImpossiblyFastAnswers())) {
             score += 15.0;
         }
 
-        // Contextual anomalies
+        
         if (features.getContext() != null) {
             if (Boolean.TRUE.equals(features.getContext().getIsSharedIp())) {
                 score += 12.0;
@@ -671,7 +650,7 @@ public class MLRiskScoringService {
             }
         }
 
-        // Normalize to 0-100
+        
         return Math.min(score * 2, 100.0);
     }
 
@@ -681,11 +660,11 @@ public class MLRiskScoringService {
         int totalSignals = features.getSignals().getTotalSignalCount();
         double confidence = 0.5;
 
-        // More signals = higher confidence
+        
         if (totalSignals >= 10) confidence += 0.2;
         else if (totalSignals >= 5) confidence += 0.1;
 
-        // Behavioral data availability
+        
         if (features.getBehavior() != null) {
             if (features.getBehavior().getAverageTypingSpeed() != null) confidence += 0.1;
             if (features.getBehavior().getTypingConsistency() != null) confidence += 0.1;
@@ -698,11 +677,11 @@ public class MLRiskScoringService {
         if (!mlEnabled) {
             return ruleScore;
         }
-        // If ML has high confidence, weight it more
+        
         if (mlConfidence >= confidenceThreshold && mlEnabled) {
             return (int) (ruleScore * (1 - mlWeight) + mlScore * mlWeight);
         }
-        // Otherwise rely more on rule-based
+        
         return (int) (ruleScore * 0.7 + mlScore * 0.3);
     }
 
@@ -742,7 +721,7 @@ public class MLRiskScoringService {
                     (double) sf.getSuspiciousSignals(), "AI-detected anomalies");
         }
 
-        // Sort by importance and take top 5
+        
         topFeatures.sort((a, b) -> Double.compare(b.getImportance(), a.getImportance()));
         return topFeatures.stream().limit(5).collect(Collectors.toList());
     }
@@ -778,7 +757,7 @@ public class MLRiskScoringService {
 
         analysis.put("mode", "EXTERNAL_ML".equals(mlResult.getSource()) ? "ML_HYBRID" : "STATISTICAL_FALLBACK");
 
-        // Categorize signals
+        
         Map<String, Long> byCategory = signals.stream()
                 .collect(Collectors.groupingBy(s ->
                         s.getCategory() != null ? s.getCategory() : "OTHER", Collectors.counting()));
@@ -788,7 +767,7 @@ public class MLRiskScoringService {
         analysis.put("identityAnomalyScore", byCategory.getOrDefault("IDENTITY", 0L) * 3.0);
         analysis.put("temporalAnomalyScore", byCategory.getOrDefault("HEARTBEAT", 0L) * 1.0);
 
-        // Detected patterns
+        
         List<String> patterns = new ArrayList<>();
         if (byCategory.getOrDefault("SCREEN_LEAVE", 0L) > 5) {
             patterns.add("FREQUENT_SCREEN_LEAVE");
@@ -804,7 +783,7 @@ public class MLRiskScoringService {
         }
         analysis.put("detectedPatterns", patterns);
 
-        // Warnings
+        
         List<String> warnings = new ArrayList<>();
         if (mlResult.getFraudProbability() > 0.7) {
             warnings.add("HIGH_FRAUD_PROBABILITY");

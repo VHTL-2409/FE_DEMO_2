@@ -81,11 +81,11 @@ public class AuthService {
         if (!rawPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
         }
-        // Check password doesn't contain username
+        
         if (username != null && rawPassword.toLowerCase().contains(username.toLowerCase())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu không được chứa tên đăng nhập.");
         }
-        // Check for common passwords
+        
         String lowerPassword = rawPassword.toLowerCase();
         if (lowerPassword.contains("password") || lowerPassword.contains("123456") ||
             lowerPassword.contains("admin") || lowerPassword.equals("qwerty") ||
@@ -142,7 +142,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED: Email chưa được xác minh. Vui lòng kiểm tra hộp thư.");
         }
 
-        // Rotate refresh tokens: delete old ones and create new one
+        
         refreshTokenRepository.deleteByUser(user);
         RefreshToken refreshToken = createRefreshToken(user, request.getDeviceInfo(), request.getIpAddress());
 
@@ -169,7 +169,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Account is disabled");
         }
 
-        // Rotate: delete old token and create new one
+        
         refreshTokenRepository.delete(storedToken);
         RefreshToken newRefreshToken = createRefreshToken(user, storedToken.getDeviceInfo(), storedToken.getIpAddress());
 
@@ -239,25 +239,25 @@ public class AuthService {
         if (!newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.");
         }
-        // Check password doesn't contain username
+        
         if (username != null && newPassword.toLowerCase().contains(username.toLowerCase())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được chứa tên đăng nhập.");
         }
-        // Check for common passwords
+        
         String lowerPassword = newPassword.toLowerCase();
         if (lowerPassword.contains("password") || lowerPassword.contains("123456") ||
             lowerPassword.contains("admin") || lowerPassword.equals("qwerty") ||
             lowerPassword.contains("letmein") || lowerPassword.contains("welcome")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới quá đơn giản. Vui lòng chọn mật khẩu mạnh hơn.");
         }
-        // Check if new password is same as current
+        
         if (passwordEncoder.matches(newPassword, stored.getPassword())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu hiện tại.");
         }
 
         stored.setPassword(passwordEncoder.encode(newPassword.trim()));
         userRepository.save(stored);
-        // Invalidate all refresh tokens — force re-login with new password
+        
         refreshTokenRepository.deleteAllByUser(stored);
         log.info("Password changed and all sessions revoked for user: {}", stored.getUsername());
     }
@@ -345,23 +345,18 @@ public class AuthService {
         log.info("Password reset completed for user: {}", user.getUsername());
     }
 
-    /**
-     * Xử lý đăng nhập/đăng ký qua Google OAuth2.
-     * 1. Tìm user theo googleUid — nếu đã tồn tại thì login
-     * 2. Nếu chưa, tìm theo email — nếu tồn tại (user local) thì gán Google OAuth vào
-     * 3. Nếu chưa tồn tại — tạo user mới với thông tin từ Google
-     * Sau khi tìm/đăng ký, tạo JWT và refresh token như login thường.
-     */
+    
+
     @Transactional
     public AuthResponse handleGoogleOAuth2(String email, String name, String googleUid) {
-        // 1. Tìm user theo googleUid
+        
         User user = userRepository.findByOauthUid(googleUid).orElse(null);
 
-        // 2. Nếu không tìm thấy theo uid, tìm theo email
+        
         if (user == null) {
             user = userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
             if (user != null && user.getOauthUid() == null) {
-                // User local — gán Google OAuth vào tài khoản
+                
                 user.setOauthProvider(User.OAuthProvider.GOOGLE);
                 user.setOauthUid(googleUid);
                 user.setEmailVerified(true);
@@ -370,31 +365,28 @@ public class AuthService {
             }
         }
 
-        // 3. Nếu vẫn không tìm thấy — tạo user mới
+        
         if (user == null) {
             user = createOAuthUser(email, name, googleUid);
         }
 
-        // 4. Kiểm tra enabled
+        
         if (!user.getEnabled()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị vô hiệu hóa.");
         }
 
-        // 5. Tạo tokens (giống login thường)
+        
         return createAuthResponse(user, null, null);
     }
 
-    /**
-     * Tạo user mới từ thông tin Google OAuth2.
-     * Dùng fullName từ Google làm username, email từ Google,
-     * và điền fullName vào cả user.fullName và profile.displayName.
-     */
+    
+
     private User createOAuthUser(String email, String name, String googleUid) {
         String username = generateUniqueUsername(name, email);
         User user = User.builder()
                 .username(username)
                 .email(email)
-                .password("") // OAuth user không có password
+                .password("") 
                 .emailVerified(true)
                 .fullName(name)
                 .oauthProvider(User.OAuthProvider.GOOGLE)
@@ -404,7 +396,7 @@ public class AuthService {
         User saved = userRepository.save(user);
         profileService.createProfilesForUser(saved);
 
-        // Gán displayName vào profile để hiển thị ngay
+        
         try {
             var displayName = name != null && !name.isBlank() ? name : username;
             var req = new com.example.demo.api.dto.profile.ProfileUpdateRequest();
@@ -419,14 +411,13 @@ public class AuthService {
         return saved;
     }
 
-    /**
-     * Sinh username duy nhất từ name và email — tránh trùng với username local.
-     */
+    
+
     private String generateUniqueUsername(String name, String email) {
         String base = name != null && !name.isBlank()
                 ? name.trim()
                 : email.split("@")[0].trim();
-        // Chuẩn hóa: thay khoảng trắng bằng dấu _, loại ký tự đặc biệt
+        
         String candidate = base.replaceAll("\\s+", "_").replaceAll("[^a-zA-Z0-9_]", "");
         if (candidate.isEmpty()) candidate = "user";
 
@@ -438,11 +429,10 @@ public class AuthService {
         return username;
     }
 
-    /**
-     * Tạo AuthResponse cho user — dùng chung cho login thường và OAuth2.
-     */
+    
+
     private AuthResponse createAuthResponse(User user, String deviceInfo, String ipAddress) {
-        // Rotate refresh tokens
+        
         refreshTokenRepository.deleteByUser(user);
         RefreshToken refreshToken = createRefreshToken(user,
                 deviceInfo != null ? deviceInfo : "Google OAuth2",

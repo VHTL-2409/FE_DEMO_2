@@ -279,14 +279,13 @@ public class RealtimeNotificationService {
         );
     }
 
-    // ============== AI Camera Notifications ==============
+    
 
-    /**
-     * Notify AI Camera signal detected.
-     */
+    
+
     public void notifyAiCameraSignal(ExamAttempt attempt, FraudSignal signal, Integer scoreContribution) {
         String signalType = signal.getSignalType();
-        // Only notify for AI camera signals
+        
         if (isAiCameraSignal(signalType)) {
             teacherAlertGateway.publishAiCameraSignal(
                     attempt.getExam().getId(),
@@ -298,9 +297,8 @@ public class RealtimeNotificationService {
         }
     }
 
-    /**
-     * Notify AI Camera batch update.
-     */
+    
+
     public void notifyAiCameraBatchUpdate(Long examId, String summary) {
         teacherAlertGateway.publishAiCameraBatchUpdate(examId, summary);
     }

@@ -392,6 +392,20 @@ public class AiAssistService {
             response.putIfAbsent("review_reason", "Face detector unavailable");
         }
 
+        List<?> signals = response.get("signals") instanceof List<?> rawSignals ? rawSignals : List.of();
+        boolean spoofingDetected = signals.stream()
+                .filter(s -> s instanceof Map)
+                .map(s -> (Map<?, ?>) s)
+                .anyMatch(signal -> {
+                    String type = signal.get("signal_type") != null ? signal.get("signal_type").toString().toUpperCase() : "";
+                    return type.contains("SPOOF") || type.contains("DEEPFAKE") || type.contains("LIVENESS");
+                });
+        if (spoofingDetected && "VERIFIED".equals(status)) {
+            status = "NEEDS_REVIEW";
+            response.putIfAbsent("reviewReason", "Spoofing attack detected by proctor analysis");
+            response.putIfAbsent("review_reason", "Spoofing attack detected by proctor analysis");
+        }
+
         Map<String, Object> documentOcr = asMap(firstPresent(response, "document_ocr", "documentOcr"));
         String ocrText = firstString(documentOcr, "text", "rawText", "raw_text");
         if (ocrText == null && "REJECTED".equals(status) && !Boolean.FALSE.equals(faceAvailable)) {
@@ -1289,6 +1303,10 @@ public class AiAssistService {
             return;
         }
         List<?> signals = asList(response.get("signals"));
+        Set<String> spoofingTypes = Set.of(
+                "SPOOFING_ATTACK", "SPOOFING_DETECTED", "PRINTED_PHOTO", "SCREEN_REPLAY",
+                "DEEPFAKE", "FLAT_IMAGE", "LOW_LIVENESS", "SCREEN_DISPLAY", "FACE_SPOOFING_SUSPECTED"
+        );
         for (Object rawSignal : signals) {
             if (!(rawSignal instanceof Map<?, ?> signalMap)) {
                 continue;
@@ -1296,6 +1314,10 @@ public class AiAssistService {
             String signalType = normalizeSignalType(signalMap.get("signal_type"));
             if (signalType == null) {
                 signalType = normalizeSignalType(signalMap.get("signalType"));
+            }
+            if (spoofingTypes.contains(signalType)) {
+                recordIdentitySpoofingWarning(attempt, request, response, signalMap, signalType);
+                return;
             }
             if ("IDENTITY_FACE_MISMATCH".equals(signalType)) {
                 recordIdentityFaceMismatchWarning(attempt, request, response, signalMap);
@@ -1309,6 +1331,38 @@ public class AiAssistService {
         if (Boolean.FALSE.equals(matched) && !Boolean.FALSE.equals(available)) {
             recordIdentityFaceMismatchWarning(attempt, request, response, faceMatch);
         }
+    }
+
+    private void recordIdentitySpoofingWarning(
+            ExamAttempt attempt,
+            FrameAnalysisRequest request,
+            Map<String, Object> response,
+            Map<?, ?> rawEvidence,
+            String signalType
+    ) {
+        double confidence = normalizeConfidence(rawEvidence == null ? null : rawEvidence.get("confidence"), 0.85d);
+        SignalSeverity severity = parseSeverity(rawEvidence == null ? null : rawEvidence.get("severity"), SignalSeverity.CRITICAL);
+        Map<String, Object> evidence = buildAiEvidence("identity_recheck", signalType, rawEvidence, response);
+        evidence.put("reviewRequired", true);
+        evidence.put("frameId", request.getFrameId());
+        evidence.put("capturedAt", request.getCapturedAt());
+        evidence.put("referenceSource", "IDENTITY_SELFIE");
+        var descriptor = fraudSignalService.descriptorFor(signalType);
+        evidence.put("riskImpact", descriptor != null ? descriptor.riskImpact() : 60);
+        evidence.put("riskImpactSource", "identity_recheck");
+        fraudWarningService.recordWarningWithDedupWindow(
+                attempt.getExam(),
+                attempt,
+                FraudWarningCategory.SPOOFING_ATTACK,
+                signalType,
+                severity,
+                confidence,
+                descriptor != null ? descriptor.displayMessage() : "Spoofing attack detected during identity recheck",
+                evidence,
+                "identity_recheck",
+                List.of(attempt.getId()),
+                Duration.ofSeconds(Math.max(cameraWarningDedupSeconds, 1L))
+        );
     }
 
     private void recordIdentityFaceMismatchWarning(

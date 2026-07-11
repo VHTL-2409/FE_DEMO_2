@@ -86,3 +86,5 @@ baocao/*
 *.docx
 /ai-service/.env.example
 *.env.example
+
+!README.md

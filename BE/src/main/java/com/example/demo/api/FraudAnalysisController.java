@@ -30,7 +30,7 @@ public class FraudAnalysisController {
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
 
-    // --- Plagiarism ---
+    
 
     @PostMapping("/plagiarism/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -46,7 +46,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzePlagiarismByAttempt(attemptId));
     }
 
-    // --- Timing ---
+    
 
     @PostMapping("/timing/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -62,7 +62,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzeTimingByAttempt(attemptId));
     }
 
-    // --- Statistical ---
+    
 
     @PostMapping("/statistical/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -78,7 +78,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzeStatisticalByAttempt(attemptId));
     }
 
-    // --- Behavior Analysis ---
+    
 
     @PostMapping("/behavior/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -94,7 +94,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzeBehaviorByAttempt(attemptId));
     }
 
-    // --- IP Reputation ---
+    
 
     @PostMapping("/ip-reputation/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -103,7 +103,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzeIpReputation(examId));
     }
 
-    // --- Grading ---
+    
 
     @PostMapping("/grading/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -119,7 +119,7 @@ public class FraudAnalysisController {
         return ApiResponse.success(gradingService.gradeByAttempt(attemptId));
     }
 
-    // --- Comprehensive ---
+    
 
     @PostMapping("/analyze/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -135,12 +135,10 @@ public class FraudAnalysisController {
         return ApiResponse.success(fraudAnalysisService.analyzeComprehensiveByAttempt(attemptId));
     }
 
-    // --- ML Risk Analysis ---
+    
 
-    /**
-     * ML-powered risk analysis for an exam.
-     * Combines rule-based scoring with ML inference.
-     */
+    
+
     @PostMapping("/ml-risk/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<java.util.List<MLRiskScoreResponse>> mlRiskByExam(@PathVariable Long examId) {
@@ -148,9 +146,8 @@ public class FraudAnalysisController {
         return ApiResponse.success(mlRiskScoringService.analyzeRiskByExam(examId));
     }
 
-    /**
-     * ML-powered risk analysis for a specific attempt.
-     */
+    
+
     @PostMapping("/ml-risk/attempts/{attemptId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<MLRiskScoreResponse> mlRiskByAttempt(@PathVariable Long attemptId) {
@@ -158,9 +155,8 @@ public class FraudAnalysisController {
         return ApiResponse.success(mlRiskScoringService.analyzeRisk(attemptId));
     }
 
-    /**
-     * Get ML model status.
-     */
+    
+
     @GetMapping("/ml-risk/status")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<MLModelStatusResponse> mlRiskStatus() {

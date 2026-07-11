@@ -10,10 +10,7 @@ import org.springframework.core.env.MutablePropertySources;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Thêm .env vào Environment (sau {@code systemEnvironment}). Luồng chính vẫn là
- * {@link com.example.demo.DemoApplication#main} gọi {@link DotEnvFileSupport} trước khi Spring chạy.
- */
+
 public class WorkspaceDotenvEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
     private static final String SOURCE_NAME = "workspaceDotenvFiles";

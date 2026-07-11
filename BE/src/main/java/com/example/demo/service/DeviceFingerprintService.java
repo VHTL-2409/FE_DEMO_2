@@ -11,24 +11,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Chuẩn hóa và băm device fingerprint.
- *
- * Chấp nhận hai định dạng từ frontend:
- * - JSON string: {"screen":"1920x1080","timezone":"Asia/Ho_Chi_Minh","language":"vi-VN",...}
- * - Plain string: fallback legacy
- *
- * Fingerprint chuẩn hóa sử dụng rawFingerprint khi được frontend cung cấp,
- * nếu không sẽ fallback sang userAgent + platform + studentId.
- * Kết quả được SHA-256 băm nên thông tin thiết bị thô không bao giờ được lưu.
- * Điều này đảm bảo cùng một thiết bị luôn tạo ra cùng một fingerprint hash
- * bất kể API call nào gửi nó (start, signal, heartbeat).
- *
- * <p>Các trường chuẩn (ổn định, ít nhiễu): screen, timezone, language, platform,
- * userAgent, hardwareConcurrency, deviceMemory, colorDepth, touchPoints.
- * Viewport/viewportWidth/viewportHeight bị loại trừ vì chúng thay đổi
- * khi resize window và gây false positives.</p>
- */
+
 @Service
 public class DeviceFingerprintService {
 
@@ -38,16 +21,8 @@ public class DeviceFingerprintService {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Chuẩn hóa và băm device fingerprint.
-     *
-     * Canonical = parsed JSON canonical fields + studentId  (nếu rawFingerprint là JSON hợp lệ)
-     *          = rawFingerprint + studentId               (nếu rawFingerprint là plain string không rỗng)
-     *          = userAgent + "|" + platform + "|" + studentId  (nếu không)
-     *
-     * Chuỗi canonical được SHA-256 băm nên fingerprint thô
-     * không bao giờ được lưu dạng plain text.
-     */
+    
+
     public String normalizeFingerprint(String rawFingerprint, String userAgent, Long studentId) {
         String canonical = buildCanonical(rawFingerprint, userAgent, studentId);
         if (canonical.isBlank()) {
@@ -56,10 +31,8 @@ public class DeviceFingerprintService {
         return sha256(canonical);
     }
 
-    /**
-     * Trả về biểu diễn canonical có cấu trúc của fingerprint,
-     * hoặc raw fingerprint string nếu không thể parse thành JSON.
-     */
+    
+
     public CanonicalFingerprint parseCanonical(String rawFingerprint, String userAgent, Long studentId) {
         String canonical = buildCanonical(rawFingerprint, userAgent, studentId);
         String hash = canonical.isBlank() ? "" : sha256(canonical);

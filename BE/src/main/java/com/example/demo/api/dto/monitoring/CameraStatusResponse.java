@@ -9,9 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Response DTO for AI Camera Dashboard.
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,12 +21,12 @@ public class CameraStatusResponse {
     private String studentName;
     private String studentCode;
 
-    // Camera status
+    
     private Boolean cameraActive;
     private Boolean faceDetected;
     private Boolean multipleFaces;
 
-    // Quality metrics
+    
     private String faceQuality;
     private String frameQuality;
     private Double averageBrightness;
@@ -46,16 +44,16 @@ public class CameraStatusResponse {
     private Long offScreenDurationMs;
     private Map<String, Object> visualOverlay;
 
-    // Status summary
-    private String status; // OK, WARNING, CRITICAL
+    
+    private String status; 
     private Integer alertCount;
     private Integer riskScore;
 
-    // Active signals
+    
     private List<String> activeSignals;
     private List<AiCameraSignal> criticalSignals;
 
-    // Timestamps
+    
     private LocalDateTime lastUpdate;
 
     @Data

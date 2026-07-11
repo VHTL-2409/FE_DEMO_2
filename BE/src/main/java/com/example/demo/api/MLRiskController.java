@@ -18,16 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST Controller for ML-powered Risk Analysis.
- *
- * Endpoints:
- * - GET /api/v1/ml-risk/attempt/{attemptId} - Analyze single attempt
- * - GET /api/v1/ml-risk/exam/{examId} - Analyze all attempts in exam
- * - GET /api/v1/ml-risk/status - Get ML model status
- * - GET /api/v1/ml-risk/features/{attemptId} - Extract features for an attempt
- * - POST /api/v1/ml-risk/batch - Batch analyze attempts
- */
+
 @RestController
 @RequestMapping("/api/v1/ml-risk")
 @RequiredArgsConstructor
@@ -38,9 +29,8 @@ public class MLRiskController {
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
 
-    /**
-     * Analyze risk for a single attempt using ML-powered scoring.
-     */
+    
+
     @GetMapping("/attempt/{attemptId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<MLRiskScoreResponse> analyzeAttemptRisk(@PathVariable Long attemptId) {
@@ -49,9 +39,8 @@ public class MLRiskController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Analyze risk for all attempts in an exam.
-     */
+    
+
     @GetMapping("/exam/{examId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<List<MLRiskScoreResponse>> analyzeExamRisk(@PathVariable Long examId) {
@@ -60,9 +49,8 @@ public class MLRiskController {
         return ApiResponse.success(responses);
     }
 
-    /**
-     * Get ML model status and configuration.
-     */
+    
+
     @GetMapping("/status")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<MLModelStatusResponse> getModelStatus() {
@@ -71,9 +59,8 @@ public class MLRiskController {
         return ApiResponse.success(status);
     }
 
-    /**
-     * Extract ML features for an attempt (useful for debugging and model training).
-     */
+    
+
     @GetMapping("/features/{attemptId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<MLRiskPredictionRequest> extractFeatures(@PathVariable Long attemptId) {
@@ -82,9 +69,8 @@ public class MLRiskController {
         return ApiResponse.success(features);
     }
 
-    /**
-     * Batch analyze multiple attempts.
-     */
+    
+
     @PostMapping("/batch")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ApiResponse<BatchAnalysisResponse> batchAnalyze(
@@ -148,9 +134,8 @@ public class MLRiskController {
         }
     }
 
-    /**
-     * Request DTO for batch analysis.
-     */
+    
+
     @lombok.Data
     @lombok.Builder
     @lombok.NoArgsConstructor
@@ -159,9 +144,8 @@ public class MLRiskController {
         private List<Long> attemptIds;
     }
 
-    /**
-     * Response DTO for batch analysis.
-     */
+    
+
     @lombok.Data
     @lombok.Builder
     @lombok.NoArgsConstructor

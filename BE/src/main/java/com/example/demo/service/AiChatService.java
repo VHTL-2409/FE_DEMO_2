@@ -13,9 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Proxies chat requests to the Python AI service (OpenAI-compatible API behind optional base URL).
- */
+
 @Service
 public class AiChatService {
 

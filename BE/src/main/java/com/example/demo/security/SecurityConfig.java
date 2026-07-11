@@ -47,23 +47,23 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers
-                        // Prevent MIME type sniffing
+                        
                         .contentTypeOptions(contentType -> {})
-                        // Prevent clickjacking
+                        
                         .frameOptions(frame -> frame.deny())
-                        // XSS protection (legacy browsers)
+                        
                         .xssProtection(xss -> xss.disable())
-                        // HSTS — only enable in production with HTTPS
+                        
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000)
                                 .preload(false))
-                        // Cache control — no caching for API responses
+                        
                         .cacheControl(cache -> {})
-                        // Referrer policy
+                        
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicy.ORIGIN_WHEN_CROSS_ORIGIN))
-                        // Permissions policy — restrict browser features
+                        
                         .addHeaderWriter(new StaticHeadersWriter(
                                 "Permissions-Policy",
                                 "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(self)"))

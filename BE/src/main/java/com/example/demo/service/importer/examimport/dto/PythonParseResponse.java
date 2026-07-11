@@ -64,7 +64,7 @@ public class PythonParseResponse {
         dto.setPage(toInt(raw.get("page")));
         dto.setText((String) raw.get("text"));
 
-        // LaTeX fields for math rendering
+        
         dto.setLatexContent((String) raw.get("latexContent"));
         dto.setLatexOptions((Map<String, String>) raw.get("latexOptions"));
         dto.setContentType((String) raw.get("contentType"));
@@ -76,7 +76,7 @@ public class PythonParseResponse {
         dto.setConfidence(toDouble(raw.get("confidence")));
         dto.setIssues((List<String>) raw.get("issues"));
 
-        // Math rendering hints
+        
         dto.setFormulaHints((Map<String, Object>) raw.get("formulaHints"));
 
         Object renderRaw = raw.get("render");

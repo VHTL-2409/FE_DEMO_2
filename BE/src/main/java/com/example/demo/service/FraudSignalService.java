@@ -21,16 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Service quản lý việc ghi nhận và mô tả các fraud signals trong phiên thi.
- *
- * <p>Cung cấp các chức năng:</p>
- * <ul>
- *   <li>Ghi nhận signal từ event batch của frontend</li>
- *   <li>Ghi nhận signal từ hệ thống (server-side detection)</li>
- *   <li>Cung cấp SignalDescriptor cho mỗi loại signal (category, message, severity...)</li>
- * </ul>
- */
+
 @Service
 @RequiredArgsConstructor
 public class FraudSignalService {
@@ -147,7 +138,7 @@ public class FraudSignalService {
             case "LIVENESS_CHALLENGE_FAILED" -> new SignalDescriptor("LIVENESS_CHALLENGE_FAILED", "VISUAL_IDENTITY", "Kiem tra nguoi that khong dat", riskImpact("LIVENESS_CHALLENGE_FAILED", 20), SignalSeverity.HIGH, 0.88);
             case "AI_PHONE_DETECTED" -> new SignalDescriptor("AI_PHONE_DETECTED", "IDENTITY", "Phát hiện điện thoại", 15, SignalSeverity.HIGH, 0.94);
             case "AI_SPEAKING_DETECTED" -> new SignalDescriptor("AI_SPEAKING_DETECTED", "IDENTITY", "Phát hiện tiếng ồn", riskImpact("AI_SPEAKING_DETECTED", 10), SignalSeverity.MEDIUM, 0.75);
-            // Các tín hiệu phát hiện mới cho AI camera
+            
             case "NO_CAMERA" -> new SignalDescriptor("NO_CAMERA", "AI_CAMERA", "Camera đã tắt", riskImpact("NO_CAMERA", 20), SignalSeverity.HIGH, 0.98);
             case "NO_MIC" -> new SignalDescriptor("NO_MIC", "AI_CAMERA", "Micro đã tắt", riskImpact("NO_MIC", 20), SignalSeverity.HIGH, 0.98);
             case "FACE_NOT_DETECTED" -> new SignalDescriptor("FACE_NOT_DETECTED", "AI_CAMERA", "Không phát hiện khuôn mặt", riskImpact("FACE_NOT_DETECTED", 20), SignalSeverity.HIGH, 0.90);
@@ -166,19 +157,20 @@ public class FraudSignalService {
             case "OVEREXPOSED_FRAME" -> new SignalDescriptor("OVEREXPOSED_FRAME", "AI_CAMERA", "Hình ảnh quá sáng", riskImpact("OVEREXPOSED_FRAME", 5), SignalSeverity.LOW, 0.58);
             case "VERY_BLURRY_FRAME" -> new SignalDescriptor("VERY_BLURRY_FRAME", "AI_CAMERA", "Hình ảnh rất mờ", riskImpact("VERY_BLURRY_FRAME", 15), SignalSeverity.HIGH, 0.85);
             case "BLURRY_FRAME" -> new SignalDescriptor("BLURRY_FRAME", "AI_CAMERA", "Hình ảnh mờ", riskImpact("BLURRY_FRAME", 5), SignalSeverity.LOW, 0.58);
-            // Các tín hiệu theo dõi mắt
+            
             case "EYE_BLINK_ANOMALY" -> new SignalDescriptor("EYE_BLINK_ANOMALY", "EYE_TRACKING", "Tần suất nháy mắt bất thường", riskImpact("EYE_BLINK_ANOMALY", 10), SignalSeverity.MEDIUM, 0.72);
             case "EYES_CLOSED_PROLONGED" -> new SignalDescriptor("EYES_CLOSED_PROLONGED", "EYE_TRACKING", "Mắt nhắm lâu bất thường", riskImpact("EYES_CLOSED_PROLONGED", 5), SignalSeverity.LOW, 0.65);
-            // Các tín hiệu theo dõi hướng nhìn
+            
             case "GAZE_OFF_SCREEN" -> new SignalDescriptor("GAZE_OFF_SCREEN", "GAZE_TRACKING", "Nhìn ra ngoài màn hình", riskImpact("GAZE_OFF_SCREEN", 12), SignalSeverity.HIGH, 0.78);
             case "RAPID_EYE_MOVEMENT" -> new SignalDescriptor("RAPID_EYE_MOVEMENT", "GAZE_TRACKING", "Chuyển động mắt nhanh bất thường", riskImpact("RAPID_EYE_MOVEMENT", 8), SignalSeverity.MEDIUM, 0.68);
-            // Các tín hiệu giả mạo bằng deep learning
+            
             case "PRINTED_PHOTO" -> new SignalDescriptor("PRINTED_PHOTO", "AI_SPOOFING", "Phát hiện ảnh in", riskImpact("PRINTED_PHOTO", 25), SignalSeverity.CRITICAL, 0.88);
             case "SCREEN_REPLAY" -> new SignalDescriptor("SCREEN_REPLAY", "AI_SPOOFING", "Phát hiện phát lại màn hình", riskImpact("SCREEN_REPLAY", 25), SignalSeverity.CRITICAL, 0.75);
             case "DEEPFAKE" -> new SignalDescriptor("DEEPFAKE", "AI_SPOOFING", "Nghi vấn Deepfake", riskImpact("DEEPFAKE", 30), SignalSeverity.CRITICAL, 0.90);
             case "LOW_LIVENESS" -> new SignalDescriptor("LOW_LIVENESS", "AI_SPOOFING", "Dấu hiệu không phải người thật", riskImpact("LOW_LIVENESS", 22), SignalSeverity.HIGH, 0.82);
             case "FLAT_IMAGE" -> new SignalDescriptor("FLAT_IMAGE", "AI_SPOOFING", "Hình ảnh phẳng (không có chiều sâu)", riskImpact("FLAT_IMAGE", 20), SignalSeverity.HIGH, 0.72);
             case "SCREEN_DISPLAY" -> new SignalDescriptor("SCREEN_DISPLAY", "AI_SPOOFING", "Hình ảnh từ màn hình", riskImpact("SCREEN_DISPLAY", 18), SignalSeverity.HIGH, 0.68);
+            case "SPOOFING_ATTACK" -> new SignalDescriptor("SPOOFING_ATTACK", "AI_SPOOFING", "Phát hiện tấn công giả mạo danh tính", riskImpact("SPOOFING_ATTACK", 60), SignalSeverity.CRITICAL, 0.88);
             default -> new SignalDescriptor(normalized, "OTHER", normalized.replace("_", " "), 5, SignalSeverity.LOW, 0.6);
         };
     }

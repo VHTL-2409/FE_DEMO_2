@@ -25,10 +25,8 @@ public class TeacherAlertGateway {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Publish FRAUD_SIGNAL_RECORDED event — minimal payload so teacher dashboard
-     * can update the card incrementally without fetching the whole attempt list.
-     */
+    
+
     public void publishFraudSignalRecorded(
             Long examId,
             Long attemptId,
@@ -445,11 +443,10 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/draft-updates", payload);
     }
 
-    // ============== AI Camera WebSocket Publishing ==============
+    
 
-    /**
-     * Publish AI Camera signal event.
-     */
+    
+
     public void publishAiCameraSignal(
             Long examId,
             Long attemptId,
@@ -486,9 +483,8 @@ public class TeacherAlertGateway {
         messagingTemplate.convertAndSend("/topic/attempts/" + attemptId + "/proctor-actions", payload);
     }
 
-    /**
-     * Publish AI Camera batch update (for dashboard refresh).
-     */
+    
+
     public void publishAiCameraBatchUpdate(Long examId, String summary) {
         AlertPayload payload = AlertPayload.builder()
                 .type("AI_CAMERA_BATCH_UPDATE")

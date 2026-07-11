@@ -15,12 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
-/**
- * REST client goi Python FastAPI service tai {@code python_parser/} (PDF va DOCX).
- *
- * Mac dinh: http://python-parser:8000 (Docker network)
- * Timeout: 120s connect, 120s read.
- */
+
 @Component
 @Slf4j
 public class PythonParserClient {
@@ -47,13 +42,8 @@ public class PythonParserClient {
                 serviceBaseUrl, connectTimeoutMs, readTimeoutMs);
     }
 
-    /**
-     * Gọi POST /parse-exam với file upload.
-     *
-     * @param file          PDF hoặc DOCX (multipart)
-     * @param sessionId     session ID để truy vết
-     * @return raw JSON map từ Python FastAPI response
-     */
+    
+
     public Map<String, Object> parseExam(MultipartFile file, String sessionId) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -97,9 +87,8 @@ public class PythonParserClient {
         }
     }
 
-    /**
-     * Gọi GET /parse-exam/profile?filePath=... để lấy PDF profile mà không parse.
-     */
+    
+
     public Map<String, Object> profilePdf(String filePath) {
         try {
             String url = serviceBaseUrl + "/parse-exam/profile?filePath=" + filePath;
@@ -111,9 +100,8 @@ public class PythonParserClient {
         }
     }
 
-    /**
-     * Kiểm tra health của Python service.
-     */
+    
+
     public boolean isHealthy() {
         try {
             String raw = restTemplate.getForObject(serviceBaseUrl + "/health", String.class);
@@ -124,9 +112,8 @@ public class PythonParserClient {
         }
     }
 
-    /**
-     * Yêu cầu Python service dọn cache session parse và ảnh crop nếu còn.
-     */
+    
+
     public void deleteSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             return;
@@ -143,9 +130,8 @@ public class PythonParserClient {
         }
     }
 
-    /**
-     * Trả về fallback response khi Python service không khả dụng.
-     */
+    
+
     @SuppressWarnings("unchecked")
     public Map<String, Object> fallbackResponse(String sessionId) {
         return Map.of(
@@ -155,9 +141,8 @@ public class PythonParserClient {
         );
     }
 
-    /**
-     * Simple Resource wrapper for byte array in multipart request.
-     */
+    
+
     private static class MultipartInputStreamFileResource implements org.springframework.core.io.Resource {
         private final byte[] bytes;
         private final String filename;

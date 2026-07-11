@@ -5,10 +5,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Audit log cho hành động giám thị và sự kiện hệ thống.
- * Phục vụ truy vết, báo cáo và đánh giá trong khóa luận.
- */
+
 @Entity
 @Table(name = "audit_logs", indexes = {
     @Index(name = "idx_audit_attempt", columnList = "attempt_id"),
@@ -33,7 +30,7 @@ public class AuditLog {
     @Column(name = "action", nullable = false, length = 30)
     private AuditAction action;
 
-    /** Username của người thực hiện (null nếu SYSTEM_*) */
+    
     @Column(name = "actor_username", length = 100)
     private String actorUsername;
 

@@ -94,14 +94,12 @@ public class ImportXlsxService {
         return parseQuestions(previewExam, file).size();
     }
 
-    // ================================================================
-    //  PREVIEW METHODS — one per file format
-    // ================================================================
+    
+    
+    
 
-    /**
-     * Parse và preview file PDF. Trả về danh sách câu hỏi đã parse cùng độ dài
-     * text gốc sau khi extract.
-     */
+    
+
     public PdfParseResult previewPdf(Exam exam, MultipartFile file) {
         validateFile(file, "pdf");
         String text;
@@ -117,10 +115,8 @@ public class ImportXlsxService {
         return new PdfParseResult(questions, text.length());
     }
 
-    /**
-     * Parse và preview file DOCX. Trả về danh sách câu hỏi đã parse cùng độ dài
-     * text gốc sau khi extract.
-     */
+    
+
     public DocxParseResult previewDocx(Exam exam, MultipartFile file) {
         validateFile(file, "docx");
         String text;
@@ -136,10 +132,8 @@ public class ImportXlsxService {
         return new DocxParseResult(questions, text.length());
     }
 
-    /**
-     * Parse và preview file XLSX. Trả về danh sách câu hỏi đã parse cùng số dòng
-     * trong sheet và flag isAzotaFormat.
-     */
+    
+
     public XlsxParseResult previewXlsx(Exam exam, MultipartFile file) {
         validateFile(file, "xlsx");
         try (InputStream is = file.getInputStream();
@@ -163,19 +157,17 @@ public class ImportXlsxService {
         }
     }
 
-    /** Container kết quả preview PDF. */
+    
     public record PdfParseResult(List<Question> questions, int rawTextLength) {}
 
-    /** Container kết quả preview DOCX. */
+    
     public record DocxParseResult(List<Question> questions, int rawTextLength) {}
 
-    /** Container kết quả preview XLSX. */
+    
     public record XlsxParseResult(List<Question> questions, int sourceRows, boolean isAzotaFormat) {}
 
-    /**
-     * Parse và preview file CSV. Trả về danh sách câu hỏi đã parse cùng số dòng
-     * trong file và charset được phát hiện.
-     */
+    
+
     public CsvParseResult previewCsv(Exam exam, MultipartFile file) {
         validateFile(file, "csv");
         Charset charset = detectCsvCharset(file);
@@ -190,7 +182,7 @@ public class ImportXlsxService {
         }
     }
 
-    /** Container kết quả preview CSV. */
+    
     public record CsvParseResult(List<Question> questions, int sourceRows, String detectedCharset) {}
 
     public int importQuestionsFromXlsx(Exam exam, MultipartFile file) {
@@ -251,27 +243,12 @@ public class ImportXlsxService {
         return questions;
     }
 
-    // ================================================================
-    //  AZOTA XLSX PARSER — 9 exam versions (columns 001-009)
-    // ================================================================
+    
+    
+    
 
-    /**
-     * Parses Azota Excel format with 9 exam versions.
-     *
-     * <p>Structure:
-     * <ul>
-     *   <li>Row 0: header — "Câu hỏi" | 001 | 002 | ... | 009 | notes</li>
-     *   <li>Row 1: note row</li>
-     *   <li>Rows 2-41: 40 multiple-choice (answer = first version col)</li>
-     *   <li>Rows 42-49: 8 true/false (Đ/S pattern)</li>
-     *   <li>Rows 50-57: 8 fill-in-the-blank (numeric answer)</li>
-     *   <li>Rows 58+: "Tự luận" rows</li>
-     * </ul>
-     *
-     * <p>Note: Azota format typically does not store option texts (A/B/C/D) — only the answer key.
-     * When question text is present in the "Câu hỏi" column, the question is imported as
-     * an essay/short-answer question with the answer from the first version (001).
-     */
+    
+
     private List<Question> parseQuestionsFromAzotaXlsx(Exam exam, Sheet sheet, Map<String, Integer> headerIndexes) {
         List<Question> questions = new ArrayList<>();
         int questionColIdx = headerIndexes.getOrDefault("cauhỏi", 0);
@@ -281,16 +258,16 @@ public class ImportXlsxService {
             if (row == null) continue;
 
             String content = cellAsString(row.getCell(questionColIdx)).trim();
-            // Skip empty rows and metadata rows
+            
             if (content.isBlank()) continue;
             if (content.matches("(?i)^(note|lưu ý|mã đề|tối đa).*")) continue;
 
-            // Essay rows: "Tự luận" marker
+            
             if (content.matches("(?i)^tự\\s*luận")) {
                 continue;
             }
 
-            // Essay rows with actual content (col 0 = content, col 1 = score)
+            
             if (rowIndex >= 58) {
                 String score = "1.0";
                 try {
@@ -308,7 +285,7 @@ public class ImportXlsxService {
                 continue;
             }
 
-            // Read answer from first version column (col 1)
+            
             int lastDataCol = Math.min(11, row.getLastCellNum() - 1);
             if (lastDataCol < 1) continue;
 
@@ -320,7 +297,7 @@ public class ImportXlsxService {
             String scoreCell = "1.0";
 
             if (firstAnswer.matches("(?i)[ĐSFT]")) {
-                // True/False: Đ/T/F = correct (→ A), S = wrong (→ B)
+                
                 optionA = "Đúng";
                 optionB = "Sai";
                 correctAnswer = firstAnswer.equalsIgnoreCase("Đ")
@@ -328,13 +305,13 @@ public class ImportXlsxService {
                         || firstAnswer.equalsIgnoreCase("F")
                         ? "A" : "B";
             } else if (firstAnswer.matches("-?[\\d.,]+")) {
-                // Fill-in-blank: numeric answer — single option (the answer itself)
+                
                 optionA = firstAnswer;
                 correctAnswer = "A";
             } else if (List.of("A", "B", "C", "D").contains(firstAnswer.toUpperCase(Locale.ROOT))) {
-                // Multiple-choice answer key — no options stored
+                
                 correctAnswer = firstAnswer.toUpperCase(Locale.ROOT);
-                // Store as essay-like question for review
+                
                 String answerNote = "Đáp án đúng: " + correctAnswer;
                 content = content.isBlank() ? ("Câu hỏi số " + (rowIndex - 1)) : content;
                 Question q = Question.builder()
@@ -347,7 +324,7 @@ public class ImportXlsxService {
                 questions.add(q);
                 continue;
             } else {
-                // Unknown, skip
+                
                 continue;
             }
 
@@ -478,20 +455,12 @@ public class ImportXlsxService {
         return parseQuestionsFromText(exam, text);
     }
 
-    // ================================================================
-    //  DOCX PARSER — handles score in header, essay, fill-in-blank
-    // ================================================================
+    
+    
+    
 
-    /**
-     * Parses DOCX text (extracted with run-level granularity) supporting:
-     * <ul>
-     *   <li>Trắc nghiệm: "1. (0.200 Point)" header → question → A./B./C./D. → *D. marks answer</li>
-     *   <li>Tự luận: "1. (0.250 Point)" header → question text → next non-blank line = answer</li>
-     *   <li>Fill-in-blank: "- answer" line after question</li>
-     *   <li>Simple: "1. question" → A./B./C./D. → *D. answer inline</li>
-     *   <li>Score extracted from header like "(0.200 Point)" when present</li>
-     * </ul>
-     */
+    
+
     private List<Question> parseQuestionsFromDocx(Exam exam, String rawText) {
         if (rawText == null || rawText.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File DOCX trống hoặc không có nội dung");
@@ -511,7 +480,7 @@ public class ImportXlsxService {
         while (idx < lines.size()) {
             String line = lines.get(idx);
 
-            // Match question header: "N. (Score Point)" or "N. " or "N."
+            
             Pattern headerPattern = Pattern.compile(
                     "(?i)^(?:Câu|Bài|Question)?\\s*(\\d+)\\s*[\\.\\):]?\\s*(?:\\(?[\\d.,]+\\s*(?:Point|điểm|đ)\\)?)?\\s*$");
             Matcher hm = headerPattern.matcher(line);
@@ -520,7 +489,7 @@ public class ImportXlsxService {
                 int questionNum = Integer.parseInt(hm.group(1));
                 double score = extractScoreFromLine(line);
 
-                // Peek ahead to determine question type
+                
                 int nextIdx = idx + 1;
                 StringBuilder questionContent = new StringBuilder();
                 List<String> optionLines = new ArrayList<>();
@@ -529,7 +498,7 @@ public class ImportXlsxService {
                 while (nextIdx < lines.size()) {
                     String nextLine = lines.get(nextIdx);
 
-                    // Stop at next question header or section marker
+                    
                     if (nextLine.matches("(?i)^\\s*(?:Phần|TỰ LUẬN|Tự\\s*Luận|BẢNG ĐÁP ÁN|Đáp án|Chương|\\*Lưu ý).*")) {
                         break;
                     }
@@ -538,13 +507,13 @@ public class ImportXlsxService {
                         break;
                     }
 
-                    // Essay: next non-blank line after question content (not starting with A./B./C./D.)
+                    
                     if (nextLine.startsWith("-") || nextLine.startsWith("=>") || nextLine.startsWith("–")) {
-                        // Likely essay answer line
+                        
                         String answerCandidate = nextLine.replaceFirst("^[\\-=>]\\s*", "").trim();
                         if (!answerCandidate.isBlank() && !answerCandidate.matches("(?i)^(đáp án|answer|key).*")) {
                             if (questionContent.length() > 0 && !questionContent.toString().matches(".*[A-Da-d][\\.\\):].*")) {
-                                // Question content didn't have options yet — treat as essay answer
+                                
                                 essayAnswer = answerCandidate;
                                 nextIdx++;
                                 break;
@@ -552,7 +521,7 @@ public class ImportXlsxService {
                         }
                     }
 
-                    // Option detection — cho phép *A. / *D. (đánh dấu đáp án đúng như doc_mau_2)
+                    
                     Pattern optPat = Pattern.compile("^\\s*\\*?([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
                     Matcher om = optPat.matcher(nextLine);
                     if (om.matches()) {
@@ -561,7 +530,7 @@ public class ImportXlsxService {
                         continue;
                     }
 
-                    // Accumulate question content
+                    
                     if (optionLines.isEmpty() && !nextLine.matches("(?i)^(đáp án|answer|key).*")) {
                         if (questionContent.length() > 0) questionContent.append(" ");
                         questionContent.append(nextLine);
@@ -577,7 +546,7 @@ public class ImportXlsxService {
                 boolean hasOptions = !optionLines.isEmpty();
 
                 if (hasOptions) {
-                    // Parse options
+                    
                     for (String optLine : optionLines) {
                         Pattern po = Pattern.compile("^\\s*\\*?([A-Da-d])[\\.\\):\\-–—]\\s*(.+)");
                         Matcher omo = po.matcher(optLine);
@@ -587,7 +556,7 @@ public class ImportXlsxService {
                             if (optLine.trim().startsWith("*")) {
                                 correctAnswer = letter;
                             }
-                            // Strip leading asterisk if present
+                            
                             if (optText.startsWith("*")) {
                                 optText = optText.substring(1).trim();
                                 correctAnswer = letter;
@@ -601,7 +570,7 @@ public class ImportXlsxService {
                         }
                     }
 
-                    // Determine answer
+                    
                     if (correctAnswer == null) {
                         if (answerKey.containsKey(questionNum)) {
                             correctAnswer = answerKey.get(questionNum);
@@ -628,7 +597,7 @@ public class ImportXlsxService {
                     addQuestionRow(questions, exam, content, optionA, optionB, optionC, optionD,
                             correctAnswer, String.valueOf(score > 0 ? score : 1.0), null, questionNum);
                 } else {
-                    // Essay or fill-in-blank
+                    
                     if (content.isBlank()) {
                         idx = nextIdx;
                         continue;
@@ -743,23 +712,12 @@ public class ImportXlsxService {
         }
     }
 
-    // ================================================================
-    //  TEXT PARSER — main entry for PDF, DOCX, Markdown
-    // ================================================================
+    
+    
+    
 
-    /**
-     * Parses questions from plain text (PDF/Word/Markdown).
-     *
-     * <p>Answer extraction priority (3 strategies):
-     * <ol>
-     *   <li><b>Inline answer</b> – "Đáp án: A" / "Answer: B" inside the block</li>
-     *   <li><b>Answer key map</b> – "1-D 2-C 3-A 4-A" / "1.C 2.B" at end of document</li>
-     *   <li><b>Contextual match</b> – answer letter appears as the first option (A. đúng / A) correct)</li>
-     * </ol>
-     *
-     * <p>Supported headers: Câu N., Câu N:, Bài N., Question N:, N.
-     * <br>Supported options: A. / A) / A: / A-
-     */
+    
+
     private List<Question> parseQuestionsFromText(Exam exam, String rawText) {
         if (rawText == null || rawText.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File trống hoặc không có nội dung");
@@ -771,10 +729,10 @@ public class ImportXlsxService {
         }
         String normalized = preprocessQuizPlainText(rawText);
 
-        // Step 0 – detect exam sections (PHẦN I / PHẦN II / Trắc nghiệm / Tự luận)
+        
         List<SectionSpan> sections = detectExamSections(normalized);
 
-        // Step 1 – extract answer key table from the end of the document
+        
         Map<Integer, String> answerKey = extractAnswerKeyTable(normalized);
 
         List<Question> questions = new ArrayList<>();
@@ -801,7 +759,7 @@ public class ImportXlsxService {
                         }
                     }
                 } catch (ApiException ex) {
-                    // MCQ block with no answer → try ESSAY fallback
+                    
                     try {
                         ParsedQuestion pq = parseQuestionBlock(block, answerKey, i + 1, SectionKind.ESSAY);
                         if (pq != null && pq.content != null && !pq.content.isBlank()) {
@@ -821,11 +779,8 @@ public class ImportXlsxService {
         return questions;
     }
 
-    /**
-     * Chuẩn hoá text trích xuất từ PDF/Word: dấu fullwidth, và tách dòng kiểu bảng
-     * {@code Câu 1. stem | A) ... | B) ... | Đáp án: A} thành nhiều dòng để parser
-     * nhận diện được từng phần (trước đây một dòng duy nhất khiến mất nội dung câu hỏi).
-     */
+    
+
     private String preprocessQuizPlainText(String rawText) {
         if (rawText == null) return null;
         String n = rawText.replace("\r\n", "\n").replace("\r", "\n");
@@ -855,24 +810,10 @@ public class ImportXlsxService {
         return sb.toString();
     }
 
-    // ---------- Answer Key Table extractor ----------
+    
 
-    /**
-     * Scans the last 40 lines of the document for an answer-key section and returns
-     * a map of questionNumber → correctAnswerLetter (A/B/C/D).
-     *
-     * <p>Supported formats:
-     * <ul>
-     *   <li>1-D 2-C 3-A 4-A          (dash-separated, pdf_mau_2 / pdf_mau_3)</li>
-     *   <li>1.D 2.C 3.B 4.D          (dot-separated)</li>
-     *   <li>1.C 2.B 3.D 4.B          (dot, no space – pdf_mau_1)</li>
-     *   <li>1 D 2 C 3 A              (space-separated)</li>
-     *   <li>Đáp án 1D 2C 3A         (with Vietnamese header)</li>
-     *   <li>Đáp án: 1-D 2-C         (with colon)</li>
-     *   <li>BẢNG ĐÁP ÁN\n1-D 2-C   (with answer-table header)</li>
-     *   <li>ANSWER KEY 1-D 2-C        (English)</li>
-     * </ul>
-     */
+    
+
     private Map<Integer, String> extractAnswerKeyTable(String text) {
         Map<Integer, String> key = new LinkedHashMap<>();
         if (text == null || text.isBlank()) return key;
@@ -885,8 +826,8 @@ public class ImportXlsxService {
         }
         String searchArea = tail.toString();
 
-        // Pattern: number followed by optional separator, then A-D
-        // Matches: 1-D  1.D  1,D  1;D  1|D  1 D
+        
+        
         Pattern pairPattern = Pattern.compile(
                 "(?:^|\\s)(\\d+)\\s*[-–—.,:;|]?\\s*([A-Da-d])(?=\\s|$|[,;\\.])",
                 Pattern.MULTILINE
@@ -898,7 +839,7 @@ public class ImportXlsxService {
             key.put(qNum, answer);
         }
 
-        // Fallback: pure space-separated "1 D 2 C"
+        
         if (key.isEmpty()) {
             Pattern simplePattern = Pattern.compile(
                     "(?:^|\\s)(\\d+)\\s+([A-Da-d])(?:\\s|$)",
@@ -915,15 +856,13 @@ public class ImportXlsxService {
         return key;
     }
 
-    // ---------- Block splitter ----------
+    
 
-    /**
-     * Splits raw text into individual question blocks.
-     * Recognised headers: "Câu N.", "Câu N:", "Bài N.", "Question N.", "Question N:", "N."
-     */
+    
+
     private List<String> splitQuestionBlocks(String text) {
         List<String> blocks = new ArrayList<>();
-        // Matches start of question header: Câu N.  Câu N:  Bài N.  Question N:  N.
+        
         Pattern startPattern = Pattern.compile(
                 "(?m)^(?:Câu|Bài|Question)?\\s*(\\d+)[\\s.\\):\\-–—]"
         );
@@ -960,18 +899,16 @@ public class ImportXlsxService {
         QuestionType type = QuestionType.SINGLE_CHOICE;
     }
 
-    /** Phân loại khu vực trong đề thi. */
+    
     enum SectionKind { MCQ, ESSAY, UNKNOWN }
 
-    /** Một khu vực trong đề thi với vị trí dòng và loại. */
+    
     record SectionSpan(int startLine, int endLine, SectionKind kind) {}
 
-    // ---------- Exam section detector ----------
+    
 
-    /**
-     * Quét toàn bộ văn bản để nhận diện các khu vực đề thi (PHẦN I / PHẦN II /
-     * Trắc nghiệm / Tự luận). Trả về danh sách SectionSpan đã sort theo startLine.
-     */
+    
+
     private List<SectionSpan> detectExamSections(String normalized) {
         List<SectionSpan> sections = new ArrayList<>();
         String[] lines = normalized.split("\n", -1);
@@ -979,7 +916,7 @@ public class ImportXlsxService {
         SectionKind currentKind = SectionKind.UNKNOWN;
         int sectionStart = 0;
 
-        // Regex patterns cho tiêu đề khu vực (phải ở đầu dòng)
+        
         Pattern essayHeader = Pattern.compile(
                 "(?i)^\\s*(phần\\s*II|phần\\s*2|tự\\s*luận|tự\\s*luận|phần\\s*II\\s*[:.]?|section\\s*II|part\\s*II)\\b");
         Pattern mcqHeader = Pattern.compile(
@@ -998,7 +935,7 @@ public class ImportXlsxService {
             } else if (mcqHeader.matcher(line).find()) {
                 detected = SectionKind.MCQ;
             } else if (neutralHeader.matcher(line).find()) {
-                // "Phần I" / "Phần II" — xác định parity để suy ra kind
+                
                 detected = inferSectionKindFromLine(line);
             }
 
@@ -1011,12 +948,12 @@ public class ImportXlsxService {
             }
         }
 
-        // Flush cuối
+        
         if (currentKind != null && sectionStart < lines.length) {
             sections.add(new SectionSpan(sectionStart, lines.length, currentKind));
         }
 
-        // Nếu không có section nào → toàn bộ là UNKNOWN (dùng MCQ logic có fallback)
+        
         if (sections.isEmpty()) {
             sections.add(new SectionSpan(0, lines.length, SectionKind.UNKNOWN));
         }
@@ -1024,10 +961,10 @@ public class ImportXlsxService {
         return sections;
     }
 
-    /** Suy ra kind từ tiêu đề "Phần I" / "Phần II" / "Phần 1" / "Phần 2". */
+    
     private SectionKind inferSectionKindFromLine(String line) {
         String lower = line.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
-        // "phần2" / "phầnII" → ESSAY; "phần1" / "phầnI" → MCQ
+        
         if (lower.matches(".*phần2.*") || lower.matches(".*phầnii.*")) {
             return SectionKind.ESSAY;
         }
@@ -1037,16 +974,10 @@ public class ImportXlsxService {
         return SectionKind.UNKNOWN;
     }
 
-    // ---------- Question block parser ----------
+    
 
-    /**
-     * Parses a single question block.
-     *
-     * @param block       raw text of the question
-     * @param answerKey   answer map from {@link #extractAnswerKeyTable} (may be empty)
-     * @param blockIndex  1-based index for error messages
-     * @param sectionKind the kind of section this block belongs to (affects answer requirements)
-     */
+    
+
     private ParsedQuestion parseQuestionBlock(String block, Map<Integer, String> answerKey,
                                               int blockIndex, SectionKind sectionKind) {
         ParsedQuestion pq = new ParsedQuestion();
@@ -1057,26 +988,26 @@ public class ImportXlsxService {
         String optionA = "", optionB = "", optionC = "", optionD = "";
         String correctAnswer = null;
 
-        // Question number extraction (from first line that looks like a header)
+        
         Pattern numPattern = Pattern.compile(
                 "(?m)^(?:Câu|Bài|Question)?\\s*(\\d+)[\\s.\\):\\-–—]"
         );
 
-        // Inline answer – "Đáp án: A" / "Answer: B" (highest priority)
+        
         Pattern answerInlinePattern = Pattern.compile(
                 "(?i)(?:đáp\\s*án|answer|key|solution|correct)\\s*[:=\\-–—\\s]+([A-Da-d])(?:\\s|$|[,;\\.])"
         );
 
-        // Option patterns – most specific to least: asterisk-marked, dot, close-paren, colon, hyphen
+        
         Pattern[] optPatterns = new Pattern[]{
-                Pattern.compile("^\\s*\\*?([A-Da-d])\\.\\s*(.+)$"),        // *D. option text  OR  D. option text
-                Pattern.compile("^\\s*\\*?([A-Da-d]\\))\\s*(.+)$"),        // *D) option text  OR  D) option text
-                Pattern.compile("^\\s*\\*?([A-Da-d]):\\s*(.+)$"),          // *D: option text  OR  D: option text
-                Pattern.compile("^\\s*\\*?([A-Da-d])[\\-–—]\\s*(.+)$"),   // *D- option text  OR  D- option text
+                Pattern.compile("^\\s*\\*?([A-Da-d])\\.\\s*(.+)$"),        
+                Pattern.compile("^\\s*\\*?([A-Da-d]\\))\\s*(.+)$"),        
+                Pattern.compile("^\\s*\\*?([A-Da-d]):\\s*(.+)$"),          
+                Pattern.compile("^\\s*\\*?([A-Da-d])[\\-–—]\\s*(.+)$"),   
         };
 
-        // Special case: detect if the first "header" line is actually just "N." with
-        // question content on the NEXT line (doc_mau_2 format: "1.\nHỏi gì?\nA.\n*B.")
+        
+        
         boolean firstLineIsHeaderOnly = false;
         boolean headerOnlyChecked = false;
 
@@ -1084,7 +1015,7 @@ public class ImportXlsxService {
             String trimmed = line.trim();
             if (trimmed.isBlank()) continue;
 
-            // Tách "Đáp án: X" ở cuối cùng dòng (cùng dòng với stem/đáp án) rồi parse phần còn lại
+            
             String workLine = trimmed;
             Matcher ansScan = answerInlinePattern.matcher(workLine);
             int lastAnsStart = -1;
@@ -1103,7 +1034,7 @@ public class ImportXlsxService {
                 }
             }
 
-            // Check special format: first line is ONLY "N." (no other content on that line)
+            
             if (!headerOnlyChecked && contentBuilder.length() == 0) {
                 Pattern pureHeaderPattern = Pattern.compile("(?m)^(?:Câu|Bài|Question)?\\s*(\\d+)[\\s.\\):\\-–—]\\s*$");
                 Matcher phm = pureHeaderPattern.matcher(workLine);
@@ -1118,7 +1049,7 @@ public class ImportXlsxService {
                 headerOnlyChecked = true;
             }
 
-            // If we detected a header-only first line, the NEXT non-blank line IS the question content
+            
             if (firstLineIsHeaderOnly && contentBuilder.length() == 0) {
                 if (contentBuilder.length() > 0) contentBuilder.append(" ");
                 contentBuilder.append(workLine);
@@ -1126,7 +1057,7 @@ public class ImportXlsxService {
                 continue;
             }
 
-            // Extract question number from header line
+            
             if (questionNumber == null) {
                 Matcher nm = numPattern.matcher(workLine);
                 if (nm.find()) {
@@ -1137,7 +1068,7 @@ public class ImportXlsxService {
                 }
             }
 
-            // "*D. option text" — asterisk marks correct answer
+            
             if (workLine.startsWith("*")) {
                 Pattern asteriskOpt = Pattern.compile("^\\*([A-Da-d])\\.\\s*(.+)$");
                 Matcher am = asteriskOpt.matcher(workLine);
@@ -1154,7 +1085,7 @@ public class ImportXlsxService {
                 }
             }
 
-            // 2) Option lines – match A./A)/A:/A-
+            
             boolean matchedOption = false;
             for (Pattern optPat : optPatterns) {
                 Matcher om = optPat.matcher(workLine);
@@ -1176,7 +1107,7 @@ public class ImportXlsxService {
             }
             if (matchedOption) continue;
 
-            // 3) Content / continuation lines
+            
             String cleaned = workLine;
             if (questionNumber != null) {
                 cleaned = workLine.replaceFirst(
@@ -1196,17 +1127,17 @@ public class ImportXlsxService {
         pq.optionC = optionC;
         pq.optionD = optionD;
 
-        // Determine correct answer – priority: inline > answerKey > contextual
+        
 
-        // Priority 1: inline answer (already captured)
-        // Priority 2: look up in answer key map
+        
+        
         if (correctAnswer == null || !List.of("A", "B", "C", "D").contains(correctAnswer)) {
             if (questionNumber != null && answerKey.containsKey(questionNumber)) {
                 correctAnswer = answerKey.get(questionNumber);
             }
         }
 
-        // Priority 3: contextual – "A. đúng" / "A. correct" means A is the answer
+        
         if (correctAnswer == null || !List.of("A", "B", "C", "D").contains(correctAnswer)) {
             if (!optionA.isBlank()) {
                 String lower = optionA.toLowerCase(Locale.ROOT).trim();
@@ -1228,19 +1159,19 @@ public class ImportXlsxService {
             }
         }
 
-        // ESSAY section → never require answer
+        
         if (sectionKind == SectionKind.ESSAY) {
             pq.type = QuestionType.ESSAY;
             return pq;
         }
 
-        // MCQ section with valid answer
+        
         if (correctAnswer != null && List.of("A", "B", "C", "D").contains(correctAnswer)) {
             pq.type = QuestionType.SINGLE_CHOICE;
             return pq;
         }
 
-        // MCQ/UNKNOWN: fewer than 2 real options → treat as essay
+        
         int validOptions = 0;
         if (!optionA.isBlank()) validOptions++;
         if (!optionB.isBlank()) validOptions++;
@@ -1252,7 +1183,7 @@ public class ImportXlsxService {
             return pq;
         }
 
-        // MCQ with >= 2 options but no answer found → throw
+        
         throw new ApiException(HttpStatus.BAD_REQUEST,
                 "Thiếu đáp án đúng (A/B/C/D) ở câu " + blockIndex
                 + (questionNumber != null ? " (câu " + questionNumber + ")" : ""));
@@ -1270,9 +1201,9 @@ public class ImportXlsxService {
         questions.add(q);
     }
 
-    // ================================================================
-    //  Helpers
-    // ================================================================
+    
+    
+    
 
     private void addQuestionRow(List<Question> questions, Exam exam,
                                 String content, String optionA, String optionB,

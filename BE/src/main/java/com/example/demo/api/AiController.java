@@ -26,11 +26,10 @@ public class AiController {
     private final AiChatService aiChatService;
     private final CurrentUserService currentUserService;
 
-    // ===================== QUESTION GENERATION =====================
+    
 
-    /**
-     * Generate questions from topic.
-     */
+    
+
     @PostMapping("/api/v1/ai/generate/from-topic")
     public ApiResponse<GenerateQuestionsResponse> generateFromTopic(
             @RequestBody GenerateQuestionsRequest request
@@ -48,9 +47,8 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Generate questions from text content.
-     */
+    
+
     @PostMapping("/api/v1/ai/generate/from-text")
     public ApiResponse<GenerateQuestionsResponse> generateFromText(
             @RequestBody GenerateQuestionsRequest request
@@ -68,9 +66,8 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Check if question generator is available.
-     */
+    
+
     @GetMapping("/api/v1/ai/generate/status")
     public ApiResponse<Map<String, Object>> getGeneratorStatus() {
         currentUserService.requireCurrentUser();
@@ -81,9 +78,8 @@ public class AiController {
         ));
     }
 
-    /**
-     * Site chat bubble: multi-turn chat with AI (proxied to Python service).
-     */
+    
+
     @PostMapping("/api/v1/ai/chat")
     public ApiResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
         currentUserService.requireCurrentUser();
@@ -91,20 +87,18 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * List available chat models (proxied from ai-service).
-     */
+    
+
     @GetMapping("/api/v1/ai/chat/models")
     public ApiResponse<Map<String, Object>> getChatModels() {
         currentUserService.requireCurrentUser();
         return ApiResponse.success(aiChatService.getChatModels());
     }
 
-    // ===================== ESSAY EVALUATION =====================
+    
 
-    /**
-     * Evaluate an essay answer.
-     */
+    
+
     @PostMapping("/api/v1/ai/evaluate/essay")
     public ApiResponse<EssayEvaluationResponse> evaluateEssay(
             @Valid @RequestBody EvaluateEssayRequest request
@@ -121,9 +115,8 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Check if essay evaluator is available.
-     */
+    
+
     @GetMapping("/api/v1/ai/evaluate/status")
     public ApiResponse<Map<String, Object>> getEvaluatorStatus() {
         currentUserService.requireCurrentUser();
@@ -134,11 +127,10 @@ public class AiController {
         ));
     }
 
-    // ===================== ANALYTICS =====================
+    
 
-    /**
-     * Predict student performance.
-     */
+    
+
     @PostMapping("/api/v1/ai/analytics/predict")
     public ApiResponse<PerformancePredictionResponse> predictPerformance(
             @Valid @RequestBody PerformancePredictionRequest request
@@ -154,9 +146,8 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Get study recommendations for a student.
-     */
+    
+
     @GetMapping("/api/v1/ai/analytics/recommendations/{studentId}")
     public ApiResponse<Map<String, Object>> getRecommendations(
             @PathVariable int studentId,
@@ -175,9 +166,8 @@ public class AiController {
         ));
     }
 
-    /**
-     * Analyze question quality.
-     */
+    
+
     @PostMapping("/api/v1/ai/analytics/question-quality")
     public ApiResponse<QuestionQualityResponse> analyzeQuestionQuality(
             @Valid @RequestBody QuestionQualityRequest request
@@ -195,9 +185,8 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * Analyze difficulty distribution of questions.
-     */
+    
+
     @PostMapping("/api/v1/ai/analytics/difficulty-distribution")
     public ApiResponse<Map<String, Object>> analyzeDifficultyDistribution(
             @RequestBody Map<String, Object> request
@@ -213,11 +202,10 @@ public class AiController {
         return ApiResponse.success(response);
     }
 
-    // ===================== SERVICE STATUS =====================
+    
 
-    /**
-     * Get overall AI service status.
-     */
+    
+
     @GetMapping("/api/v1/ai/status")
     public ApiResponse<Map<String, Object>> getServiceStatus() {
         currentUserService.requireCurrentUser();

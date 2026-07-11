@@ -66,13 +66,10 @@ public class ExamImportService {
         this.importExecutor = importExecutor;
     }
 
-    // ─── Public API ───────────────────────────────────────────────────────────
+    
 
-    /**
-     * Upload PDF hoặc DOCX và gửi sang Python FastAPI để parse.
-     * Chạy async — trả về session ngay lập tức.
-     * File gốc KHÔNG được lưu vào storage, chỉ giữ bytes trong memory.
-     */
+    
+
     @Transactional
     public ExamImportResponse uploadAndParse(
             User actor,
@@ -111,7 +108,7 @@ public class ExamImportService {
                 .exam(exam)
                 .originalFileName(originalName.isBlank() ? defaultName : originalName)
                 .fileType(extNorm)
-                .storagePath(null)  // File gốc không được lưu
+                .storagePath(null)  
                 .status(ExamImportSession.SessionStatus.UPLOADED)
                 .pythonServiceUrl(pythonParserClient.isHealthy()
                         ? "http://localhost:8000" : null)
@@ -122,7 +119,7 @@ public class ExamImportService {
         session = sessionRepository.save(session);
         log.info("[ExamImport] Session {} created for file {} (no file storage)", sessionKey, file.getOriginalFilename());
 
-        // Run parsing asynchronously - pass bytes directly
+        
         final String sk = sessionKey;
         final byte[] bytes = fileBytes;
         final String fileName = originalName.isBlank() ? defaultName : originalName;
@@ -136,9 +133,8 @@ public class ExamImportService {
                 .build();
     }
 
-    /**
-     * Lấy preview của một session (questions + report).
-     */
+    
+
     @Transactional(readOnly = true)
     public ExamPreviewDto getPreview(Long sessionId, User actor) {
         ExamImportSession session = requireSession(sessionId, actor);
@@ -192,9 +188,8 @@ public class ExamImportService {
         return dto;
     }
 
-    /**
-     * Lấy danh sách session của user.
-     */
+    
+
     @Transactional(readOnly = true)
     public List<ExamImportResponse> getUserSessions(Long userId) {
         return sessionRepository.findByUserIdOrderByCreatedAtDesc(userId)
@@ -209,9 +204,8 @@ public class ExamImportService {
                 .toList();
     }
 
-    /**
-     * Lấy đường dẫn ảnh cropped cho một câu hỏi.
-     */
+    
+
     @Transactional(readOnly = true)
     public String getQuestionImage(Long sessionId, Integer questionIndex, User actor) {
         requireSession(sessionId, actor);
@@ -227,9 +221,8 @@ public class ExamImportService {
                 .orElse(null);
     }
 
-    /**
-     * Chuyển parsed questions sang Question entities và import vào exam.
-     */
+    
+
     @Transactional
     public ExamImportConfirmResult confirmToExam(Long sessionId, Exam exam, User actor) {
         ExamImportSession session = requireSessionForUpdate(sessionId, actor);
@@ -290,7 +283,7 @@ public class ExamImportService {
         );
     }
 
-    // ─── Internal ─────────────────────────────────────────────────────────────
+    
 
     private void processSession(String sessionKey, byte[] fileBytes, String fileName, String fileType) {
         ExamImportSession session = sessionRepository.findBySessionId(sessionKey)
@@ -324,7 +317,7 @@ public class ExamImportService {
                 return;
             }
 
-            // Tạo MultipartFile trực tiếp từ bytes - không cần đọc từ file
+            
             MultipartFile fileToParse = new ByteArrayMultipartFile(
                     "file",
                     fileName,
@@ -334,18 +327,18 @@ public class ExamImportService {
             Map<String, Object> pythonResponse = pythonParserClient.parseExam(
                     fileToParse, sessionKey);
 
-            // Update session with results
+            
             String template = (String) pythonResponse.getOrDefault("selectedTemplate", "unknown");
             session.setTemplateUsed(template);
 
-            // Save report
+            
             @SuppressWarnings("unchecked")
             Map<String, Object> meta = (Map<String, Object>) pythonResponse.get("meta");
             @SuppressWarnings("unchecked")
             Map<String, Object> report = (Map<String, Object>) pythonResponse.get("report");
             session.setReportData(writeReportEnvelope(meta, report));
 
-            // Save questions
+            
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> questions = (List<Map<String, Object>>) pythonResponse.get("questions");
             if (questions == null) {
@@ -356,7 +349,7 @@ public class ExamImportService {
                 saveRenders(session, questions);
             }
 
-            // If Python returned 0 questions, flag as FAILED with a clear warning
+            
             if (questions.isEmpty()) {
                 log.warn("[ExamImport] Session {} returned 0 questions from Python parser (template={})",
                         sessionKey, template);
@@ -372,7 +365,7 @@ public class ExamImportService {
 
             session.setStatus(ExamImportSession.SessionStatus.DONE);
             session.setUpdatedAt(LocalDateTime.now());
-            // storagePath vẫn null - file gốc không được lưu
+            
             sessionRepository.save(session);
 
             log.info("[ExamImport] Session {} parsed successfully: {} questions, template={}",
@@ -473,7 +466,7 @@ public class ExamImportService {
             score = 0.5;
         }
 
-        // Map render mode from ParsedQuestionDto
+        
         String renderMode = null;
         ImportPreviewQuestionDto.RenderDto renderDto = null;
         if (dto.getRender() != null) {
@@ -487,8 +480,8 @@ public class ExamImportService {
         return ImportPreviewQuestionDto.builder()
                 .index(index)
                 .content(dto.getText())
-                .latexContent(dto.getLatexContent())  // LaTeX content for math rendering
-                .latexOptions(dto.getLatexOptions())  // LaTeX options for math rendering
+                .latexContent(dto.getLatexContent())  
+                .latexOptions(dto.getLatexOptions())  
                 .contentType(dto.getContentType())
                 .type(type)
                 .options(opts)
@@ -529,9 +522,9 @@ public class ExamImportService {
                 .difficulty(normalizeDifficulty(dto.getDifficulty()))
                 .build();
 
-        // Set LaTeX content if available (from parsed PDF with math formulas)
-        // The latexContent would come from the ParsedQuestionDto via ImportPreviewQuestionDto
-        // For now, we set it based on dto content - actual LaTeX comes from Python parser
+        
+        
+        
         if (dto.getLatexContent() != null) {
             question.setLatexContent(dto.getLatexContent());
         }
@@ -539,7 +532,7 @@ public class ExamImportService {
             try {
                 question.setLatexOptions(objectMapper.writeValueAsString(dto.getLatexOptions()));
             } catch (JsonProcessingException ex) {
-                // Ignore
+                
             }
         }
 
@@ -643,7 +636,7 @@ public class ExamImportService {
         return session;
     }
 
-    /** Nhận diện PDF / DOCX khi tên file thiếu đuôi (DOCX là ZIP — bắt đầu bằng PK). */
+    
     private static String sniffExtensionFromBytes(byte[] data) {
         if (data == null || data.length < 2) {
             return "";
@@ -797,10 +790,8 @@ public class ExamImportService {
         return normalized.length() <= 200 ? normalized : normalized.substring(0, 200).trim();
     }
 
-    /**
-     * Build a report map when Python returns 0 questions.
-     * Copies existing report fields and adds a clear warning so the FE can display it.
-     */
+    
+
     private Map<String, Object> buildZeroQuestionReport(
             String template,
             Map<String, Object> existingReport,
@@ -839,7 +830,7 @@ public class ExamImportService {
         try { return Double.parseDouble(String.valueOf(val)); } catch (Exception e) { return 0.0; }
     }
 
-    // ─── Helper class ─────────────────────────────────────────────────────────
+    
 
     private static class ByteArrayMultipartFile implements MultipartFile {
         private final String name;

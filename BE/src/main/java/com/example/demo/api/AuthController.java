@@ -59,17 +59,14 @@ public class AuthController {
         this.currentUserService = currentUserService;
     }
 
-    // =====================================================
-    // Google OAuth2 Endpoints
-    // =====================================================
+    
+    
+    
 
-    /**
-     * Bước 1: FE gọi endpoint này → BE redirect trình duyệt đến Google Authorization.
-     * Sau khi user đồng ý, Google redirect về /api/auth/oauth2/google/callback
-     */
-    /**
-     * Kiểm tra nhanh (JSON): BE có đọc được GOOGLE_CLIENT_ID không — không lộ secret.
-     */
+    
+
+    
+
     @GetMapping("/oauth2/google/status")
     public Map<String, Object> googleOAuthStatus() {
         String id = clientId();
@@ -108,23 +105,21 @@ public class AuthController {
         response.sendRedirect(googleAuthUrl);
     }
 
-    /**
-     * Bước 2: Google redirect về đây với ?code=xxx
-     * BE exchange code lấy access_token → lấy userinfo → tạo user/token → redirect FE
-     */
+    
+
     @GetMapping("/oauth2/google/callback")
     public void googleCallback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
             HttpServletResponse response) throws IOException {
-        // Nếu user cancel hoặc lỗi từ Google
+        
         if (error != null || code == null) {
             response.sendRedirect(frontendBaseUrl + "/login?error=google_denied");
             return;
         }
 
         try {
-            // 1. Exchange code lấy access_token
+            
             String clientId = clientId();
             String clientSecret = clientSecret();
             String redirectUri = redirectUri();
@@ -141,7 +136,7 @@ public class AuthController {
                 "https://oauth2.googleapis.com/token", req, Map.class);
             String accessToken = (String) tokenResp.getBody().get("access_token");
 
-            // 2. Lấy userinfo từ Google
+            
             HttpHeaders userHeaders = new HttpHeaders();
             userHeaders.setBearerAuth(accessToken);
             HttpEntity<Void> userReq = new HttpEntity<>(userHeaders);
@@ -153,10 +148,10 @@ public class AuthController {
             String name = (String) userInfo.get("name");
             String googleUid = String.valueOf(userInfo.get("id"));
 
-            // 3. Xử lý OAuth — tạo/đăng nhập user
+            
             AuthResponse authResponse = authService.handleGoogleOAuth2(email, name, googleUid);
 
-            // 4. Redirect về FE với JWT + Google user info trong query params
+            
             String roles = String.join(",", authResponse.getRoles());
             String successUrl = frontendBaseUrl + "/auth/google/callback" +
                 "?token=" + authResponse.getToken() +
@@ -172,7 +167,7 @@ public class AuthController {
         }
     }
 
-    /** Client id/secret chỉ lấy từ biến môi trường hoặc .env (không dùng app.oauth2.* trong application.properties). */
+    
     private String clientId() {
         try {
             String v = firstNonBlank(
@@ -212,7 +207,7 @@ public class AuthController {
                     ? explicit.trim()
                     : env.getProperty("APP_URL", "http://localhost:8082").trim();
             base = base.replaceAll("/$", "");
-            // APP_URL hay bị nhầm thành URL frontend (5173/4173); callback luôn là BE
+            
             if (base.contains(":5173") || base.contains(":4173")) {
                 String was = base;
                 base = "http://127.0.0.1:" + serverPort;
@@ -243,7 +238,7 @@ public class AuthController {
     public ApiResponse<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
-        // Capture device info and IP if not provided by client
+        
         if (request.getIpAddress() == null || request.getIpAddress().isBlank()) {
             request.setIpAddress(resolveClientIp(httpRequest));
         }

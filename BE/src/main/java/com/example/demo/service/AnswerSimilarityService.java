@@ -15,17 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Phát hiện gian lận dựa trên độ tương đồng đáp án giữa các thí sinh.
- * Cặp thí sinh có đáp án trùng nhau quá cao có thể đã gian lận.
- *
- * Optimization strategy:
- * - Blocking: only compare attempts that share IP or device fingerprint.
- *   This dramatically reduces comparisons from O(n²) to O(k²) per group,
- *   where k is typically much smaller than n.
- * - Early exit: if two attempts answer different question counts far enough apart,
- *   the maximum possible Jaccard similarity is too low to exceed the threshold.
- */
+
 @Service
 @RequiredArgsConstructor
 public class AnswerSimilarityService {
@@ -37,12 +27,8 @@ public class AnswerSimilarityService {
     @Value("${demo.anti-cheat.answer-similarity-threshold:0.85}")
     private double similarityThreshold;
 
-    /**
-     * Tìm các cặp thí sinh có đáp án tương đồng cao (có thể gian lận).
-     * Chỉ xét attempts trong đợt thi hiện tại (exam.startTime - exam.endTime).
-     *
-     * Uses IP/fingerprint blocking to reduce O(n²) comparisons to O(k²) per group.
-     */
+    
+
     public List<SimilarityPair> findSuspiciousPairs(Exam exam) {
         List<ExamAttempt> submitted = loadSubmittedAttempts(exam);
         if (submitted.size() < 2) {
@@ -97,10 +83,8 @@ public class AnswerSimilarityService {
                 .toList();
     }
 
-    /**
-     * Full O(n²) comparison as fallback for small exams (<=50 students) with no IP/fingerprint matches.
-     * Also used to catch suspicious pairs that don't share IP or fingerprint.
-     */
+    
+
     private List<SimilarityPair> fallbackFullComparison(
             List<ExamAttempt> submitted,
             Map<Long, Map<Long, String>> attemptAnswers

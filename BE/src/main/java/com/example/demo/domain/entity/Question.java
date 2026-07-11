@@ -45,7 +45,7 @@ public class Question {
     @Column(name = "correct_answer", columnDefinition = "TEXT", nullable = false)
     private String correctAnswer;
 
-    /** Độ khó: EASY, MEDIUM, HARD. Có thể do AI phân tích hoặc nhập từ file. */
+    
     @Column(name = "difficulty", length = 20)
     private String difficulty;
 
@@ -57,23 +57,18 @@ public class Question {
     @Column(name = "attachments", columnDefinition = "jsonb")
     private String attachments;
 
-    /**
-     * LaTeX formatted content for frontend rendering (KaTeX/MathJax).
-     * Wrapped with $...$ for inline or $$...$$ for block math.
-     * Example: "$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$"
-     */
+    
+
     @Column(name = "latex_content", columnDefinition = "TEXT")
     private String latexContent;
 
-    /**
-     * LaTeX formatted options for frontend rendering.
-     * Stored as JSON: {"A": "$\\frac{1}{2}$", "B": "$\\frac{1}{3}$", ...}
-     */
+    
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "latex_options", columnDefinition = "jsonb")
     private String latexOptions;
 
-    // Essay-specific fields
+    
     @Column(name = "essay_max_length")
     @Builder.Default
     private Integer essayMaxLength = 4000;

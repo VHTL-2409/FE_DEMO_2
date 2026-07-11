@@ -52,7 +52,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> searchTeachers(@Param("role") RoleName role, @Param("pat") String pattern, Pageable pageable);
     Optional<User> findByUsername(String username);
 
-    /** Một query: user + roles — dùng cho auth & CurrentUser */
+    
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.roles WHERE u.username = :username")
     Optional<User> findByUsernameWithRoles(@Param("username") String username);
 

@@ -21,7 +21,7 @@ public class EmailService {
         this.mailSender = Optional.ofNullable(mailSender);
         boolean hasCreds = mailUser != null && !mailUser.isBlank();
         if (mailSender == null || !hasCreds) {
-            // English log: avoids mojibake on Windows consoles that are not UTF-8
+            
             log.info("Email: not configured. Set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD in .env (Gmail App Password), then run run-with-mail.ps1");
         } else {
             log.info("Email: configured ({}), ready to send.", mailUser);
@@ -34,17 +34,14 @@ public class EmailService {
     @Value("${app.frontend.base-url:http://localhost:5173}")
     private String frontendBaseUrl;
 
-    /**
-     * Kiểm tra mail đã được cấu hình chưa (host không rỗng).
-     */
+    
+
     public boolean isMailConfigured() {
         return mailSender.isPresent();
     }
 
-    /**
-     * Gửi email đặt lại mật khẩu.
-     * @return true nếu gửi thành công, false nếu không gửi được (mail chưa cấu hình hoặc lỗi).
-     */
+    
+
     public boolean sendPasswordResetEmail(String toEmail, String resetToken) {
         if (mailSender.isEmpty()) {
             log.debug("Mail not configured, skip sending password reset email");
@@ -68,9 +65,8 @@ public class EmailService {
         }
     }
 
-    /**
-     * Gửi email xác minh đăng ký.
-     */
+    
+
     public boolean sendVerificationEmail(String toEmail, String verificationToken) {
         if (mailSender.isEmpty()) {
             log.debug("Mail not configured, skip sending verification email");

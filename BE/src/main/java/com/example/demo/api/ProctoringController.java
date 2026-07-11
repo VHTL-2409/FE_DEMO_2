@@ -183,7 +183,7 @@ public class ProctoringController {
         return ApiResponse.success(alerts);
     }
 
-    // AI Camera Dashboard APIs
+    
     @GetMapping("/exams/{examId}/camera-status")
     public ApiResponse<List<CameraStatusResponse>> getCameraStatus(@PathVariable Long examId) {
         List<CameraStatusResponse> statuses = monitoringService.getCameraStatusByExam(examId);
@@ -221,7 +221,9 @@ public class ProctoringController {
             @PathVariable Long flagId,
             @Valid @RequestBody ProctorFlagReviewRequest request
     ) {
-        ProctorFlag flag = proctorFlagRepository.findById(flagId)
+        
+        
+        ProctorFlag flag = proctorFlagRepository.findWithRelationsById(flagId)
                 .orElseThrow(() -> new com.example.demo.common.ApiException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Proctor flag not found"));
         ProctorFlagStatus status = ProctorFlagStatus.valueOf(

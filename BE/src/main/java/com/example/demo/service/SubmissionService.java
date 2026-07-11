@@ -348,7 +348,7 @@ public class SubmissionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam has ended");
         }
 
-        // Use Helper - khi hết hạn: lưu đáp án hiện tại rồi tự động nộp
+        
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
             if (request.getAnswers() != null && !request.getAnswers().isEmpty()) {
                 submissionHelper.saveAnswers(attempt, normalizeAttemptAnswers(attempt, request.getAnswers()));
@@ -393,7 +393,7 @@ public class SubmissionService {
 
         LocalDateTime now = VietNamTime.now();
 
-        // Use Helper - khi hết hạn: lưu đáp án rồi tự động nộp, không throw
+        
         if (now.isAfter(submissionHelper.deadlineAt(attempt))) {
             submissionHelper.saveAnswers(attempt, normalizeAttemptAnswers(attempt, answers));
             int answeredCount = answerRepository.findByAttempt(attempt).size();
@@ -477,9 +477,8 @@ public class SubmissionService {
                 .build();
     }
 
-    /**
-     * Danh sách câu hỏi cho lượt làm bài của học sinh (không gồm đáp án đúng; thứ tự/shuffle theo attempt).
-     */
+    
+
     @Transactional(readOnly = true)
     public List<QuestionResponse> listQuestionsForStudentAttempt(Long attemptId, User student) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -664,9 +663,8 @@ public class SubmissionService {
         return examAttemptRepository.findByStudent(student);
     }
 
-    /**
-     * Phải chạy trong một transaction: open-in-view=false nên lazy Exam/User không thể đọc sau khi trả list về controller.
-     */
+    
+
     @Transactional(readOnly = true)
     public List<AttemptSummaryResponse> listAttemptSummariesForStudent(User student) {
         return examAttemptRepository.findByStudent(student).stream()
@@ -674,9 +672,8 @@ public class SubmissionService {
                 .toList();
     }
 
-    /**
-     * Giáo viên / admin xem danh sách lượt làm theo đề — cùng lý do {@link #listAttemptSummariesForStudent}.
-     */
+    
+
     private static final int LIST_EXAM_ATTEMPTS_MAX = 10_000;
 
     @Transactional(readOnly = true)
@@ -687,10 +684,8 @@ public class SubmissionService {
                 .toList();
     }
 
-    /**
-     * Danh sách attempts của đợt thi hiện tại (theo exam.startTime, exam.endTime).
-     * Khi tạo đợt thi mới, chỉ lấy attempts trong khoảng thời gian đó, không lấy dữ liệu cũ.
-     */
+    
+
     @Transactional(readOnly = true)
     public List<ExamAttempt> listByExam(Exam exam) {
         if (exam.getStartTime() != null && exam.getEndTime() != null) {

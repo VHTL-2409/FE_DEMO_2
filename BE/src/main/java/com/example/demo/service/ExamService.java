@@ -190,12 +190,8 @@ public class ExamService {
                 .toList();
     }
 
-    /**
-     * Lists all exams created by the teacher with monitoring-specific metadata:
-     * - monitoringStatus: "LIVE" | "UPCOMING" | "ENDED" | "NO_SESSION"
-     * - currentSessionParticipants: number of students with active attempts in session window
-     * - remainingSeconds: seconds until session ends (for LIVE exams)
-     */
+    
+
     @Transactional(readOnly = true)
     public List<ExamResponse> listExamsForMonitoring(User teacher) {
         currentUserService.requireTeacherOrAdmin(teacher);
@@ -213,13 +209,13 @@ public class ExamService {
             long participantCount = participantByExam.getOrDefault(exam.getId(), 0L);
             long questionCount = questionCountByExam.getOrDefault(exam.getId(), 0L);
 
-            // Calculate monitoring status
+            
             String monitoringStatus = determineMonitoringStatus(exam, now);
             Long currentSessionParticipants = null;
             Long remainingSeconds = null;
 
             if (monitoringStatus.equals("LIVE") || monitoringStatus.equals("ENDED")) {
-                // Count active attempts in session window (only if session times are set)
+                
                 LocalDateTime sessionStart = exam.getStartTime();
                 LocalDateTime sessionEnd = exam.getEndTime();
                 if (sessionStart != null && sessionEnd != null) {
@@ -233,7 +229,7 @@ public class ExamService {
                     currentSessionParticipants = 0L;
                 }
 
-                // Calculate remaining seconds
+                
                 if (monitoringStatus.equals("LIVE") && exam.getEndTime() != null) {
                     long seconds = java.time.Duration.between(now, exam.getEndTime()).getSeconds();
                     remainingSeconds = Math.max(0, seconds);
@@ -248,18 +244,17 @@ public class ExamService {
         }).toList();
     }
 
-    /**
-     * Determines the monitoring status for an exam based on current time and session times.
-     */
+    
+
     private String determineMonitoringStatus(Exam exam, LocalDateTime now) {
-        // No session time set
+        
         if (exam.getStartTime() == null || exam.getEndTime() == null) {
             return "NO_SESSION";
         }
 
-        // Session hasn't started yet
+        
         if (now.isBefore(exam.getStartTime())) {
-            // Check if starting within today (within 24 hours)
+            
             LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
             LocalDateTime endOfToday = startOfToday.plusDays(1);
             if (exam.getStartTime().isBefore(endOfToday)) {
@@ -268,12 +263,12 @@ public class ExamService {
             return "NO_SESSION";
         }
 
-        // Session is in progress
+        
         if (!now.isAfter(exam.getEndTime())) {
             return "LIVE";
         }
 
-        // Session ended
+        
         return "ENDED";
     }
 
@@ -792,10 +787,8 @@ public class ExamService {
         exam.setEnableAiProctoring(aiProctoringEnabled(exam));
     }
 
-    /**
-     * Tạo đợt thi mới cho đề thi đã có (mở lại đề thi với thời gian khác).
-     * Cập nhật Exam.startTime, endTime và tạo Assignment mới.
-     */
+    
+
     @Transactional
     public ExamResponse createNewSession(Long examId, NewSessionRequest request, User actor) {
         currentUserService.requireTeacherOrAdmin(actor);
@@ -962,7 +955,7 @@ public class ExamService {
                 .practice(false)
                 .build();
         examRepository.save(copy);
-        // Copy questions
+        
         List<Question> originalQs = questionRepository.findByExam(original);
         for (Question oq : originalQs) {
             Question nq = Question.builder()
@@ -1118,9 +1111,8 @@ public class ExamService {
         return exam;
     }
 
-    /**
-     * Practice exams generated for students ({@code practice == true}) or legacy rows with the standard title prefix.
-     */
+    
+
     public boolean isStudentPracticeExam(Exam exam) {
         if (Boolean.TRUE.equals(exam.getPractice())) {
             return true;
@@ -1144,7 +1136,7 @@ public class ExamService {
             return exam;
         }
 
-        // Own exam (e.g. practice created by student): avoid loading creator.roles when not needed
+        
         if (exam.getCreatedBy().getId().equals(actor.getId())) {
             return exam;
         }

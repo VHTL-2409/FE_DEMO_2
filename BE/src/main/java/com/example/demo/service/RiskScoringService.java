@@ -34,24 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Risk Scoring Service - Giai đoạn 1.
- *
- * Chấm điểm đơn giản, minh bạch dựa trên các signals nhận được từ frontend.
- * Không có phát hiện bất thường, không có recency decay, không có signals tự động sinh.
- *
- * Chấm điểm theo category với cửa sổ dedup:
- * - SCREEN_LEAVE (TAB_SWITCH=10, WINDOW_BLUR=8, EXIT_FULLSCREEN=15, LONG_SCREEN_LEAVE=25): tối đa 35 điểm, cửa sổ 60s
- * - CLIPBOARD (COPY_PASTE=10): tối đa 25 điểm, cửa sổ 30s
- * - TECHNICAL (RIGHT_CLICK=5, INSPECT=12, PRINT_SCREEN=15, DEVTOOLS=22): tối đa 25 điểm, cửa sổ 120s
- * - IDENTITY (DEVICE_CHANGE=20, DUPLICATE_IP=25, IP_GRAPH=30): tối đa 30 điểm, mức session
- * - HEARTBEAT (STALE=5, NETWORK=5, RECOVERY=3): tối đa 10 điểm, mức session
- *
- * Các mức rủi ro: 0-19=CLEAN, 20-49=SUSPICIOUS, 50-74=HIGH_RISK, 75-100=CRITICAL
- *
- * Flags: <50=không flag, 50-74=OPEN HIGH_RISK, >=75=OPEN CRITICAL
- * Không tự động pause trên CRITICAL trong Giai đoạn 1.
- */
+
 @Service
 @RequiredArgsConstructor
 public class RiskScoringService {
@@ -113,20 +96,20 @@ public class RiskScoringService {
     @Value("${demo.risk.cap.visual-identity:40}")
     private int visualIdentityCap = 40;
 
-    // Điểm cố định cho mỗi loại signal (không có phép tính weight/confidence)
+    
     private static final Map<String, Integer> SIGNAL_SCORES = Map.ofEntries(
-            // Category SCREEN_LEAVE
+            
             Map.entry("TAB_SWITCH", 10),
             Map.entry("WINDOW_BLUR", 8),
             Map.entry("EXIT_FULLSCREEN", 15),
             Map.entry("LONG_SCREEN_LEAVE", 25),
-            // Category CLIPBOARD
+            
             Map.entry("COPY_PASTE", 10),
-            // Category TECHNICAL
+            
             Map.entry("RIGHT_CLICK", 5),
             Map.entry("PRINT_SCREEN", 15),
             Map.entry("DEVTOOLS_OPEN", 22),
-            // Category IDENTITY
+            
             Map.entry("DEVICE_FINGERPRINT_CHANGED", 20),
             Map.entry("MULTIPLE_DEVICE_SESSION", 25),
             Map.entry("IP_CHANGED", 15),
@@ -137,11 +120,11 @@ public class RiskScoringService {
             Map.entry("IDENTITY_DOCUMENT_UNREADABLE", 10),
             Map.entry("IDENTITY_VERIFICATION_SKIPPED", 15),
             Map.entry("IDENTITY_REVIEW_REQUIRED", 12),
-            // Category HEARTBEAT
+            
             Map.entry("HEARTBEAT_STALE", 5),
             Map.entry("NETWORK_INSTABILITY", 5),
             Map.entry("SESSION_RECOVERY", 3),
-            // Nhóm VISUAL_IDENTITY
+            
             Map.entry("FACE_NOT_DETECTED", 20),
             Map.entry("NO_CAMERA", 20),
             Map.entry("NO_MIC", 20),
@@ -172,10 +155,11 @@ public class RiskScoringService {
             Map.entry("DEEPFAKE", 30),
             Map.entry("LOW_LIVENESS", 22),
             Map.entry("FLAT_IMAGE", 20),
-            Map.entry("SCREEN_DISPLAY", 18)
+            Map.entry("SCREEN_DISPLAY", 18),
+            Map.entry("SPOOFING_ATTACK", 30)
     );
 
-    // Nhóm category
+    
     private static final Map<String, String> SIGNAL_CATEGORY = Map.ofEntries(
             Map.entry("TAB_SWITCH", "SCREEN_LEAVE"),
             Map.entry("WINDOW_BLUR", "SCREEN_LEAVE"),
@@ -228,7 +212,8 @@ public class RiskScoringService {
             Map.entry("DEEPFAKE", "VISUAL_IDENTITY"),
             Map.entry("LOW_LIVENESS", "VISUAL_IDENTITY"),
             Map.entry("FLAT_IMAGE", "VISUAL_IDENTITY"),
-            Map.entry("SCREEN_DISPLAY", "VISUAL_IDENTITY")
+            Map.entry("SCREEN_DISPLAY", "VISUAL_IDENTITY"),
+            Map.entry("SPOOFING_ATTACK", "VISUAL_IDENTITY")
     );
 
     @Transactional
@@ -236,10 +221,10 @@ public class RiskScoringService {
         LocalDateTime now = VietNamTime.now();
         List<FraudSignal> signals = fraudSignalRepository.findByAttemptOrderByCreatedAtAsc(attempt);
 
-        // Bước 1: Áp dụng cửa sổ dedup theo category — lấy điểm cao nhất trong mỗi cửa sổ
+        
         Map<String, Integer> categoryScores = computeCategoryScores(signals, now);
 
-        // Bước 2: Giới hạn tối đa mỗi category
+        
         int screenLeaveScore = Math.min(categoryScores.getOrDefault("SCREEN_LEAVE", 0), categoryCap("SCREEN_LEAVE"));
         int clipboardScore = Math.min(categoryScores.getOrDefault("CLIPBOARD", 0), categoryCap("CLIPBOARD"));
         int technicalScore = Math.min(categoryScores.getOrDefault("TECHNICAL", 0), categoryCap("TECHNICAL"));
@@ -247,12 +232,12 @@ public class RiskScoringService {
         int heartbeatScore = Math.min(categoryScores.getOrDefault("HEARTBEAT", 0), categoryCap("HEARTBEAT"));
         int visualIdentityScore = Math.min(categoryScores.getOrDefault("VISUAL_IDENTITY", 0), categoryCap("VISUAL_IDENTITY"));
 
-        // Bước 3: Tính tổng
+        
         int behaviorScore = Math.min(70, screenLeaveScore + clipboardScore + technicalScore + heartbeatScore);
         int totalRisk = Math.min(100, behaviorScore + identityScore + visualIdentityScore);
         RiskLevel level = resolveLevel(totalRisk);
 
-        // Bước 4: Tạo breakdown
+        
         Map<String, Integer> breakdown = new LinkedHashMap<>();
         breakdown.put("screenLeaveScore", screenLeaveScore);
         breakdown.put("clipboardScore", clipboardScore);
@@ -263,16 +248,16 @@ public class RiskScoringService {
         breakdown.put("behaviorScore", behaviorScore);
         breakdown.put("totalScore", totalRisk);
 
-        // Bước 5: Cập nhật attempt
+        
         attempt.setRiskScore(totalRisk);
         attempt.setRiskLevel(level);
         attempt.setSuspicious(level.isSuspicious());
         examAttemptRepository.save(attempt);
 
-        // Bước 6: Đồng bộ flag
+        
         ProctorFlag flag = syncRiskFlag(attempt, totalRisk, level, now);
 
-        // Bước 7: Lưu snapshot
+        
         RiskScoreLog previousLog = riskScoreLogRepository.findTop1ByAttemptOrderByCreatedAtDesc(attempt);
         if (shouldPersistSnapshot(previousLog, totalRisk, level, now)) {
             riskScoreLogRepository.save(RiskScoreLog.builder()
@@ -286,7 +271,7 @@ public class RiskScoringService {
                     .build());
         }
 
-        // Bước 8: Gửi thông báo realtime cho signal mới nhất
+        
         FraudSignal latestSignal = fraudSignalRepository
                 .findTopByAttemptOrderByCreatedAtDesc(attempt)
                 .orElse(null);
@@ -304,7 +289,7 @@ public class RiskScoringService {
             );
         }
 
-        // Bước 9: Gửi thông báo mức rủi ro nếu là suspicious+ (bao gồm flag và signal mới nhất để FE patch)
+        
         if (level.isSuspicious()) {
             realtimeNotificationService.notifyRiskUpdated(
                     attempt, level, breakdown,
@@ -319,10 +304,8 @@ public class RiskScoringService {
         return toResponse(attempt, totalRisk, level, breakdown, signals, flag, now);
     }
 
-    /**
-     * Tính lại điểm risk NHƯNG KHÔNG thực hiện các hành động tự động (không đồng bộ flag).
-     * Được sử dụng bởi các read endpoints để tránh side effects.
-     */
+    
+
     @Transactional
     public RiskScoreResponse recomputeRiskSkipAutoActions(ExamAttempt attempt) {
         LocalDateTime now = VietNamTime.now();
@@ -353,22 +336,8 @@ public class RiskScoringService {
         return toResponse(attempt, totalRisk, level, breakdown, signals, null, now);
     }
 
-    /**
-     * Tính điểm category sử dụng clustering theo cửa sổ thời gian.
-     *
-     * Thuật toán:
-     * 1. Nhóm signals theo category
-     * 2. Sắp xếp signals trong mỗi category theo thời gian tạo
-     * 3. Chia thành clusters: cluster mới bắt đầu khi khoảng cách >= cửa sổ category
-     * 4. Mỗi cluster đóng góp điểm MAX của nó (signal đại diện)
-     * 5. Điểm category = min(cap, tổng điểm các cluster)
-     *
-     * Ví dụ:
-     * - TAB_SWITCH lúc 10:00:00 (+10) -> cluster 1 bắt đầu
-     * - TAB_SWITCH lúc 10:00:30 (+10) -> trong cửa sổ 60s, cùng cluster (max=10)
-     * - TAB_SWITCH lúc 10:01:10 (+10) -> khoảng cách từ cluster start >= 60s, cluster mới (max=10)
-     * - Kết quả: 2 clusters, điểm = 10 + 10 = 20
-     */
+    
+
     private Map<String, Integer> computeCategoryScores(List<FraudSignal> signals, LocalDateTime now) {
         Map<String, Integer> result = new LinkedHashMap<>();
         result.put("SCREEN_LEAVE", 0);
@@ -378,7 +347,7 @@ public class RiskScoringService {
         result.put("HEARTBEAT", 0);
         result.put("VISUAL_IDENTITY", 0);
 
-        // Nhóm signals theo category
+        
         Map<String, List<FraudSignal>> signalsByCategory = new LinkedHashMap<>();
         for (FraudSignal signal : signals) {
             String signalType = normalizeSignalType(signal.getSignalType());
@@ -387,7 +356,7 @@ public class RiskScoringService {
             signalsByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(signal);
         }
 
-        // Tính điểm cho mỗi category sử dụng clustering
+        
         for (Map.Entry<String, List<FraudSignal>> entry : signalsByCategory.entrySet()) {
             String category = entry.getKey();
             List<FraudSignal> categorySignals = entry.getValue();
@@ -398,20 +367,17 @@ public class RiskScoringService {
         return result;
     }
 
-    /**
-     * Tính điểm cho một category sử dụng clustering theo cửa sổ thời gian.
-     * Signals được sắp xếp theo thời gian, chia thành clusters dựa trên khoảng cách thời gian,
-     * mỗi cluster đóng góp điểm max của nó, tổng bị giới hạn bởi category limit.
-     */
+    
+
     private int computeClusteredScore(String category, List<FraudSignal> signals) {
         if (signals == null || signals.isEmpty()) return 0;
 
         long dedupWindow = categoryDedupSeconds(category);
 
-        // Sắp xếp theo thời gian tạo tăng dần
+        
         List<FraudSignal> sorted = sortSignalsByCreatedAt(signals);
 
-        // Xử lý đặc biệt cho IDENTITY: lấy điểm max (không clustering, mức session)
+        
         if ("IDENTITY".equals(category)) {
             return sorted.stream()
                     .mapToInt(s -> signalScore(s.getSignalType()))
@@ -419,7 +385,7 @@ public class RiskScoringService {
                     .orElse(0);
         }
 
-        // Clustering cho các category khác
+        
         int totalScore = 0;
         int clusterStartIndex = 0;
         int clusterMaxScore = 0;
@@ -432,32 +398,32 @@ public class RiskScoringService {
             LocalDateTime signalTime = signal.getCreatedAt() != null ? signal.getCreatedAt() : LocalDateTime.MIN;
 
             if (clusterStartTime == null) {
-                // Signal đầu tiên: bắt đầu cluster mới
+                
                 clusterStartTime = signalTime;
                 clusterStartIndex = i;
                 clusterMaxScore = signalScore;
             } else {
-                // Kiểm tra signal này có thuộc cluster hiện tại không
+                
                 long secondsSinceClusterStart = java.time.Duration.between(clusterStartTime, signalTime).getSeconds();
 
                 if (secondsSinceClusterStart < dedupWindow) {
-                    // Trong cửa sổ cluster: cập nhật điểm max nếu cao hơn
+                    
                     clusterMaxScore = Math.max(clusterMaxScore, signalScore);
                 } else {
-                    // Khoảng cách >= cửa sổ: đóng cluster hiện tại và bắt đầu cluster mới
+                    
                     totalScore += clusterMaxScore;
 
-                    // Bắt đầu cluster mới
+                    
                     clusterStartTime = signalTime;
                     clusterMaxScore = signalScore;
                 }
             }
         }
 
-        // Thêm điểm cluster cuối cùng
+        
         totalScore += clusterMaxScore;
 
-        // Áp dụng giới hạn category
+        
         return Math.min(totalScore, categoryCap(category));
     }
 
@@ -538,12 +504,8 @@ public class RiskScoringService {
         return riskSignalScoreProperties.resolve(normalized, fallback);
     }
 
-    /**
-     * Đồng bộ flag dựa trên mức rủi ro.
-     * < 50: không flag
-     * 50-74: OPEN HIGH_RISK flag
-     * >= 75: OPEN CRITICAL flag
-     */
+    
+
     @Transactional
     public ProctorFlag syncRiskFlag(ExamAttempt attempt, int score, RiskLevel level, LocalDateTime now) {
         if (score < highRiskMin || level == RiskLevel.CLEAN) {
@@ -555,7 +517,7 @@ public class RiskScoringService {
                 : ProctorFlagStatus.OPEN;
         String flagType = level == RiskLevel.CRITICAL ? "CRITICAL_RISK" : "HIGH_RISK";
 
-        // Cập nhật flag OPEN hiện có hoặc tạo mới
+        
         ProctorFlag flag = proctorFlagRepository
                 .findFirstByAttemptAndStatusOrderByCreatedAtDesc(attempt, ProctorFlagStatus.OPEN)
                 .orElseGet(() -> ProctorFlag.builder()
@@ -668,7 +630,7 @@ public class RiskScoringService {
         List<String> reasons = new ArrayList<>();
         List<String> evidence = new ArrayList<>();
 
-        // Các category đóng góp cao nhất
+        
         if (breakdown.getOrDefault("screenLeaveScore", 0) > 0) {
             reasons.add("Hành vi rời màn hình bất thường");
             evidence.add("SCREEN_LEAVE: " + breakdown.get("screenLeaveScore") + " điểm");

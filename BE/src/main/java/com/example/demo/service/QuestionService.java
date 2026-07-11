@@ -478,7 +478,7 @@ public class QuestionService {
         try {
             question.setMetadata(objectMapper.writeValueAsString(metadata));
         } catch (JsonProcessingException ignored) {
-            // Keep existing metadata if serialization unexpectedly fails.
+            
         }
     }
 

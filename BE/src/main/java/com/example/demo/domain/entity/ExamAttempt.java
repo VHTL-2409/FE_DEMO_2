@@ -119,22 +119,18 @@ public class ExamAttempt {
     @Builder.Default
     private Integer submitCount = 0;
 
-    /** JSON array of question IDs in display order for this attempt (shuffle / per-session order). */
+    
     @Column(name = "question_order_json", columnDefinition = "TEXT")
     private String questionOrderJson;
 
-    /**
-     * Who initiated the last pause.
-     * SYSTEM = auto-paused by risk scoring service.
-     * MANUAL = paused by teacher/admin.
-     * NONE = not currently paused (or last action was resume).
-     */
+    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "auto_paused_by", length = 10)
     @Builder.Default
     private AutoPausedBy autoPausedBy = AutoPausedBy.NONE;
 
-    /** Timestamp when the attempt was last paused (for auto-resume cooldown). */
+    
     @Column(name = "paused_at")
     private LocalDateTime pausedAt;
 }

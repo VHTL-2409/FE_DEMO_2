@@ -7,12 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
 
-/**
- * CORS configuration for Spring MVC.
- * Note: CORS is primarily handled by SecurityConfig via CorsConfigurationSource.
- * This config is kept for backward compatibility but may not be used when
- * Spring Security CORS handling is active.
- */
+
 @Configuration
 public class WebCorsConfig implements WebMvcConfigurer {
 

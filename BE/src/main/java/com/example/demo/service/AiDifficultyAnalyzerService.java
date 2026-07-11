@@ -14,10 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-/**
- * Phân tích độ khó câu hỏi bằng AI (OpenAI API hoặc tương thích).
- * Khi import đề thi, gọi AI để phân loại EASY / MEDIUM / HARD.
- */
+
 @Service
 @RequiredArgsConstructor
 public class AiDifficultyAnalyzerService {
@@ -43,9 +40,8 @@ public class AiDifficultyAnalyzerService {
     @Value("${app.ai.timeout-ms:15000}")
     private int timeoutMs;
 
-    /**
-     * Phân tích độ khó một câu hỏi. Trả về EASY, MEDIUM, HARD hoặc null nếu lỗi.
-     */
+    
+
     public String analyzeDifficulty(String content, String optionA, String optionB, String optionC, String optionD) {
         if (!enabled || apiKey == null || apiKey.isBlank()) {
             return null;
@@ -61,9 +57,8 @@ public class AiDifficultyAnalyzerService {
         }
     }
 
-    /**
-     * Phân tích hàng loạt (gửi nhiều câu trong 1 request để tiết kiệm API).
-     */
+    
+
     public void analyzeBatch(List<QuestionInput> questions, java.util.function.BiConsumer<Integer, String> onResult) {
         if (!enabled || apiKey == null || apiKey.isBlank() || questions.isEmpty()) {
             return;

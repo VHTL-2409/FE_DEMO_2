@@ -48,6 +48,10 @@ class AiServiceSettings:
     proctor_frame_max_in_flight: int
     proctor_frame_retry_after_ms: int
     max_frame_width: int
+    use_insightface: bool
+    insightface_model: str
+    face_match_threshold: float
+    face_detection_conf_threshold: float
 
     @property
     def is_production(self) -> bool:
@@ -74,4 +78,8 @@ def load_settings() -> AiServiceSettings:
         proctor_frame_max_in_flight=max(1, env_int("AI_SERVICE_PROCTOR_MAX_IN_FLIGHT", 2)),
         proctor_frame_retry_after_ms=max(250, env_int("AI_SERVICE_PROCTOR_RETRY_AFTER_MS", 2_000)),
         max_frame_width=env_int("AI_SERVICE_MAX_FRAME_WIDTH", 640),
+        use_insightface=env_bool("AI_SERVICE_USE_INSIGHTFACE", True),
+        insightface_model=os.getenv("AI_SERVICE_INSIGHTFACE_MODEL", "buffalo_l"),
+        face_match_threshold=env_float("AI_SERVICE_FACE_MATCH_THRESHOLD", 0.50),
+        face_detection_conf_threshold=env_float("AI_SERVICE_FACE_DETECTION_CONF_THRESHOLD", 0.5),
     )

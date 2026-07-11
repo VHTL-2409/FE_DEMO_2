@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Response cho phân tích hành vi thi trắc nghiệm.
- * Thay thế BiometricsAnalysisResponse - loại bỏ typing profile.
- */
+
 @Data
 @Builder
 @NoArgsConstructor

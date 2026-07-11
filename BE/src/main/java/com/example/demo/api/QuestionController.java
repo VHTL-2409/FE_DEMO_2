@@ -230,7 +230,7 @@ public class QuestionController {
         return ResponseEntity.ok().headers(headers).body(content);
     }
 
-    /** Debug endpoint — xác nhận câu hỏi có trong DB hay không (chỉ admin). */
+    
     @GetMapping("/api/exams/{examId}/questions/_debug")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Object> debugQuestions(@PathVariable Long examId) {
@@ -254,7 +254,7 @@ public class QuestionController {
         ));
     }
 
-    /** Parse the JSON options string into a list of {id, text} maps for the preview response. */
+    
     private List<Map<String, String>> parseOptionsForPreview(String optionsJson) {
         if (optionsJson == null || optionsJson.isBlank()) return List.of();
         try {

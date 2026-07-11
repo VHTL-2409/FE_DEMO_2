@@ -27,9 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * Service giám sát phiên thi: quản lý events, timeline, các hành động của giám thị (pause/resume/stop/warning).
- */
+
 @Service
 @RequiredArgsConstructor
 public class MonitoringService {
@@ -53,9 +51,8 @@ public class MonitoringService {
     @Value("${demo.monitoring.events.rate-limit.max:25}")
     private long eventRateLimitMax;
 
-    /**
-     * Thêm một monitoring event từ giám thị.
-     */
+    
+
     @Transactional
     public MonitoringEventResponse addEvent(Long attemptId, MonitoringEventRequest request, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -95,9 +92,8 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
-    /**
-     * Thêm một system event (được gọi từ backend, không phải từ giám thị).
-     */
+    
+
     @Transactional
     public MonitoringEventResponse addSystemEvent(ExamAttempt attempt, MonitoringEventType eventType, String details) {
         if (isHistoryEventType(eventType)) {
@@ -108,9 +104,8 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, null);
     }
 
-    /**
-     * Gửi cảnh báo cho học sinh.
-     */
+    
+
     @Transactional
     public MonitoringEventResponse sendWarning(Long attemptId, String message, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -129,9 +124,8 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, warningMessage);
     }
 
-    /**
-     * Đình chỉ bài thi của học sinh.
-     */
+    
+
     @Transactional
     public MonitoringEventResponse invalidateAttempt(Long attemptId, String reason, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -163,9 +157,8 @@ public class MonitoringService {
         return toMonitoringEventResponse(attempt, riskResponse, invalidateMessage);
     }
 
-    /**
-     * Khôi phục bài thi đang bị tạm dừng.
-     */
+    
+
     @Transactional
     public MonitoringEventResponse resumeAttempt(Long attemptId, String message, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -189,9 +182,9 @@ public class MonitoringService {
         recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_RESUME, actor, "[PROCTOR_RESUMED] " + resumeMessage);
         realtimeNotificationService.notifyAttemptResumed(attempt, resumeMessage);
 
-        // KHÔNG gọi getRiskSnapshot() ở đây — recomputeRisk() sẽ re-trigger
-        // applyAutomatedAction() (level==CRITICAL && status==IN_PROGRESS) và immediately
-        // re-pause attempt, override việc teacher resume thủ công.
+        
+        
+        
         return MonitoringEventResponse.builder()
                 .attemptId(attempt.getId())
                 .riskScore(attempt.getRiskScore())
@@ -203,9 +196,8 @@ public class MonitoringService {
                 .build();
     }
 
-    /**
-     * Tạm dừng bài thi của học sinh.
-     */
+    
+
     @Transactional
     public MonitoringEventResponse pauseAttempt(Long attemptId, String reason, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -219,8 +211,8 @@ public class MonitoringService {
         if (attempt.getStatus() != AttemptStatus.PAUSED) {
             attempt.setStatus(AttemptStatus.PAUSED);
         }
-        // Luôn đặt thành MANUAL để applyAutomatedResume không bao giờ fire trên teacher-initiated pause.
-        // Điều này xử lý trường hợp attempt đã bị auto-pause trước đó (autoPausedBy=SYSTEM).
+        
+        
         attempt.setAutoPausedBy(AutoPausedBy.MANUAL);
         attempt.setPausedAt(VietNamTime.now());
         examAttemptRepository.save(attempt);
@@ -231,15 +223,14 @@ public class MonitoringService {
         recordTeacherActionEvent(attempt, MonitoringEventType.TEACHER_PAUSE, actor, "[PROCTOR_PAUSED] " + pauseMessage);
         realtimeNotificationService.notifyAttemptPaused(attempt, pauseMessage);
 
-        // Sử dụng recomputeRiskSkipAutoActions để teacher pause thủ công không bao giờ bị override
-        // bởi auto-resume (có thể fire nếu attempt đã bị auto-paused bởi SYSTEM trước đó).
+        
+        
         RiskScoreResponse riskResponse = riskScoringService.recomputeRiskSkipAutoActions(attempt);
         return toMonitoringEventResponse(attempt, riskResponse, pauseMessage);
     }
 
-    /**
-     * Lấy timeline đầy đủ của một attempt (events, signals, risk snapshots).
-     */
+    
+
     public List<MonitoringTimelineItem> timeline(Long attemptId, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
@@ -360,9 +351,8 @@ public class MonitoringService {
     ) {
     }
 
-    /**
-     * Cập nhật trạng thái thiết bị của học sinh (camera, mic).
-     */
+    
+
     @Transactional
     public void updateDeviceStatus(Long attemptId, Boolean cameraOn, Boolean micOn, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
@@ -371,8 +361,8 @@ public class MonitoringService {
         if (!attempt.getStudent().getId().equals(actor.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only the student can update their own device status");
         }
-        // WAITING attempts need device readiness before the student can start.
-        // PAUSED attempts still refresh heartbeat timestamps without changing readiness.
+        
+        
         boolean allowFullUpdate = attempt.getStatus() == AttemptStatus.WAITING
                 || attempt.getStatus() == AttemptStatus.IN_PROGRESS;
         Boolean previousCameraOn = attempt.getCameraOn();
@@ -402,9 +392,8 @@ public class MonitoringService {
         }
     }
 
-    /**
-     * Lấy audit log của một attempt.
-     */
+    
+
     public List<AuditLogItem> auditLog(Long attemptId, User actor) {
         ExamAttempt attempt = examAttemptRepository.findByIdWithExamAndUsers(attemptId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attempt not found"));
@@ -425,9 +414,8 @@ public class MonitoringService {
                 .build();
     }
 
-    /**
-     * Kiểm tra rate limit cho monitoring events.
-     */
+    
+
     private void enforceMonitoringRateLimit(ExamAttempt attempt) {
         if (eventRateLimitWindowSeconds <= 0 || eventRateLimitMax <= 0) {
             return;
@@ -439,14 +427,13 @@ public class MonitoringService {
         }
     }
 
-    /** Khớp với student UI: monitoring bật trừ khi được đặt explicit là false (null được coi là bật). */
+    
     private static boolean monitoringFlagEnabled(Boolean value) {
         return !Boolean.FALSE.equals(value);
     }
 
-    /**
-     * Kiểm tra xem một loại event có được giám sát không (dựa trên cấu hình exam).
-     */
+    
+
     private boolean isEventEnabled(ExamAttempt attempt, MonitoringEventType eventType) {
         var exam = attempt.getExam();
         return switch (eventType) {
@@ -643,7 +630,7 @@ public class MonitoringService {
         }
     }
 
-    // ============== AI Camera Dashboard Methods ==============
+    
 
     private static final Set<String> AI_CAMERA_SIGNALS = Set.of(
             "NO_CAMERA",
@@ -660,9 +647,8 @@ public class MonitoringService {
             "FLAT_IMAGE", "SCREEN_DISPLAY"
     );
 
-    /**
-     * Get camera status for all students in an exam.
-     */
+    
+
     public List<CameraStatusResponse> getCameraStatusByExam(Long examId) {
         List<ExamAttempt> attempts = examAttemptRepository.findByExamIdWithStudent(examId);
         Map<Long, List<FraudSignal>> signalsByAttempt = fraudSignalRepository.findExamCameraSignals(examId, AI_CAMERA_SIGNALS)
@@ -678,7 +664,7 @@ public class MonitoringService {
             List<FraudSignal> aiSignals = signalsByAttempt.getOrDefault(attempt.getId(), List.of());
             List<FraudWarning> cameraWarnings = warningsByAttempt.getOrDefault(attempt.getId(), List.of());
 
-            // Determine status
+            
             List<String> severities = new ArrayList<>();
             aiSignals.stream()
                     .map(FraudSignal::getSeverity)
@@ -695,7 +681,7 @@ public class MonitoringService {
                     .filter(s -> "CRITICAL".equals(s) || "HIGH".equals(s))
                     .count();
 
-            // Get active signals
+            
             List<String> activeSignalTypes = java.util.stream.Stream.concat(
                             aiSignals.stream().map(FraudSignal::getSignalType),
                             cameraWarnings.stream().map(FraudWarning::getWarningType)
@@ -704,7 +690,7 @@ public class MonitoringService {
                     .distinct()
                     .toList();
 
-            // Get critical signals with details
+            
             List<CameraStatusResponse.AiCameraSignal> criticalSignals = java.util.stream.Stream.concat(
                             cameraWarnings.stream()
                                     .filter(w -> w.getSeverity() == SignalSeverity.CRITICAL || w.getSeverity() == SignalSeverity.HIGH)
@@ -746,7 +732,7 @@ public class MonitoringService {
                     .criticalSignals(criticalSignals)
                     .lastUpdate(latestAttemptUpdate(attempt));
 
-            // Extract quality metrics from latest signal
+            
             aiSignals.stream().findFirst().ifPresent(signal -> {
                 if (signal.getEvidence() != null) {
                     applyCameraEvidence(builder, parseEvidence(signal.getEvidence()));
@@ -761,9 +747,8 @@ public class MonitoringService {
         return statuses;
     }
 
-    /**
-     * Get AI camera alerts for an exam.
-     */
+    
+
     public List<CameraAlertResponse> getCameraAlertsByExam(Long examId) {
         return getCameraAlertsByExam(examId, 200);
     }
@@ -818,22 +803,20 @@ public class MonitoringService {
                     .build());
         }
 
-        // Sort by creation time, newest first
+        
         alerts.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
         return alerts.stream().limit(safeLimit).toList();
     }
 
-    /**
-     * Acknowledge a camera alert.
-     */
+    
+
     @Transactional
     public void acknowledgeCameraAlert(Long alertId, User actor) {
         reviewCameraAlert(alertId, FraudWarningReviewStatus.CONFIRMED, actor);
     }
 
-    /**
-     * Dismiss a camera alert.
-     */
+    
+
     @Transactional
     public void dismissCameraAlert(Long alertId, User actor) {
         reviewCameraAlert(alertId, FraudWarningReviewStatus.DISMISSED, actor);

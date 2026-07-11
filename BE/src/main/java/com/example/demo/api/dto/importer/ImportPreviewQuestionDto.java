@@ -17,13 +17,13 @@ public class ImportPreviewQuestionDto {
     private Integer index;
     private String content;
 
-    /** LaTeX formatted content for KaTeX/MathJax rendering. */
+    
     private String latexContent;
 
-    /** LaTeX formatted options: {"A": "$\\frac{1}{2}$", "B": "$\\frac{1}{3}$"} */
+    
     private java.util.Map<String, String> latexOptions;
 
-    /** plain | math | mixed */
+    
     private String contentType;
 
     private String type;
@@ -34,13 +34,13 @@ public class ImportPreviewQuestionDto {
     private String metadata;
     private String attachments;
     private Double parseConfidence;
-    /** Render mode: TEXT | IMAGE | LATEX */
+    
     private String renderMode;
-    /** Render info: imagePath, bbox */
+    
     private RenderDto render;
-    /** Per-question issues/warnings */
+    
     private List<String> issues;
-    /** Explanation (from solution section) */
+    
     private String explanation;
 
     @Getter

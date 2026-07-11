@@ -11,10 +11,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-/**
- * AI-powered essay evaluation service.
- * Uses OpenAI API to evaluate essay answers and provide detailed feedback.
- */
+
 @Service
 @RequiredArgsConstructor
 public class AiEssayEvaluatorService {
@@ -32,9 +29,8 @@ public class AiEssayEvaluatorService {
     @Value("${app.ai-service.timeout-ms:20000}")
     private int timeoutMs;
 
-    /**
-     * Evaluate an essay answer using AI service.
-     */
+    
+
     public EssayEvaluationResponse evaluate(String question, String answer, String rubric, double maxScore) {
         if (!aiServiceEnabled) {
             return buildFallbackResponse();

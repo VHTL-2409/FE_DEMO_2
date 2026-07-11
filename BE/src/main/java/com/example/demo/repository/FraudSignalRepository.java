@@ -69,10 +69,8 @@ public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> 
 
     long countByAttemptAndSignalTypeAndCreatedAtAfter(ExamAttempt attempt, String signalType, LocalDateTime createdAtAfter);
 
-    /**
-     * Counts how many times a specific signal type has been recorded for an attempt
-     * within a given time window. Used for per-signal-type rate limiting.
-     */
+    
+
     @Query("""
             SELECT COUNT(f) FROM FraudSignal f
             WHERE f.attempt = :attempt
@@ -83,10 +81,8 @@ public interface FraudSignalRepository extends JpaRepository<FraudSignal, Long> 
                                          @Param("signalType") String signalType,
                                          @Param("cutoff") LocalDateTime cutoff);
 
-    /**
-     * Checks if an identity signal with a specific pair signature already exists recently.
-     * Used for idempotent multi-device session detection.
-     */
+    
+
     @Query(value = """
             SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END
             FROM fraud_signals f

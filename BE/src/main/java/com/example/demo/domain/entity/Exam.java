@@ -164,13 +164,12 @@ public class Exam {
     @Builder.Default
     private Boolean shuffleAnswers = false;
 
-    /**
-     * System-generated practice exams (student-owned). Formal exams created by teachers are false.
-     */
+    
+
     @Column(name = "is_practice")
     private Boolean practice;
 
-    /** When true, students see score on the post-submit confirmation screen. */
+    
     @Column(name = "show_score_after_submit")
     @Builder.Default
     private Boolean showScoreAfterSubmit = true;

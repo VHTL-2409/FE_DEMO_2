@@ -18,7 +18,7 @@ public class DemoApplication {
 
 	public static void main(String[] args) {
 		configureWritableTempDir();
-		// Trước Spring: đưa BE/.env vào System properties — luôn có GOOGLE_* dù EPP không chạy
+		
 		Map<String, String> dotenv = DotEnvFileSupport.readMergedDotEnv();
 		if (dotenv.isEmpty()) {
 			System.err.println("[dotenv] Không đọc được file .env. user.dir=" + System.getProperty("user.dir")
@@ -60,7 +60,7 @@ public class DemoApplication {
 				try {
 					Files.deleteIfExists(probe);
 				} catch (IOException ignored) {
-					// Best effort cleanup for an empty probe directory.
+					
 				}
 			}
 		}

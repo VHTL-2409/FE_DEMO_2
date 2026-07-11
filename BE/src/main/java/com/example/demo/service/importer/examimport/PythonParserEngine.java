@@ -2,15 +2,13 @@ package com.example.demo.service.importer.examimport;
 
 import jakarta.annotation.Nullable;
 
-/**
- * Hai service Python chạy song song (cổng khác nhau), chọn qua tham số upload hoặc cấu hình mặc định.
- */
+
 public enum PythonParserEngine {
 
-    /** {@code python_parser} — template router, cổng thường 8000 */
+    
     LEGACY,
 
-    /** {@code python_parser_2} — ingestion mới, cổng thường 8010 */
+    
     V2;
 
     public static PythonParserEngine fromParam(@Nullable String s, PythonParserEngine fallback) {

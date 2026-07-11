@@ -65,7 +65,7 @@ public class FraudSignal {
     @Column(columnDefinition = "jsonb")
     private String metadata;
 
-    // Convenience: cached student username for realtime payload (avoid lazy-load)
+    
     @Transient
     public String getStudentUsername() {
         return student != null ? student.getUsername() : null;

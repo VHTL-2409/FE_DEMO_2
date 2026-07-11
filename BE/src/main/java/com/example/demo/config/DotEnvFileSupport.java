@@ -12,10 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Đọc .env từ các vị trí thường gặp (cwd = BE, cwd = gốc repo, v.v.).
- * Dùng trong {@link DemoApplication#main} (trước Spring) và {@link WorkspaceDotenvEnvironmentPostProcessor}.
- */
+
 public final class DotEnvFileSupport {
 
     private DotEnvFileSupport() {
@@ -50,9 +47,8 @@ public final class DotEnvFileSupport {
         return merged;
     }
 
-    /**
-     * Đưa biến vào {@link System#setProperty} chỉ khi chưa có trong OS env / system property (twelve-factor).
-     */
+    
+
     public static void applyToSystemPropertiesUnlessSet(Map<String, String> merged) {
         if (merged.isEmpty()) {
             return;
@@ -101,7 +97,7 @@ public final class DotEnvFileSupport {
                 target.put(key, val);
             }
         } catch (IOException ignored) {
-            // optional file
+            
         }
     }
 }

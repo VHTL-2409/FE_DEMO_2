@@ -67,7 +67,7 @@ public class ClassService {
                 .collect(Collectors.toList());
     }
 
-    /** Danh sách lớp toàn hệ thống (admin / giáo vụ). */
+    
     @Transactional(readOnly = true)
     public AdminClassListPageResponse listAllClassesForAdmin(int page, int size) {
         int p = Math.max(0, page);
@@ -611,7 +611,7 @@ public class ClassService {
             try {
                 return LocalDate.parse(value, formatter);
             } catch (DateTimeParseException ignored) {
-                // try next format
+                
             }
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, "Student " + username + " has invalid birthDate: " + value);

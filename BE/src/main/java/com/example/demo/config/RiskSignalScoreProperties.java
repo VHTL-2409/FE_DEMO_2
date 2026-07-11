@@ -39,7 +39,7 @@ public class RiskSignalScoreProperties {
         this.cap = cap != null ? new LinkedHashMap<>(cap) : new LinkedHashMap<>();
     }
 
-    // Ưu tiên điểm cấu hình trực tiếp; nếu không có thì tính theo weight * cap.
+    
     public int resolve(String signalType, int fallback) {
         Integer configured = lookup(signalScores, signalType);
         if (configured == null) {

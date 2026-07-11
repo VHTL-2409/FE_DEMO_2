@@ -233,11 +233,19 @@ async def health() -> HealthResponse:
 def _readiness_payload() -> dict:
     proctor = get_proctor_analyzer()
     face_detector = proctor.face_detector_status()
+    identity_verifier = get_identity_verifier()
+    from .face_engine import FaceEngine
+    face_engine = FaceEngine()
     services = {
         "ocr": get_ocr_engine().is_ready(),
         "proctor": proctor.is_ready(),
         "proctor_face_detector": face_detector,
         "identity_verifier": True,
+        "identity_face_engine": {
+            "backend": face_engine.backend,
+            "isDeepLearning": face_engine.is_deep_learning,
+            "insightfaceAvailable": face_engine._use_deep if hasattr(face_engine, '_use_deep') else False,
+        },
         "question_generator": get_question_generator().is_available(),
         "essay_evaluator": get_essay_evaluator().is_available(),
         "performance_predictor": get_performance_predictor().is_available(),
@@ -558,10 +566,80 @@ async def verify_identity(
                 "capturedAt": req.captured_at,
             },
         )
+
+        proctor_metadata = {
+            "source": "identity_verification",
+            "attemptId": req.attempt_id,
+            "studentId": req.student_id,
+        }
+        proctor_result = await run_in_threadpool(
+            get_proctor_analyzer().analyze_frame,
+            req.selfie_image_base64,
+            proctor_metadata,
+        )
+
+        _merge_proctor_spoofing_signals(result, proctor_result)
+
         return IdentityVerifyResponse.model_validate(result)
     except Exception as exc:
         logger.error("Identity verification failed", exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _merge_proctor_spoofing_signals(identity_result: dict, proctor_result: dict) -> None:
+    """Merge spoofing detection signals from ProctorAnalyzer into identity result."""
+    signals = identity_result.get("signals", [])
+
+    spoofing_detected = False
+    spoofing_signal = None
+
+    if proctor_result.get("label") in ("SPOOFING_SUSPECTED", "PRINTED_PHOTO", "SCREEN_REPLAY", "DEEPFAKE", "LOW_LIVENESS"):
+        spoofing_detected = True
+        spoofing_signal = {
+            "signal_type": "SPOOFING_DETECTED",
+            "severity": "CRITICAL",
+            "confidence": float(proctor_result.get("deepfake_score", 0.85)),
+            "evidence": {
+                "method": "proctor_analyzer",
+                "spoofing_label": proctor_result.get("label"),
+                "deepfake_score": proctor_result.get("deepfake_score"),
+                "liveness_score": proctor_result.get("liveness_score"),
+                "face_count": proctor_result.get("face_count"),
+            },
+        }
+
+    if proctor_result.get("deepfake_valid") is False and proctor_result.get("deepfake_score", 0) > 0.5:
+        spoofing_detected = True
+        spoofing_signal = {
+            "signal_type": "LOW_LIVENESS",
+            "severity": "HIGH",
+            "confidence": float(proctor_result.get("deepfake_score", 0.70)),
+            "evidence": {
+                "method": "proctor_deepfake_check",
+                "deepfake_valid": proctor_result.get("deepfake_valid"),
+                "deepfake_score": proctor_result.get("deepfake_score"),
+                "liveness_score": proctor_result.get("liveness_score"),
+            },
+        }
+
+    if spoofing_detected and spoofing_signal:
+        signals.append(spoofing_signal)
+        identity_result["signals"] = signals
+        if identity_result.get("verification_status") == "VERIFIED":
+            identity_result["verification_status"] = "NEEDS_REVIEW"
+            identity_result["review_reason"] = (
+                f"{identity_result.get('review_reason', '')}; Phát hiện nghi vấn spoofing từ proctor analysis"
+            ).strip("; ")
+
+    if proctor_result.get("diagnostics"):
+        identity_result["diagnostics"]["proctor_analysis"] = {
+            "spoofing_label": proctor_result.get("spoofing_label"),
+            "deepfake_score": proctor_result.get("deepfake_score"),
+            "liveness_score": proctor_result.get("liveness_score"),
+            "face_count": proctor_result.get("face_count"),
+            "eye_valid": proctor_result.get("eye_valid"),
+            "gaze_valid": proctor_result.get("gaze_valid"),
+        }
 
 
 # ─── AI Generation ─────────────────────────────────────────────────────────────
@@ -584,6 +662,20 @@ async def recheck_identity(
                 "capturedAt": req.captured_at,
             },
         )
+
+        proctor_metadata = {
+            "source": "identity_recheck",
+            "attemptId": req.attempt_id,
+            "studentId": req.student_id,
+        }
+        proctor_result = await run_in_threadpool(
+            get_proctor_analyzer().analyze_frame,
+            req.image_base64,
+            proctor_metadata,
+        )
+
+        _merge_proctor_spoofing_signals(result, proctor_result)
+
         return IdentityVerifyResponse.model_validate(result)
     except Exception as exc:
         logger.error("Identity recheck failed", exc_info=True)

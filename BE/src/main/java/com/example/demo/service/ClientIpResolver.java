@@ -11,7 +11,7 @@ public class ClientIpResolver {
             return null;
         }
 
-        // If behind a reverse proxy, prefer X-Forwarded-For (first hop).
+        
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
             String first = xff.split(",")[0].trim();

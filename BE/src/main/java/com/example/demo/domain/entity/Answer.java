@@ -34,7 +34,7 @@ public class Answer {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    // MCQ answer
+    
     @Column(name = "selected_answer", columnDefinition = "TEXT")
     private String selectedAnswer;
 
@@ -42,15 +42,15 @@ public class Answer {
     @Column(name = "selected_options", columnDefinition = "jsonb")
     private String selectedOptions;
 
-    // Essay answer
+    
     @Column(name = "essay_content", columnDefinition = "TEXT")
     private String essayContent;
 
-    // Scoring MCQ
+    
     @Column(name = "correct")
     private Boolean correct;
 
-    // Scoring Essay (manual grading)
+    
     @Column(name = "essay_score", columnDefinition = "DECIMAL(5,2)")
     private Double essayScore;
 
@@ -61,7 +61,7 @@ public class Answer {
     @Column(name = "essay_scored_at")
     private LocalDateTime essayScoredAt;
 
-    // Draft tracking (when was answer last saved)
+    
     @Column(name = "is_marked")
     @Builder.Default
     private Boolean isMarked = false;

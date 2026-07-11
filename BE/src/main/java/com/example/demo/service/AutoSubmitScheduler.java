@@ -20,9 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Tự động nộp bài thi khi hết hạn (cho các attempt còn IN_PROGRESS mà sinh viên đã đóng trình duyệt).
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -34,7 +32,7 @@ public class AutoSubmitScheduler {
     private final MonitoringService monitoringService;
     private final RealtimeNotificationService realtimeNotificationService;
 
-    @Scheduled(fixedRate = 60000) // mỗi phút
+    @Scheduled(fixedRate = 60000) 
     @Transactional
     public void autoSubmitExpiredAttempts() {
         List<ExamAttempt> inProgress = new java.util.ArrayList<>();

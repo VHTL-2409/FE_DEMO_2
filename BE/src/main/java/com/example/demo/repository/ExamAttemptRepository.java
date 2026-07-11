@@ -54,10 +54,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
 
     long countByExamAndStudentAndStatusIn(Exam exam, User student, List<AttemptStatus> statuses);
 
-    /**
-     * Tim cac attempt cung IP trong ky thi.
-     * Khong loc theo ngay gio vi IP detection chi can biet co attempt nao cung IP.
-     */
+    
+
     @Query(value = """
             SELECT ea.*
             FROM exam_attempts ea
@@ -145,10 +143,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
     @Query("SELECT ea.exam.id, COUNT(DISTINCT ea.student.id) FROM ExamAttempt ea WHERE ea.exam.id IN :ids GROUP BY ea.exam.id")
     List<Object[]> countDistinctStudentsGroupedByExamIds(@Param("ids") List<Long> ids);
 
-    /**
-     * Count students with active attempts (IN_PROGRESS or PAUSED) within a session window.
-     * Always uses the session boundaries (no filtering by null).
-     */
+    
+
     @Query(value = """
             SELECT COUNT(DISTINCT ea.student_id)
             FROM exam_attempts ea
@@ -162,9 +158,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             @Param("sessionStart") LocalDateTime sessionStart,
             @Param("sessionEnd") LocalDateTime sessionEnd);
 
-    /**
-     * Check if an exam has any active attempts (IN_PROGRESS or PAUSED).
-     */
+    
+
     @Query("""
             SELECT CASE WHEN COUNT(ea) > 0 THEN true ELSE false END
             FROM ExamAttempt ea
@@ -173,10 +168,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> 
             """)
     boolean hasActiveAttempts(@Param("examId") Long examId);
 
-    /**
-     * Find active attempts for the same student + exam, excluding the current attempt.
-     * Used for multi-device session detection.
-     */
+    
+
     @Query("""
             SELECT ea FROM ExamAttempt ea
             WHERE ea.exam.id = :examId

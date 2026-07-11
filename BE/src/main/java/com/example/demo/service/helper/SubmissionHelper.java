@@ -75,21 +75,8 @@ public class SubmissionHelper {
         }
     }
 
-    /**
-     * Calculates and returns the normalized score (0–100) for an exam attempt.
-     *
-     * <p>The raw score is the sum of scoreWeight of all correctly answered questions.
-     * To ensure consistent display regardless of individual question weights, the result
-     * is normalized to a 0–100 scale using the total possible score of all questions
-     * in the exam.
-     *
-     * <p>Edge cases:
-     * <ul>
-     *   <li>If total possible score is 0 (no questions): returns 0</li>
-     *   <li>If all questions are unanswered correctly: returns 0</li>
-     *   <li>If raw score exceeds total (edge case from import): caps at 100</li>
-     * </ul>
-     */
+    
+
     public double calculateScore(ExamAttempt attempt) {
         List<Answer> answers = answerRepository.findByAttempt(attempt);
         if (answers.isEmpty()) {

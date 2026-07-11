@@ -57,16 +57,16 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
-		<!-- Jackson 2 (để tương thích code dùng com.fasterxml.jackson.*) -->
-		<!-- Jackson 3 (tools.jackson.*) được spring-boot-starter-jackson:4.0.3 cung cấp -->
-		<!-- Cả hai cùng tồn tại trong classpath: Jackson 2 cho code hiện tại, Jackson 3 cho Spring Boot 4 -->
+		
+		
+		
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
-		<!-- JSR310 module cho Jackson 2 (OffsetDateTime, LocalDateTime...) -->
-		<!-- spring-boot-starter-jackson:4.0.3 mang tools.jackson (Jackson 3), -->
-		<!-- nhưng code dùng com.fasterxml.jackson (Jackson 2) nên cần module riêng -->
+		
+		
+		
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
 			<artifactId>jackson-datatype-jsr310</artifactId>
@@ -90,7 +90,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Caffeine cache for rate limiting -->
+		
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
@@ -116,7 +116,11 @@
 			<artifactId>commons-io</artifactId>
 			<version>2.20.0</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.16</version>
+		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
@@ -137,6 +141,16 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-http-client</artifactId>
+			<version>4.0.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-aop</artifactId>
+			<version>6.2.19</version>
 		</dependency>
 	</dependencies>
 
@@ -197,8 +211,8 @@
 		</plugins>
 	</build>
 
-	<!-- Maven profile: cd BE; mvn spring-boot:run -Pdev
-	     Tự động load BE/.env như system properties cho Spring Boot -->
+	
+
 	<profiles>
 		<profile>
 			<id>dev</id>

@@ -1,13 +1,10 @@
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 .md
 docs/
 /test/
 
-### STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -16,29 +13,22 @@ docs/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
 .vscode/
 
-### Environment (credentials) ###
 .env
 
-### Logs ###
 logs/
 *.log
 tmp/

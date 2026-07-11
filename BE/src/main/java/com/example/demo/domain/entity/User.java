@@ -66,7 +66,7 @@ public class User {
     @Column(name = "oauth_uid")
     private String oauthUid;
 
-    /** LAZY + JOIN FETCH ở repository khi cần roles — tránh load roles mọi lúc */
+    
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_roles",

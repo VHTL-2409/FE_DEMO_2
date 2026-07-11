@@ -309,6 +309,9 @@ public class FraudWarningService {
         if ("AI_CAMERA".equalsIgnoreCase(signalCategory) || isCameraSignal(type)) {
             return FraudWarningCategory.CAMERA_PROCTORING;
         }
+        if (Set.of("SPOOFING_ATTACK", "AI_SPOOFING", "SPOOFING_DETECTED").contains(type)) {
+            return FraudWarningCategory.SPOOFING_ATTACK;
+        }
         return null;
     }
 

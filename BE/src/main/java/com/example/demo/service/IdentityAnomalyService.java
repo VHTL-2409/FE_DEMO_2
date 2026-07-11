@@ -21,18 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Phát hiện bất thường về danh tính: thay đổi device fingerprint, nhiều thiết bị cùng phiên, và thay đổi IP.
- *
- * <p>Các signal được tạo ra:</p>
- * <ul>
- *   <li>{@code DEVICE_FINGERPRINT_CHANGED} — cùng một attempt nhưng khác thiết bị/trình duyệt</li>
- *   <li>{@code MULTIPLE_DEVICE_SESSION} — cùng học sinh + bài thi, có attempt thứ hai đang active với fingerprint khác</li>
- *   <li>{@code IP_CHANGED} — cùng một attempt nhưng IP thay đổi giữa chừng</li>
- * </ul>
- *
- * <p>Giai đoạn 1: signals được ghi nhận nhưng attempts KHÔNG bị tự động dừng.</p>
- */
+
 @Service
 @RequiredArgsConstructor
 public class IdentityAnomalyService {
@@ -53,11 +42,8 @@ public class IdentityAnomalyService {
     private final FraudSignalService fraudSignalService;
     private final RealtimeNotificationService realtimeNotificationService;
 
-    /**
-     * Được gọi khi phiên giám sát bắt đầu (batch / heartbeat đầu tiên).
-     * Thiết lập fingerprint/IP ban đầu và kiểm tra multi-device sessions.
-     * @return danh sách các FraudSignal mới được tạo (có thể rỗng)
-     */
+    
+
     @Transactional
     public List<FraudSignal> onProctoringStart(ExamAttempt attempt, String normalizedFingerprint, String clientIp) {
         List<FraudSignal> newSignals = new ArrayList<>();
@@ -92,9 +78,9 @@ public class IdentityAnomalyService {
             log.debug("Stored initial IP for attemptId={} ip={}", attempt.getId(), clientIp);
         }
 
-        // Luôn kiểm tra multi-device session sau khi thiết lập fingerprint.
-        // Điều này phát hiện trường hợp một attempt mới bắt đầu trong khi một attempt active
-        // khác cho cùng học sinh + bài thi tồn tại với fingerprint khác.
+        
+        
+        
         if (normalizedFingerprint != null && !normalizedFingerprint.isBlank()) {
             log.debug("Checking multi-device session for attemptId={}", attempt.getId());
             newSignals.addAll(checkMultiDeviceSession(attempt, normalizedFingerprint));
@@ -103,10 +89,8 @@ public class IdentityAnomalyService {
         return newSignals;
     }
 
-    /**
-     * Được gọi trên mỗi batch/heartbeat. Kiểm tra fingerprint/IP thay đổi trong cùng một attempt.
-     * @return danh sách các FraudSignal mới được tạo (có thể rỗng)
-     */
+    
+
     @Transactional
     public List<FraudSignal> onProctoringHeartbeat(ExamAttempt attempt, String normalizedFingerprint, String clientIp) {
         List<FraudSignal> newSignals = new ArrayList<>();
@@ -120,9 +104,8 @@ public class IdentityAnomalyService {
         return newSignals;
     }
 
-    /**
-     * Phát hiện thay đổi fingerprint trong cùng một attempt. Trả về signal nếu phát hiện, null nếu không.
-     */
+    
+
     private FraudSignal detectFingerprintChange(ExamAttempt attempt, String newFingerprint) {
         if (newFingerprint == null || newFingerprint.isBlank()) {
             return null;
@@ -165,9 +148,8 @@ public class IdentityAnomalyService {
         return signal;
     }
 
-    /**
-     * Phát hiện thay đổi IP trong cùng một attempt. Trả về signal nếu phát hiện, null nếu không.
-     */
+    
+
     private FraudSignal detectIpChange(ExamAttempt attempt, String newIp) {
         if (newIp == null || newIp.isBlank()) {
             return null;
@@ -213,10 +195,8 @@ public class IdentityAnomalyService {
         return signal;
     }
 
-    /**
-     * Phát hiện multi-device session: cùng học sinh + cùng bài thi có nhiều active attempts
-     * với fingerprint khác nhau. Trả về danh sách các signal mới (có thể rỗng).
-     */
+    
+
     private List<FraudSignal> checkMultiDeviceSession(ExamAttempt attempt, String currentFingerprint) {
         List<FraudSignal> newSignals = new ArrayList<>();
         if (currentFingerprint == null || currentFingerprint.isBlank()) {

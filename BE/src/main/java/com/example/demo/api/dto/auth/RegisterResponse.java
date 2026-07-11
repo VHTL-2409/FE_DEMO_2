@@ -17,6 +17,6 @@ public class RegisterResponse {
     private List<String> roles;
     private boolean verificationPending;
     private String verificationUrl;
-    /** true nếu email xác minh đã gửi thành công, false nếu không gửi được (dùng link thay thế) */
+    
     private boolean emailSent;
 }
