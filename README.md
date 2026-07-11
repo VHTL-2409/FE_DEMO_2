@@ -60,7 +60,3 @@ npm install
 npm run dev
 ```
 
-## Ghi chú cấu hình
-
-Tạo file `.env` từ các file mẫu nếu cần chạy local. Không commit file `.env` vì có thể chứa mật khẩu database, JWT secret, Google OAuth client secret và khóa API.
-
